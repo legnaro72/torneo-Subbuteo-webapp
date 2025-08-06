@@ -56,10 +56,12 @@ def genera_calendario(giocatori, num_gironi, tipo="Solo andata"):
 def aggiorna_classifica(df):
     gironi = df['Girone'].dropna().unique()
     classifiche = []
+
     for girone in gironi:
         partite = df[(df['Girone'] == girone) & (df['Valida'] == True)]
         squadre = pd.unique(partite[['Casa','Ospite']].values.ravel())
         stats = {s: {'Punti':0,'V':0,'P':0,'S':0,'GF':0,'GS':0,'DR':0} for s in squadre}
+
         for _, r in partite.iterrows():
             gc, go = int(r['GolCasa']), int(r['GolOspite'])
             casa, ospite = r['Casa'], r['Ospite']
@@ -67,21 +69,37 @@ def aggiorna_classifica(df):
             stats[casa]['GS'] += go
             stats[ospite]['GF'] += go
             stats[ospite]['GS'] += gc
+
             if gc > go:
                 stats[casa]['Punti'] += 3; stats[casa]['V'] +=1; stats[ospite]['S'] +=1
             elif gc < go:
                 stats[ospite]['Punti'] += 3; stats[ospite]['V'] +=1; stats[casa]['S'] +=1
             else:
                 stats[casa]['Punti'] +=1; stats[ospite]['Punti'] +=1; stats[casa]['P'] +=1; stats[ospite]['P'] +=1
+
         for s in squadre:
             stats[s]['DR'] = stats[s]['GF'] - stats[s]['GS']
+
         df_stat = pd.DataFrame.from_dict(stats, orient='index').reset_index().rename(columns={'index': 'Squadra'})
         df_stat['Girone'] = girone
         classifiche.append(df_stat)
 
+    # Controllo se ci sono dati prima di ordinare
+    if not classifiche:
+        return pd.DataFrame()  # nessuna partita valida
+
     df_classifica = pd.concat(classifiche, ignore_index=True)
-    df_classifica = df_classifica.sort_values(by=['Girone', 'Punti', 'DR'], ascending=[True, False, False])
+
+    # Controllo colonne prima del sort
+    colonne_necessarie = ['Girone','Punti','DR']
+    for col in colonne_necessarie:
+        if col not in df_classifica.columns:
+            df_classifica[col] = 0  # assegna zero se manca
+
+    # Ordina in sicurezza
+    df_classifica = df_classifica.sort_values(by=['Girone','Punti','DR'], ascending=[True,False,False])
     return df_classifica
+
 
 
 # ✅ Inserimento risultati compatto e mobile-friendly
