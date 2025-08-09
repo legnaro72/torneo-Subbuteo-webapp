@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import requests
 from io import StringIO
-import math
 import random
 
 st.set_page_config(page_title="⚽️ Gestione Torneo a Gironi by Legnaro72", layout="wide")
@@ -89,7 +88,6 @@ def aggiorna_classifica(df):
 
     df_classifica = pd.concat(classifiche, ignore_index=True)
 
-    # Assicuriamoci che le colonne ci siano tutte
     for col in ['Girone','Punti','DR']:
         if col not in df_classifica.columns:
             df_classifica[col] = 0
@@ -125,17 +123,37 @@ def main():
         tipo_calendario = st.selectbox("Tipo calendario", ["Solo andata", "Andata e ritorno"])
         n_giocatori = st.number_input("Numero giocatori", 4, 32, value=8)
 
-        st.markdown("### Seleziona o inserisci i giocatori")
-        giocatori_scelti = []
-        for i in range(n_giocatori):
-            options = df_master['Giocatore'].tolist()
-            default_nick = f"NuovoGiocatore{i+1}"
-            selezione = st.selectbox(f"Giocatore {i+1}", options=[default_nick] + options, key=f"giocatore_{i}")
-            if selezione == default_nick:
-                nuovo_nome = st.text_input(f"Modifica nome {default_nick}", value=default_nick, key=f"edit_nome_{i}")
-                giocatori_scelti.append(nuovo_nome.strip() if nuovo_nome.strip() != "" else default_nick)
-            else:
-                giocatori_scelti.append(selezione)
+        # --- Sezione Amici del Club con checkbox ---
+        st.markdown("### Amici del Club")
+        amici = df_master['Giocatore'].tolist()
+        all_seleziona = st.checkbox("Seleziona tutti gli amici", key="all_amici")
+
+        if all_seleziona:
+            amici_selezionati = st.multiselect("Seleziona amici", amici, default=amici)
+        else:
+            amici_selezionati = st.multiselect("Seleziona amici", amici)
+
+        num_supplementari = n_giocatori - len(amici_selezionati)
+        if num_supplementari < 0:
+            st.warning(f"Hai selezionato più amici ({len(amici_selezionati)}) del numero partecipanti ({n_giocatori}). Riduci la selezione.")
+            return
+
+        st.markdown(f"Giocatori supplementari da inserire: **{num_supplementari}**")
+
+        giocatori_supplementari = []
+        for i in range(num_supplementari):
+            use = st.checkbox(f"Aggiungi giocatore supplementare G{i+1}", key=f"supp_{i}_check")
+            if use:
+                nome = st.text_input(f"Nome giocatore supplementare G{i+1}", key=f"supp_{i}_nome")
+                if nome.strip() == "":
+                    st.warning(f"Inserisci un nome valido per G{i+1}")
+                    return
+                giocatori_supplementari.append(nome.strip())
+
+        # Unione giocatori finali
+        giocatori_scelti = amici_selezionati + giocatori_supplementari
+
+        st.markdown(f"**Giocatori selezionati:** {', '.join(giocatori_scelti)}")
 
         if st.button("🎲 Assegna Squadre"):
             if len(set(giocatori_scelti)) < 4:
@@ -146,7 +164,7 @@ def main():
                 st.session_state['tipo_calendario'] = tipo_calendario
                 st.success("Giocatori selezionati, passa alla fase successiva.")
 
-    # Seconda fase: assegna o modifica squadre e potenziale
+    # Fase 2: Assegna squadre e potenziale
     if 'giocatori_scelti' in st.session_state and scelta == "Nuovo torneo":
         st.markdown("### Modifica Squadra e Potenziale per i giocatori")
         gioc_info = {}
@@ -175,11 +193,12 @@ def main():
             st.session_state['df_torneo'] = df_torneo
             st.success("Calendario generato!")
 
+    # Gestione torneo e risultati
     if 'df_torneo' in st.session_state:
         df = st.session_state['df_torneo']
 
         gironi = df['Girone'].dropna().unique() if 'Girone' in df.columns else []
-        if gironi.size == 0:
+        if len(gironi) == 0:
             st.warning("Non ci sono gironi nel torneo. Genera un calendario valido.")
             return
 
@@ -207,33 +226,38 @@ def main():
 
         csv = st.session_state['df_torneo'].to_csv(index=False)
         st.download_button("📥 Scarica CSV Torneo", csv, "torneo.csv", "text/csv")
-        # Dopo la visualizzazione della classifica e del download button:
 
-        if 'df_torneo' in st.session_state:
-            df = st.session_state['df_torneo']
-            
-            # Pulsante mostra tutte le giornate per girone
-            if st.button("📅 Mostra tutte le giornate per girone"):
-                with st.expander(f"Tutte le giornate - {girone_sel}"):
-                    giornate = sorted(df[df['Girone'] == girone_sel]['Giornata'].dropna().unique())
-                    for g in giornate:
-                        st.markdown(f"### Giornata {g}")
-                        df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == g)]
-                        st.dataframe(df_giornata[['Casa','Ospite','GolCasa','GolOspite','Valida']], use_container_width=True)
+        # Pulsante mostra tutte le giornate per girone
+        if st.button("📅 Mostra tutte le giornate per girone"):
+            with st.expander(f"Tutte le giornate - {girone_sel}"):
+                giornate = sorted(df[df['Girone'] == girone_sel]['Giornata'].dropna().unique())
+                for g in giornate:
+                    st.markdown(f"### Giornata {g}")
+                    df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == g)]
+                    st.dataframe(df_giornata[['Casa','Ospite','GolCasa','GolOspite','Valida']], use_container_width=True)
 
-            # Pulsante filtra partite da validare per squadra
-            st.subheader("🔍 Filtra partite da validare per squadra")
-            squadre = pd.unique(df[['Casa', 'Ospite']].values.ravel())
-            squadra_scelta = st.selectbox("Seleziona squadra", squadre)
+        # Filtra partite da validare per squadra
+        st.subheader("🔍 Filtra partite da validare per squadra")
+        squadre = pd.unique(df[['Casa', 'Ospite']].values.ravel())
+        squadra_scelta = st.selectbox("Seleziona squadra", squadre, key="filter_squadra")
 
-            partite_da_validare = df[
-                (df['Valida'] == False) &
-                ((df['Casa'] == squadra_scelta) | (df['Ospite'] == squadra_scelta))
-            ]
+        partite_da_validare = df[
+            (df['Valida'] == False) &
+            ((df['Casa'] == squadra_scelta) | (df['Ospite'] == squadra_scelta))
+        ]
 
-            st.dataframe(partite_da_validare[['Girone','Giornata','Casa','Ospite','GolCasa','GolOspite']], use_container_width=True)
+        st.dataframe(partite_da_validare[['Girone','Giornata','Casa','Ospite','GolCasa','GolOspite']], use_container_width=True)
 
 
+    elif scelta == "Carica torneo da CSV":
+        file = st.file_uploader("📂 Carica file CSV", type="csv")
+        if file:
+            try:
+                df_torneo = pd.read_csv(file, encoding='latin1')
+                st.session_state['df_torneo'] = df_torneo
+                st.success("Torneo caricato!")
+            except Exception as e:
+                st.error(f"Errore caricamento CSV: {e}")
 
 if __name__ == '__main__':
     main()
