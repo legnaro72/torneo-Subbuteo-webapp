@@ -342,28 +342,34 @@ def main():
             st.warning("Classifica non disponibile: nessuna partita valida o dati insufficienti.")
         else:
             mostra_classifica_stilizzata(classifica, girone_sel)
+
+
         # --- Filtra Giocatore ---
         if st.button("🎯 Filtra Giocatore"):
             giocatori = sorted(
                 pd.unique(
-                    pd.concat([st.session_state['df_torneo']['Squadra1'], st.session_state['df_torneo']['Squadra2']])
+                    pd.concat([st.session_state['df_torneo']['Casa'], st.session_state['df_torneo']['Ospite']])
                 )
             )
             gioc_sel = st.selectbox("Seleziona giocatore", giocatori, key="sel_giocatore")
         
-            if "AndataRitorno" in st.session_state and st.session_state["AndataRitorno"]:
+            if "tipo_calendario" in st.session_state and st.session_state["tipo_calendario"] == "Andata e ritorno":
                 filtro_tipo = st.radio("Mostra partite", ["Andata", "Ritorno", "Entrambe"], index=2, key="tipo_giocatore")
             else:
                 filtro_tipo = "Entrambe"
         
             df_filtrato = st.session_state['df_torneo'][
-                ((st.session_state['df_torneo']['Squadra1'] == gioc_sel) |
-                 (st.session_state['df_torneo']['Squadra2'] == gioc_sel)) &
-                (st.session_state['df_torneo']['Validata'] == False)
+                ((st.session_state['df_torneo']['Casa'] == gioc_sel) |
+                 (st.session_state['df_torneo']['Ospite'] == gioc_sel)) &
+                (st.session_state['df_torneo']['Valida'] == False)
             ]
         
             if filtro_tipo != "Entrambe":
-                df_filtrato = df_filtrato[df_filtrato['Fase'] == filtro_tipo]
+                n_giornate = st.session_state['df_torneo']['Giornata'].max()
+                if filtro_tipo == "Andata":
+                    df_filtrato = df_filtrato[df_filtrato['Giornata'] <= n_giornate / 2]
+                else:  # Ritorno
+                    df_filtrato = df_filtrato[df_filtrato['Giornata'] > n_giornate / 2]
         
             st.dataframe(df_filtrato)
         
@@ -372,22 +378,26 @@ def main():
             gironi = sorted(st.session_state['df_torneo']['Girone'].unique())
             gir_sel = st.selectbox("Seleziona girone", gironi, key="sel_girone")
         
-            if "AndataRitorno" in st.session_state and st.session_state["AndataRitorno"]:
+            if "tipo_calendario" in st.session_state and st.session_state["tipo_calendario"] == "Andata e ritorno":
                 filtro_tipo_g = st.radio("Mostra partite", ["Andata", "Ritorno", "Entrambe"], index=2, key="tipo_girone")
             else:
                 filtro_tipo_g = "Entrambe"
         
             df_girone = st.session_state['df_torneo'][
                 (st.session_state['df_torneo']['Girone'] == gir_sel) &
-                (st.session_state['df_torneo']['Validata'] == False)
+                (st.session_state['df_torneo']['Valida'] == False)
             ]
         
             if filtro_tipo_g != "Entrambe":
-                df_girone = df_girone[df_girone['Fase'] == filtro_tipo_g]
+                n_giornate = st.session_state['df_torneo']['Giornata'].max()
+                if filtro_tipo_g == "Andata":
+                    df_girone = df_girone[df_girone['Giornata'] <= n_giornate / 2]
+                else:  # Ritorno
+                    df_girone = df_girone[df_girone['Giornata'] > n_giornate / 2]
         
             st.dataframe(df_girone)
         
-        # --- Pulsante download CSV ---
+        # --- Scarica CSV ---
         csv = st.session_state['df_torneo'].to_csv(index=False)
         st.download_button(
             label="💾 Scarica CSV Torneo",
@@ -395,6 +405,7 @@ def main():
             file_name="torneo.csv",
             mime="text/csv"
         )
+
 
 
 
