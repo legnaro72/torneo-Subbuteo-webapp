@@ -378,9 +378,9 @@ def main():
 
         st.sidebar.markdown("---")
         gironi = sorted(df['Girone'].dropna().unique())
-        girone_sel = st.sidebar.selectbox("Seleziona Girone", gironi)
+        girone_sel = st.sidebar.selectbox("🏆Seleziona Girone", gironi)
         giornate = sorted(df[df['Girone'] == girone_sel]['Giornata'].dropna().unique())
-        giornata_sel = st.sidebar.selectbox("Seleziona Giornata", giornate)
+        giornata_sel = st.sidebar.selectbox("🗓️Seleziona Giornata", giornate)
 
         mostra_calendario_giornata(df, girone_sel, giornata_sel)
 
@@ -390,7 +390,7 @@ def main():
 
         # --- FILTRI ---
         st.sidebar.markdown("---")
-        st.sidebar.markdown("### Filtri partite da giocare")
+        st.sidebar.markdown("### 🕒Filtri partite da giocare")
 
         if st.sidebar.button("🎯 Filtra Giocatore"):
             st.session_state["filtra_giocatore"] = True
