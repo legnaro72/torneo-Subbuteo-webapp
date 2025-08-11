@@ -5,8 +5,10 @@ from io import StringIO, BytesIO
 import random
 from fpdf import FPDF
 
-st.set_page_config(page_title="🎲 Gestione Torneo a Gironi by Legnaro72", layout="wide")
+# Config pagina
+st.set_page_config(page_title="🎲 Gestione Torneo a Gironi", layout="wide")
 
+# URL default giocatori (puoi cambiare)
 URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLegna/refs/heads/main/giocatoriSuperba.csv"
 
 def carica_giocatori_master(url=URL_GIOCATORI):
@@ -31,7 +33,7 @@ def genera_calendario(giocatori, num_gironi, tipo="Solo andata"):
 
     partite = []
     for idx, girone in enumerate(gironi, 1):
-        g = f"Girone {idx}"
+        g = f"{idx}"  # girone come numero stringa
         if len(girone) % 2 == 1:
             girone.append("Riposo")
         n = len(girone)
@@ -50,11 +52,15 @@ def genera_calendario(giocatori, num_gironi, tipo="Solo andata"):
     return pd.DataFrame(partite)
 
 def aggiorna_classifica(df):
-    gironi = df['Girone'].dropna().unique() if 'Girone' in df.columns else []
     classifiche = []
+    if df.empty or 'Valida' not in df.columns:
+        return pd.DataFrame()
+    gironi = df['Girone'].dropna().unique() if 'Girone' in df.columns else []
 
     for girone in gironi:
         partite = df[(df['Girone'] == girone) & (df['Valida'] == True)]
+        if partite.empty:
+            continue
         squadre = pd.unique(partite[['Casa','Ospite']].values.ravel())
         stats = {s: {'Punti':0,'V':0,'P':0,'S':0,'GF':0,'GS':0,'DR':0} for s in squadre}
 
@@ -62,7 +68,7 @@ def aggiorna_classifica(df):
             try:
                 gc, go = int(r['GolCasa']), int(r['GolOspite'])
             except Exception:
-                gc, go = 0,0
+                gc, go = 0, 0
             casa, ospite = r['Casa'], r['Ospite']
             stats[casa]['GF'] += gc
             stats[casa]['GS'] += go
@@ -70,11 +76,11 @@ def aggiorna_classifica(df):
             stats[ospite]['GS'] += gc
 
             if gc > go:
-                stats[casa]['Punti'] += 3; stats[casa]['V'] +=1; stats[ospite]['S'] +=1
+                stats[casa]['Punti'] += 3; stats[casa]['V'] += 1; stats[ospite]['S'] += 1
             elif gc < go:
-                stats[ospite]['Punti'] += 3; stats[ospite]['V'] +=1; stats[casa]['S'] +=1
+                stats[ospite]['Punti'] += 3; stats[ospite]['V'] += 1; stats[casa]['S'] += 1
             else:
-                stats[casa]['Punti'] +=1; stats[ospite]['Punti'] +=1; stats[casa]['P'] +=1; stats[ospite]['P'] +=1
+                stats[casa]['Punti'] += 1; stats[ospite]['Punti'] += 1; stats[casa]['P'] += 1; stats[ospite]['P'] += 1
 
         for s in squadre:
             stats[s]['DR'] = stats[s]['GF'] - stats[s]['GS']
@@ -87,77 +93,78 @@ def aggiorna_classifica(df):
         return pd.DataFrame()
 
     df_classifica = pd.concat(classifiche, ignore_index=True)
-    df_classifica = df_classifica.sort_values(by=['Girone','Punti','DR'], ascending=[True,False,False])
+    for col in ['Girone', 'Punti', 'DR']:
+        if col not in df_classifica.columns:
+            df_classifica[col] = 0
+
+    df_classifica = df_classifica.sort_values(by=['Girone', 'Punti', 'DR'], ascending=[True, False, False])
     return df_classifica
 
 def esporta_pdf(df_torneo, df_classifica):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
-    pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-
-    # Font Unicode con emoji: scarica e metti DejaVuSans.ttf accanto a questo script
+    # Usa font DejaVu per emoji e unicode (devi avere il file DejaVuSans.ttf nella stessa cartella)
     pdf.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
-    pdf.set_font("DejaVu", '', 16)
-
+    pdf.set_font("DejaVu", 'B', 16)
     pdf.cell(0, 10, "📅 Calendario e 🏆 Classifiche Torneo", ln=True, align='C')
 
     gironi = df_torneo['Girone'].dropna().unique()
 
-    for girone in gironi:
+    for girone in sorted(gironi):
         pdf.set_font("DejaVu", 'B', 14)
-        pdf.cell(0, 8, f"⚽ Girone {girone}", ln=True)
-        giornate = sorted(df_torneo[df_torneo['Girone']==girone]['Giornata'].dropna().unique())
+        pdf.cell(0, 8, f"Girone {girone}", ln=True)
+        giornate = sorted(df_torneo[df_torneo['Girone'] == girone]['Giornata'].dropna().unique())
 
         for g in giornate:
             pdf.set_font("DejaVu", 'B', 12)
-            pdf.cell(0, 7, f"🗓 Giornata {g}", ln=True)
-            partite = df_torneo[(df_torneo['Girone']==girone) & (df_torneo['Giornata']==g)]
+            pdf.cell(0, 7, f"Giornata {g}", ln=True)
+            partite = df_torneo[(df_torneo['Girone'] == girone) & (df_torneo['Giornata'] == g)]
 
+            # Header tabella
             pdf.set_font("DejaVu", 'B', 11)
-            pdf.cell(65, 7, "🏠 Casa", border=1, align='C')
-            pdf.cell(20, 7, "⚽ Gol", border=1, align='C')
-            pdf.cell(20, 7, "⚽ Gol", border=1, align='C')
-            pdf.cell(65, 7, "🏟 Ospite", border=1, align='C')
+            pdf.cell(60, 6, "Casa", border=1)
+            pdf.cell(20, 6, "Gol", border=1, align='C')
+            pdf.cell(20, 6, "Gol", border=1, align='C')
+            pdf.cell(60, 6, "Ospite", border=1)
             pdf.ln()
 
             pdf.set_font("DejaVu", '', 11)
             for _, row in partite.iterrows():
                 if not row['Valida']:
-                    pdf.set_text_color(200, 50, 50)
+                    pdf.set_text_color(255, 0, 0)
                 else:
                     pdf.set_text_color(0, 0, 0)
 
-                pdf.cell(65, 7, str(row['Casa']), border=1)
-                pdf.cell(20, 7, str(row['GolCasa']) if pd.notna(row['GolCasa']) else "-", border=1, align='C')
-                pdf.cell(20, 7, str(row['GolOspite']) if pd.notna(row['GolOspite']) else "-", border=1, align='C')
-                pdf.cell(65, 7, str(row['Ospite']), border=1)
+                pdf.cell(60, 6, str(row['Casa']), border=1)
+                pdf.cell(20, 6, str(row['GolCasa']) if pd.notna(row['GolCasa']) else "-", border=1, align='C')
+                pdf.cell(20, 6, str(row['GolOspite']) if pd.notna(row['GolOspite']) else "-", border=1, align='C')
+                pdf.cell(60, 6, str(row['Ospite']), border=1)
                 pdf.ln()
-            pdf.ln(5)
+            pdf.ln(3)
 
-        pdf.set_font("DejaVu", 'B', 14)
-        pdf.cell(0, 10, f"🏅 Classifica Girone {girone}", ln=True)
+        # Classifica girone
+        pdf.set_font("DejaVu", 'B', 13)
+        pdf.cell(0, 8, f"Classifica Girone {girone}", ln=True)
 
         df_c = df_classifica[df_classifica['Girone'] == girone]
-
-        pdf.set_font("DejaVu", 'B', 11)
         headers = ["Squadra", "Punti", "V", "P", "S", "GF", "GS", "DR"]
-        col_widths = [65, 18, 15, 15, 15, 15, 15, 15]
+        col_widths = [60, 15, 15, 15, 15, 15, 15, 15]
+        pdf.set_font("DejaVu", 'B', 11)
         for i, h in enumerate(headers):
-            pdf.cell(col_widths[i], 7, h, border=1, align='C')
+            pdf.cell(col_widths[i], 6, h, border=1, align='C')
         pdf.ln()
-
         pdf.set_font("DejaVu", '', 11)
         for _, r in df_c.iterrows():
-            pdf.cell(col_widths[0], 7, str(r['Squadra']), border=1)
-            pdf.cell(col_widths[1], 7, str(r['Punti']), border=1, align='C')
-            pdf.cell(col_widths[2], 7, str(r['V']), border=1, align='C')
-            pdf.cell(col_widths[3], 7, str(r['P']), border=1, align='C')
-            pdf.cell(col_widths[4], 7, str(r['S']), border=1, align='C')
-            pdf.cell(col_widths[5], 7, str(r['GF']), border=1, align='C')
-            pdf.cell(col_widths[6], 7, str(r['GS']), border=1, align='C')
-            pdf.cell(col_widths[7], 7, str(r['DR']), border=1, align='C')
+            pdf.cell(col_widths[0], 6, str(r['Squadra']), border=1)
+            pdf.cell(col_widths[1], 6, str(r['Punti']), border=1, align='C')
+            pdf.cell(col_widths[2], 6, str(r['V']), border=1, align='C')
+            pdf.cell(col_widths[3], 6, str(r['P']), border=1, align='C')
+            pdf.cell(col_widths[4], 6, str(r['S']), border=1, align='C')
+            pdf.cell(col_widths[5], 6, str(r['GF']), border=1, align='C')
+            pdf.cell(col_widths[6], 6, str(r['GS']), border=1, align='C')
+            pdf.cell(col_widths[7], 6, str(r['DR']), border=1, align='C')
             pdf.ln()
-        pdf.ln(12)
+        pdf.ln(10)
 
     pdf_output = BytesIO()
     pdf.output(pdf_output)
@@ -182,12 +189,10 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             st.markdown(f"**{casa}**  vs  **{ospite}**")
 
         with col2:
-            gol_casa = st.number_input(f"Gol {casa}", min_value=0, max_value=20,
-                                       value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0, key=f"golcasa_{idx}")
+            gol_casa = st.number_input(f"Gol {casa}", min_value=0, max_value=20, value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0, key=f"golcasa_{idx}")
 
         with col3:
-            gol_ospite = st.number_input(f"Gol {ospite}", min_value=0, max_value=20,
-                                         value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0, key=f"golospite_{idx}")
+            gol_ospite = st.number_input(f"Gol {ospite}", min_value=0, max_value=20, value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0, key=f"golospite_{idx}")
 
         with col4:
             valida = st.checkbox("Valida", value=val, key=f"valida_{idx}")
@@ -208,20 +213,6 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         st.session_state['df_torneo'].at[er['idx'], 'GolCasa'] = er['GolCasa']
         st.session_state['df_torneo'].at[er['idx'], 'GolOspite'] = er['GolOspite']
         st.session_state['df_torneo'].at[er['idx'], 'Valida'] = er['Valida']
-
-def mostra_classifica_stilizzata(df_classifica, girone_sel):
-    st.subheader(f"🏅 Classifica Girone {girone_sel}")
-
-    def color_rows(row):
-        if row.name == 0:
-            return ['background-color: #d4edda'] * len(row)  # verde chiaro
-        elif row.name <= 2:
-            return ['background-color: #fff3cd'] * len(row)  # giallo chiaro
-        else:
-            return [''] * len(row)
-
-    df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
-    st.dataframe(df_girone.style.apply(color_rows, axis=1), use_container_width=True)
 
 def main():
     st.title("🎲 Gestione Torneo a Gironi by Legnaro72")
@@ -289,7 +280,7 @@ def main():
             potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, potenziale_default, key=f"potenziale_{gioc}")
             gioc_info[gioc] = {"Squadra": squadra_nuova, "Potenziale": potenziale_nuovo}
 
-        if st.button("✅ Conferma e genera calendario"):
+        if st.button("🏁 Conferma e genera calendario"):
             giocatori_formattati = []
             for gioc in st.session_state['giocatori_scelti']:
                 squadra = gioc_info[gioc]['Squadra'].strip()
@@ -310,30 +301,38 @@ def main():
             st.warning("Non ci sono gironi nel torneo. Genera un calendario valido.")
             return
 
-        girone_sel = st.selectbox("Seleziona girone", gironi)
-        giornate = sorted(df[df['Girone']==girone_sel]['Giornata'].dropna().unique())
+        girone_sel = st.selectbox("Seleziona girone", sorted(gironi))
+        giornate = sorted(df[df['Girone'] == girone_sel]['Giornata'].dropna().unique())
         giornata_sel = st.selectbox("Seleziona giornata", giornate)
 
         mostra_calendario_giornata(df, girone_sel, giornata_sel)
 
         classifica = aggiorna_classifica(st.session_state['df_torneo'])
-        if classifica.empty or 'Girone' not in classifica.columns:
+        if classifica.empty:
             st.warning("Classifica non disponibile: nessuna partita valida o dati insufficienti.")
         else:
-            mostra_classifica_stilizzata(classifica, girone_sel)
+            st.subheader(f"🏆 Classifica Girone {girone_sel}")
+            st.dataframe(classifica[classifica['Girone'] == girone_sel].reset_index(drop=True), use_container_width=True)
 
         csv = st.session_state['df_torneo'].to_csv(index=False).encode('utf-8')
-        st.download_button("💾 Scarica CSV Torneo", csv, "torneo.csv", "text/csv")
+        st.download_button("📥 Scarica calendario CSV", csv, file_name="calendario_torneo.csv", mime="text/csv")
 
-        pdf_bytes = esporta_pdf(st.session_state['df_torneo'], classifica)
-        st.download_button("📄 Esporta PDF Calendario e Classifica", pdf_bytes, "calendario_classifica.pdf", "application/pdf")
+        if st.button("📄 Esporta PDF completo calendario + classifiche"):
+            pdf_bytes = esporta_pdf(st.session_state['df_torneo'], classifica)
+            st.download_button("📄 Download PDF calendario", pdf_bytes, file_name="calendario_classifica.pdf", mime="application/pdf")
 
     if scelta == "Carica torneo da CSV":
-        uploaded_file = st.file_uploader("Carica file CSV del torneo", type=['csv'])
+        uploaded_file = st.file_uploader("Carica file CSV del torneo", type=["csv"])
         if uploaded_file:
-            df_upload = pd.read_csv(uploaded_file)
-            st.session_state['df_torneo'] = df_upload
-            st.success("Torneo caricato!")
+            try:
+                df_caricato = pd.read_csv(uploaded_file)
+                if not {'Casa','Ospite','GolCasa','GolOspite','Girone','Giornata','Valida'}.issubset(df_caricato.columns):
+                    st.warning("CSV caricato non contiene tutte le colonne richieste.")
+                else:
+                    st.session_state['df_torneo'] = df_caricato
+                    st.success("Torneo caricato correttamente")
+            except Exception as e:
+                st.error(f"Errore caricamento CSV: {e}")
 
 if __name__ == "__main__":
     main()
