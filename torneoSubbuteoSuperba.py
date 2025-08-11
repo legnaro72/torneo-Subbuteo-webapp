@@ -5,7 +5,7 @@ from io import StringIO, BytesIO
 import random
 from fpdf import FPDF
 
-st.set_page_config(page_title="Gestione Torneo a Gironi by Legnaro72", layout="wide")
+st.set_page_config(page_title="Gestione Torneo Superba a Gironi by Legnaro72", layout="wide")
 
 URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLegna/refs/heads/main/giocatoriSuperba.csv"
 
@@ -245,7 +245,7 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.dataframe(df_girone.style.apply(color_rows, axis=1), use_container_width=True)
 
 def main():
-    st.title("Gestione Torneo a Gironi by Legnaro72")
+    st.title("Gestione Torneo Superba a Gironi by Legnaro72")
 
     df_master = carica_giocatori_master()
 
