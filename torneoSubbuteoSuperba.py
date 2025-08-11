@@ -261,7 +261,7 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.subheader(f"Classifica Girone {girone_sel}")
 
     if df_classifica is None or df_classifica.empty:
-        st.info("Nessuna partita validata: la classifica sara disponibile dopo l'inserimento e validazione dei risultati.")
+        st.info("Nessuna partita validata: la classifica sarà disponibile dopo l'inserimento e validazione dei risultati.")
         return
 
     is_dark = st.get_option("theme.base") == "dark"
@@ -302,7 +302,7 @@ def main():
 
         num_supplementari = n_giocatori - len(amici_selezionati)
         if num_supplementari < 0:
-            st.warning(f"Hai selezionato piu amici ({len(amici_selezionati)}) del numero partecipanti ({n_giocatori}). Riduci la selezione.")
+            st.warning(f"Hai selezionato più amici ({len(amici_selezionati)}) del numero partecipanti ({n_giocatori}). Riduci la selezione.")
             return
 
         st.markdown(f"Giocatori supplementari da inserire: **{num_supplementari}**")
@@ -392,9 +392,9 @@ def main():
         st.sidebar.markdown("---")
         st.sidebar.markdown("### Filtri partite da giocare")
 
-        if st.sidebar.button("?? Filtra Giocatore"):
+        if st.sidebar.button("🎯 Filtra Giocatore"):
             st.session_state["filtra_giocatore"] = True
-        if st.sidebar.button("?? Filtra Girone"):
+        if st.sidebar.button("🏆 Filtra Girone"):
             st.session_state["filtra_girone"] = True
 
         if st.session_state.get("filtra_giocatore", False):
@@ -450,14 +450,13 @@ def main():
         # --- ESPORTA CSV ---
         st.sidebar.markdown("---")
         csv_bytes = df.to_csv(index=False).encode('utf-8')
-        st.sidebar.download_button("?? Scarica CSV Torneo", data=csv_bytes, file_name="torneo_superba.csv", mime="text/csv")
+        st.sidebar.download_button("⬇️ Scarica CSV Torneo", data=csv_bytes, file_name="torneo_superba.csv", mime="text/csv")
 
         # --- ESPORTA PDF ---
         st.sidebar.markdown("---")
-        if st.sidebar.button("?? Esporta PDF Calendario + Classifica"):
+        if st.sidebar.button("📄 Esporta PDF Calendario + Classifica"):
             pdf_bytes = esporta_pdf(df, classifica)
             st.sidebar.download_button("Download PDF calendario + classifica", data=pdf_bytes, file_name="torneo_superba.pdf", mime="application/pdf")
 
 if __name__ == "__main__":
     main()
-au
