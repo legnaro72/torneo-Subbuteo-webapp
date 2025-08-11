@@ -342,7 +342,6 @@ def main():
             st.warning("Classifica non disponibile: nessuna partita valida o dati insufficienti.")
         else:
             mostra_classifica_stilizzata(classifica, girone_sel)
-
         # --- Filtra Giocatore ---
         if st.button("🎯 Filtra Giocatore"):
             giocatori = sorted(
@@ -350,10 +349,10 @@ def main():
                     pd.concat([st.session_state['df_torneo']['Squadra1'], st.session_state['df_torneo']['Squadra2']])
                 )
             )
-            gioc_sel = st.selectbox("Seleziona giocatore", giocatori)
+            gioc_sel = st.selectbox("Seleziona giocatore", giocatori, key="sel_giocatore")
         
             if "AndataRitorno" in st.session_state and st.session_state["AndataRitorno"]:
-                filtro_tipo = st.radio("Mostra partite", ["Andata", "Ritorno", "Entrambe"], index=2)
+                filtro_tipo = st.radio("Mostra partite", ["Andata", "Ritorno", "Entrambe"], index=2, key="tipo_giocatore")
             else:
                 filtro_tipo = "Entrambe"
         
@@ -371,10 +370,10 @@ def main():
         # --- Filtra Girone ---
         if st.button("🏆 Filtra Girone"):
             gironi = sorted(st.session_state['df_torneo']['Girone'].unique())
-            gir_sel = st.selectbox("Seleziona girone", gironi)
+            gir_sel = st.selectbox("Seleziona girone", gironi, key="sel_girone")
         
             if "AndataRitorno" in st.session_state and st.session_state["AndataRitorno"]:
-                filtro_tipo_g = st.radio("Mostra partite", ["Andata", "Ritorno", "Entrambe"], index=2)
+                filtro_tipo_g = st.radio("Mostra partite", ["Andata", "Ritorno", "Entrambe"], index=2, key="tipo_girone")
             else:
                 filtro_tipo_g = "Entrambe"
         
@@ -396,6 +395,7 @@ def main():
             file_name="torneo.csv",
             mime="text/csv"
         )
+
 
 
         if st.button("Esporta PDF Calendario e Classifica"):
