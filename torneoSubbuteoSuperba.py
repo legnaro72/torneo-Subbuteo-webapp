@@ -107,23 +107,37 @@ def aggiorna_classifica(df):
 
 def esporta_pdf(df_torneo, df_classifica):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
-    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_auto_page_break(auto=False)  # controllo manuale
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 10, "Calendario e Classifiche Torneo", ln=True, align='C')
+
+    line_height = 6
+    margin_bottom = 15
+    page_height = 297  # A4 height in mm
 
     gironi = df_torneo['Girone'].dropna().unique()
 
     for girone in gironi:
         pdf.set_font("Arial", 'B', 14)
+
+        # Controllo spazio per titolo girone
+        if pdf.get_y() + 8 + margin_bottom > page_height:
+            pdf.add_page()
         pdf.cell(0, 8, f"{girone}", ln=True)
-        giornate = sorted(df_torneo[df_torneo['Girone']==girone]['Giornata'].dropna().unique())
+
+        giornate = sorted(df_torneo[df_torneo['Girone'] == girone]['Giornata'].dropna().unique())
 
         for g in giornate:
+            # Spazio necessario: titolo giornata + intestazione tabella + almeno 1 riga + margine
+            needed_space = 7 + line_height + line_height + margin_bottom
+            if pdf.get_y() + needed_space > page_height:
+                pdf.add_page()
+
             pdf.set_font("Arial", 'B', 12)
             pdf.cell(0, 7, f"Giornata {g}", ln=True)
-            partite = df_torneo[(df_torneo['Girone']==girone) & (df_torneo['Giornata']==g)]
 
+            # Intestazione tabella
             pdf.set_font("Arial", 'B', 11)
             pdf.cell(60, 6, "Casa", border=1)
             pdf.cell(20, 6, "Gol", border=1, align='C')
@@ -132,11 +146,24 @@ def esporta_pdf(df_torneo, df_classifica):
             pdf.ln()
 
             pdf.set_font("Arial", '', 11)
+            partite = df_torneo[(df_torneo['Girone'] == girone) & (df_torneo['Giornata'] == g)]
+
             for _, row in partite.iterrows():
-                if not row['Valida']:
-                    pdf.set_text_color(255, 0, 0)
-                else:
-                    pdf.set_text_color(0, 0, 0)
+                # Controllo spazio per ogni riga
+                if pdf.get_y() + line_height + margin_bottom > page_height:
+                    pdf.add_page()
+                    # Ripeto intestazione tabella in pagina nuova
+                    pdf.set_font("Arial", 'B', 12)
+                    pdf.cell(0, 7, f"Giornata {g} (continua)", ln=True)
+                    pdf.set_font("Arial", 'B', 11)
+                    pdf.cell(60, 6, "Casa", border=1)
+                    pdf.cell(20, 6, "Gol", border=1, align='C')
+                    pdf.cell(20, 6, "Gol", border=1, align='C')
+                    pdf.cell(60, 6, "Ospite", border=1)
+                    pdf.ln()
+                    pdf.set_font("Arial", '', 11)
+
+                pdf.set_text_color(255, 0, 0) if not row['Valida'] else pdf.set_text_color(0, 0, 0)
 
                 pdf.cell(60, 6, str(row['Casa']), border=1)
                 pdf.cell(20, 6, str(row['GolCasa']) if pd.notna(row['GolCasa']) else "-", border=1, align='C')
@@ -144,6 +171,10 @@ def esporta_pdf(df_torneo, df_classifica):
                 pdf.cell(60, 6, str(row['Ospite']), border=1)
                 pdf.ln()
             pdf.ln(3)
+
+        # Controllo spazio per classifica girone (circa 40mm + margine)
+        if pdf.get_y() + 40 + margin_bottom > page_height:
+            pdf.add_page()
 
         pdf.set_font("Arial", 'B', 13)
         pdf.cell(0, 8, f"Classifica {girone}", ln=True)
@@ -158,6 +189,16 @@ def esporta_pdf(df_torneo, df_classifica):
         pdf.ln()
         pdf.set_font("Arial", '', 11)
         for _, r in df_c.iterrows():
+            # Controllo spazio per riga classifica
+            if pdf.get_y() + line_height + margin_bottom > page_height:
+                pdf.add_page()
+                # Ripeto intestazione classifica
+                pdf.set_font("Arial", 'B', 11)
+                for i, h in enumerate(headers):
+                    pdf.cell(col_widths[i], 6, h, border=1, align='C')
+                pdf.ln()
+                pdf.set_font("Arial", '', 11)
+
             pdf.cell(col_widths[0], 6, str(r['Squadra']), border=1)
             pdf.cell(col_widths[1], 6, str(r['Punti']), border=1, align='C')
             pdf.cell(col_widths[2], 6, str(r['V']), border=1, align='C')
@@ -171,6 +212,7 @@ def esporta_pdf(df_torneo, df_classifica):
 
     pdf_bytes = pdf.output(dest='S').encode('latin1')
     return pdf_bytes
+
 
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
     st.subheader(f"Calendario Girone {girone_sel} - Giornata {giornata_sel}")
