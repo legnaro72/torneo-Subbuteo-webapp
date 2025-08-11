@@ -215,7 +215,7 @@ def esporta_pdf(df_torneo, df_classifica):
 
 
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
-    st.subheader(f"Calendario Girone {girone_sel} - Giornata {giornata_sel}")
+    st.subheader(f"📅Calendario Girone {girone_sel} - 🗓️Giornata {giornata_sel}")
 
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if 'Valida' not in df_giornata.columns:
@@ -258,7 +258,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         st.session_state['df_torneo'].at[er['idx'], 'Valida'] = er['Valida']
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
-    st.subheader(f"Classifica Girone {girone_sel}")
+    st.subheader(f"📊Classifica Girone {girone_sel}")
 
     if df_classifica is None or df_classifica.empty:
         st.info("Nessuna partita validata: la classifica sarà disponibile dopo l'inserimento e validazione dei risultati.")
@@ -280,7 +280,7 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
 
 
 def main():
-    st.title("⚽Gestione Torneo Superba a Gironi by Legnaro72⚽")
+    st.title("🏆Gestione Torneo Superba a Gironi by Legnaro72⚽")
 
     df_master = carica_giocatori_master()
 
@@ -360,7 +360,7 @@ def main():
             potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, potenziale_default, key=f"potenziale_{gioc}")
             gioc_info[gioc] = {"Squadra": squadra_nuova, "Potenziale": potenziale_nuovo}
 
-        if st.button("Conferma e genera calendario"):
+        if st.button("🏆Conferma e genera calendario"):
             giocatori_formattati = []
             for gioc in st.session_state['giocatori_scelti']:
                 squadra = gioc_info[gioc]['Squadra'].strip()
