@@ -1,12 +1,13 @@
 import streamlit as st
 import pandas as pd
 import requests
-from io import StringIO
+from io import StringIO, BytesIO
 import random
 from fpdf import FPDF
 
 st.set_page_config(page_title="🎲 Gestione Torneo a Gironi by Legnaro72", layout="wide")
 
+# URL CSV giocatori
 URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLegna/refs/heads/main/giocatoriSuperba.csv"
 
 def carica_giocatori_master(url=URL_GIOCATORI):
@@ -135,7 +136,7 @@ def esporta_pdf(df_partite, df_classifiche):
                 if pd.notna(row['GolCasa']) and pd.notna(row['GolOspite']):
                     line += f"  {int(row['GolCasa'])} : {int(row['GolOspite'])}"
                 if not row['Valida']:
-                    pdf.set_text_color(255, 0, 0)
+                    pdf.set_text_color(255, 0, 0)  # rosso per partite non validate
                 else:
                     pdf.set_text_color(0, 0, 0)
                 pdf.cell(0, 6, line, ln=True)
@@ -171,7 +172,11 @@ def esporta_pdf(df_partite, df_classifiche):
 
         pdf.ln(5)
 
-    pdf_bytes = pdf.output(dest='S').encode('latin1')  # CORRETTO: PDF in bytes
+    buffer = BytesIO()
+    pdf.output(buffer)
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+
     return pdf_bytes
 
 def main():
@@ -216,7 +221,7 @@ def main():
 
         st.markdown(f"**Giocatori selezionati:** {', '.join(giocatori_scelti)}")
 
-        if st.button("🎯 Assegna Squadre"):
+        if st.button("⚽ Assegna Squadre"):
             if len(set(giocatori_scelti)) < 4:
                 st.warning("Inserisci almeno 4 giocatori diversi")
             else:
@@ -230,7 +235,7 @@ def main():
         gioc_info = {}
         for gioc in st.session_state['giocatori_scelti']:
             if gioc in df_master['Giocatore'].values:
-                row = df_master[df_master['Giocatore'] == gioc].iloc[0]
+                row = df_master[df_master['Giocatore']==gioc].iloc[0]
                 squadra_default = row['Squadra']
                 potenziale_default = row['Potenziale']
             else:
@@ -240,7 +245,7 @@ def main():
             potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, potenziale_default, key=f"potenziale_{gioc}")
             gioc_info[gioc] = {"Squadra": squadra_nuova, "Potenziale": potenziale_nuovo}
 
-        if st.button("🚀 Conferma e genera calendario"):
+        if st.button("🎲 Conferma e genera calendario"):
             giocatori_formattati = []
             for gioc in st.session_state['giocatori_scelti']:
                 squadra = gioc_info[gioc]['Squadra'].strip()
@@ -262,9 +267,9 @@ def main():
             return
 
         girone_sel = st.selectbox("Seleziona girone", gironi)
-        giornate = sorted(df[df['Girone'] == girone_sel]['Giornata'].dropna().unique())
+        giornate = sorted(df[df['Girone']==girone_sel]['Giornata'].dropna().unique())
         giornata_sel = st.selectbox("Seleziona giornata", giornate)
-        df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
+        df_giornata = df[(df['Girone']==girone_sel) & (df['Giornata']==giornata_sel)].copy()
         if 'Valida' not in df_giornata.columns:
             df_giornata['Valida'] = False
 
@@ -283,20 +288,13 @@ def main():
             st.subheader(f"🏆 Classifica {girone_sel}")
             st.dataframe(classifica[classifica['Girone'] == girone_sel], use_container_width=True)
 
-        # Bottone esporta PDF calendario + classifica
-        if st.button("📄 Esporta calendario e classifiche in PDF"):
+        if st.button("📄 Esporta PDF calendario + classifiche"):
             pdf_data = esporta_pdf(st.session_state['df_torneo'], classifica)
-            st.download_button(
-                label="⬇️ Scarica PDF",
-                data=pdf_data,
-                file_name="calendario_classifiche.pdf",
-                mime="application/pdf"
-            )
+            st.download_button("⬇️ Scarica PDF", data=pdf_data, file_name="calendario_classifiche.pdf", mime="application/pdf")
 
         csv = st.session_state['df_torneo'].to_csv(index=False)
-        st.download_button("💾 Scarica CSV Torneo", csv, "torneo.csv", "text/csv")
+        st.download_button("📥 Scarica CSV Torneo", csv, "torneo.csv", "text/csv")
 
-        # Mostra tutte le giornate per girone
         if st.button("📅 Mostra tutte le giornate per girone"):
             with st.expander(f"Tutte le giornate - {girone_sel}"):
                 giornate = sorted(df[df['Girone'] == girone_sel]['Giornata'].dropna().unique())
@@ -305,8 +303,7 @@ def main():
                     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == g)]
                     st.dataframe(df_giornata[['Casa','Ospite','GolCasa','GolOspite','Valida']], use_container_width=True)
 
-        # Filtra partite da validare per squadra
-        st.subheader("⚠️ Partite da validare per squadra")
+        st.subheader("🔍 Filtra partite da validare per squadra")
         squadre = pd.unique(df[['Casa', 'Ospite']].values.ravel())
         squadra_scelta = st.selectbox("Seleziona squadra", squadre, key="filter_squadra")
 
@@ -314,7 +311,8 @@ def main():
             (df['Valida'] == False) &
             ((df['Casa'] == squadra_scelta) | (df['Ospite'] == squadra_scelta))
         ]
-        st.dataframe(partite_da_validare[['Girone','Giornata','Casa','Ospite']], use_container_width=True)
+
+        st.dataframe(partite_da_validare[['Girone','Giornata','Casa','Ospite','GolCasa','GolOspite']], use_container_width=True)
 
 if __name__ == "__main__":
     main()
