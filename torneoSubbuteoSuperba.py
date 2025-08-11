@@ -280,18 +280,18 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
 
 
 def main():
-    st.title("Gestione Torneo Superba a Gironi by Legnaro72")
+    st.title("⚽Gestione Torneo Superba a Gironi by Legnaro72⚽")
 
     df_master = carica_giocatori_master()
 
-    scelta = st.sidebar.radio("Azione:", ["Nuovo torneo", "Carica torneo da CSV"])
+    scelta = st.sidebar.radio("Azione:", ["🆕Nuovo torneo", "📂Carica torneo da CSV"])
 
-    if scelta == "Nuovo torneo":
+    if scelta == "🆕Nuovo torneo":
         num_gironi = st.number_input("Numero di gironi", 1, 8, value=2)
-        tipo_calendario = st.selectbox("Tipo calendario", ["Solo andata", "Andata e ritorno"])
+        tipo_calendario = st.selectbox("Tipo calendario", ["🚩Solo andata", "🔄Andata e ritorno"])
         n_giocatori = st.number_input("Numero giocatori", 4, 32, value=8)
 
-        st.markdown("### Amici del Club")
+        st.markdown("### 👥Amici del Club")
         amici = df_master['Giocatore'].tolist()
         all_seleziona = st.checkbox("Seleziona tutti gli amici", key="all_amici")
 
@@ -302,18 +302,18 @@ def main():
 
         num_supplementari = n_giocatori - len(amici_selezionati)
         if num_supplementari < 0:
-            st.warning(f"Hai selezionato più amici ({len(amici_selezionati)}) del numero partecipanti ({n_giocatori}). Riduci la selezione.")
+            st.warning(f"⚠️Hai selezionato più amici ({len(amici_selezionati)}) del numero partecipanti ({n_giocatori}). Riduci la selezione.")
             return
 
         st.markdown(f"Giocatori supplementari da inserire: **{num_supplementari}**")
 
         giocatori_supplementari = []
         for i in range(num_supplementari):
-            use = st.checkbox(f"Aggiungi giocatore supplementare G{i+1}", key=f"supp_{i}_check")
+            use = st.checkbox(f"➕Aggiungi giocatore supplementare G{i+1}", key=f"supp_{i}_check")
             if use:
                 nome = st.text_input(f"Nome giocatore supplementare G{i+1}", key=f"supp_{i}_nome")
                 if nome.strip() == "":
-                    st.warning(f"Inserisci un nome valido per G{i+1}")
+                    st.warning(f"⚠️Inserisci un nome valido per G{i+1}")
                     return
                 giocatori_supplementari.append(nome.strip())
 
@@ -321,7 +321,7 @@ def main():
 
         st.markdown(f"**Giocatori selezionati:** {', '.join(giocatori_scelti)}")
 
-        if st.button("Assegna Squadre"):
+        if st.button("⚽Assegna Squadre"):
             if len(set(giocatori_scelti)) < 4:
                 st.warning("Inserisci almeno 4 giocatori diversi")
             else:
@@ -330,7 +330,7 @@ def main():
                 st.session_state['tipo_calendario'] = tipo_calendario
                 st.success("Giocatori selezionati, passa alla fase successiva.")
 
-    if scelta == "Carica torneo da CSV":
+    if scelta == "📂Carica torneo da CSV":
         uploaded_file = st.file_uploader("Carica CSV torneo", type=["csv"])
         if uploaded_file is not None:
             try:
@@ -346,7 +346,7 @@ def main():
                 st.error(f"Errore nel caricamento CSV: {e}")
 
     if 'giocatori_scelti' in st.session_state and scelta == "Nuovo torneo":
-        st.markdown("### Modifica Squadra e Potenziale per i giocatori")
+        st.markdown("### ✍️Modifica Squadra e Potenziale per i giocatori")
         gioc_info = {}
         for gioc in st.session_state['giocatori_scelti']:
             if gioc in df_master['Giocatore'].values:
