@@ -226,13 +226,19 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.subheader(f"Classifica Girone {girone_sel}")
 
+    # Verifica se tema scuro è attivo
+    is_dark = st.get_option("theme.base") == "dark"
+
     def color_rows(row):
         if row.name == 0:
-            return ['background-color: #d4edda'] * len(row)  # verde chiaro
+            # Primo posto: verde scuro con testo bianco in tema scuro, verde chiaro con testo nero in tema chiaro
+            return ['background-color: #155724; color: white'] * len(row) if is_dark else ['background-color: #d4edda; color: black'] * len(row)
         elif row.name <= 2:
-            return ['background-color: #fff3cd'] * len(row)  # giallo chiaro
+            # Secondo e terzo posto: giallo scuro con testo bianco in tema scuro, giallo chiaro con testo nero in tema chiaro
+            return ['background-color: #856404; color: white'] * len(row) if is_dark else ['background-color: #fff3cd; color: black'] * len(row)
         else:
-            return [''] * len(row)
+            # Altre righe: testo bianco in tema scuro, normale in tema chiaro
+            return ['color: white'] * len(row) if is_dark else [''] * len(row)
 
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
 
