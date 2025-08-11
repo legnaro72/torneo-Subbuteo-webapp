@@ -5,9 +5,8 @@ from io import StringIO
 import random
 from fpdf import FPDF
 
-st.set_page_config(page_title="⚽ Gestione Torneo a Gironi by Legnaro72", layout="wide")
+st.set_page_config(page_title="🎲 Gestione Torneo a Gironi by Legnaro72", layout="wide")
 
-# URL CSV giocatori
 URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLegna/refs/heads/main/giocatoriSuperba.csv"
 
 def carica_giocatori_master(url=URL_GIOCATORI):
@@ -172,11 +171,11 @@ def esporta_pdf(df_partite, df_classifiche):
 
         pdf.ln(5)
 
-    pdf_bytes = pdf.output(dest='S')  # restituisce bytes
+    pdf_bytes = pdf.output(dest='S').encode('latin1')  # CORRETTO: PDF in bytes
     return pdf_bytes
 
 def main():
-    st.title("⚽ Gestione Torneo a Gironi by Legnaro72")
+    st.title("🎲 Gestione Torneo a Gironi by Legnaro72")
 
     df_master = carica_giocatori_master()
 
@@ -217,7 +216,7 @@ def main():
 
         st.markdown(f"**Giocatori selezionati:** {', '.join(giocatori_scelti)}")
 
-        if st.button("📝 Assegna Squadre"):
+        if st.button("🎯 Assegna Squadre"):
             if len(set(giocatori_scelti)) < 4:
                 st.warning("Inserisci almeno 4 giocatori diversi")
             else:
@@ -241,7 +240,7 @@ def main():
             potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, potenziale_default, key=f"potenziale_{gioc}")
             gioc_info[gioc] = {"Squadra": squadra_nuova, "Potenziale": potenziale_nuovo}
 
-        if st.button("⚽ Conferma e genera calendario"):
+        if st.button("🚀 Conferma e genera calendario"):
             giocatori_formattati = []
             for gioc in st.session_state['giocatori_scelti']:
                 squadra = gioc_info[gioc]['Squadra'].strip()
@@ -278,24 +277,26 @@ def main():
 
         classifica = aggiorna_classifica(st.session_state['df_torneo'])
 
-        if classifica.empty:
-            st.warning("Non ci sono partite validate per generare la classifica.")
+        if classifica.empty or 'Girone' not in classifica.columns:
+            st.warning("Classifica non disponibile: nessuna partita valida o dati insufficienti.")
         else:
             st.subheader(f"🏆 Classifica {girone_sel}")
             st.dataframe(classifica[classifica['Girone'] == girone_sel], use_container_width=True)
 
-            if st.button("📄 Esporta calendario e classifiche PDF"):
-                pdf_data = esporta_pdf(st.session_state['df_torneo'], classifica)
-                st.download_button(
-                    label="⬇️ Scarica PDF",
-                    data=pdf_data,
-                    file_name="calendario_classifiche.pdf",
-                    mime="application/pdf"
-                )
+        # Bottone esporta PDF calendario + classifica
+        if st.button("📄 Esporta calendario e classifiche in PDF"):
+            pdf_data = esporta_pdf(st.session_state['df_torneo'], classifica)
+            st.download_button(
+                label="⬇️ Scarica PDF",
+                data=pdf_data,
+                file_name="calendario_classifiche.pdf",
+                mime="application/pdf"
+            )
 
         csv = st.session_state['df_torneo'].to_csv(index=False)
         st.download_button("💾 Scarica CSV Torneo", csv, "torneo.csv", "text/csv")
 
+        # Mostra tutte le giornate per girone
         if st.button("📅 Mostra tutte le giornate per girone"):
             with st.expander(f"Tutte le giornate - {girone_sel}"):
                 giornate = sorted(df[df['Girone'] == girone_sel]['Giornata'].dropna().unique())
@@ -304,6 +305,7 @@ def main():
                     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == g)]
                     st.dataframe(df_giornata[['Casa','Ospite','GolCasa','GolOspite','Valida']], use_container_width=True)
 
+        # Filtra partite da validare per squadra
         st.subheader("⚠️ Partite da validare per squadra")
         squadre = pd.unique(df[['Casa', 'Ospite']].values.ravel())
         squadra_scelta = st.selectbox("Seleziona squadra", squadre, key="filter_squadra")
@@ -312,15 +314,7 @@ def main():
             (df['Valida'] == False) &
             ((df['Casa'] == squadra_scelta) | (df['Ospite'] == squadra_scelta))
         ]
-
-        st.dataframe(partite_da_validare[['Girone','Giornata','Casa','Ospite','GolCasa','GolOspite']], use_container_width=True)
-
-    if scelta == "Carica torneo da CSV":
-        uploaded_file = st.file_uploader("Carica file CSV torneo", type=["csv"])
-        if uploaded_file is not None:
-            df_caricato = pd.read_csv(uploaded_file)
-            st.session_state['df_torneo'] = df_caricato
-            st.success("Torneo caricato!")
+        st.dataframe(partite_da_validare[['Girone','Giornata','Casa','Ospite']], use_container_width=True)
 
 if __name__ == "__main__":
     main()
