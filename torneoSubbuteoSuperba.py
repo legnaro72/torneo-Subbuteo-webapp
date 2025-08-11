@@ -343,55 +343,55 @@ def main():
         else:
             mostra_classifica_stilizzata(classifica, girone_sel)
 
-        # --- Pulsante Filtra Giocatore ---
+        # --- Filtra Giocatore ---
         if st.button("🎯 Filtra Giocatore"):
-            giocatori = sorted(set(st.session_state['df_torneo']['SquadraCasa']).union(set(st.session_state['df_torneo']['SquadraTrasferta'])))
-            giocatore_sel = st.selectbox("Seleziona squadra", giocatori)
+            giocatori = sorted(
+                pd.unique(
+                    pd.concat([st.session_state['df_torneo']['Squadra1'], st.session_state['df_torneo']['Squadra2']])
+                )
+            )
+            gioc_sel = st.selectbox("Seleziona giocatore", giocatori)
         
-            if "Andata e Ritorno" in st.session_state and st.session_state["Andata e Ritorno"]:
-                tipo_partite = st.radio("Tipo partite", ["Tutte", "Solo Andata", "Solo Ritorno"])
+            if "AndataRitorno" in st.session_state and st.session_state["AndataRitorno"]:
+                filtro_tipo = st.radio("Mostra partite", ["Andata", "Ritorno", "Entrambe"], index=2)
             else:
-                tipo_partite = "Tutte"
+                filtro_tipo = "Entrambe"
         
             df_filtrato = st.session_state['df_torneo'][
-                ((st.session_state['df_torneo']['SquadraCasa'] == giocatore_sel) |
-                 (st.session_state['df_torneo']['SquadraTrasferta'] == giocatore_sel)) &
+                ((st.session_state['df_torneo']['Squadra1'] == gioc_sel) |
+                 (st.session_state['df_torneo']['Squadra2'] == gioc_sel)) &
                 (st.session_state['df_torneo']['Validata'] == False)
             ]
         
-            if tipo_partite == "Solo Andata":
-                df_filtrato = df_filtrato[df_filtrato['Giornata'] <= df_filtrato['Giornata'].max() / 2]
-            elif tipo_partite == "Solo Ritorno":
-                df_filtrato = df_filtrato[df_filtrato['Giornata'] > df_filtrato['Giornata'].max() / 2]
+            if filtro_tipo != "Entrambe":
+                df_filtrato = df_filtrato[df_filtrato['Fase'] == filtro_tipo]
         
             st.dataframe(df_filtrato)
         
-        # --- Pulsante Filtra Girone ---
-        if st.button("📅 Filtra Girone"):
+        # --- Filtra Girone ---
+        if st.button("🏆 Filtra Girone"):
             gironi = sorted(st.session_state['df_torneo']['Girone'].unique())
-            girone_sel = st.selectbox("Seleziona girone", gironi)
+            gir_sel = st.selectbox("Seleziona girone", gironi)
         
-            if "Andata e Ritorno" in st.session_state and st.session_state["Andata e Ritorno"]:
-                tipo_partite = st.radio("Tipo partite", ["Tutte", "Solo Andata", "Solo Ritorno"])
+            if "AndataRitorno" in st.session_state and st.session_state["AndataRitorno"]:
+                filtro_tipo_g = st.radio("Mostra partite", ["Andata", "Ritorno", "Entrambe"], index=2)
             else:
-                tipo_partite = "Tutte"
+                filtro_tipo_g = "Entrambe"
         
-            df_filtrato = st.session_state['df_torneo'][
-                (st.session_state['df_torneo']['Girone'] == girone_sel) &
+            df_girone = st.session_state['df_torneo'][
+                (st.session_state['df_torneo']['Girone'] == gir_sel) &
                 (st.session_state['df_torneo']['Validata'] == False)
             ]
         
-            if tipo_partite == "Solo Andata":
-                df_filtrato = df_filtrato[df_filtrato['Giornata'] <= df_filtrato['Giornata'].max() / 2]
-            elif tipo_partite == "Solo Ritorno":
-                df_filtrato = df_filtrato[df_filtrato['Giornata'] > df_filtrato['Giornata'].max() / 2]
+            if filtro_tipo_g != "Entrambe":
+                df_girone = df_girone[df_girone['Fase'] == filtro_tipo_g]
         
-            st.dataframe(df_filtrato)
+            st.dataframe(df_girone)
         
-        # --- Pulsante Scarica CSV Torneo ---
+        # --- Pulsante download CSV ---
         csv = st.session_state['df_torneo'].to_csv(index=False)
         st.download_button(
-            label="📥 Scarica CSV Torneo",
+            label="💾 Scarica CSV Torneo",
             data=csv,
             file_name="torneo.csv",
             mime="text/csv"
