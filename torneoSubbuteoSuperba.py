@@ -98,12 +98,12 @@ def aggiorna_classifica(df):
         classifiche.append(df_stat)
 
     if len(classifiche) == 0:
-        return pd.DataFrame()
+        return None  # <-- qui cambiato da DataFrame vuoto a None
 
     df_classifica = pd.concat(classifiche, ignore_index=True)
-
     df_classifica = df_classifica.sort_values(by=['Girone','Punti','DR'], ascending=[True,False,False])
     return df_classifica
+
 
 def esporta_pdf(df_torneo, df_classifica):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
@@ -218,6 +218,10 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.subheader(f"Classifica Girone {girone_sel}")
 
+    if df_classifica is None or df_classifica.empty:
+        st.info("Nessuna partita validata: la classifica sarà disponibile dopo l'inserimento e validazione dei risultati.")
+        return
+
     is_dark = st.get_option("theme.base") == "dark"
 
     def color_rows(row):
@@ -231,6 +235,7 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
 
     st.dataframe(df_girone.style.apply(color_rows, axis=1), use_container_width=True)
+
 
 def main():
     st.title("Gestione Torneo Superba a Gironi by Legnaro72")
@@ -337,8 +342,9 @@ def main():
 
         mostra_calendario_giornata(df, girone_sel, giornata_sel)
 
-        df_classifica = aggiorna_classifica(df)
-        mostra_classifica_stilizzata(df_classifica, girone_sel)
+        classifica = aggiorna_classifica(st.session_state['df_torneo'])
+        mostra_classifica_stilizzata(classifica, girone_sel)
+
 
         # --- FILTRI ---
         st.sidebar.markdown("---")
