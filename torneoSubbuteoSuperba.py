@@ -280,18 +280,18 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
 
 
 def main():
-    st.title("🏆Gestione Torneo Superba a Gironi by Legnaro72⚽")
+    st.title("Gestione Torneo Superba a Gironi by Legnaro72")
 
     df_master = carica_giocatori_master()
 
-    scelta = st.sidebar.radio("Azione:", ["🆕Nuovo torneo", "📂Carica torneo da CSV"])
+    scelta = st.sidebar.radio("Azione:", ["Nuovo torneo", "Carica torneo da CSV"])
 
-    if scelta == "🆕Nuovo torneo":
+    if scelta == "Nuovo torneo":
         num_gironi = st.number_input("Numero di gironi", 1, 8, value=2)
-        tipo_calendario = st.selectbox("Tipo calendario", ["🚩Solo andata", "🔄Andata e ritorno"])
+        tipo_calendario = st.selectbox("Tipo calendario", ["Solo andata", "Andata e ritorno"])
         n_giocatori = st.number_input("Numero giocatori", 4, 32, value=8)
 
-        st.markdown("### 👥Amici del Club")
+        st.markdown("### Amici del Club")
         amici = df_master['Giocatore'].tolist()
         all_seleziona = st.checkbox("Seleziona tutti gli amici", key="all_amici")
 
@@ -309,7 +309,7 @@ def main():
 
         giocatori_supplementari = []
         for i in range(num_supplementari):
-            use = st.checkbox(f"➕Aggiungi giocatore supplementare G{i+1}", key=f"supp_{i}_check")
+            use = st.checkbox(f"Aggiungi giocatore supplementare G{i+1}", key=f"supp_{i}_check")
             if use:
                 nome = st.text_input(f"Nome giocatore supplementare G{i+1}", key=f"supp_{i}_nome")
                 if nome.strip() == "":
@@ -330,7 +330,7 @@ def main():
                 st.session_state['tipo_calendario'] = tipo_calendario
                 st.success("Giocatori selezionati, passa alla fase successiva.")
 
-    if scelta == "📂Carica torneo da CSV":
+    if scelta == "Carica torneo da CSV":
         uploaded_file = st.file_uploader("Carica CSV torneo", type=["csv"])
         if uploaded_file is not None:
             try:
