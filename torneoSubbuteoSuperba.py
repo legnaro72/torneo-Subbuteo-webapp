@@ -343,6 +343,50 @@ def main():
         else:
             mostra_classifica_stilizzata(classifica, girone_sel)
 
+        # --- BOTTONI FILTRO ---
+st.subheader("🔍 Filtri rapidi")
+
+# FILTRA GIOCATORE
+if st.button("🎯 Filtra Giocatore"):
+    squadre = sorted(df_partite['Squadra Casa'].unique().tolist() + df_partite['Squadra Trasferta'].unique().tolist())
+    squadra_sel = st.selectbox("Seleziona giocatore/squadra", squadre, key="filtra_giocatore")
+
+    if "Andata e Ritorno" in st.session_state.get("modalita", ""):
+        tipo_partite = st.radio("Tipo partite", ["Andata", "Ritorno", "Entrambe"], horizontal=True)
+    else:
+        tipo_partite = "Entrambe"
+
+    df_filtrate = df_partite[
+        ((df_partite['Squadra Casa'] == squadra_sel) | (df_partite['Squadra Trasferta'] == squadra_sel)) &
+        (df_partite['Validata'] == False)
+    ]
+
+    if tipo_partite != "Entrambe":
+        df_filtrate = df_filtrate[df_filtrate['Tipo'] == tipo_partite]
+
+    st.dataframe(df_filtrate, use_container_width=True)
+
+# FILTRA GIRONI
+if st.button("📅 Filtra Girone"):
+    gironi = sorted(df_partite['Girone'].unique())
+    girone_sel = st.selectbox("Seleziona girone", gironi, key="filtra_girone")
+
+    if "Andata e Ritorno" in st.session_state.get("modalita", ""):
+        tipo_partite_gir = st.radio("Tipo partite", ["Andata", "Ritorno", "Entrambe"], horizontal=True, key="tipo_girone")
+    else:
+        tipo_partite_gir = "Entrambe"
+
+    df_girone = df_partite[
+        (df_partite['Girone'] == girone_sel) &
+        (df_partite['Validata'] == False)
+    ]
+
+    if tipo_partite_gir != "Entrambe":
+        df_girone = df_girone[df_girone['Tipo'] == tipo_partite_gir]
+
+    st.dataframe(df_girone, use_container_width=True)
+
+
         csv = st.session_state['df_torneo'].to_csv(index=False)
         st.download_button("Scarica CSV Torneo", csv, file_name="torneo.csv", mime="text/csv")
 
