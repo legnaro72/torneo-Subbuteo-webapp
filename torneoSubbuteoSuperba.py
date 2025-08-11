@@ -104,8 +104,11 @@ def esporta_pdf(df_torneo, df_classifica):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.add_page()
     # Usa font DejaVu per emoji e unicode (devi avere il file DejaVuSans.ttf nella stessa cartella)
-    pdf.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
-    pdf.set_font("DejaVu", 'B', 16)
+    # pdf.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
+    # pdf.set_font("DejaVu", 'B', 16)
+    
+    pdf.set_font("Arial", 'B', 16)
+    
     pdf.cell(0, 10, "📅 Calendario e 🏆 Classifiche Torneo", ln=True, align='C')
 
     gironi = df_torneo['Girone'].dropna().unique()
