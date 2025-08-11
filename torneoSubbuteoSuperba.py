@@ -216,7 +216,7 @@ def esporta_pdf(df_torneo, df_classifica):
 
 
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
-    st.subheader(f"Calendario Girone {girone_sel} - Giornata {giornata_sel}")
+    st.subheader(f"📅Calendario Girone {girone_sel} - 🗓️Giornata {giornata_sel}")
 
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if 'Valida' not in df_giornata.columns:
@@ -259,7 +259,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         st.session_state['df_torneo'].at[er['idx'], 'Valida'] = er['Valida']
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
-    st.subheader(f"Classifica Girone {girone_sel}")
+    st.subheader(f"📊Classifica Girone {girone_sel}")
 
     if df_classifica is None or df_classifica.empty:
         st.info("Nessuna partita validata: la classifica sarà disponibile dopo l'inserimento e validazione dei risultati.")
@@ -281,18 +281,18 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
 
 
 def main():
-    st.title("Gestione Torneo Superba a Gironi by Legnaro72")
+    st.title("🏆Gestione Torneo Superba a Gironi by Legnaro72⚽")
 
     df_master = carica_giocatori_master()
 
-    scelta = st.sidebar.radio("Azione:", ["Nuovo torneo", "Carica torneo da CSV"])
+    scelta = st.sidebar.radio("Azione:", ["🆕Nuovo torneo", "📂Carica torneo da CSV"])
 
-    if scelta == "Nuovo torneo":
+    if scelta == "🆕Nuovo torneo":
         num_gironi = st.number_input("Numero di gironi", 1, 8, value=2)
-        tipo_calendario = st.selectbox("Tipo calendario", ["Solo andata", "Andata e ritorno"])
+        tipo_calendario = st.selectbox("Tipo calendario", ["🚩Solo andata", "🔄Andata e ritorno"])
         n_giocatori = st.number_input("Numero giocatori", 4, 32, value=8)
 
-        st.markdown("### Amici del Club")
+        st.markdown("### 👥Amici del Club")
         amici = df_master['Giocatore'].tolist()
         all_seleziona = st.checkbox("Seleziona tutti gli amici", key="all_amici")
 
