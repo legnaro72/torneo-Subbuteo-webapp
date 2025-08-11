@@ -413,7 +413,7 @@ def main():
         # --- ESPORTA PDF ---
         st.sidebar.markdown("---")
         if st.sidebar.button("📄 Esporta PDF Calendario + Classifica"):
-            pdf_bytes = esporta_pdf(df, df_classifica)
+            pdf_bytes = esporta_pdf(df, classifica)
             st.sidebar.download_button("Download PDF calendario + classifica", data=pdf_bytes, file_name="torneo_superba.pdf", mime="application/pdf")
 
 if __name__ == "__main__":
