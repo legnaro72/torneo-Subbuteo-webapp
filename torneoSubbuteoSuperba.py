@@ -77,11 +77,11 @@ def aggiorna_classifica(df):
             stats[ospite]['GS'] += gc
 
             if gc > go:
-                stats[casa]['Punti'] += 3
+                stats[casa]['Punti'] += 2
                 stats[casa]['V'] += 1
                 stats[ospite]['S'] += 1
             elif gc < go:
-                stats[ospite]['Punti'] += 3
+                stats[ospite]['Punti'] += 2
                 stats[ospite]['V'] += 1
                 stats[casa]['S'] += 1
             else:
