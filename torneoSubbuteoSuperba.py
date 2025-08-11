@@ -175,8 +175,8 @@ def esporta_pdf(df_partite, df_classifiche):
             pdf.ln()
 
         pdf.ln(5)
-
-    pdf_bytes = pdf.output(dest='S').encode('latin1')
+        
+    pdf_bytes = pdf.output(dest='S')  # senza .encode()
     return pdf_bytes
 
 def main():
