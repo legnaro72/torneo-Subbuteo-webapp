@@ -84,13 +84,9 @@ def aggiorna_classifica(df):
         classifiche.append(df_stat)
 
     if not classifiche:
-        return pd.DataFrame()  # nessuna partita valida
+        return pd.DataFrame()
 
     df_classifica = pd.concat(classifiche, ignore_index=True)
-
-    for col in ['Girone','Punti','DR']:
-        if col not in df_classifica.columns:
-            df_classifica[col] = 0
 
     df_classifica = df_classifica.sort_values(by=['Girone','Punti','DR'], ascending=[True,False,False])
     return df_classifica
@@ -114,7 +110,6 @@ def esporta_pdf(df_torneo, df_classifica):
             pdf.cell(0, 7, f"Giornata {g}", ln=True)
             partite = df_torneo[(df_torneo['Girone']==girone) & (df_torneo['Giornata']==g)]
 
-            # Header tabella
             pdf.set_font("Arial", 'B', 11)
             pdf.cell(60, 6, "Casa", border=1)
             pdf.cell(20, 6, "Gol", border=1, align='C')
@@ -124,7 +119,6 @@ def esporta_pdf(df_torneo, df_classifica):
 
             pdf.set_font("Arial", '', 11)
             for _, row in partite.iterrows():
-                # Evidenzia se partita non valida
                 if not row['Valida']:
                     pdf.set_text_color(255, 0, 0)
                 else:
@@ -137,12 +131,10 @@ def esporta_pdf(df_torneo, df_classifica):
                 pdf.ln()
             pdf.ln(3)
 
-        # Classifica girone
         pdf.set_font("Arial", 'B', 13)
         pdf.cell(0, 8, f"Classifica Girone {girone}", ln=True)
 
         df_c = df_classifica[df_classifica['Girone'] == girone]
-        # Header classifica
         pdf.set_font("Arial", 'B', 11)
         headers = ["Squadra", "Punti", "V", "P", "S", "GF", "GS", "DR"]
         col_widths = [60, 15, 15, 15, 15, 15, 15, 15]
@@ -167,57 +159,36 @@ def esporta_pdf(df_torneo, df_classifica):
     pdf_output.seek(0)
     return pdf_output.read()
 
-def mostra_calendario_giornata(df, girone_sel, giornata_sel):
+def mostra_calendario_interattivo(df, girone_sel, giornata_sel):
     st.subheader(f"📅 Calendario Girone {girone_sel} - Giornata {giornata_sel}")
 
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if 'Valida' not in df_giornata.columns:
         df_giornata['Valida'] = False
+    # Assicuriamoci che le colonne gol siano int o NaN coerenti
+    df_giornata['GolCasa'] = pd.to_numeric(df_giornata['GolCasa'], errors='coerce').fillna(0).astype(int)
+    df_giornata['GolOspite'] = pd.to_numeric(df_giornata['GolOspite'], errors='coerce').fillna(0).astype(int)
 
-    edited_rows = []
-    for idx, row in df_giornata.iterrows():
-        casa = row['Casa']
-        ospite = row['Ospite']
-        val = row['Valida']
-        col1, col2, col3, col4 = st.columns([4,1,1,1])
+    # Colonne visibili e modificabili: GolCasa, GolOspite, Valida
+    df_edit = df_giornata[['Casa','Ospite','GolCasa','GolOspite','Valida']].copy()
+    df_edit = df_edit.rename(columns={"GolCasa":"Gol Casa", "GolOspite":"Gol Ospite"})
 
-        with col1:
-            st.markdown(f"**{casa}**  vs  **{ospite}**")
+    edited = st.data_editor(df_edit, num_rows="dynamic", use_container_width=True)
 
-        with col2:
-            gol_casa = st.number_input(f"Gol {casa}", min_value=0, max_value=20, value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0, key=f"golcasa_{idx}")
-
-        with col3:
-            gol_ospite = st.number_input(f"Gol {ospite}", min_value=0, max_value=20, value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0, key=f"golospite_{idx}")
-
-        with col4:
-            valida = st.checkbox("Valida", value=val, key=f"valida_{idx}")
-
-        if not valida:
-            st.markdown(f'<div style="color:red; margin-bottom: 15px;">Partita non ancora validata</div>', unsafe_allow_html=True)
-        else:
-            st.markdown("<hr>", unsafe_allow_html=True)
-
-        edited_rows.append({
-            "idx": idx,
-            "GolCasa": gol_casa,
-            "GolOspite": gol_ospite,
-            "Valida": valida
-        })
-
-    for er in edited_rows:
-        st.session_state['df_torneo'].at[er['idx'], 'GolCasa'] = er['GolCasa']
-        st.session_state['df_torneo'].at[er['idx'], 'GolOspite'] = er['GolOspite']
-        st.session_state['df_torneo'].at[er['idx'], 'Valida'] = er['Valida']
+    # Aggiorna session_state con valori modificati
+    for i, idx in enumerate(df_giornata.index):
+        st.session_state['df_torneo'].at[idx, 'GolCasa'] = edited.at[i, "Gol Casa"]
+        st.session_state['df_torneo'].at[idx, 'GolOspite'] = edited.at[i, "Gol Ospite"]
+        st.session_state['df_torneo'].at[idx, 'Valida'] = edited.at[i, "Valida"]
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.subheader(f"🏆 Classifica Girone {girone_sel}")
 
     def color_rows(row):
         if row.name == 0:
-            return ['background-color: #d4edda'] * len(row)  # verde chiaro
+            return ['background-color: #d4edda'] * len(row)
         elif row.name <= 2:
-            return ['background-color: #fff3cd'] * len(row)  # giallo chiaro
+            return ['background-color: #fff3cd'] * len(row)
         else:
             return [''] * len(row)
 
@@ -316,7 +287,7 @@ def main():
         giornate = sorted(df[df['Girone']==girone_sel]['Giornata'].dropna().unique())
         giornata_sel = st.selectbox("Seleziona giornata", giornate)
 
-        mostra_calendario_giornata(df, girone_sel, giornata_sel)
+        mostra_calendario_interattivo(df, girone_sel, giornata_sel)
 
         classifica = aggiorna_classifica(st.session_state['df_torneo'])
         if classifica.empty or 'Girone' not in classifica.columns:
