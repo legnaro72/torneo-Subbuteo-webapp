@@ -175,10 +175,10 @@ def esporta_pdf(df_torneo, df_classifica):
             pdf.ln()
         pdf.ln(10)
 
-    pdf_output = BytesIO()
-    pdf.output(pdf_output)
-    pdf_output.seek(0)
-    return pdf_output.read()
+    # Al posto di pdf_output e pdf.output(pdf_output):
+    pdf_bytes = pdf.output(dest='S').encode('latin1')
+    return pdf_bytes
+
 
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
     st.subheader(f"Calendario Girone {girone_sel} - Giornata {giornata_sel}")
