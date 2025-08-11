@@ -4,9 +4,8 @@ import requests
 from io import StringIO
 import random
 from fpdf import FPDF
-import io
 
-st.set_page_config(page_title="📅 Gestione Torneo a Gironi by Legnaro72", layout="wide")
+st.set_page_config(page_title="🎲 Gestione Torneo a Gironi by Legnaro72", layout="wide")
 
 # URL CSV giocatori
 URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLegna/refs/heads/main/giocatoriSuperba.csv"
@@ -107,39 +106,30 @@ def modifica_risultati_compatti(df_giornata, key_prefix):
             with col2:
                 gol_ospite = st.number_input("Gol Ospite", 0, 20, key=f"{key_prefix}_ospite_{i}", value=int(r['GolOspite']) if pd.notna(r['GolOspite']) else 0)
             with col3:
-                valida = st.checkbox("✔️ Valida", key=f"{key_prefix}_valida_{i}", value=r['Valida'])
+                valida = st.checkbox("✓ Valida", key=f"{key_prefix}_valida_{i}", value=r['Valida'])
             df_giornata.at[i, 'GolCasa'] = gol_casa
             df_giornata.at[i, 'GolOspite'] = gol_ospite
             df_giornata.at[i, 'Valida'] = valida
     return df_giornata
 
-def esporta_pdf(df_torneo, df_classifica):
-    pdf = FPDF(format='A4')
+def esporta_pdf(df_partite, df_classifiche):
+    pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
 
-    gironi = sorted(df_torneo['Girone'].unique())
-    for girone in gironi:
-        pdf.add_page()
-        pdf.set_font("Arial", 'B', 16)
-        pdf.cell(0, 10, f"Calendario {girone}", ln=True, align='C')
-        pdf.ln(5)
+    # Titolo
+    pdf.cell(0, 10, "Calendario e Classifiche Torneo", ln=True, align="C")
 
-        giornate = sorted(df_torneo[df_torneo['Girone'] == girone]['Giornata'].dropna().unique())
-        for g in giornate:
-            pdf.set_font("Arial", 'B', 14)
-            pdf.cell(0, 10, f"Giornata {int(g)}", ln=True)
-            pdf.set_font("Arial", '', 12)
-
-            partite = df_torneo[(df_torneo['Girone'] == girone) & (df_torneo['Giornata'] == g)]
-            # Header tabella
-            pdf.set_fill_color(200, 200, 200)
-            pdf.cell(50, 8, "Casa", border=1, fill=True)
-            pdf.cell(50, 8, "Ospite", border=1, fill=True)
-            pdf.cell(20, 8, "Gol Casa", border=1, fill=True, align='C')
-            pdf.cell(20, 8, "Gol Ospite", border=1, fill=True, align='C')
-            pdf.cell(20, 8, "Validata", border=1, fill=True, align='C')
-            pdf.ln()
-
+    # Calendario partite raggruppate per girone e giornata
+    for girone in sorted(df_partite['Girone'].unique()):
+        pdf.set_font("Arial", 'B', 14)
+        pdf.cell(0, 10, f"{girone}", ln=True)
+        for giornata in sorted(df_partite[df_partite['Girone']==girone]['Giornata'].unique()):
+            pdf.set_font("Arial", 'B', 12)
+            pdf.cell(0, 8, f"Giornata {giornata}", ln=True)
+            partite = df_partite[(df_partite['Girone']==girone) & (df_partite['Giornata']==giornata)]
+            pdf.set_font("Arial", size=11)
             for _, row in partite.iterrows():
                 # Evidenzia partite non validate in rosso
                 if not row['Valida']:
@@ -147,51 +137,54 @@ def esporta_pdf(df_torneo, df_classifica):
                 else:
                     pdf.set_text_color(0, 0, 0)
 
-                pdf.cell(50, 8, str(row['Casa']), border=1)
-                pdf.cell(50, 8, str(row['Ospite']), border=1)
-                pdf.cell(20, 8, str(row['GolCasa']) if pd.notna(row['GolCasa']) else "-", border=1, align='C')
-                pdf.cell(20, 8, str(row['GolOspite']) if pd.notna(row['GolOspite']) else "-", border=1, align='C')
-                pdf.cell(20, 8, "Sì" if row['Valida'] else "No", border=1, align='C')
-                pdf.ln()
+                line = f"{row['Casa']} {row['GolCasa'] if pd.notna(row['GolCasa']) else '-'} - {row['GolOspite'] if pd.notna(row['GolOspite']) else '-'} {row['Ospite']}"
+                pdf.cell(0, 7, line, ln=True)
 
-            pdf.ln(5)
+            pdf.ln(3)  # spazio tra giornate
 
-        # Classifica girone
-        pdf.set_font("Arial", 'B', 14)
-        pdf.cell(0, 10, f"Classifica {girone}", ln=True)
+    pdf.add_page()
+
+    # Classifiche
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(0, 10, "Classifiche", ln=True)
+
+    for girone in sorted(df_classifiche['Girone'].unique()):
         pdf.set_font("Arial", 'B', 12)
+        pdf.cell(0, 8, f"{girone}", ln=True)
+        df_g = df_classifiche[df_classifiche['Girone'] == girone]
 
-        class_girone = df_classifica[df_classifica['Girone'] == girone].sort_values(['Punti','DR'], ascending=[False,False])
-        headers = ['Squadra','Punti','V','P','S','GF','GS','DR']
-        col_widths = [60, 15, 15, 15, 15, 15, 15, 15]
-
-        for h, w in zip(headers, col_widths):
-            pdf.cell(w, 8, h, border=1, align='C')
+        # Header tabella
+        pdf.set_font("Arial", 'B', 11)
+        header = ["Squadra", "Punti", "V", "P", "S", "GF", "GS", "DR"]
+        w = [60, 15, 15, 15, 15, 15, 15, 15]
+        for i, h in enumerate(header):
+            pdf.cell(w[i], 7, h, border=1)
         pdf.ln()
 
-        pdf.set_font("Arial", '', 12)
-        for _, r in class_girone.iterrows():
-            pdf.cell(col_widths[0], 8, str(r['Squadra']), border=1)
-            pdf.cell(col_widths[1], 8, str(r['Punti']), border=1, align='C')
-            pdf.cell(col_widths[2], 8, str(r['V']), border=1, align='C')
-            pdf.cell(col_widths[3], 8, str(r['P']), border=1, align='C')
-            pdf.cell(col_widths[4], 8, str(r['S']), border=1, align='C')
-            pdf.cell(col_widths[5], 8, str(r['GF']), border=1, align='C')
-            pdf.cell(col_widths[6], 8, str(r['GS']), border=1, align='C')
-            pdf.cell(col_widths[7], 8, str(r['DR']), border=1, align='C')
+        # Righe classifica
+        pdf.set_font("Arial", size=11)
+        for _, row in df_g.iterrows():
+            pdf.cell(w[0], 6, str(row['Squadra']), border=1)
+            pdf.cell(w[1], 6, str(row['Punti']), border=1, align='C')
+            pdf.cell(w[2], 6, str(row['V']), border=1, align='C')
+            pdf.cell(w[3], 6, str(row['P']), border=1, align='C')
+            pdf.cell(w[4], 6, str(row['S']), border=1, align='C')
+            pdf.cell(w[5], 6, str(row['GF']), border=1, align='C')
+            pdf.cell(w[6], 6, str(row['GS']), border=1, align='C')
+            pdf.cell(w[7], 6, str(row['DR']), border=1, align='C')
             pdf.ln()
 
-    pdf_output = io.BytesIO()
-    pdf.output(pdf_output)
-    pdf_output.seek(0)
-    return pdf_output
+        pdf.ln(5)
+
+    pdf_bytes = pdf.output(dest='S').encode('latin1')
+    return pdf_bytes
 
 def main():
-    st.title("📅 Gestione Torneo a Gironi by Legnaro72")
+    st.title("🎲 Gestione Torneo a Gironi by Legnaro72")
 
     df_master = carica_giocatori_master()
 
-    scelta = st.sidebar.radio("⚙️ Azione:", ["Nuovo torneo", "Carica torneo da CSV"])
+    scelta = st.sidebar.radio("🕹️ Azione:", ["Nuovo torneo", "Carica torneo da CSV"])
 
     if scelta == "Nuovo torneo":
         num_gironi = st.number_input("Numero di gironi", 1, 8, value=2)
@@ -228,7 +221,7 @@ def main():
 
         st.markdown(f"**Giocatori selezionati:** {', '.join(giocatori_scelti)}")
 
-        if st.button("🎲 Assegna Squadre"):
+        if st.button("⚽ Assegna Squadre"):
             if len(set(giocatori_scelti)) < 4:
                 st.warning("Inserisci almeno 4 giocatori diversi")
             else:
@@ -242,7 +235,7 @@ def main():
         gioc_info = {}
         for gioc in st.session_state['giocatori_scelti']:
             if gioc in df_master['Giocatore'].values:
-                row = df_master[df_master['Giocatore'] == gioc].iloc[0]
+                row = df_master[df_master['Giocatore']==gioc].iloc[0]
                 squadra_default = row['Squadra']
                 potenziale_default = row['Potenziale']
             else:
@@ -252,7 +245,7 @@ def main():
             potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, potenziale_default, key=f"potenziale_{gioc}")
             gioc_info[gioc] = {"Squadra": squadra_nuova, "Potenziale": potenziale_nuovo}
 
-        if st.button("✅ Conferma e genera calendario"):
+        if st.button("🎯 Conferma e genera calendario"):
             giocatori_formattati = []
             for gioc in st.session_state['giocatori_scelti']:
                 squadra = gioc_info[gioc]['Squadra'].strip()
@@ -274,9 +267,9 @@ def main():
             return
 
         girone_sel = st.selectbox("Seleziona girone", gironi)
-        giornate = sorted(df[df['Girone'] == girone_sel]['Giornata'].dropna().unique())
+        giornate = sorted(df[df['Girone']==girone_sel]['Giornata'].dropna().unique())
         giornata_sel = st.selectbox("Seleziona giornata", giornate)
-        df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
+        df_giornata = df[(df['Girone']==girone_sel) & (df['Giornata']==giornata_sel)].copy()
         if 'Valida' not in df_giornata.columns:
             df_giornata['Valida'] = False
 
@@ -298,7 +291,7 @@ def main():
         csv = st.session_state['df_torneo'].to_csv(index=False)
         st.download_button("📥 Scarica CSV Torneo", csv, "torneo.csv", "text/csv")
 
-        if st.button("📄 Mostra tutte le giornate per girone"):
+        if st.button("📅 Mostra tutte le giornate per girone"):
             with st.expander(f"Tutte le giornate - {girone_sel}"):
                 giornate = sorted(df[df['Girone'] == girone_sel]['Giornata'].dropna().unique())
                 for g in giornate:
@@ -317,11 +310,11 @@ def main():
 
         st.dataframe(partite_da_validare[['Girone','Giornata','Casa','Ospite','GolCasa','GolOspite']], use_container_width=True)
 
-        # --- NUOVO: bottone esporta PDF ---
+        # Bottone esporta PDF
         if st.button("📄 Esporta PDF Calendario + Classifiche"):
             classifica = aggiorna_classifica(st.session_state['df_torneo'])
             if classifica.empty:
-                st.warning("Non ci sono partite valide per generare la classifica.")
+                st.warning("Non ci sono partite validate per generare la classifica.")
             else:
                 pdf_data = esporta_pdf(st.session_state['df_torneo'], classifica)
                 st.download_button("⬇️ Scarica PDF", data=pdf_data, file_name="calendario_classifiche.pdf", mime="application/pdf")
