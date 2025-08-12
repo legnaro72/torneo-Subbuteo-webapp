@@ -402,52 +402,70 @@ def main():
         if st.session_state.get("filtra_giocatore", False):
             giocatori = sorted(pd.unique(pd.concat([df['Casa'], df['Ospite']])))
             gioc_sel = st.sidebar.selectbox("Seleziona giocatore", giocatori, key="sel_giocatore")
-
+        
             filtro_tipo = "Entrambe"
             if st.session_state.get("tipo_calendario") == "Andata e ritorno":
                 filtro_tipo = st.sidebar.radio("Mostra partite", ["Andata", "Ritorno", "Entrambe"], index=2, key="tipo_giocatore")
-
+        
             df_filtrato = df[
                 ((df['Casa'] == gioc_sel) | (df['Ospite'] == gioc_sel)) &
                 (df['Valida'] == False)
             ]
-
+        
             if filtro_tipo != "Entrambe":
                 n_giornate = df['Giornata'].max()
                 if filtro_tipo == "Andata":
                     df_filtrato = df_filtrato[df_filtrato['Giornata'] <= n_giornate / 2]
                 else:
                     df_filtrato = df_filtrato[df_filtrato['Giornata'] > n_giornate / 2]
-
-            st.sidebar.dataframe(df_filtrato)
-
+        
+            # --- SOLO INFO MINIMALI ---
+            if not df_filtrato.empty:
+                df_min = pd.DataFrame({
+                    "Giornata": df_filtrato["Giornata"],
+                    "Partita": df_filtrato["Casa"] + " vs " + df_filtrato["Ospite"]
+                }).sort_values("Giornata")
+                st.sidebar.dataframe(df_min, use_container_width=True)
+            else:
+                st.sidebar.info("Nessuna partita da giocare.")
+        
             if st.sidebar.button("Chiudi filtro giocatore"):
                 st.session_state["filtra_giocatore"] = False
+
 
         if st.session_state.get("filtra_girone", False):
             gironi = sorted(df['Girone'].unique())
             gir_sel = st.sidebar.selectbox("Seleziona girone", gironi, key="sel_girone")
-
+        
             filtro_tipo_g = "Entrambe"
             if st.session_state.get("tipo_calendario") == "Andata e ritorno":
                 filtro_tipo_g = st.sidebar.radio("Mostra partite", ["Andata", "Ritorno", "Entrambe"], index=2, key="tipo_girone")
-
+        
             df_girone = df[
                 (df['Girone'] == gir_sel) &
                 (df['Valida'] == False)
             ]
-
+        
             if filtro_tipo_g != "Entrambe":
                 n_giornate = df['Giornata'].max()
                 if filtro_tipo_g == "Andata":
                     df_girone = df_girone[df_girone['Giornata'] <= n_giornate / 2]
                 else:
                     df_girone = df_girone[df_girone['Giornata'] > n_giornate / 2]
-
-            st.sidebar.dataframe(df_girone)
-
+        
+            # --- SOLO INFO MINIMALI ---
+            if not df_girone.empty:
+                df_min_g = pd.DataFrame({
+                    "Giornata": df_girone["Giornata"],
+                    "Partita": df_girone["Casa"] + " vs " + df_girone["Ospite"]
+                }).sort_values("Giornata")
+                st.sidebar.dataframe(df_min_g, use_container_width=True)
+            else:
+                st.sidebar.info("Nessuna partita da giocare.")
+        
             if st.sidebar.button("Chiudi filtro girone"):
                 st.session_state["filtra_girone"] = False
+
 
         # --- ESPORTA CSV ---
         st.sidebar.markdown("---")
