@@ -301,8 +301,7 @@ def main():
     if "calendario_generato" not in st.session_state:
         st.session_state["calendario_generato"] = False
 
-    st.title("🏆⚽ Gestione Torneo Superba a Gironi by Legnaro72 🥇🥈🥉")
-
+    st.title("ðŸ†âš½Gestione Torneo Superba a Gironi by Legnaro72ðŸ¥‡ðŸ¥ˆðŸ¥‰")
 
     df_master = carica_giocatori_master()
 
@@ -377,53 +376,30 @@ def main():
             potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, potenziale_default, key=f"potenziale_{gioc}")
             gioc_info.append({"nome": gioc, "squadra": squadra_nuova, "potenziale": potenziale_nuovo})
 
-        # Lista completa giocatori formattati
-        opzioni_giocatori = [f"{g['squadra']} ({g['nome']}) [Pot: {g['potenziale']}]" for g in gioc_info]
+        # Se la composizione non Ã¨ ancora confermata, mostra proposta e modifica gironi
+        if not st.session_state["comp_gironi_confermata"]:
+            st.markdown("### Composizione automatica bilanciata dei gironi")
 
-        if num_gironi > 1:
-            gironi = distribuisci_giocatori_bilanciato(gioc_info, num_gironi)
-        else:
-            gironi = [gioc_info]
-        
-        # Inizializza in session_state le selezioni per gironi (solo se non già presenti)
-        for i in range(1, num_gironi + 1):
-            if f"gironi_conferma_{i}" not in st.session_state:
-                # Pre-imposto la selezione iniziale con i giocatori assegnati dal bilanciamento
-                default_girone = [f"{g['squadra']} ({g['nome']}) [Pot: {g['potenziale']}]" for g in gironi[i-1]]
-                st.session_state[f"gironi_conferma_{i}"] = default_girone
-        
-        st.markdown("### Conferma composizione gironi (seleziona i giocatori in ogni girone)")
+            if num_gironi > 1:
+                gironi = distribuisci_giocatori_bilanciato(gioc_info, num_gironi)
+            else:
+                # se un solo girone, metto tutti i giocatori in un unico girone
+                gironi = [gioc_info]
 
-        if num_gironi > 1:
-            gironi = distribuisci_giocatori_bilanciato(gioc_info, num_gironi)
-        else:
-            gironi = [gioc_info]
+            composizione_modificata = {}
+            for i, girone in enumerate(gironi, 1):
+                st.markdown(f"**Girone {i}**")
+                lista_girone = [f"{g['squadra']} ({g['nome']}) [Pot: {g['potenziale']}]" for g in girone]
+                testo_modificabile = st.text_area(f"Modifica giocatori girone {i} (separa con virgola)", 
+                                                 value=", ".join(lista_girone),
+                                                 key=f"mod_girone_{i}")
+                composizione_modificata[i] = [x.strip() for x in testo_modificabile.split(",") if x.strip() != ""]
 
-        
-        # Mostro i multiselect per ogni girone
-        for i in range(1, num_gironi + 1):
-            selezionati = st.multiselect(
-                f"Girone {i}",
-                options=opzioni_giocatori,
-                default=st.session_state[f"gironi_conferma_{i}"],
-                key=f"gironi_conferma_{i}"
-            )
-        
-        # Controllo giocatori duplicati
-        tutti_giocatori_selezionati = []
-        for i in range(1, num_gironi + 1):
-            tutti_giocatori_selezionati.extend(st.session_state[f"gironi_conferma_{i}"])
-        
-        duplicati = set([x for x in tutti_giocatori_selezionati if tutti_giocatori_selezionati.count(x) > 1])
-        
-        if duplicati:
-            st.error(f"Errore: i seguenti giocatori sono assegnati a più gironi: {', '.join(duplicati)}. Correggi la selezione.")
-        elif not st.session_state["comp_gironi_confermata"]:
             if st.button("Conferma composizione gironi"):
-                composizione_finale = {i: st.session_state[f"gironi_conferma_{i}"] for i in range(1, num_gironi + 1)}
-                st.session_state['gironi_composizione'] = composizione_finale
+                st.session_state['gironi_composizione'] = composizione_modificata
                 st.session_state["comp_gironi_confermata"] = True
                 st.success("Composizione gironi confermata. Ora puoi generare il calendario.")
+
         else:
             if st.button("Genera Calendario"):
                 giocatori_finali = []
@@ -439,12 +415,11 @@ def main():
                         except Exception as e:
                             st.warning(f"Errore nel parsing della stringa '{g_str}': {e}")
                             return
-        
+
                 df_torneo = genera_calendario(giocatori_finali, num_gironi, tipo_calendario)
                 st.session_state['df_torneo'] = df_torneo
                 st.session_state["calendario_generato"] = True
                 st.success("Calendario generato e salvato!")
-
 
     elif scelta == "Carica torneo da CSV":
         st.info("Funzione caricamento CSV da implementare")
