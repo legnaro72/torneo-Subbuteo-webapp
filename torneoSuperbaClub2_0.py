@@ -276,16 +276,18 @@ def distribuisci_giocatori_bilanciato(giocatori_info, num_gironi):
     gironi = [[] for _ in range(num_gironi)]
     idx = 0
     direzione = 1
+
     for gioc in sorted_gioc:
         gironi[idx].append(gioc)
         idx += direzione
-        if idx == num_gironi:
-            idx = num_gironi - 2
+        if idx >= num_gironi:
+            idx = num_gironi - 2  # rimbalza indietro
             direzione = -1
         elif idx < 0:
-            idx = 1
+            idx = 1  # rimbalza in avanti
             direzione = 1
     return gironi
+
 
 
 
