@@ -404,12 +404,10 @@ def main():
         
         duplicati = set([x for x in tutti_giocatori_selezionati if tutti_giocatori_selezionati.count(x) > 1])
         
-        if duplicati:
+       if duplicati:
             st.error(f"Errore: i seguenti giocatori sono assegnati a più gironi: {', '.join(duplicati)}. Correggi la selezione.")
         else:
-            # Se non ci sono duplicati, mostra il bottone di conferma
             if st.button("Conferma composizione gironi"):
-                # Salvo la composizione confermata in session_state
                 composizione_finale = {i: st.session_state[f"gironi_conferma_{i}"] for i in range(1, num_gironi + 1)}
                 st.session_state['gironi_composizione'] = composizione_finale
                 st.session_state["comp_gironi_confermata"] = True
