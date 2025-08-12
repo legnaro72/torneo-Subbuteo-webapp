@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import requests
@@ -253,7 +254,7 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.subheader(f"Classifica {girone_sel}")
 
     if df_classifica is None or df_classifica.empty:
-        st.info("Nessuna partita validata: la classifica sarÃ  disponibile dopo l'inserimento e validazione dei risultati.")
+        st.info("Nessuna partita validata: la classifica sarà disponibile dopo l'inserimento e validazione dei risultati.")
         return
 
     is_dark = st.get_option("theme.base") == "dark"
@@ -301,7 +302,7 @@ def main():
     if "calendario_generato" not in st.session_state:
         st.session_state["calendario_generato"] = False
 
-    st.title("🏆⚽ Gestione Torneo Superba a Gironi by Legnaro72 🥇🥈")
+    st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉")
 
     df_master = carica_giocatori_master()
 
@@ -336,7 +337,7 @@ def main():
 
         num_supplementari = n_giocatori - len(amici_selezionati)
         if num_supplementari < 0:
-            st.warning(f"Hai selezionato piu amici ({len(amici_selezionati)}) del numero partecipanti ({n_giocatori}). Riduci la selezione.")
+            st.warning(f"Hai selezionato più amici ({len(amici_selezionati)}) del numero partecipanti ({n_giocatori}). Riduci la selezione.")
             return
 
         st.markdown(f"Giocatori supplementari da inserire: **{num_supplementari}**")
@@ -358,7 +359,7 @@ def main():
         st.session_state['tipo_calendario'] = tipo_calendario
 
         if len(giocatori_scelti) < num_gironi:
-            st.warning("Il numero di giocatori Ã¨ inferiore al numero di gironi.")
+            st.warning("Il numero di giocatori è inferiore al numero di gironi.")
             return
 
         # Modifica squadra e potenziale per giocatori scelti
@@ -376,7 +377,7 @@ def main():
             potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, potenziale_default, key=f"potenziale_{gioc}")
             gioc_info.append({"nome": gioc, "squadra": squadra_nuova, "potenziale": potenziale_nuovo})
 
-        # Se la composizione non Ã¨ ancora confermata, mostra proposta e modifica gironi
+        # Se la composizione non è ancora confermata, mostra proposta e modifica gironi
         if not st.session_state["comp_gironi_confermata"]:
             st.markdown("### Composizione automatica bilanciata dei gironi")
 
@@ -426,7 +427,7 @@ def main():
 
     # Se calendario generato, mostra schermata torneo e classifica
     if st.session_state["calendario_generato"]:
-        st.title(f"ðŸ†âš½Gestione Torneo Superba a Gironi by Legnaro72ðŸ¥‡ðŸ¥ˆðŸ¥‰ - {st.session_state.get('nome_torneo','')}")
+        st.title(f"🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉 - {st.session_state.get('nome_torneo','')}")
 
         df = st.session_state['df_torneo']
         gironi = sorted(df['Girone'].dropna().unique())
