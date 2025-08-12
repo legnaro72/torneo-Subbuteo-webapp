@@ -367,33 +367,68 @@ def main():
             except Exception as e:
                 st.error(f"Errore nel caricamento CSV: {e}")
 
-    if 'giocatori_scelti' in st.session_state and scelta == "Nuovo torneo":
-        st.markdown("### Modifica Squadra e Potenziale per i giocatori")
-        gioc_info = {}
-        for gioc in st.session_state['giocatori_scelti']:
-            if gioc in df_master['Giocatore'].values:
-                row = df_master[df_master['Giocatore']==gioc].iloc[0]
-                squadra_default = row['Squadra']
-                potenziale_default = row['Potenziale']
-            else:
-                squadra_default = ""
-                potenziale_default = 4
-            squadra_nuova = st.text_input(f"Squadra per {gioc}", value=squadra_default, key=f"squadra_{gioc}")
-            potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, potenziale_default, key=f"potenziale_{gioc}")
-            gioc_info[gioc] = {"Squadra": squadra_nuova, "Potenziale": potenziale_nuovo}
+if 'giocatori_scelti' in st.session_state and scelta == "Nuovo torneo":
+    st.markdown("### Modifica Squadra e Potenziale per i giocatori")
+    gioc_info = {}
+    for gioc in st.session_state['giocatori_scelti']:
+        if gioc in df_master['Giocatore'].values:
+            row = df_master[df_master['Giocatore']==gioc].iloc[0]
+            squadra_default = row['Squadra']
+            potenziale_default = row['Potenziale']
+        else:
+            squadra_default = ""
+            potenziale_default = 4
+        squadra_nuova = st.text_input(f"Squadra per {gioc}", value=squadra_default, key=f"squadra_{gioc}")
+        potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, potenziale_default, key=f"potenziale_{gioc}")
+        gioc_info[gioc] = {"Squadra": squadra_nuova, "Potenziale": potenziale_nuovo}
 
-        if st.button("Conferma e genera calendario"):
-            giocatori_formattati = []
-            for gioc in st.session_state['giocatori_scelti']:
-                squadra = gioc_info[gioc]['Squadra'].strip()
-                if squadra == "":
-                    st.warning(f"Scegli un nome squadra valido per il giocatore {gioc}")
-                    return
-                giocatori_formattati.append(f"{squadra} ({gioc})")
+    if "gironi_proposti" not in st.session_state:
+        if all(gioc_info[gioc]["Squadra"].strip() != "" for gioc in st.session_state['giocatori_scelti']):
+            # Genera la lista di squadre formattate
+            squadre_formattate = [f"{gioc_info[gioc]['Squadra'].strip()} ({gioc})" for gioc in st.session_state['giocatori_scelti']]
+            # Dividi in gironi provvisori
+            num_gironi = st.session_state['num_gironi']
+            gironi = [[] for _ in range(num_gironi)]
+            for i, squadra in enumerate(squadre_formattate):
+                gironi[i % num_gironi].append(squadra)
+            st.session_state["gironi_proposti"] = gironi
 
-            df_torneo = genera_calendario(giocatori_formattati, st.session_state['num_gironi'], st.session_state['tipo_calendario'])
+    if st.session_state.get("gironi_proposti", None):
+        st.markdown("### Conferma composizione Gironi")
+        num_gironi = len(st.session_state["gironi_proposti"])
+
+        # Mostra gironi e consenti spostamenti solo se almeno 2 gironi
+        for g_idx in range(num_gironi):
+            st.subheader(f"Girone {g_idx + 1}")
+            girone = st.session_state["gironi_proposti"][g_idx][:]
+            for squadra in girone:
+                cols = st.columns([4, 2])
+                cols[0].write(squadra)
+                if num_gironi > 1:
+                    opzioni = ["Mantieni"] + [f"Girone {i+1}" for i in range(num_gironi) if i != g_idx]
+                    scelta = cols[1].selectbox(f"Sposta '{squadra}' da Girone {g_idx+1}", opzioni, key=f"move_{g_idx}_{squadra}")
+                    if scelta != "Mantieni":
+                        # Sposta squadra e ferma il ciclo per evitare problemi con lista mutata durante iterazione
+                        st.session_state["gironi_proposti"][g_idx].remove(squadra)
+                        destinazione = int(scelta.split(" ")[1]) - 1
+                        st.session_state["gironi_proposti"][destinazione].append(squadra)
+                        st.experimental_rerun()
+
+        if st.button("Conferma Gironi"):
+            st.session_state["gironi_confermati"] = st.session_state["gironi_proposti"]
+            st.success("Gironi confermati!")
+
+    # Mostro bottone genera calendario solo se gironi confermati
+    if st.session_state.get("gironi_confermati", None):
+        if st.button("Genera Calendario"):
+            df_torneo = pd.DataFrame()
+            for idx, girone in enumerate(st.session_state["gironi_confermati"], 1):
+                df_g = genera_calendario(girone, 1, st.session_state['tipo_calendario'])
+                df_g['Girone'] = f"Girone {idx}"
+                df_torneo = pd.concat([df_torneo, df_g], ignore_index=True)
             st.session_state['df_torneo'] = df_torneo
             st.success("Calendario generato e salvato!")
+
 
     if 'df_torneo' in st.session_state:
         df = st.session_state['df_torneo']
