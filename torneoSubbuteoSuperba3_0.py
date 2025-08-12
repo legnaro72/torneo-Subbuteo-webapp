@@ -285,8 +285,10 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
 def main():
     st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉")
 
-    df_master = carica_giocatori_master()
-
+    # Carica df_master solo se non è già in session_state
+    if 'df_master' not in st.session_state:
+        st.session_state['df_master'] = carica_giocatori_master()
+    df_master = st.session_state['df_master']
     st.session_state["scelta"] = st.sidebar.radio(
         "Azione:",
         ["Nuovo torneo", "Carica torneo da CSV"]
@@ -372,22 +374,21 @@ def main():
             except Exception as e:
                 st.error(f"Errore nel caricamento CSV: {e}")
 
-if 'giocatori_scelti' in st.session_state and st.session_state["scelta"] == "Nuovo torneo":
-    st.markdown("### Modifica Squadra e Potenziale per i giocatori")
-    gioc_info = {}
-    for gioc in st.session_state['giocatori_scelti']:
-        if gioc in df_master['Giocatore'].values:
-            row = df_master[df_master['Giocatore']==gioc].iloc[0]
-            squadra_default = row['Squadra']
-            potenziale_default = row['Potenziale']
-        else:
-            squadra_default = ""
-            potenziale_default = 4
-        squadra_nuova = st.text_input(f"Squadra per {gioc}", value=squadra_default, key=f"squadra_{gioc}")
-        potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, potenziale_default, key=f"potenziale_{gioc}")
-        gioc_info[gioc] = {"Squadra": squadra_nuova, "Potenziale": potenziale_nuovo}
+        if 'giocatori_scelti' in st.session_state and scelta == "Nuovo torneo":
+                st.markdown("### Modifica Squadra e Potenziale per i giocatori")
+                gioc_info = {}
+                for gioc in st.session_state['giocatori_scelti']:
+                    if gioc in st.session_state['df_master']['Giocatore'].values:
+                        row = st.session_state['df_master'][st.session_state['df_master']['Giocatore'] == gioc].iloc[0]
+                        squadra_default = row['Squadra']
+                        potenziale_default = row['Potenziale']
+                    else:
+                        squadra_default = ""
+                        potenziale_default = 4
+                    squadra_nuova = st.text_input(f"Squadra per {gioc}", value=squadra_default, key=f"squadra_{gioc}")
+                    potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, potenziale_default, key=f"potenziale_{gioc}")
+                    gioc_info[gioc] = {"Squadra": squadra_nuova, "Potenziale": potenziale_nuovo}
 
-    if "gironi_proposti" not in st.session_state:
         if all(gioc_info[gioc]["Squadra"].strip() != "" for gioc in st.session_state['giocatori_scelti']):
             # Genera la lista di squadre formattate
             squadre_formattate = [f"{gioc_info[gioc]['Squadra'].strip()} ({gioc})" for gioc in st.session_state['giocatori_scelti']]
