@@ -301,7 +301,7 @@ def main():
     if "calendario_generato" not in st.session_state:
         st.session_state["calendario_generato"] = False
 
-    st.title("ðŸ†âš½Gestione Torneo Superba a Gironi by Legnaro72ðŸ¥‡ðŸ¥ˆðŸ¥‰")
+    st.title("🏆⚽ Gestione Torneo Superba a Gironi by Legnaro72 🥇🥈")
 
     df_master = carica_giocatori_master()
 
@@ -336,7 +336,7 @@ def main():
 
         num_supplementari = n_giocatori - len(amici_selezionati)
         if num_supplementari < 0:
-            st.warning(f"Hai selezionato piÃ¹ amici ({len(amici_selezionati)}) del numero partecipanti ({n_giocatori}). Riduci la selezione.")
+            st.warning(f"Hai selezionato piu amici ({len(amici_selezionati)}) del numero partecipanti ({n_giocatori}). Riduci la selezione.")
             return
 
         st.markdown(f"Giocatori supplementari da inserire: **{num_supplementari}**")
