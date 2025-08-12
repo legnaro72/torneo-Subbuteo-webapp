@@ -388,6 +388,12 @@ def main():
                 st.session_state[f"gironi_conferma_{i}"] = default_girone
         
         st.markdown("### Conferma composizione gironi (seleziona i giocatori in ogni girone)")
+
+        if num_gironi > 1:
+            gironi = distribuisci_giocatori_bilanciato(gioc_info, num_gironi)
+        else:
+            gironi = [gioc_info]
+
         
         # Mostro i multiselect per ogni girone
         for i in range(1, num_gironi + 1):
