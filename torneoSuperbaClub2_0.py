@@ -379,6 +379,11 @@ def main():
 
         # Lista completa giocatori formattati
         opzioni_giocatori = [f"{g['squadra']} ({g['nome']}) [Pot: {g['potenziale']}]" for g in gioc_info]
+
+        if num_gironi > 1:
+            gironi = distribuisci_giocatori_bilanciato(gioc_info, num_gironi)
+        else:
+            gironi = [gioc_info]
         
         # Inizializza in session_state le selezioni per gironi (solo se non già presenti)
         for i in range(1, num_gironi + 1):
