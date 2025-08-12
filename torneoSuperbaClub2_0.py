@@ -492,13 +492,13 @@ def main():
         # --- ESPORTA CSV ---
         st.sidebar.markdown("---")
         csv_bytes = df.to_csv(index=False).encode('utf-8')
-        st.sidebar.download_button("⬇️ Scarica CSV Torneo", data=csv_bytes, nome_default, mime="text/csv")
+        st.sidebar.download_button("⬇️ Scarica CSV Torneo", data=csv_bytes, file_name=nome_default, mime="text/csv")
 
         # --- ESPORTA PDF ---
         st.sidebar.markdown("---")
         if st.sidebar.button("📄 Esporta PDF Calendario + Classifica"):
             pdf_bytes = esporta_pdf(df, classifica)
-            st.sidebar.download_button("Download PDF calendario + classifica", data=pdf_bytes, file_name="torneo_superba.pdf", mime="application/pdf")
+            st.sidebar.download_button("Download PDF calendario + classifica", data=pdf_bytes, file_name=nome_default, mime="application/pdf")
 
 if __name__ == "__main__":
     main()
