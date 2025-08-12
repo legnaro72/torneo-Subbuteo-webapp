@@ -380,7 +380,11 @@ def main():
         if not st.session_state["comp_gironi_confermata"]:
             st.markdown("### Composizione automatica bilanciata dei gironi")
 
-            gironi = distribuisci_giocatori_bilanciato(gioc_info, num_gironi)
+            if num_gironi > 1:
+                gironi = distribuisci_giocatori_bilanciato(gioc_info, num_gironi)
+            else:
+                # se un solo girone, metto tutti i giocatori in un unico girone
+                gironi = [gioc_info]
 
             composizione_modificata = {}
             for i, girone in enumerate(gironi, 1):
