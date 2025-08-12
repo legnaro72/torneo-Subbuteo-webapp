@@ -414,70 +414,13 @@ def main():
 
     # Se calendario generato o caricato E form nascosta, mostro calendario + classifica
     if 'df_torneo' in st.session_state and not st.session_state['mostra_form']:
-
         df = st.session_state['df_torneo']
-        
-        # Inizializza girone e giornata selezionati nello stato
-        if "girone_sel" not in st.session_state:
-            st.session_state.girone_sel = sorted(df['Girone'].dropna().unique())[0]
-        if "giornata_sel" not in st.session_state:
-            girone_corrente = st.session_state.girone_sel
-            giornate = sorted(df[df['Girone'] == girone_corrente]['Giornata'].dropna().unique())
-            st.session_state.giornata_sel = giornate[0]
-        
-        gironi = sorted(df['Girone'].dropna().unique())
-        num_gironi = len(gironi)
-        
-        # Per evitare problemi di tipo, lavoriamo con gli indici interi di girone e giornata
-        # Otteniamo l'indice corrente del girone selezionato nella lista gironi
-        girone_idx = gironi.index(st.session_state.girone_sel)
-        
-        # Pulsanti girone
-        col1, col2 = st.sidebar.columns([1,1])
-        with col1:
-            if st.button("-", key="prev_girone"):
-                if girone_idx > 0:
-                    girone_idx -= 1
-                    st.session_state.girone_sel = gironi[girone_idx]
-                    # Reset giornata al primo giorno nuovo girone
-                    giornate = sorted(df[df['Girone'] == st.session_state.girone_sel]['Giornata'].dropna().unique())
-                    st.session_state.giornata_sel = giornate[0]
-        with col2:
-            if st.button("+", key="next_girone"):
-                if girone_idx < num_gironi - 1:
-                    girone_idx += 1
-                    st.session_state.girone_sel = gironi[girone_idx]
-                    # Reset giornata al primo giorno nuovo girone
-                    giornate = sorted(df[df['Girone'] == st.session_state.girone_sel]['Giornata'].dropna().unique())
-                    st.session_state.giornata_sel = giornate[0]
-        
-        st.sidebar.markdown(f"**Girone selezionato: {st.session_state.girone_sel}**")
-        
-        # Ora gestiamo le giornate del girone selezionato
-        giornate = sorted(df[df['Girone'] == st.session_state.girone_sel]['Giornata'].dropna().unique())
-        num_giornate = len(giornate)
-        giornata_idx = giornate.index(st.session_state.giornata_sel)
-        
-        # Pulsanti giornata
-        col3, col4 = st.sidebar.columns([1,1])
-        with col3:
-            if st.button("-", key="prev_giornata"):
-                if giornata_idx > 0:
-                    giornata_idx -= 1
-                    st.session_state.giornata_sel = giornate[giornata_idx]
-        with col4:
-            if st.button("+", key="next_giornata"):
-                if giornata_idx < num_giornate - 1:
-                    giornata_idx += 1
-                    st.session_state.giornata_sel = giornate[giornata_idx]
-        
-        st.sidebar.markdown(f"**Giornata selezionata: {st.session_state.giornata_sel}**")
-
 
         st.sidebar.markdown("---")
         gironi = sorted(df['Girone'].dropna().unique())
-        girone_sel = st.session_state.girone_sel
-        giornata_sel = st.session_state.giornata_sel
+        girone_sel = st.sidebar.selectbox("Seleziona Girone", gironi)
+        giornate = sorted(df[df['Girone'] == girone_sel]['Giornata'].dropna().unique())
+        giornata_sel = st.sidebar.selectbox("Seleziona Giornata", giornate)
 
         mostra_calendario_giornata(df, girone_sel, giornata_sel)
 
