@@ -289,6 +289,25 @@ def main():
     scelta = st.sidebar.radio("Azione:", ["Nuovo torneo", "Carica torneo da CSV"])
 
     if scelta == "Nuovo torneo":
+        from datetime import datetime
+
+        # Dizionario mesi in italiano
+        mesi = {
+            1: "Gennaio", 2: "Febbraio", 3: "Marzo", 4: "Aprile",
+            5: "Maggio", 6: "Giugno", 7: "Luglio", 8: "Agosto",
+            9: "Settembre", 10: "Ottobre", 11: "Novembre", 12: "Dicembre"
+        }
+        
+        oggi = datetime.now()
+        # Crea il nome di default con giorno + mese in italiano + anno
+        nome_default = f"TorneoSubbuteo_{oggi.day}{mesi[oggi.month]}{oggi.year}"
+        
+        # Input per l’utente, con default precompilato
+        nome_torneo = st.text_input("Nome del torneo:", value=nome_default)
+        
+        # Salvo in session_state per usarlo ovunque
+        st.session_state["nome_torneo"] = nome_torneo
+
         num_gironi = st.number_input("Numero di gironi", 1, 8, value=2)
         tipo_calendario = st.selectbox("Tipo calendario", ["Solo andata", "Andata e ritorno"])
         n_giocatori = st.number_input("Numero giocatori", 4, 32, value=8)
@@ -473,7 +492,7 @@ def main():
         # --- ESPORTA CSV ---
         st.sidebar.markdown("---")
         csv_bytes = df.to_csv(index=False).encode('utf-8')
-        st.sidebar.download_button("⬇️ Scarica CSV Torneo", data=csv_bytes, file_name="torneo_superba.csv", mime="text/csv")
+        st.sidebar.download_button("⬇️ Scarica CSV Torneo", data=csv_bytes, nome_default, mime="text/csv")
 
         # --- ESPORTA PDF ---
         st.sidebar.markdown("---")
