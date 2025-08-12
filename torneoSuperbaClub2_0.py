@@ -1,5 +1,6 @@
 
 
+
 import streamlit as st
 import pandas as pd
 import requests
@@ -289,6 +290,25 @@ def main():
     scelta = st.sidebar.radio("Azione:", ["Nuovo torneo", "Carica torneo da CSV"])
 
     if scelta == "Nuovo torneo":
+        from datetime import datetime
+
+        # Dizionario mesi in italiano
+        mesi = {
+            1: "Gennaio", 2: "Febbraio", 3: "Marzo", 4: "Aprile",
+            5: "Maggio", 6: "Giugno", 7: "Luglio", 8: "Agosto",
+            9: "Settembre", 10: "Ottobre", 11: "Novembre", 12: "Dicembre"
+        }
+        
+        oggi = datetime.now()
+        # Crea il nome di default con giorno + mese in italiano + anno
+        nome_default = f"TorneoSubbuteo_{oggi.day}{mesi[oggi.month]}{oggi.year}"
+        
+        # Input per l’utente, con default precompilato
+        nome_torneo = st.text_input("Nome del torneo:", value=nome_default)
+        
+        # Salvo in session_state per usarlo ovunque
+        st.session_state["nome_torneo"] = nome_torneo
+
         num_gironi = st.number_input("Numero di gironi", 1, 8, value=2)
         tipo_calendario = st.selectbox("Tipo calendario", ["Solo andata", "Andata e ritorno"])
         n_giocatori = st.number_input("Numero giocatori", 4, 32, value=8)
@@ -424,8 +444,10 @@ def main():
                 df_min = pd.DataFrame({
                     "Giornata": df_filtrato["Giornata"],
                     "Partita": df_filtrato["Casa"] + " vs " + df_filtrato["Ospite"]
-                }).sort_values("Giornata")
-                st.sidebar.dataframe(df_min[['Giornata', 'Partita']], use_container_width=True)
+                }).sort_values("Giornata").reset_index(drop=True)  # <-- elimina colonna indice
+                st.sidebar.dataframe(df_min, use_container_width=True, hide_index=True)
+
+
             else:
                 st.sidebar.info("Nessuna partita da giocare.")
         
@@ -458,8 +480,9 @@ def main():
                 df_min_g = pd.DataFrame({
                     "Giornata": df_girone["Giornata"],
                     "Partita": df_girone["Casa"] + " vs " + df_girone["Ospite"]
-                }).sort_values("Giornata")
-                st.sidebar.dataframe(df_min_g[['Giornata', 'Partita']], use_container_width=True)
+                }).sort_values("Giornata").reset_index(drop=True)  # <-- elimina colonna indice
+                st.sidebar.dataframe(df_min_g, use_container_width=True, hide_index=True)
+
             else:
                 st.sidebar.info("Nessuna partita da giocare.")
         
@@ -470,13 +493,13 @@ def main():
         # --- ESPORTA CSV ---
         st.sidebar.markdown("---")
         csv_bytes = df.to_csv(index=False).encode('utf-8')
-        st.sidebar.download_button("⬇️ Scarica CSV Torneo", data=csv_bytes, file_name="torneo_superba.csv", mime="text/csv")
+        st.sidebar.download_button("⬇️ Scarica CSV Torneo", data=csv_bytes, file_name=nome_torneo, mime="text/csv")
 
         # --- ESPORTA PDF ---
         st.sidebar.markdown("---")
         if st.sidebar.button("📄 Esporta PDF Calendario + Classifica"):
             pdf_bytes = esporta_pdf(df, classifica)
-            st.sidebar.download_button("Download PDF calendario + classifica", data=pdf_bytes, file_name="torneo_superba.pdf", mime="application/pdf")
+            st.sidebar.download_button("Download PDF calendario + classifica", data=pdf_bytes, file_name=nome_torneo, mime="application/pdf")
 
 if __name__ == "__main__":
     main()
