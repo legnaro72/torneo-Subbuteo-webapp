@@ -425,7 +425,7 @@ def main():
                     "Giornata": df_filtrato["Giornata"],
                     "Partita": df_filtrato["Casa"] + " vs " + df_filtrato["Ospite"]
                 }).sort_values("Giornata")
-                st.sidebar.dataframe(df_min, use_container_width=True)
+                st.sidebar.dataframe(df_min[['Giornata', 'Partita']], use_container_width=True)
             else:
                 st.sidebar.info("Nessuna partita da giocare.")
         
@@ -459,7 +459,7 @@ def main():
                     "Giornata": df_girone["Giornata"],
                     "Partita": df_girone["Casa"] + " vs " + df_girone["Ospite"]
                 }).sort_values("Giornata")
-                st.sidebar.dataframe(df_min_g, use_container_width=True)
+                st.sidebar.dataframe(df_min_g[['Giornata', 'Partita']], use_container_width=True)
             else:
                 st.sidebar.info("Nessuna partita da giocare.")
         
