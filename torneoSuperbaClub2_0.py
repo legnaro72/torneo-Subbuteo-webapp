@@ -278,15 +278,18 @@ def distribuisci_giocatori_bilanciato(giocatori_info, num_gironi):
     direzione = 1
 
     for gioc in sorted_gioc:
+        if idx < 0 or idx >= num_gironi:
+            raise IndexError(f"Indice girone fuori limite: {idx}, num_gironi={num_gironi}")
         gironi[idx].append(gioc)
         idx += direzione
         if idx >= num_gironi:
-            idx = num_gironi - 2  # rimbalza indietro
+            idx = num_gironi - 2
             direzione = -1
         elif idx < 0:
-            idx = 1  # rimbalza in avanti
+            idx = 1
             direzione = 1
     return gironi
+
 
 
 
