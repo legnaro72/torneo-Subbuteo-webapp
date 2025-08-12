@@ -219,7 +219,7 @@ def esporta_pdf(df_torneo, df_classifica):
 
 
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
-    st.subheader(f"Calendario Girone {girone_sel} - Giornata {giornata_sel}")
+    st.subheader(f"Calendario {girone_sel} - Giornata {giornata_sel}")
 
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if 'Valida' not in df_giornata.columns:
