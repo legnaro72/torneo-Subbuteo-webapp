@@ -424,8 +424,9 @@ def main():
                 df_min = pd.DataFrame({
                     "Giornata": df_filtrato["Giornata"],
                     "Partita": df_filtrato["Casa"] + " vs " + df_filtrato["Ospite"]
-                }).sort_values("Giornata")
+                }).sort_values("Giornata").reset_index(drop=True)  # <-- elimina colonna indice
                 st.sidebar.dataframe(df_min, use_container_width=True)
+
             else:
                 st.sidebar.info("Nessuna partita da giocare.")
         
@@ -458,7 +459,7 @@ def main():
                 df_min_g = pd.DataFrame({
                     "Giornata": df_girone["Giornata"],
                     "Partita": df_girone["Casa"] + " vs " + df_girone["Ospite"]
-                }).sort_values("Giornata")
+                }).sort_values("Giornata").reset_index(drop=True)  # <-- elimina colonna indice
                 st.sidebar.dataframe(df_min_g, use_container_width=True)
             else:
                 st.sidebar.info("Nessuna partita da giocare.")
