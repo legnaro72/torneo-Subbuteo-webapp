@@ -352,7 +352,11 @@ def main():
                     st.session_state['tipo_calendario'] = tipo_calendario
                     st.session_state['mostra_form'] = False
                     st.success("Giocatori selezionati, passa alla fase successiva.")
-                    st.experimental_rerun()
+            
+            if not st.session_state['mostra_form']:
+                st.write("Procedi con la fase successiva")
+            else:
+                st.write("Modulo di selezione giocatori")
 
 
 
