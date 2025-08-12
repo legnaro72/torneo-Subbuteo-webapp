@@ -358,7 +358,7 @@ def main():
                 st.session_state['num_gironi'] = num_gironi
                 st.session_state['tipo_calendario'] = tipo_calendario
                 st.success("Giocatori selezionati, passa alla fase successiva.")
-                st.experimental_rerun
+                st.rerun()
 
     if scelta == "Carica torneo da CSV":
         uploaded_file = st.file_uploader("Carica CSV torneo", type=["csv"])
