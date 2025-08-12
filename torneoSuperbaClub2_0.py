@@ -301,7 +301,8 @@ def main():
     if "calendario_generato" not in st.session_state:
         st.session_state["calendario_generato"] = False
 
-    st.title("ðŸ†âš½Gestione Torneo Superba a Gironi by Legnaro72ðŸ¥‡ðŸ¥ˆðŸ¥‰")
+    st.title("🏆⚽ Gestione Torneo Superba a Gironi by Legnaro72 🥇🥈🥉")
+
 
     df_master = carica_giocatori_master()
 
