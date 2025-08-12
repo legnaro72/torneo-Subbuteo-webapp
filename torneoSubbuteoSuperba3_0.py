@@ -350,7 +350,9 @@ def main():
                     st.session_state['giocatori_scelti'] = giocatori_scelti
                     st.session_state['num_gironi'] = num_gironi
                     st.session_state['tipo_calendario'] = tipo_calendario
+                    st.session_state['mostra_form'] = False  # <-- questa riga fa "andare avanti" il flusso
                     st.success("Giocatori selezionati, passa alla fase successiva.")
+
 
         if 'giocatori_scelti' in st.session_state and scelta == "Nuovo torneo":
             st.markdown("### Modifica Squadra e Potenziale per i giocatori")
