@@ -287,7 +287,12 @@ def main():
 
     df_master = carica_giocatori_master()
 
-    scelta = st.sidebar.radio("Azione:", ["Nuovo torneo", "Carica torneo da CSV"])
+    st.session_state["scelta"] = st.sidebar.radio(
+        "Azione:",
+        ["Nuovo torneo", "Carica torneo da CSV"]
+    )
+
+    scelta = st.session_state["scelta"]
 
     if scelta == "Nuovo torneo":
         from datetime import datetime
@@ -367,7 +372,7 @@ def main():
             except Exception as e:
                 st.error(f"Errore nel caricamento CSV: {e}")
 
-if 'giocatori_scelti' in st.session_state and scelta == "Nuovo torneo":
+if 'giocatori_scelti' in st.session_state and st.session_state["scelta"] == "Nuovo torneo":
     st.markdown("### Modifica Squadra e Potenziale per i giocatori")
     gioc_info = {}
     for gioc in st.session_state['giocatori_scelti']:
