@@ -287,8 +287,10 @@ def main():
 
     # Visualizza sempre il nome torneo se esiste in session_state
     if "nome_torneo" in st.session_state:
-        st.markdown(f"### Nome Torneo: **{st.session_state['nome_torneo']}**")
-
+        st.markdown(
+            f'<h2 style="color: red; text-align: center;">🏆{st.session_state["nome_torneo"]}🏆</h2>', 
+            unsafe_allow_html=True
+        )
     df_master = carica_giocatori_master()
 
     # Inizializza stato per mostra/nascondi form
