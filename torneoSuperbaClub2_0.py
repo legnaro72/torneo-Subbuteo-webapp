@@ -404,7 +404,7 @@ def main():
         
         duplicati = set([x for x in tutti_giocatori_selezionati if tutti_giocatori_selezionati.count(x) > 1])
         
-       if duplicati:
+        if duplicati:
             st.error(f"Errore: i seguenti giocatori sono assegnati a più gironi: {', '.join(duplicati)}. Correggi la selezione.")
         else:
             if st.button("Conferma composizione gironi"):
@@ -412,6 +412,7 @@ def main():
                 st.session_state['gironi_composizione'] = composizione_finale
                 st.session_state["comp_gironi_confermata"] = True
                 st.success("Composizione gironi confermata. Ora puoi generare il calendario.")
+
 
 
         else:
