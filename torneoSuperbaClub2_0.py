@@ -406,15 +406,12 @@ def main():
         
         if duplicati:
             st.error(f"Errore: i seguenti giocatori sono assegnati a più gironi: {', '.join(duplicati)}. Correggi la selezione.")
-        else:
+        elif not st.session_state["comp_gironi_confermata"]:
             if st.button("Conferma composizione gironi"):
                 composizione_finale = {i: st.session_state[f"gironi_conferma_{i}"] for i in range(1, num_gironi + 1)}
                 st.session_state['gironi_composizione'] = composizione_finale
                 st.session_state["comp_gironi_confermata"] = True
                 st.success("Composizione gironi confermata. Ora puoi generare il calendario.")
-
-
-
         else:
             if st.button("Genera Calendario"):
                 giocatori_finali = []
@@ -430,11 +427,12 @@ def main():
                         except Exception as e:
                             st.warning(f"Errore nel parsing della stringa '{g_str}': {e}")
                             return
-
+        
                 df_torneo = genera_calendario(giocatori_finali, num_gironi, tipo_calendario)
                 st.session_state['df_torneo'] = df_torneo
                 st.session_state["calendario_generato"] = True
                 st.success("Calendario generato e salvato!")
+
 
     elif scelta == "Carica torneo da CSV":
         st.info("Funzione caricamento CSV da implementare")
