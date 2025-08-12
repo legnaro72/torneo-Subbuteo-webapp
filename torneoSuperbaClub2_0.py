@@ -272,19 +272,21 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
 
 
 def distribuisci_giocatori_bilanciato(giocatori_info, num_gironi):
-    # Ordina per potenziale decrescente
     sorted_gioc = sorted(giocatori_info, key=lambda x: x['potenziale'], reverse=True)
     gironi = [[] for _ in range(num_gironi)]
     idx = 0
     direzione = 1
     for gioc in sorted_gioc:
         gironi[idx].append(gioc)
-        if idx == 0:
-            direzione = 1
-        elif idx == num_gironi - 1:
-            direzione = -1
         idx += direzione
+        if idx == num_gironi:
+            idx = num_gironi - 2
+            direzione = -1
+        elif idx < 0:
+            idx = 1
+            direzione = 1
     return gironi
+
 
 
 def main():
