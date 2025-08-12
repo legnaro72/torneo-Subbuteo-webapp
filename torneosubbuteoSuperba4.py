@@ -1,6 +1,3 @@
-
-
-
 import streamlit as st
 import pandas as pd
 import requests
@@ -102,7 +99,7 @@ def aggiorna_classifica(df):
         classifiche.append(df_stat)
 
     if len(classifiche) == 0:
-        return None  # <-- qui cambiato da DataFrame vuoto a None
+        return None
 
     df_classifica = pd.concat(classifiche, ignore_index=True)
     df_classifica = df_classifica.sort_values(by=['Girone','Punti','DR'], ascending=[True,False,False])
@@ -111,21 +108,20 @@ def aggiorna_classifica(df):
 
 def esporta_pdf(df_torneo, df_classifica):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
-    pdf.set_auto_page_break(auto=False)  # controllo manuale
+    pdf.set_auto_page_break(auto=False)
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 10, "Calendario e Classifiche Torneo", ln=True, align='C')
 
     line_height = 6
     margin_bottom = 15
-    page_height = 297  # A4 height in mm
+    page_height = 297
 
     gironi = df_torneo['Girone'].dropna().unique()
 
     for girone in gironi:
         pdf.set_font("Arial", 'B', 14)
 
-        # Controllo spazio per titolo girone
         if pdf.get_y() + 8 + margin_bottom > page_height:
             pdf.add_page()
         pdf.cell(0, 8, f"{girone}", ln=True)
@@ -133,7 +129,6 @@ def esporta_pdf(df_torneo, df_classifica):
         giornate = sorted(df_torneo[df_torneo['Girone'] == girone]['Giornata'].dropna().unique())
 
         for g in giornate:
-            # Spazio necessario: titolo giornata + intestazione tabella + almeno 1 riga + margine
             needed_space = 7 + line_height + line_height + margin_bottom
             if pdf.get_y() + needed_space > page_height:
                 pdf.add_page()
@@ -141,7 +136,6 @@ def esporta_pdf(df_torneo, df_classifica):
             pdf.set_font("Arial", 'B', 12)
             pdf.cell(0, 7, f"Giornata {g}", ln=True)
 
-            # Intestazione tabella
             pdf.set_font("Arial", 'B', 11)
             pdf.cell(60, 6, "Casa", border=1)
             pdf.cell(20, 6, "Gol", border=1, align='C')
@@ -153,10 +147,8 @@ def esporta_pdf(df_torneo, df_classifica):
             partite = df_torneo[(df_torneo['Girone'] == girone) & (df_torneo['Giornata'] == g)]
 
             for _, row in partite.iterrows():
-                # Controllo spazio per ogni riga
                 if pdf.get_y() + line_height + margin_bottom > page_height:
                     pdf.add_page()
-                    # Ripeto intestazione tabella in pagina nuova
                     pdf.set_font("Arial", 'B', 12)
                     pdf.cell(0, 7, f"Giornata {g} (continua)", ln=True)
                     pdf.set_font("Arial", 'B', 11)
@@ -176,7 +168,6 @@ def esporta_pdf(df_torneo, df_classifica):
                 pdf.ln()
             pdf.ln(3)
 
-        # Controllo spazio per classifica girone (circa 40mm + margine)
         if pdf.get_y() + 40 + margin_bottom > page_height:
             pdf.add_page()
 
@@ -193,10 +184,8 @@ def esporta_pdf(df_torneo, df_classifica):
         pdf.ln()
         pdf.set_font("Arial", '', 11)
         for _, r in df_c.iterrows():
-            # Controllo spazio per riga classifica
             if pdf.get_y() + line_height + margin_bottom > page_height:
                 pdf.add_page()
-                # Ripeto intestazione classifica
                 pdf.set_font("Arial", 'B', 11)
                 for i, h in enumerate(headers):
                     pdf.cell(col_widths[i], 6, h, border=1, align='C')
@@ -233,7 +222,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         col1, col2, col3, col4 = st.columns([4,1,1,1])
 
         with col1:
-            st.markdown(f"**{casa}**  vs  **{ospite}**")
+            st.markdown(f"**{casa}** vs  **{ospite}**")
 
         with col2:
             gol_casa = st.number_input(f"Gol {casa}", min_value=0, max_value=20, value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0, key=f"golcasa_{idx}")
@@ -285,7 +274,6 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
 def main():
     st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉")
 
-    # Visualizza sempre il nome torneo se esiste in session_state
     if "nome_torneo" in st.session_state:
         st.markdown(
             f'<h2 style="color: red; text-align: center;">🏆{st.session_state["nome_torneo"]}🏆</h2>', 
@@ -293,14 +281,12 @@ def main():
         )
     df_master = carica_giocatori_master()
 
-    # Inizializza stato per mostra/nascondi form
     if 'mostra_form' not in st.session_state:
         st.session_state['mostra_form'] = True
 
     scelta = st.sidebar.radio("Azione:", ["Nuovo torneo", "Carica torneo da CSV"])
 
     if st.session_state['mostra_form']:
-        # TUTTO il blocco NUOVO TORNEO + selezione giocatori + modifica squadra/potenziale
         if scelta == "Nuovo torneo":
             from datetime import datetime
 
@@ -405,7 +391,6 @@ def main():
                     df_caricato['Valida'] = df_caricato['Valida'].astype(bool)
                     st.session_state['df_torneo'] = df_caricato
                     st.success("Torneo caricato correttamente!")
-                    # Nascondi form se carico torneo
                     st.session_state['mostra_form'] = False
                 else:
                     st.error(f"Il CSV non contiene tutte le colonne richieste: {expected_cols}")
@@ -415,13 +400,52 @@ def main():
     # Se calendario generato o caricato E form nascosta, mostro calendario + classifica
     if 'df_torneo' in st.session_state and not st.session_state['mostra_form']:
         df = st.session_state['df_torneo']
+        
+        # Inizializza gli indici se non esistono
+        if 'current_girone_index' not in st.session_state:
+            st.session_state['current_girone_index'] = 0
+        if 'current_giornata_index' not in st.session_state:
+            st.session_state['current_giornata_index'] = 0
 
-        st.sidebar.markdown("---")
         gironi = sorted(df['Girone'].dropna().unique())
-        girone_sel = st.sidebar.selectbox("Seleziona Girone", gironi)
-        giornate = sorted(df[df['Girone'] == girone_sel]['Giornata'].dropna().unique())
-        giornata_sel = st.sidebar.selectbox("Seleziona Giornata", giornate)
+        giornate = sorted(df[df['Girone'] == gironi[st.session_state['current_girone_index']]]['Giornata'].dropna().unique())
 
+        # Logica per i pulsanti Avanti/Indietro Girone
+        col1_girone, col2_girone, col3_girone = st.columns([1, 2, 1])
+        with col1_girone:
+            if st.button("<<", key="prev_girone", disabled=st.session_state['current_girone_index'] == 0):
+                st.session_state['current_girone_index'] -= 1
+                st.session_state['current_giornata_index'] = 0 # Resetta la giornata
+                st.rerun()
+
+        with col2_girone:
+            st.markdown(f"**Girone:** {gironi[st.session_state['current_girone_index']]}")
+
+        with col3_girone:
+            if st.button(">>", key="next_girone", disabled=st.session_state['current_girone_index'] >= len(gironi) - 1):
+                st.session_state['current_girone_index'] += 1
+                st.session_state['current_giornata_index'] = 0 # Resetta la giornata
+                st.rerun()
+        
+        # Logica per i pulsanti Avanti/Indietro Giornata
+        col1_giornata, col2_giornata, col3_giornata = st.columns([1, 2, 1])
+        with col1_giornata:
+            if st.button("<<", key="prev_giornata", disabled=st.session_state['current_giornata_index'] == 0):
+                st.session_state['current_giornata_index'] -= 1
+                st.rerun()
+
+        with col2_giornata:
+            st.markdown(f"**Giornata:** {giornate[st.session_state['current_giornata_index']]}")
+
+        with col3_giornata:
+            if st.button(">>", key="next_giornata", disabled=st.session_state['current_giornata_index'] >= len(giornate) - 1):
+                st.session_state['current_giornata_index'] += 1
+                st.rerun()
+
+        # Visualizza il calendario e la classifica in base agli indici correnti
+        girone_sel = gironi[st.session_state['current_girone_index']]
+        giornata_sel = giornate[st.session_state['current_giornata_index']]
+        
         mostra_calendario_giornata(df, girone_sel, giornata_sel)
 
         classifica = aggiorna_classifica(st.session_state['df_torneo'])
@@ -465,7 +489,7 @@ def main():
                 df_min = pd.DataFrame({
                     "Giornata": df_filtrato["Giornata"],
                     "Partita": df_filtrato["Casa"] + " vs " + df_filtrato["Ospite"]
-                }).sort_values("Giornata").reset_index(drop=True)  # <-- elimina colonna indice
+                }).sort_values("Giornata").reset_index(drop=True)
                 st.sidebar.dataframe(df_min, use_container_width=True, hide_index=True)
 
 
@@ -501,7 +525,7 @@ def main():
                 df_min_g = pd.DataFrame({
                     "Giornata": df_girone["Giornata"],
                     "Partita": df_girone["Casa"] + " vs " + df_girone["Ospite"]
-                }).sort_values("Giornata").reset_index(drop=True)  # <-- elimina colonna indice
+                }).sort_values("Giornata").reset_index(drop=True)
                 st.sidebar.dataframe(df_min_g, use_container_width=True, hide_index=True)
 
             else:
