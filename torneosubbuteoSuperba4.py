@@ -1,6 +1,3 @@
-
-
-
 import streamlit as st
 import pandas as pd
 import requests
@@ -219,7 +216,7 @@ def esporta_pdf(df_torneo, df_classifica):
 
 
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
-    st.subheader(f"Calendario {girone_sel} - Giornata {giornata_sel}")
+    st.subheader(f"Calendario Girone {girone_sel} - Giornata {giornata_sel}")
 
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if 'Valida' not in df_giornata.columns:
@@ -285,12 +282,6 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
 def main():
     st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉")
 
-    # Visualizza sempre il nome torneo se esiste in session_state
-    if "nome_torneo" in st.session_state:
-        st.markdown(
-            f'<h2 style="color: red; text-align: center;">🏆{st.session_state["nome_torneo"]}🏆</h2>', 
-            unsafe_allow_html=True
-        )
     df_master = carica_giocatori_master()
 
     # Inizializza stato per mostra/nascondi form
@@ -356,15 +347,7 @@ def main():
                     st.session_state['giocatori_scelti'] = giocatori_scelti
                     st.session_state['num_gironi'] = num_gironi
                     st.session_state['tipo_calendario'] = tipo_calendario
-                    st.session_state['mostra_form'] = False
                     st.success("Giocatori selezionati, passa alla fase successiva.")
-            
-            if not st.session_state['mostra_form']:
-                st.write("Procedi con la fase successiva")
-            else:
-                st.write("Modulo di selezione giocatori")
-
-
 
         if 'giocatori_scelti' in st.session_state and scelta == "Nuovo torneo":
             st.markdown("### Modifica Squadra e Potenziale per i giocatori")
