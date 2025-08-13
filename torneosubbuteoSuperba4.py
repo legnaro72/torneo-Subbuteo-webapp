@@ -8,6 +8,17 @@ from fpdf import FPDF
 st.set_page_config(page_title="Gestione Torneo Superba a Gironi by Legnaro72", layout="wide")
 
 st.markdown("""
+    <style>
+    /* Rimuove i puntini neri */
+    ul, li {
+        list-style-type: none !important;
+        padding-left: 0 !important;
+        margin-left: 0 !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
 <style>
 /* Rimuove l'asterisco dai campi con etichetta nascosta */
 div[data-testid="stNumberInput"] label::before {
