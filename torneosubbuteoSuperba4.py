@@ -243,45 +243,62 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         df_giornata['Valida'] = False
 
     edited_rows = []
+
     for idx, row in df_giornata.iterrows():
         casa = row['Casa']
         ospite = row['Ospite']
         val = row['Valida']
-        
-        # Uso di colonne per una vista più compatta
+
         col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
+
+        # Inizializza i valori in session_state se non esistono
+        if f"golcasa_{idx}" not in st.session_state:
+            st.session_state[f"golcasa_{idx}"] = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
+        if f"golospite_{idx}" not in st.session_state:
+            st.session_state[f"golospite_{idx}"] = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
+        if f"valida_{idx}" not in st.session_state:
+            st.session_state[f"valida_{idx}"] = val
 
         with col1:
             st.markdown(f"**{casa}** vs **{ospite}**")
 
         with col2:
-            gol_casa = st.number_input("", min_value=0, max_value=20, value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0, key=f"golcasa_{idx}", label_visibility="hidden")
-    
+            gol_casa = st.number_input(
+                "", min_value=0, max_value=20, 
+                value=st.session_state[f"golcasa_{idx}"], 
+                key=f"golcasa_{idx}", label_visibility="hidden"
+            )
+
         with col3:
-            st.markdown("-") # Separatore
-        
+            st.markdown("-")  # separatore
+
         with col4:
-            gol_ospite = st.number_input("", min_value=0, max_value=20, value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0, key=f"golospite_{idx}", label_visibility="hidden")
+            gol_ospite = st.number_input(
+                "", min_value=0, max_value=20, 
+                value=st.session_state[f"golospite_{idx}"], 
+                key=f"golospite_{idx}", label_visibility="hidden"
+            )
 
         with col5:
-            valida = st.checkbox("Valida", value=val, key=f"valida_{idx}")
+            valida = st.checkbox(
+                "Valida", value=st.session_state[f"valida_{idx}"], key=f"valida_{idx}"
+            )
 
+        # Mostra messaggio di partita non validata
         if not valida:
             st.markdown(f'<div style="color:red; margin-bottom: 15px;">Partita non ancora validata</div>', unsafe_allow_html=True)
         else:
             st.markdown("<hr>", unsafe_allow_html=True)
 
-        edited_rows.append({
-            "idx": idx,
-            "GolCasa": gol_casa,
-            "GolOspite": gol_ospite,
-            "Valida": valida
-        })
+        # Aggiorna session_state
+        st.session_state[f"golcasa_{idx}"] = gol_casa
+        st.session_state[f"golospite_{idx}"] = gol_ospite
+        st.session_state[f"valida_{idx}"] = valida
 
-    for er in edited_rows:
-        st.session_state['df_torneo'].at[er['idx'], 'GolCasa'] = er['GolCasa']
-        st.session_state['df_torneo'].at[er['idx'], 'GolOspite'] = er['GolOspite']
-        st.session_state['df_torneo'].at[er['idx'], 'Valida'] = er['Valida']
+        # Salva in df_torneo
+        st.session_state['df_torneo'].at[idx, 'GolCasa'] = gol_casa
+        st.session_state['df_torneo'].at[idx, 'GolOspite'] = gol_ospite
+        st.session_state['df_torneo'].at[idx, 'Valida'] = valida
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.subheader(f"Classifica Girone {girone_sel}")
