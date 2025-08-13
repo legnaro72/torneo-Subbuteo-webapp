@@ -236,7 +236,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
 
         with col2:
             gol_casa = st.number_input("", min_value=0, max_value=20, value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0, key=f"golcasa_{idx}", label_visibility="hidden")
-
+    
         with col3:
             st.markdown("-") # Separatore
         
