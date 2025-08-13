@@ -294,7 +294,11 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.dataframe(df_girone.style.apply(color_rows, axis=1), use_container_width=True)
 
 def main():
-    st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉")
+    # st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉")
+
+    # Visualizza il titolo principale solo se lo stato è True
+    if st.session_state.get('mostra_titolo_principale', True):
+        st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉")
 
     # Visualizza sempre il nome torneo se esiste in session_state
     if "nome_torneo" in st.session_state:
