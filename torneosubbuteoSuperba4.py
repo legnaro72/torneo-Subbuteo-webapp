@@ -249,7 +249,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
 
         col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
 
-        # Inizializza i valori in session_state solo se non esistono
+        # Usa st.session_state solo per inizializzare
         if f"golcasa_{idx}" not in st.session_state:
             st.session_state[f"golcasa_{idx}"] = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
         if f"golospite_{idx}" not in st.session_state:
@@ -261,39 +261,42 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             st.markdown(f"**{casa}** vs **{ospite}**")
 
         with col2:
-            st.session_state[f"golcasa_{idx}"] = st.number_input(
-                "", min_value=0, max_value=20, 
-                value=st.session_state[f"golcasa_{idx}"], 
-                key=f"golcasa_{idx}", label_visibility="hidden"
+            st.number_input(
+                "", min_value=0, max_value=20,
+                key=f"golcasa_{idx}", 
+                value=st.session_state[f"golcasa_{idx}"],
+                label_visibility="hidden"
             )
 
         with col3:
-            st.markdown("-")  # separatore
+            st.markdown("-")
 
         with col4:
-            st.session_state[f"golospite_{idx}"] = st.number_input(
-                "", min_value=0, max_value=20, 
-                value=st.session_state[f"golospite_{idx}"], 
-                key=f"golospite_{idx}", label_visibility="hidden"
+            st.number_input(
+                "", min_value=0, max_value=20,
+                key=f"golospite_{idx}",
+                value=st.session_state[f"golospite_{idx}"],
+                label_visibility="hidden"
             )
 
         with col5:
-            st.session_state[f"valida_{idx}"] = st.checkbox(
-                "Valida", value=st.session_state[f"valida_{idx}"], key=f"valida_{idx}"
+            st.checkbox(
+                "Valida",
+                key=f"valida_{idx}",
+                value=st.session_state[f"valida_{idx}"]
             )
 
-        # Mostra messaggio se non validata
-        if not st.session_state[f"valida_{idx}"]:
-            st.markdown(f'<div style="color:red; margin-bottom: 15px;">Partita non ancora validata</div>', unsafe_allow_html=True)
-        else:
-            st.markdown("<hr>", unsafe_allow_html=True)
-
-        # Aggiorna df_torneo alla fine, senza fare assegnazioni dirette nello stesso ciclo
+        # Aggiorna il DataFrame direttamente dai valori dei widget
         df.at[idx, 'GolCasa'] = st.session_state[f"golcasa_{idx}"]
         df.at[idx, 'GolOspite'] = st.session_state[f"golospite_{idx}"]
         df.at[idx, 'Valida'] = st.session_state[f"valida_{idx}"]
 
-    # Salva tutto nello session_state fuori dal ciclo
+        # Messaggi
+        if not st.session_state[f"valida_{idx}"]:
+            st.markdown('<div style="color:red; margin-bottom: 15px;">Partita non ancora validata</div>', unsafe_allow_html=True)
+        else:
+            st.markdown("<hr>", unsafe_allow_html=True)
+
     st.session_state['df_torneo'] = df
 
 
