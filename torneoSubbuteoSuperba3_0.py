@@ -7,6 +7,26 @@ from fpdf import FPDF
 
 st.set_page_config(page_title="Gestione Torneo Superba a Gironi by Legnaro72", layout="wide")
 
+st.markdown("""
+    <style>
+    /* Rimuove i puntini neri */
+    ul, li {
+        list-style-type: none !important;
+        padding-left: 0 !important;
+        margin-left: 0 !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+/* Rimuove l'asterisco dai campi con etichetta nascosta */
+div[data-testid="stNumberInput"] label::before {
+    content: none;
+}
+</style>
+""", unsafe_allow_html=True)
+
 
 URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLegna/refs/heads/main/giocatoriSuperba.csv"
 
@@ -216,7 +236,7 @@ def esporta_pdf(df_torneo, df_classifica):
 
 
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
-    st.subheader(f"Calendario Girone {girone_sel} - Giornata {giornata_sel}")
+    st.subheader(f"Calendario  {girone_sel} - Giornata {giornata_sel}")
 
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if 'Valida' not in df_giornata.columns:
@@ -227,18 +247,23 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         casa = row['Casa']
         ospite = row['Ospite']
         val = row['Valida']
-        col1, col2, col3, col4 = st.columns([4,1,1,1])
+        
+        # Uso di colonne per una vista più compatta
+        col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
 
         with col1:
-            st.markdown(f"**{casa}**  vs  **{ospite}**")
+            st.markdown(f"**{casa}** vs **{ospite}**")
 
         with col2:
-            gol_casa = st.number_input(f"Gol {casa}", min_value=0, max_value=20, value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0, key=f"golcasa_{idx}")
-
+            gol_casa = st.number_input("", min_value=0, max_value=20, value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0, key=f"golcasa_{idx}", label_visibility="hidden")
+    
         with col3:
-            gol_ospite = st.number_input(f"Gol {ospite}", min_value=0, max_value=20, value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0, key=f"golospite_{idx}")
-
+            st.markdown("-") # Separatore
+        
         with col4:
+            gol_ospite = st.number_input("", min_value=0, max_value=20, value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0, key=f"golospite_{idx}", label_visibility="hidden")
+
+        with col5:
             valida = st.checkbox("Valida", value=val, key=f"valida_{idx}")
 
         if not valida:
@@ -280,8 +305,42 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.dataframe(df_girone.style.apply(color_rows, axis=1), use_container_width=True)
 
 def main():
-    st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉")
+    if "calendario_generato" not in st.session_state:
+        st.session_state.calendario_generato = False
+    
+    # Mostra titolo solo se non ancora generato
+    if not st.session_state.calendario_generato:
+        st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉")
 
+    # Visualizza sempre il nome torneo se esiste in session_state
+    if "nome_torneo" in st.session_state:
+        st.markdown(
+            f"""
+            <style>
+            .big-title {{
+                text-align: center;
+                font-size: clamp(16px, 4vw, 36px);
+                font-weight: bold;
+                margin-top: 10px;
+                margin-bottom: 20px;
+                color: red;
+                word-wrap: break-word;   /* forza il wrapping */
+                white-space: normal;     /* permette a Streamlit di andare a capo */
+            }}
+            </style>
+            <div class="big-title">🏆{st.session_state["nome_torneo"]}🏆</div>
+            """,
+            unsafe_allow_html=True
+        )
+
+
+    # Visualizza sempre il nome torneo se esiste in session_state
+    # if "nome_torneo" in st.session_state:
+    #     st.markdown(
+    #         f'<h2 style="color: red; text-align: center;">🏆{st.session_state["nome_torneo"]}🏆</h2>', 
+    #         unsafe_allow_html=True
+    #     )
+        
     df_master = carica_giocatori_master()
 
     # Inizializza stato per mostra/nascondi form
@@ -376,7 +435,9 @@ def main():
                 df_torneo = genera_calendario(giocatori_formattati, st.session_state['num_gironi'], st.session_state['tipo_calendario'])
                 st.session_state['df_torneo'] = df_torneo
                 st.success("Calendario generato e salvato!")
+                st.session_state.calendario_generato = True
                 st.session_state['mostra_form'] = False
+                st.rerun() 
 
     elif scelta == "Carica torneo da CSV":
         uploaded_file = st.file_uploader("Carica CSV torneo", type=["csv"])
