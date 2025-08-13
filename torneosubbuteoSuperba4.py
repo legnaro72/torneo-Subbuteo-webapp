@@ -282,12 +282,6 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
 def main():
     st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉")
 
-    if "nome_torneo" in st.session_state:
-        st.markdown(
-            f'<h2 style="color: red; text-align: center;">🏆{st.session_state["nome_torneo"]}🏆</h2>', 
-            unsafe_allow_html=True
-        )
-
     df_master = carica_giocatori_master()
 
     # Inizializza stato per mostra/nascondi form
