@@ -9,10 +9,10 @@ st.set_page_config(page_title="Gestione Torneo Superba a Gironi by Legnaro72", l
 
 st.markdown("""
 <style>
-    /* Nasconde il punto nero su tutti i number_input */
-    .stNumberInput > label::before {
-        content: none !important;
-    }
+/* Questa regola CSS rimuove il punto nero che appare quando le etichette sono nascoste. */
+div[data-testid="stNumberInput"] label::before {
+    content: none !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
