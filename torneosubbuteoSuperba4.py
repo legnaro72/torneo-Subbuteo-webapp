@@ -315,9 +315,29 @@ def main():
     # Visualizza sempre il nome torneo se esiste in session_state
     if "nome_torneo" in st.session_state:
         st.markdown(
-            f'<h2 style="color: red; text-align: center;">🏆{st.session_state["nome_torneo"]}🏆</h2>', 
+            f"""
+            <style>
+            .big-title {{
+                text-align: center;
+                font-size: clamp(30px, 8vw, 80px); /* minimo 30px, max 80px */
+                font-weight: bold;
+                margin-top: 10px;
+                margin-bottom: 20px;
+                color: red;
+            }}
+            </style>
+            <div class="big-title">🏆{st.session_state["nome_torneo"]}🏆</div>
+            """,
             unsafe_allow_html=True
         )
+
+
+    # Visualizza sempre il nome torneo se esiste in session_state
+    # if "nome_torneo" in st.session_state:
+    #     st.markdown(
+    #         f'<h2 style="color: red; text-align: center;">🏆{st.session_state["nome_torneo"]}🏆</h2>', 
+    #         unsafe_allow_html=True
+    #     )
         
     df_master = carica_giocatori_master()
 
