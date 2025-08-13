@@ -9,12 +9,14 @@ st.set_page_config(page_title="Gestione Torneo Superba a Gironi by Legnaro72", l
 
 st.markdown("""
 <style>
-/* Rimuove il punto nero che appare accanto ai number_input */
-div.stNumberInput > label[data-testid="stWidgetLabel"]::before {
-    content: none !important;
+/* Rimuove l'asterisco dai campi con etichetta nascosta */
+div[data-testid="stNumberInput"] label::before {
+    content: none;
 }
 </style>
 """, unsafe_allow_html=True)
+
+
 URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLegna/refs/heads/main/giocatoriSuperba.csv"
 
 def carica_giocatori_master(url=URL_GIOCATORI):
