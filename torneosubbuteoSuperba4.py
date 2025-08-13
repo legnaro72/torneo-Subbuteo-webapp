@@ -319,7 +319,7 @@ def main():
             <style>
             .big-title {{
                 text-align: center;
-                font-size: clamp(30px, 8vw, 80px); /* minimo 30px, max 80px */
+                font-size: clamp(20px, 4vw, 40px); /* minimo 20px, max 40px */
                 font-weight: bold;
                 margin-top: 10px;
                 margin-bottom: 20px;
