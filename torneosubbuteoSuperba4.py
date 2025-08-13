@@ -227,18 +227,23 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         casa = row['Casa']
         ospite = row['Ospite']
         val = row['Valida']
-        col1, col2, col3, col4 = st.columns([4,1,1,1])
+        
+        # Uso di colonne per una vista più compatta
+        col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
 
         with col1:
-            st.markdown(f"**{casa}**  vs  **{ospite}**")
+            st.markdown(f"**{casa}** vs **{ospite}**")
 
         with col2:
-            gol_casa = st.number_input(f"Gol {casa}", min_value=0, max_value=20, value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0, key=f"golcasa_{idx}")
+            gol_casa = st.number_input("", min_value=0, max_value=20, value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0, key=f"golcasa_{idx}", label_visibility="hidden")
 
         with col3:
-            gol_ospite = st.number_input(f"Gol {ospite}", min_value=0, max_value=20, value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0, key=f"golospite_{idx}")
-
+            st.markdown("-") # Separatore
+        
         with col4:
+            gol_ospite = st.number_input("", min_value=0, max_value=20, value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0, key=f"golospite_{idx}", label_visibility="hidden")
+
+        with col5:
             valida = st.checkbox("Valida", value=val, key=f"valida_{idx}")
 
         if not valida:
