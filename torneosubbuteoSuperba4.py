@@ -294,10 +294,11 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.dataframe(df_girone.style.apply(color_rows, axis=1), use_container_width=True)
 
 def main():
-    # st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉")
-
-    # Visualizza il titolo principale solo se lo stato è True
-    if st.session_state.get('mostra_titolo_principale', True):
+    if "calendario_generato" not in st.session_state:
+        st.session_state.calendario_generato = False
+    
+    # Mostra titolo solo se non ancora generato
+    if not st.session_state.calendario_generato:
         st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉")
 
     # Visualizza sempre il nome torneo se esiste in session_state
@@ -401,6 +402,7 @@ def main():
                 df_torneo = genera_calendario(giocatori_formattati, st.session_state['num_gironi'], st.session_state['tipo_calendario'])
                 st.session_state['df_torneo'] = df_torneo
                 st.success("Calendario generato e salvato!")
+                st.session_state.calendario_generato = True
                 st.session_state['mostra_form'] = False
                 st.rerun() 
 
