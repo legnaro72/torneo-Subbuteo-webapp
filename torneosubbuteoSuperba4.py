@@ -7,6 +7,15 @@ from fpdf import FPDF
 
 st.set_page_config(page_title="Gestione Torneo Superba a Gironi by Legnaro72", layout="wide")
 
+st.markdown("""
+<style>
+    /* Nasconde il punto nero su tutti i number_input */
+    .stNumberInput > label::before {
+        content: none !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 
 URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLegna/refs/heads/main/giocatoriSuperba.csv"
 
