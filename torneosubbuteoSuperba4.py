@@ -319,11 +319,13 @@ def main():
             <style>
             .big-title {{
                 text-align: center;
-                font-size: clamp(20px, 4vw, 40px); /* minimo 20px, max 40px */
+                font-size: clamp(16px, 4vw, 36px);
                 font-weight: bold;
                 margin-top: 10px;
                 margin-bottom: 20px;
                 color: red;
+                word-wrap: break-word;   /* forza il wrapping */
+                white-space: normal;     /* permette a Streamlit di andare a capo */
             }}
             </style>
             <div class="big-title">🏆{st.session_state["nome_torneo"]}🏆</div>
