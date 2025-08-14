@@ -575,8 +575,8 @@ def main():
         st.subheader(f"Calendario {st.session_state['girone_sel']} - Giornata {st.session_state['giornata_sel']}")
         
                 
-                girone_sel = st.session_state['girone_sel']
-                giornata_sel = st.session_state['giornata_sel']
+        girone_sel = st.session_state['girone_sel']
+        giornata_sel = st.session_state['giornata_sel']
 
 
         mostra_calendario_giornata(df, girone_sel, giornata_sel)
