@@ -477,11 +477,56 @@ def main():
     if 'df_torneo' in st.session_state and not st.session_state['mostra_form']:
         df = st.session_state['df_torneo']
 
-        st.sidebar.markdown("---")
-        gironi = sorted(df['Girone'].dropna().unique())
-        girone_sel = st.sidebar.selectbox("Seleziona Girone", gironi)
-        giornate = sorted(df[df['Girone'] == girone_sel]['Giornata'].dropna().unique())
-        giornata_sel = st.sidebar.selectbox("Seleziona Giornata", giornate)
+        # --- Selettori inline nel corpo pagina (sotto il titolo torneo) ---
+        gironi = sorted(df['Girone'].dropna().unique().tolist())
+        
+        # Persistenza selezioni
+        if 'girone_sel' not in st.session_state:
+            st.session_state['girone_sel'] = gironi[0]
+        
+        giornate_correnti = sorted(
+            df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist()
+        )
+        if 'giornata_sel' not in st.session_state:
+            st.session_state['giornata_sel'] = giornate_correnti[0]
+        
+        # Titolo della sezione corrente
+        st.subheader(f"Calendario {st.session_state['girone_sel']} - Giornata {st.session_state['giornata_sel']}")
+        
+        # Selettori allineati orizzontalmente
+        sel_col1, sel_col2 = st.columns(2)
+        with sel_col1:
+            nuovo_girone = st.selectbox(
+                "Seleziona Girone",
+                gironi,
+                index=gironi.index(st.session_state['girone_sel'])
+            )
+        
+        with sel_col2:
+            # Aggiorna l’elenco giornate se cambia il girone
+            giornate_correnti = sorted(
+                df[df['Girone'] == nuovo_girone]['Giornata'].dropna().unique().tolist()
+            )
+            # Mantieni la giornata se ancora valida, altrimenti vai alla prima
+            giornata_index = (
+                giornate_correnti.index(st.session_state['giornata_sel'])
+                if st.session_state['giornata_sel'] in giornate_correnti else 0
+            )
+            nuova_giornata = st.selectbox(
+                "Seleziona Giornata",
+                giornate_correnti,
+                index=giornata_index
+            )
+        
+        # Se l’utente cambia qualcosa, aggiorna e ricarica
+        if (nuovo_girone != st.session_state['girone_sel']) or (nuova_giornata != st.session_state['giornata_sel']):
+            st.session_state['girone_sel'] = nuovo_girone
+            st.session_state['giornata_sel'] = nuova_giornata
+            st.rerun()
+        
+        girone_sel = st.session_state['girone_sel']
+        giornata_sel = st.session_state['giornata_sel']
+
 
         mostra_calendario_giornata(df, girone_sel, giornata_sel)
 
