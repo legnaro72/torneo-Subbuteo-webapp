@@ -505,27 +505,66 @@ def main():
         )
         if 'giornata_sel' not in st.session_state or st.session_state['giornata_sel'] not in giornate_correnti:
             st.session_state['giornata_sel'] = giornate_correnti[0]
+            
+        # --- Stile compatto per mobile Seleziona Girone---
         
-        # --- Selettore Girone ---
-        sel_col_girone1, sel_col_girone2, sel_col_girone3 = st.columns([1,3,1])
+        # --- Stile compatto per mobile ---
+        st.markdown("""
+        <style>
+        /* Riduce larghezza selectbox */
+        div[data-baseweb="select"] {
+            min-width: 60px !important;
+            max-width: 90px !important;
+            margin-top: 0px !important;
+            margin-bottom: 0px !important;
+        }
         
-        with sel_col_girone1:
+        /* Riduce padding dei bottoni */
+        button[kind="secondary"] {
+            padding: 0.2rem 0.4rem !important;
+            min-width: 30px !important;
+        }
+        
+        /* Riduce gap tra colonne */
+        .css-1adrfps {
+            gap: 0.2rem !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # --- Inizializza gironi e giornate ---
+        gironi = sorted(df['Girone'].dropna().unique().tolist())
+        if 'girone_sel' not in st.session_state:
+            st.session_state['girone_sel'] = gironi[0]
+        
+        giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
+        if 'giornata_sel' not in st.session_state or st.session_state['giornata_sel'] not in giornate_correnti:
+            st.session_state['giornata_sel'] = giornate_correnti[0]
+        
+        # --- Contenitore principale: Girone + Giornata sulla stessa riga ---
+        col_gm, col_gsel, col_gp, col_jm, col_jsel, col_jp = st.columns([0.5, 1, 0.5, 0.5, 1, 0.5])
+        
+        # Freccia Girone -
+        with col_gm:
             if st.button("◀️", key="girone_meno"):
                 idx = gironi.index(st.session_state['girone_sel'])
                 if idx > 0:
                     st.session_state['girone_sel'] = gironi[idx-1]
-                    st.session_state['giornata_sel'] = None  # reset giornata quando cambia girone
+                    st.session_state['giornata_sel'] = None
                     st.rerun()
         
-        with sel_col_girone2:
+        # Selectbox Girone
+        with col_gsel:
             nuovo_girone = st.selectbox(
-                "Seleziona Girone",
+                "Gir",
                 gironi,
                 index=gironi.index(st.session_state['girone_sel']),
-                key="sel_girone_main"
+                key="sel_girone_inline",
+                label_visibility="collapsed"
             )
         
-        with sel_col_girone3:
+        # Freccia Girone +
+        with col_gp:
             if st.button("▶️", key="girone_piu"):
                 idx = gironi.index(st.session_state['girone_sel'])
                 if idx < len(gironi)-1:
@@ -538,29 +577,31 @@ def main():
             st.session_state['girone_sel'] = nuovo_girone
             st.session_state['giornata_sel'] = None
         
-        # --- Selettore Giornata ---
+        # Aggiorna giornate correnti dopo cambio girone
         giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
-        if st.session_state['giornata_sel'] is None or st.session_state['giornata_sel'] not in giornate_correnti:
+        if st.session_state['giornata_sel'] not in giornate_correnti:
             st.session_state['giornata_sel'] = giornate_correnti[0]
         
-        sel_col_giornata1, sel_col_giornata2, sel_col_giornata3 = st.columns([1,3,1])
-        
-        with sel_col_giornata1:
+        # Freccia Giornata -
+        with col_jm:
             if st.button("◀️", key="giornata_meno"):
                 idx = giornate_correnti.index(st.session_state['giornata_sel'])
                 if idx > 0:
                     st.session_state['giornata_sel'] = giornate_correnti[idx-1]
                     st.rerun()
         
-        with sel_col_giornata2:
+        # Selectbox Giornata
+        with col_jsel:
             nuova_giornata = st.selectbox(
-                "Seleziona Giornata",
+                "Gio",
                 giornate_correnti,
                 index=giornate_correnti.index(st.session_state['giornata_sel']),
-                key="sel_giornata_main"
+                key="sel_giornata_inline",
+                label_visibility="collapsed"
             )
         
-        with sel_col_giornata3:
+        # Freccia Giornata +
+        with col_jp:
             if st.button("▶️", key="giornata_piu"):
                 idx = giornate_correnti.index(st.session_state['giornata_sel'])
                 if idx < len(giornate_correnti)-1:
@@ -570,6 +611,7 @@ def main():
         # Aggiorna giornata se cambiata tramite selectbox
         if nuova_giornata != st.session_state['giornata_sel']:
             st.session_state['giornata_sel'] = nuova_giornata
+
         
         # --- Titolo sezione corrente ---
         st.subheader(f"Calendario {st.session_state['girone_sel']} - Giornata {st.session_state['giornata_sel']}")
