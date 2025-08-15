@@ -5,7 +5,6 @@ import requests
 from io import StringIO
 import random
 from fpdf import FPDF
-import time  # <-- AGGIUNTO per autosave
 
 st.set_page_config(page_title="Gestione Torneo Superba a Gironi by Legnaro72", layout="wide")
 
@@ -31,31 +30,6 @@ div[data-testid="stNumberInput"] label::before {
 
 
 URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLegna/refs/heads/main/giocatoriSuperba.csv"
-
-# === AUTOSAVE: Funzione per salvataggio automatico e manuale ===
-def salva_torneo_csv(df, nome_file="torneo_autosave.csv"):
-    if df is not None and not df.empty:
-        df.to_csv(nome_file, index=False)
-        # Salvo anche come bytes da offrire per il download
-        st.session_state['autosave_csv_bytes'] = df.to_csv(index=False).encode('utf-8')
-        st.session_state['autosave_csv_name'] = nome_file
-
-def autosave_if_needed():
-    now = time.time()
-    interval = 60  # Autosave ogni 60 secondi
-    if 'last_autosave' not in st.session_state or now - st.session_state['last_autosave'] > interval:
-        if 'df_torneo' in st.session_state:
-            salva_torneo_csv(st.session_state['df_torneo'])
-            st.session_state['last_autosave'] = now
-            st.sidebar.info("Autosave effettuato!")
-            # Mostra subito il pulsante download in sidebar
-            if 'autosave_csv_bytes' in st.session_state:
-                st.sidebar.download_button(
-                    "⬇️ Scarica ultimo autosave",
-                    data=st.session_state['autosave_csv_bytes'],
-                    file_name=st.session_state.get('autosave_csv_name', 'torneo_autosave.csv'),
-                    mime="text/csv"
-                )
 
 def carica_giocatori_master(url=URL_GIOCATORI):
     try:
@@ -349,10 +323,6 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.dataframe(df_girone.style.apply(color_rows, axis=1), use_container_width=True)
 
 def main():
-    # --- AUTOSAVE: chiamata all'inizio ogni volta che c'è un torneo caricato ---
-    if 'df_torneo' in st.session_state:
-        autosave_if_needed()
-    
     if "calendario_generato" not in st.session_state:
         st.session_state.calendario_generato = False
     
@@ -522,90 +492,39 @@ def main():
             st.session_state['giornata_sel'] = giornate_correnti[0]
         
         # Titolo della sezione corrente
-        #MASSIst.subheader(f"Calendario {st.session_state['girone_sel']} - Giornata {st.session_state['giornata_sel']}")
+        st.subheader(f"Calendario {st.session_state['girone_sel']} - Giornata {st.session_state['giornata_sel']}")
         
-        # --- Selettori Girone + Giornata con pulsanti + e - ---
-        gironi = sorted(df['Girone'].dropna().unique().tolist())
-        
-        # Inizializza selezioni se non esistono
-        if 'girone_sel' not in st.session_state:
-            st.session_state['girone_sel'] = gironi[0]
-        
-        giornate_correnti = sorted(
-            df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist()
-        )
-        if 'giornata_sel' not in st.session_state or st.session_state['giornata_sel'] not in giornate_correnti:
-            st.session_state['giornata_sel'] = giornate_correnti[0]
-        
-        # --- Selettore Girone ---
-        sel_col_girone1, sel_col_girone2, sel_col_girone3 = st.columns([1,3,1])
-        
-        with sel_col_girone1:
-            if st.button("◀️", key="girone_meno"):
-                idx = gironi.index(st.session_state['girone_sel'])
-                if idx > 0:
-                    st.session_state['girone_sel'] = gironi[idx-1]
-                    st.session_state['giornata_sel'] = None  # reset giornata quando cambia girone
-                    st.rerun()
-        
-        with sel_col_girone2:
+        # Selettori allineati orizzontalmente
+        sel_col1, sel_col2 = st.columns(2)
+        with sel_col1:
             nuovo_girone = st.selectbox(
                 "Seleziona Girone",
                 gironi,
-                index=gironi.index(st.session_state['girone_sel']),
-                key="sel_girone_main"
+                index=gironi.index(st.session_state['girone_sel'])
             )
         
-        with sel_col_girone3:
-            if st.button("▶️", key="girone_piu"):
-                idx = gironi.index(st.session_state['girone_sel'])
-                if idx < len(gironi)-1:
-                    st.session_state['girone_sel'] = gironi[idx+1]
-                    st.session_state['giornata_sel'] = None
-                    st.rerun()
-        
-        # Aggiorna girone se cambiato tramite selectbox
-        if nuovo_girone != st.session_state['girone_sel']:
-            st.session_state['girone_sel'] = nuovo_girone
-            st.session_state['giornata_sel'] = None
-        
-        # --- Selettore Giornata ---
-        giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
-        if st.session_state['giornata_sel'] is None or st.session_state['giornata_sel'] not in giornate_correnti:
-            st.session_state['giornata_sel'] = giornate_correnti[0]
-        
-        sel_col_giornata1, sel_col_giornata2, sel_col_giornata3 = st.columns([1,3,1])
-        
-        with sel_col_giornata1:
-            if st.button("◀️", key="giornata_meno"):
-                idx = giornate_correnti.index(st.session_state['giornata_sel'])
-                if idx > 0:
-                    st.session_state['giornata_sel'] = giornate_correnti[idx-1]
-                    st.rerun()
-        
-        with sel_col_giornata2:
+        with sel_col2:
+            # Aggiorna l’elenco giornate se cambia il girone
+            giornate_correnti = sorted(
+                df[df['Girone'] == nuovo_girone]['Giornata'].dropna().unique().tolist()
+            )
+            # Mantieni la giornata se ancora valida, altrimenti vai alla prima
+            giornata_index = (
+                giornate_correnti.index(st.session_state['giornata_sel'])
+                if st.session_state['giornata_sel'] in giornate_correnti else 0
+            )
             nuova_giornata = st.selectbox(
                 "Seleziona Giornata",
                 giornate_correnti,
-                index=giornate_correnti.index(st.session_state['giornata_sel']),
-                key="sel_giornata_main"
+                index=giornata_index
             )
         
-        with sel_col_giornata3:
-            if st.button("▶️", key="giornata_piu"):
-                idx = giornate_correnti.index(st.session_state['giornata_sel'])
-                if idx < len(giornate_correnti)-1:
-                    st.session_state['giornata_sel'] = giornate_correnti[idx+1]
-                    st.rerun()
-        
-        # Aggiorna giornata se cambiata tramite selectbox
-        if nuova_giornata != st.session_state['giornata_sel']:
+        # Se l’utente cambia qualcosa, aggiorna e ricarica
+        if (nuovo_girone != st.session_state['girone_sel']) or (nuova_giornata != st.session_state['giornata_sel']):
+            st.session_state['girone_sel'] = nuovo_girone
             st.session_state['giornata_sel'] = nuova_giornata
+            st.rerun()
         
-        # --- Titolo sezione corrente ---
-        st.subheader(f"Calendario {st.session_state['girone_sel']} - Giornata {st.session_state['giornata_sel']}")
-        
-                
         girone_sel = st.session_state['girone_sel']
         giornata_sel = st.session_state['giornata_sel']
 
@@ -705,16 +624,10 @@ def main():
         st.sidebar.download_button("⬇️ Scarica CSV Torneo", data=csv_bytes, file_name=nome_torneo, mime="text/csv")
 
         # --- ESPORTA PDF ---
-        #st.sidebar.markdown("---")
-        #if st.sidebar.button("📄 Esporta PDF Calendario + Classifica"):
-        #    pdf_bytes = esporta_pdf(df, classifica)
-        #    st.sidebar.download_button("Download PDF calendario + classifica", data=pdf_bytes, file_name=nome_torneo, mime="application/pdf")
-
-        # --- AGGIUNGI QUI IL PULSANTE DI SALVATAGGIO MANUALE IN SIDEBAR ---
         st.sidebar.markdown("---")
-        if st.sidebar.button("💾 Salva manualmente torneo (CSV)"):
-            salva_torneo_csv(st.session_state['df_torneo'], "torneo_salvato.csv")
-            st.sidebar.success("Salvataggio manuale effettuato in torneo_salvato.csv!")
+        if st.sidebar.button("📄 Esporta PDF Calendario + Classifica"):
+            pdf_bytes = esporta_pdf(df, classifica)
+            st.sidebar.download_button("Download PDF calendario + classifica", data=pdf_bytes, file_name=nome_torneo, mime="application/pdf")
 
 
 if __name__ == "__main__":
