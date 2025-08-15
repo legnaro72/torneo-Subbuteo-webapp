@@ -492,7 +492,7 @@ def main():
             st.session_state['giornata_sel'] = giornate_correnti[0]
         
         # Titolo della sezione corrente
-        st.subheader(f"Calendario {st.session_state['girone_sel']} - Giornata {st.session_state['giornata_sel']}")
+        #MASSIst.subheader(f"Calendario {st.session_state['girone_sel']} - Giornata {st.session_state['giornata_sel']}")
         
         # --- Selettori Girone + Giornata con pulsanti + e - ---
         gironi = sorted(df['Girone'].dropna().unique().tolist())
