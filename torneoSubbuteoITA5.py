@@ -531,7 +531,7 @@ with st.container():
     # --- Selectbox Girone
     with col_gsel:
         nuovo_girone = st.selectbox(
-            "Gir",
+            "Girone",
             gironi,
             index=gironi.index(st.session_state['girone_sel']),
             key="sel_girone_inline",
@@ -570,7 +570,7 @@ with st.container():
     # --- Selectbox Giornata
     with col_jsel:
         nuova_giornata = st.selectbox(
-            "Gio",
+            "Giornata",
             giornate_correnti,
             index=giornate_correnti.index(st.session_state['giornata_sel']),
             key="sel_giornata_inline",
