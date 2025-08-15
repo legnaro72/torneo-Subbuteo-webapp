@@ -5,6 +5,7 @@ import requests
 from io import StringIO
 import random
 from fpdf import FPDF
+import time  # <-- AGGIUNTO per autosave
 
 st.set_page_config(page_title="Gestione Torneo Superba a Gironi by Legnaro72", layout="wide")
 
@@ -30,6 +31,21 @@ div[data-testid="stNumberInput"] label::before {
 
 
 URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLegna/refs/heads/main/giocatoriSuperba.csv"
+
+# === AUTOSAVE: Funzione per salvataggio automatico e manuale ===
+def salva_torneo_csv(df, nome_file="torneo_autosave.csv"):
+    if df is not None and not df.empty:
+        df.to_csv(nome_file, index=False)
+
+def autosave_if_needed():
+    now = time.time()
+    interval = 60  # Autosave ogni 60 secondi
+    if 'last_autosave' not in st.session_state or now - st.session_state['last_autosave'] > interval:
+        if 'df_torneo' in st.session_state:
+            salva_torneo_csv(st.session_state['df_torneo'])
+            st.session_state['last_autosave'] = now
+            st.sidebar.info("Autosave effettuato!")
+
 
 def carica_giocatori_master(url=URL_GIOCATORI):
     try:
@@ -323,6 +339,10 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.dataframe(df_girone.style.apply(color_rows, axis=1), use_container_width=True)
 
 def main():
+    # --- AUTOSAVE: chiamata all'inizio ogni volta che c'è un torneo caricato ---
+    if 'df_torneo' in st.session_state:
+        autosave_if_needed()
+    
     if "calendario_generato" not in st.session_state:
         st.session_state.calendario_generato = False
     
@@ -675,10 +695,16 @@ def main():
         st.sidebar.download_button("⬇️ Scarica CSV Torneo", data=csv_bytes, file_name=nome_torneo, mime="text/csv")
 
         # --- ESPORTA PDF ---
+        #st.sidebar.markdown("---")
+        #if st.sidebar.button("📄 Esporta PDF Calendario + Classifica"):
+        #    pdf_bytes = esporta_pdf(df, classifica)
+        #    st.sidebar.download_button("Download PDF calendario + classifica", data=pdf_bytes, file_name=nome_torneo, mime="application/pdf")
+
+        # --- AGGIUNGI QUI IL PULSANTE DI SALVATAGGIO MANUALE IN SIDEBAR ---
         st.sidebar.markdown("---")
-        if st.sidebar.button("📄 Esporta PDF Calendario + Classifica"):
-            pdf_bytes = esporta_pdf(df, classifica)
-            st.sidebar.download_button("Download PDF calendario + classifica", data=pdf_bytes, file_name=nome_torneo, mime="application/pdf")
+        if st.sidebar.button("💾 Salva manualmente torneo (CSV)"):
+            salva_torneo_csv(st.session_state['df_torneo'], "torneo_salvato.csv")
+            st.sidebar.success("Salvataggio manuale effettuato in torneo_salvato.csv!")
 
 
 if __name__ == "__main__":
