@@ -36,6 +36,9 @@ URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLeg
 def salva_torneo_csv(df, nome_file="torneo_autosave.csv"):
     if df is not None and not df.empty:
         df.to_csv(nome_file, index=False)
+        # Salvo anche come bytes da offrire per il download
+        st.session_state['autosave_csv_bytes'] = df.to_csv(index=False).encode('utf-8')
+        st.session_state['autosave_csv_name'] = nome_file
 
 def autosave_if_needed():
     now = time.time()
@@ -45,7 +48,14 @@ def autosave_if_needed():
             salva_torneo_csv(st.session_state['df_torneo'])
             st.session_state['last_autosave'] = now
             st.sidebar.info("Autosave effettuato!")
-
+            # Mostra subito il pulsante download in sidebar
+            if 'autosave_csv_bytes' in st.session_state:
+                st.sidebar.download_button(
+                    "⬇️ Scarica ultimo autosave",
+                    data=st.session_state['autosave_csv_bytes'],
+                    file_name=st.session_state.get('autosave_csv_name', 'torneo_autosave.csv'),
+                    mime="text/csv"
+                )
 
 def carica_giocatori_master(url=URL_GIOCATORI):
     try:
