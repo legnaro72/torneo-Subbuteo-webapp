@@ -658,7 +658,7 @@ def main():
 
         
         # --- PULSANTI DI SALVATAGGIO NEL SIDEBAR ---
-        salva_file_sidebar()   # <--- QUESTO È IL PUNTO GIUSTO
+        #salva_file_sidebar()   # <--- QUESTO È IL PUNTO GIUSTO
         # --- SALVATAGGIO ED ESPORTAZIONE ---
         st.sidebar.markdown("## 💾 Salvataggio Torneo")
         
