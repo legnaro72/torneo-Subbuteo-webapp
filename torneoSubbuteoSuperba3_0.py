@@ -130,56 +130,40 @@ def aggiorna_classifica(df):
     return df_classifica
 
 def salva_file_sidebar():
-    # Nome torneo
-    nome_torneo = st.session_state.get("nome_torneo", "Torneo")
+    st.sidebar.markdown("## 💾 Salvataggio Torneo")
 
-    # Timestamp
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    nome_torneo = st.session_state.get("nome_torneo", "torneo")
 
-    # === SALVATAGGIO CSV COMPLETO ===
-    if "calendario" in st.session_state and "classifica" in st.session_state:
-        calendario = st.session_state["calendario"].copy()
-        classifica = st.session_state["classifica"].copy()
+    # --- CSV ---
+    if st.sidebar.button("💾 Salva CSV su disco"):
+        nome_file_csv = f"{nome_torneo}.csv"
+        df = st.session_state.get("df")
+        if df is not None:
+            df.to_csv(nome_file_csv, index=False, encoding="utf-8")
+            st.sidebar.success(f"File salvato: {nome_file_csv}")
 
-        # Aggiungo una colonna per distinguere i due blocchi
-        calendario.insert(0, "SEZIONE", "PARTITE")
-        classifica.insert(0, "SEZIONE", "CLASSIFICA")
+    df = st.session_state.get("df")
+    if df is not None:
+        csv_bytes = df.to_csv(index=False).encode("utf-8")
+        st.sidebar.download_button("⬇️ Scarica CSV", data=csv_bytes, file_name=f"{nome_torneo}.csv", mime="text/csv")
 
-        # Concateno partite e classifica
-        export_df = pd.concat([calendario, classifica], ignore_index=True, sort=False)
+    # --- PDF ---
+    if st.sidebar.button("💾 Salva PDF su disco"):
+        classifica = st.session_state.get("classifica")
+        df = st.session_state.get("df")
+        if df is not None and classifica is not None:
+            pdf_bytes = esporta_pdf(df, classifica)
+            nome_file_pdf = f"{nome_torneo}.pdf"
+            with open(nome_file_pdf, "wb") as f:
+                f.write(pdf_bytes)
+            st.sidebar.success(f"File salvato: {nome_file_pdf}")
 
-        # Esporta in memoria come CSV
-        csv_buffer = io.StringIO()
-        export_df.to_csv(csv_buffer, index=False)
-        csv_bytes = csv_buffer.getvalue().encode("utf-8")
-
-        st.sidebar.download_button(
-            label="💾 Salva CSV",
-            data=csv_bytes,
-            file_name=f"{nome_torneo}_{timestamp}.csv",
-            mime="text/csv"
-        )
-
-    # === SALVATAGGIO PDF CLASSIFICA ===
-    if "classifica" in st.session_state:
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
-        pdf.cell(200, 10, f"Classifica - {nome_torneo}", ln=True, align="C")
-        pdf.ln(10)
-
-        classifica = st.session_state["classifica"].copy()
-        for idx, row in classifica.iterrows():
-            pdf.cell(200, 8, f"{row['Squadra']} - {row['Punti']} punti", ln=True)
-
-        pdf_buffer = io.BytesIO()
-        pdf.output(pdf_buffer)
-        st.sidebar.download_button(
-            label="📄 Salva PDF",
-            data=pdf_buffer.getvalue(),
-            file_name=f"{nome_torneo}_{timestamp}.pdf",
-            mime="application/pdf"
-        )
+    if st.sidebar.button("⬇️ Scarica PDF"):
+        classifica = st.session_state.get("classifica")
+        df = st.session_state.get("df")
+        if df is not None and classifica is not None:
+            pdf_bytes = esporta_pdf(df, classifica)
+            st.sidebar.download_button("Scarica PDF", data=pdf_bytes, file_name=f"{nome_torneo}.pdf", mime="application/pdf")
 
 
 def esporta_pdf(df_torneo, df_classifica):
