@@ -659,6 +659,48 @@ def main():
         
         # --- PULSANTI DI SALVATAGGIO NEL SIDEBAR ---
         salva_file_sidebar()   # <--- QUESTO È IL PUNTO GIUSTO
+        # --- SALVATAGGIO ED ESPORTAZIONE ---
+        st.sidebar.markdown("## 💾 Salvataggio Torneo")
+        
+        nome_torneo = st.session_state.get("nome_torneo", "torneo")
+        df = st.session_state.get("df")
+        classifica = st.session_state.get("classifica")
+        
+        # --- SALVA CSV SU DISCO (solo se giri in locale su PC) ---
+        if st.sidebar.button("💾 Salva CSV su disco"):
+            if df is not None:
+                nome_file_csv = f"{nome_torneo}.csv"
+                df.to_csv(nome_file_csv, index=False, encoding="utf-8")
+                st.sidebar.success(f"File salvato in locale: {nome_file_csv}")
+        
+        # --- DOWNLOAD CSV ---
+        if df is not None:
+            csv_bytes = df.to_csv(index=False).encode("utf-8")
+            st.sidebar.download_button(
+                "⬇️ Scarica CSV",
+                data=csv_bytes,
+                file_name=f"{nome_torneo}.csv",
+                mime="text/csv"
+            )
+        
+        # --- SALVA PDF SU DISCO ---
+        if st.sidebar.button("💾 Salva PDF su disco"):
+            if df is not None and classifica is not None:
+                pdf_bytes = esporta_pdf(df, classifica)
+                nome_file_pdf = f"{nome_torneo}.pdf"
+                with open(nome_file_pdf, "wb") as f:
+                    f.write(pdf_bytes)
+                st.sidebar.success(f"File salvato in locale: {nome_file_pdf}")
+        
+        # --- DOWNLOAD PDF ---
+        if df is not None and classifica is not None:
+            pdf_bytes = esporta_pdf(df, classifica)
+            st.sidebar.download_button(
+                "⬇️ Scarica PDF",
+                data=pdf_bytes,
+                file_name=f"{nome_torneo}.pdf",
+                mime="application/pdf"
+            )
 
        
 
