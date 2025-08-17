@@ -5,16 +5,24 @@ from io import StringIO
 import random
 from fpdf import FPDF
 
-# Funzione per stile invisibile di None/nan/stringa vuota su tema chiaro/scuro
-def style_hide_none(df):
+# --- Funzione di stile per None/nan invisibili e colorazione righe ---
+def combined_style(df):
     is_dark = st.get_option("theme.base") == "dark"
-    color = "#fff" if is_dark else "#000"
-    def style_func(val):
-        strval = str(val).strip().lower()
-        if strval in ["none", "nan", ""]:
-            return f'color: {color};'
-        return ''
-    return df.style.applymap(style_func)
+    def row_style(row):
+        base = [''] * len(row)
+        if row.name == 0:
+            base = [f'background-color: #155724; color: white' if is_dark else 'background-color: #d4edda; color: black'] * len(row)
+        elif row.name <= 2:
+            base = [f'background-color: #856404; color: white' if is_dark else 'background-color: #fff3cd; color: black'] * len(row)
+        else:
+            base = [f'color: white' if is_dark else ''] * len(row)
+        for i, val in enumerate(row):
+            sval = str(val).strip().lower()
+            if sval in ["none", "nan", ""]:
+                base[i] = f'color: #fff;' if is_dark else 'color: #000;'
+        return base
+    return df.style.apply(row_style, axis=1)
+# ---------------------------------------------------------------------
 
 st.set_page_config(page_title="Gestione Torneo Superba a Gironi by Legnaro72", layout="wide")
 
@@ -304,18 +312,8 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
         st.info("Nessuna partita validata: la classifica sarà disponibile dopo l'inserimento e validazione dei risultati.")
         return
 
-    is_dark = st.get_option("theme.base") == "dark"
-
-    def color_rows(row):
-        if row.name == 0:
-            return ['background-color: #155724; color: white'] * len(row) if is_dark else ['background-color: #d4edda; color: black'] * len(row)
-        elif row.name <= 2:
-            return ['background-color: #856404; color: white'] * len(row) if is_dark else ['background-color: #fff3cd; color: black'] * len(row)
-        else:
-            return ['color: white'] * len(row) if is_dark else [''] * len(row)
-
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
-    styled = style_hide_none(df_girone).apply(color_rows, axis=1)
+    styled = combined_style(df_girone)
     st.dataframe(styled, use_container_width=True)
 
 def main():
