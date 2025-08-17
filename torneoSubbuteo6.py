@@ -549,8 +549,9 @@ def main():
 
         df_calendario = st.session_state['df_torneo']
         df_classifica = aggiorna_classifica(df_calendario)
-        if df_classifica is not None:
-            df_classifica = df_classifica.fillna(0)   # 🔹 FIX: niente più None nella classifica
+        df_classifica = df_classifica.replace({None: ""}).fillna("")
+        for col in df_classifica.columns:
+            df_classifica[col] = df_classifica[col].astype(str)
 
         if df_classifica is not None and not df_classifica.empty:
             df_classifica['Tipo'] = 'Classifica'
@@ -569,7 +570,7 @@ def main():
             df_calendario['Tipo'] = 'Calendario'
             df_combinato = df_calendario
         
-        df_combinato = df_combinato.fillna("")
+        df_combinato = df_combinato.replace({None: ""}).fillna("")
         for col in df_combinato.columns:
             df_combinato[col] = df_combinato[col].astype(str)
         
