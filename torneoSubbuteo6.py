@@ -267,7 +267,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             st.number_input(
                 "", min_value=0, max_value=20,
                 key=f"golospite_{idx}",
-                value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
+                value=int(row['GolOspite']) if pd.notna(row['GolOspite']) and str(row['GolOspite']).isdigit() else 0,
                 label_visibility="hidden"
             )
 
