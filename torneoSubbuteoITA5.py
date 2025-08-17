@@ -1,6 +1,7 @@
 
 
 
+
 import streamlit as st
 import pandas as pd
 import requests
@@ -592,15 +593,8 @@ def main():
         else:
             st.sidebar.info("La classifica non è ancora disponibile per l'esportazione.")
         
-        st.sidebar.markdown("---")
-        st.sidebar.subheader("Opzioni Torneo")
-        if st.sidebar.button("🔙 Torna indietro e modifica giocatori"):
-            st.session_state['mostra_form'] = True
-            st.session_state['calendario_generato'] = False
-            st.rerun()
-        
-        # Aggiunta di un pulsante per il reset dell'app
-        if st.sidebar.button("🔄 Carica un nuovo torneo o creane un altro"):
+        # Aggiunta di un pulsante per il reset dell'app, posizionato in basso nel corpo principale
+        if st.button("🔄 Carica un nuovo torneo o creane un altro"):
             st.session_state.clear()
             st.rerun()
 
