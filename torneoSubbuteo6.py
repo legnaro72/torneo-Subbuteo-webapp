@@ -416,75 +416,81 @@ def main():
                     st.session_state['num_gironi'] = num_gironi
                     st.session_state['tipo_calendario'] = tipo_calendario
                     st.session_state['mostra_assegnazione'] = True
+                    st.session_state.pop('gioc_info', None) # Pulisce la vecchia info se si riparte
                     st.success("Giocatori selezionati, passa alla fase successiva.")
+                    st.rerun()
 
             if st.session_state.get('mostra_assegnazione', False):
                 st.markdown("### Modifica Squadra e Potenziale per i giocatori")
-                gioc_info = {}
+                if 'gioc_info' not in st.session_state:
+                    st.session_state['gioc_info'] = {}
+                
                 for gioc in st.session_state['giocatori_scelti']:
-                    if gioc in df_master['Giocatore'].values:
-                        row = df_master[df_master['Giocatore']==gioc].iloc[0]
-                        squadra_default = row['Squadra']
-                        potenziale_default = row['Potenziale']
-                    else:
-                        squadra_default = ""
-                        potenziale_default = 4
-                    squadra_nuova = st.text_input(f"Squadra per {gioc}", value=squadra_default, key=f"squadra_{gioc}")
-                    potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, int(potenziale_default), key=f"potenziale_{gioc}")
-                    gioc_info[gioc] = {"Squadra": squadra_nuova, "Potenziale": potenziale_nuovo}
-                st.session_state['gioc_info'] = gioc_info
-
+                    if gioc not in st.session_state['gioc_info']:
+                        if gioc in df_master['Giocatore'].values:
+                            row = df_master[df_master['Giocatore']==gioc].iloc[0]
+                            squadra_default = row['Squadra']
+                            potenziale_default = row['Potenziale']
+                        else:
+                            squadra_default = ""
+                            potenziale_default = 4
+                        st.session_state['gioc_info'][gioc] = {"Squadra": squadra_default, "Potenziale": potenziale_default}
+                        
+                    squadra_nuova = st.text_input(f"Squadra per {gioc}", value=st.session_state['gioc_info'][gioc]['Squadra'], key=f"squadra_{gioc}")
+                    potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, int(st.session_state['gioc_info'][gioc]['Potenziale']), key=f"potenziale_{gioc}")
+                    st.session_state['gioc_info'][gioc]["Squadra"] = squadra_nuova
+                    st.session_state['gioc_info'][gioc]["Potenziale"] = potenziale_nuovo
+                
                 st.markdown("### Modalità di creazione dei gironi")
                 modalita_gironi = st.radio("Scegli come popolare i gironi", ["Popola Gironi Automaticamente", "Popola Gironi Manualmente"])
                 
+                giocatori_formattati = []
+                valid_squadre = True
+                for gioc in st.session_state['giocatori_scelti']:
+                    squadra = st.session_state['gioc_info'][gioc]['Squadra'].strip()
+                    if squadra == "":
+                        valid_squadre = False
+                        st.error(f"Scegli un nome squadra valido per il giocatore {gioc}")
+                        break
+                    giocatori_formattati.append(f"{squadra} ({gioc})")
+                
+                if not valid_squadre:
+                    return
+
                 if modalita_gironi == "Popola Gironi Manualmente":
-                    st.warning("Trascina e rilascia i giocatori nelle colonne dei gironi. Assicurati che ogni giocatore sia assegnato.")
+                    gironi_popolati = {f"Girone {i+1}": [] for i in range(st.session_state['num_gironi'])}
                     
-                    if 'drag_state' not in st.session_state:
-                        st.session_state['drag_state'] = {
-                            "unassigned": [f"{gioc_info[g]['Squadra']} ({g})" for g in st.session_state['giocatori_scelti']],
-                            "groups": {f"Girone {i+1}": [] for i in range(st.session_state['num_gironi'])}
-                        }
-
-                    # Aggiungi una chiave per tracciare i giocatori formattati
-                    giocatori_formattati = [f"{gioc_info[g]['Squadra']} ({g})" for g in st.session_state['giocatori_scelti']]
-                    if set(st.session_state['drag_state']['unassigned'] + [g for sublist in st.session_state['drag_state']['groups'].values() for g in sublist]) != set(giocatori_formattati):
-                         st.session_state['drag_state']['unassigned'] = giocatori_formattati
-                         st.session_state['drag_state']['groups'] = {f"Girone {i+1}": [] for i in range(st.session_state['num_gironi'])}
-
-                    colonne_drag = st.columns(st.session_state['num_gironi'] + 1)
+                    st.markdown("---")
+                    st.subheader("Assegna i giocatori a mano")
                     
-                    with colonne_drag[0]:
-                        st.markdown("### Giocatori da assegnare")
-                        for item in st.session_state['drag_state']['unassigned']:
-                            st.text_input(f"drag_{item}", value=item, key=f"drag_unassigned_{item}", disabled=True)
+                    gioc_da_assegnare = [g for g in giocatori_formattati]
                     
+                    cols = st.columns(st.session_state['num_gironi'])
                     for i in range(st.session_state['num_gironi']):
-                        with colonne_drag[i+1]:
-                            st.markdown(f"### Girone {i+1}")
-                            for item in st.session_state['drag_state']['groups'][f"Girone {i+1}"]:
-                                st.text_input(f"drop_{item}", value=item, key=f"drop_{i+1}_{item}", disabled=True)
+                        with cols[i]:
+                            st.markdown(f"#### Girone {i+1}")
+                            girone_key = f"manual_girone_{i+1}"
+                            if girone_key not in st.session_state:
+                                st.session_state[girone_key] = []
                             
-                    st.warning("Funzionalità di drag&drop simulata, non supportata nativamente da Streamlit. Usa i selettori per assegnare i giocatori.")
-                    
-                    # Logica per l'assegnazione manuale tramite selettori, dato che il drag&drop non è nativo
-                    giocatori_disponibili = [g for g in giocatori_formattati if g not in [p for sublist in st.session_state['drag_state']['groups'].values() for p in sublist]]
-                    
-                    for i in range(st.session_state['num_gironi']):
-                        st.session_state['drag_state']['groups'][f"Girone {i+1}"] = st.multiselect(
-                            f"Seleziona giocatori per Girone {i+1}",
-                            options=giocatori_disponibili + st.session_state['drag_state']['groups'][f"Girone {i+1}"],
-                            default=st.session_state['drag_state']['groups'][f"Girone {i+1}"],
-                            key=f"manual_girone_{i+1}"
-                        )
+                            st.session_state[girone_key] = st.multiselect(
+                                "",
+                                options=gioc_da_assegnare,
+                                default=st.session_state[girone_key],
+                                key=girone_key
+                            )
+                            # Aggiorna la lista dei giocatori da assegnare
+                            gioc_da_assegnare = [g for g in giocatori_formattati if g not in [p for sublist in st.session_state.values() if isinstance(sublist, list) and sublist and sublist[0].startswith(f"squadra (") and sublist[0].endswith(f")")] for p in sublist]
 
-                    assegnati_manual = [p for sublist in st.session_state['drag_state']['groups'].values() for p in sublist]
+                    assegnati_count = sum(len(st.session_state.get(f"manual_girone_{i+1}", [])) for i in range(st.session_state['num_gironi']))
+                    st.markdown(f"**Giocatori assegnati: {assegnati_count} / {len(giocatori_formattati)}**")
+                    
                     if st.button("Conferma gironi manuali e genera calendario"):
-                        if len(set(assegnati_manual)) != len(giocatori_formattati) or len(giocatori_formattati) < 4:
-                            st.error("Assicurati di aver assegnato tutti i giocatori a un girone e di avere almeno 4 giocatori totali.")
+                        if assegnati_count != len(giocatori_formattati):
+                            st.error("Assicurati di aver assegnato **tutti** i giocatori a un girone.")
                         else:
-                            gironi_popolati = list(st.session_state['drag_state']['groups'].values())
-                            df_torneo = genera_calendario_from_list(gironi_popolati, st.session_state['tipo_calendario'])
+                            gironi_finali = [st.session_state[f"manual_girone_{i+1}"] for i in range(st.session_state['num_gironi'])]
+                            df_torneo = genera_calendario_from_list(gironi_finali, st.session_state['tipo_calendario'])
                             st.session_state['df_torneo'] = df_torneo
                             st.success("Calendario generato e salvato!")
                             st.session_state.calendario_generato = True
@@ -494,14 +500,6 @@ def main():
 
                 else: # Modalità automatica
                     if st.button("Conferma e genera calendario"):
-                        giocatori_formattati = []
-                        for gioc in st.session_state['giocatori_scelti']:
-                            squadra = st.session_state['gioc_info'][gioc]['Squadra'].strip()
-                            if squadra == "":
-                                st.warning(f"Scegli un nome squadra valido per il giocatore {gioc}")
-                                return
-                            giocatori_formattati.append(f"{squadra} ({gioc})")
-                        
                         df_torneo = genera_calendario_auto(giocatori_formattati, st.session_state['num_gironi'], st.session_state['tipo_calendario'])
                         st.session_state['df_torneo'] = df_torneo
                         st.success("Calendario generato e salvato!")
@@ -509,7 +507,6 @@ def main():
                         st.session_state['mostra_form'] = False
                         st.session_state['mostra_assegnazione'] = False
                         st.rerun()
-
 
     if st.session_state.calendario_generato:
         df = st.session_state['df_torneo']
