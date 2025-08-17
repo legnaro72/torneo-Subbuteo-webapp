@@ -581,6 +581,7 @@ def main():
             pdf_bytes = esporta_pdf(df, classifica)
             nome_pdf = st.session_state.get("nome_torneo", "torneo") + ".pdf"
             st.sidebar.download_button("Download PDF calendario + classifica", data=pdf_bytes, file_name=nome_pdf, mime="application/pdf")
+            st.info("File PDF generato con successo!") # Aggiungi questa riga
         
         # Aggiunta di un pulsante per il reset dell'app, posizionato in basso nel corpo principale
         if st.button("🔄 Carica un nuovo torneo o creane un altro"):
