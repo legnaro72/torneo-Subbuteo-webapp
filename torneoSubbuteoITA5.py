@@ -288,17 +288,18 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         else:
             st.markdown('<div style="color:red; margin-bottom: 15px;">Partita non ancora validata</div>', unsafe_allow_html=True)
 
-    # Aggiungiamo un pulsante per salvare i risultati
-    if st.button("Salva Risultati Giornata"):
-        for idx, row in df_giornata.iterrows():
+    def salva_risultati_giornata():
+        df = st.session_state['df_torneo']
+        df_giornata_copia = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
+        for idx, _ in df_giornata_copia.iterrows():
             df.at[idx, 'GolCasa'] = st.session_state[f"golcasa_{idx}"]
             df.at[idx, 'GolOspite'] = st.session_state[f"golospite_{idx}"]
             df.at[idx, 'Valida'] = st.session_state[f"valida_{idx}"]
-        
+
         st.session_state['df_torneo'] = df
-        st.success("Risultati salvati correttamente!")
         st.rerun()
-        st.empty() # Aggiungi questa riga per prevenire l'output None
+        
+    st.button("Salva Risultati Giornata", on_click=salva_risultati_giornata)
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.subheader(f"Classifica Girone {girone_sel}")
