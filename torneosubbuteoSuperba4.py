@@ -350,48 +350,56 @@ def main():
         )
 
     df_master = carica_giocatori_master()
-    
-    # Questo blocco mostra il form di creazione o caricamento solo se non c'è un torneo attivo
+
     if not st.session_state.calendario_generato:
-        st.subheader("Scegli un'azione")
         
-        # Opzione 1: Carica torneo da CSV
-        st.info("Carica un torneo esistente da un file CSV.")
-        uploaded_file = st.file_uploader("Carica CSV torneo", type=["csv"])
-        if uploaded_file is not None:
-            try:
-                df_caricato = pd.read_csv(uploaded_file)
-                expected_cols = ['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']
-                if all(col in df_caricato.columns for col in expected_cols):
-                    df_caricato['Valida'] = df_caricato['Valida'].astype(bool)
-                    st.session_state['df_torneo'] = df_caricato
-                    st.success("Torneo caricato correttamente!")
-                    st.session_state.calendario_generato = True
-                    st.rerun()
-                else:
-                    st.error(f"Il CSV non contiene tutte le colonne richieste: {expected_cols}")
-            except Exception as e:
-                st.error(f"Errore nel caricamento CSV: {e}")
+        st.write("---")
+        st.subheader("Scegli un'azione per iniziare:")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("<h4 style='text-align: center;'>📁 Carica Torneo Esistente</h4>", unsafe_allow_html=True)
+            st.info("Se hai un torneo salvato in un file CSV, caricalo per continuare a giocare.")
+            uploaded_file = st.file_uploader("Carica CSV torneo", type=["csv"], label_visibility="hidden")
+            if uploaded_file is not None:
+                try:
+                    df_caricato = pd.read_csv(uploaded_file)
+                    expected_cols = ['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']
+                    if all(col in df_caricato.columns for col in expected_cols):
+                        df_caricato['Valida'] = df_caricato['Valida'].astype(bool)
+                        st.session_state['df_torneo'] = df_caricato
+                        st.session_state.calendario_generato = True
+                        st.session_state.torneo_caricato = True
+                        st.success("✅ Torneo caricato correttamente!")
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Il CSV non contiene tutte le colonne richieste: {expected_cols}")
+                except Exception as e:
+                    st.error(f"❌ Errore nel caricamento CSV: {e}")
+
+        with col2:
+            st.markdown("<h4 style='text-align: center;'>⚽ Crea Nuovo Torneo</h4>", unsafe_allow_html=True)
+            st.info("Inizia una nuova competizione configurando giocatori, gironi e tipo di calendario.")
+            if st.button("➕ Crea Nuovo Torneo"):
+                st.session_state['mostra_form'] = True
                 
-        st.markdown("---")
-        
-        # Opzione 2: Crea un nuovo torneo
-        st.info("Crea un nuovo torneo da zero.")
-        if st.button("Crea un nuovo torneo"):
-            st.session_state['mostra_form'] = True
+        st.write("---")
         
         if st.session_state.get('mostra_form', False):
             from datetime import datetime
             mesi = {1: "Gennaio", 2: "Febbraio", 3: "Marzo", 4: "Aprile", 5: "Maggio", 6: "Giugno", 7: "Luglio", 8: "Agosto", 9: "Settembre", 10: "Ottobre", 11: "Novembre", 12: "Dicembre"}
             oggi = datetime.now()
             nome_default = f"TorneoSubbuteo_{oggi.day}{mesi[oggi.month]}{oggi.year}"
+            
+            st.header("Dettagli Nuovo Torneo")
             nome_torneo = st.text_input("Nome del torneo:", value=nome_default)
             st.session_state["nome_torneo"] = nome_torneo
             num_gironi = st.number_input("Numero di gironi", 1, 8, value=2)
             tipo_calendario = st.selectbox("Tipo calendario", ["Solo andata", "Andata e ritorno"])
             n_giocatori = st.number_input("Numero giocatori", 4, 32, value=8)
 
-            st.markdown("### Amici del Club")
+            st.markdown("### 👥 Seleziona Giocatori")
             amici = df_master['Giocatore'].tolist()
             all_seleziona = st.checkbox("Seleziona tutti gli amici", key="all_amici")
             if all_seleziona:
