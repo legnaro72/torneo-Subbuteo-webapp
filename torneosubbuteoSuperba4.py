@@ -365,21 +365,21 @@ def main():
             uploaded_file = st.file_uploader("Carica CSV torneo", type=["csv"], label_visibility="hidden")
             
             if uploaded_file is not None:
-            try:
-                df_caricato = pd.read_csv(uploaded_file)
-                expected_cols = ['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']
-                if all(col in df_caricato.columns for col in expected_cols):
-                    df_caricato['Valida'] = df_caricato['Valida'].astype(bool)
-                    st.session_state['df_torneo'] = df_caricato
-                    st.session_state["nome_torneo"] = uploaded_file.name.replace(".csv", "")  # <-- Aggiungi questa riga
-                    st.session_state.calendario_generato = True
-                    st.session_state.torneo_caricato = True
-                    st.success("✅ Torneo caricato correttamente!")
-                    st.rerun()
-                else:
-                    st.error(f"❌ Il CSV non contiene tutte le colonne richieste: {expected_cols}")
-            except Exception as e:
-                st.error(f"❌ Errore nel caricamento CSV: {e}")
+                try:
+                    df_caricato = pd.read_csv(uploaded_file)
+                    expected_cols = ['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']
+                    if all(col in df_caricato.columns for col in expected_cols):
+                        df_caricato['Valida'] = df_caricato['Valida'].astype(bool)
+                        st.session_state['df_torneo'] = df_caricato
+                        st.session_state["nome_torneo"] = uploaded_file.name.replace(".csv", "")  # <-- Aggiungi questa riga
+                        st.session_state.calendario_generato = True
+                        st.session_state.torneo_caricato = True
+                        st.success("✅ Torneo caricato correttamente!")
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Il CSV non contiene tutte le colonne richieste: {expected_cols}")
+                except Exception as e:
+                    st.error(f"❌ Errore nel caricamento CSV: {e}")
 
         with col2:
             st.markdown("<h4 style='text-align: center;'>⚽ Crea Nuovo Torneo</h4>", unsafe_allow_html=True)
