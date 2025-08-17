@@ -327,9 +327,8 @@ def main():
     if "calendario_generato" not in st.session_state:
         st.session_state.calendario_generato = False
     
-    st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉")
-    
-    if "nome_torneo" in st.session_state:
+    if st.session_state.get("calendario_generato", False):
+        nome_torneo = st.session_state.get("nome_torneo", "Torneo")
         st.markdown(
             f"""
             <style>
@@ -344,11 +343,13 @@ def main():
                 white-space: normal;
             }}
             </style>
-            <div class="big-title">🏆{st.session_state["nome_torneo"]}🏆</div>
+            <div class="big-title">🏆⚽{nome_torneo}🥇🥈🥉</div>
             """,
             unsafe_allow_html=True
         )
-
+    else:
+        st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉")
+    
     df_master = carica_giocatori_master()
 
     if not st.session_state.calendario_generato:
