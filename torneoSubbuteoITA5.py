@@ -577,11 +577,15 @@ def main():
         st.sidebar.download_button("⬇️ Scarica CSV Torneo + Classifica", data=csv_bytes, file_name=csv_filename, mime="text/csv")
         
         st.sidebar.markdown("---")
-        if st.sidebar.button("📄 Esporta PDF Calendario + Classifica"):
-            pdf_bytes = esporta_pdf(df, classifica)
-            nome_pdf = st.session_state.get("nome_torneo", "torneo") + ".pdf"
-            st.sidebar.download_button("Download PDF calendario + classifica", data=pdf_bytes, file_name=nome_pdf, mime="application/pdf")
-            st.info("File PDF generato con successo!") # Aggiungi questa riga
+        pdf_bytes = esporta_pdf(df, classifica)
+        nome_pdf = st.session_state.get("nome_torneo", "torneo") + ".pdf"
+        
+        st.sidebar.download_button(
+            label="📄 Esporta PDF Calendario + Classifica",
+            data=pdf_bytes,
+            file_name=nome_pdf,
+            mime="application/pdf"
+        )
         
         # Aggiunta di un pulsante per il reset dell'app, posizionato in basso nel corpo principale
         if st.button("🔄 Carica un nuovo torneo o creane un altro"):
