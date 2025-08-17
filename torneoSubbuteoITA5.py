@@ -240,25 +240,18 @@ def esporta_pdf(df_torneo, df_classifica):
 
 
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
-    #st.subheader(f"Calendario  {girone_sel} - Giornata {giornata_sel}")
-
+    st.subheader(f"Calendario  {girone_sel} - Giornata {giornata_sel}")
+    
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if 'Valida' not in df_giornata.columns:
         df_giornata['Valida'] = False
-for idx, row in df_giornata.iterrows():
+
+    for idx, row in df_giornata.iterrows():
         casa = row['Casa']
         ospite = row['Ospite']
         val = row['Valida']
 
         col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
-
-        # Usa st.session_state solo per inizializzare
-        if f"golcasa_{idx}" not in st.session_state:
-            st.session_state[f"golcasa_{idx}"] = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
-        if f"golospite_{idx}" not in st.session_state:
-            st.session_state[f"golospite_{idx}"] = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
-        if f"valida_{idx}" not in st.session_state:
-            st.session_state[f"valida_{idx}"] = val
 
         with col1:
             st.markdown(f"**{casa}** vs **{ospite}**")
@@ -266,8 +259,8 @@ for idx, row in df_giornata.iterrows():
         with col2:
             st.number_input(
                 "", min_value=0, max_value=20,
-                key=f"golcasa_{idx}", 
-                value=st.session_state[f"golcasa_{idx}"],
+                key=f"golcasa_{idx}",
+                value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
                 label_visibility="hidden"
             )
 
@@ -278,7 +271,7 @@ for idx, row in df_giornata.iterrows():
             st.number_input(
                 "", min_value=0, max_value=20,
                 key=f"golospite_{idx}",
-                value=st.session_state[f"golospite_{idx}"],
+                value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
                 label_visibility="hidden"
             )
 
@@ -286,22 +279,25 @@ for idx, row in df_giornata.iterrows():
             st.checkbox(
                 "Valida",
                 key=f"valida_{idx}",
-                value=st.session_state[f"valida_{idx}"]
+                value=val
             )
-
-        # Aggiorna il DataFrame direttamente dai valori dei widget
-        df.at[idx, 'GolCasa'] = st.session_state[f"golcasa_{idx}"]
-        df.at[idx, 'GolOspite'] = st.session_state[f"golospite_{idx}"]
-        df.at[idx, 'Valida'] = st.session_state[f"valida_{idx}"]
-
-        # Messaggi
-        if not st.session_state[f"valida_{idx}"]:
-            st.markdown('<div style="color:red; margin-bottom: 15px;">Partita non ancora validata</div>', unsafe_allow_html=True)
-        else:
+        
+        # Non aggiornare il DataFrame qui. Lo faremo dopo con un pulsante
+        if st.session_state.get(f"valida_{idx}", False):
             st.markdown("<hr>", unsafe_allow_html=True)
+        else:
+            st.markdown('<div style="color:red; margin-bottom: 15px;">Partita non ancora validata</div>', unsafe_allow_html=True)
 
-    st.session_state['df_torneo'] = df
-
+    # Aggiungiamo un pulsante per salvare i risultati
+    if st.button("Salva Risultati Giornata"):
+        for idx, row in df_giornata.iterrows():
+            df.at[idx, 'GolCasa'] = st.session_state[f"golcasa_{idx}"]
+            df.at[idx, 'GolOspite'] = st.session_state[f"golospite_{idx}"]
+            df.at[idx, 'Valida'] = st.session_state[f"valida_{idx}"]
+        
+        st.session_state['df_torneo'] = df
+        st.success("Risultati salvati correttamente!")
+        st.rerun()
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.subheader(f"Classifica Girone {girone_sel}")
