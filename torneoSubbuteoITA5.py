@@ -245,8 +245,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if 'Valida' not in df_giornata.columns:
         df_giornata['Valida'] = False
-
-    for idx, row in df_giornata.iterrows():
+for idx, row in df_giornata.iterrows():
         casa = row['Casa']
         ospite = row['Ospite']
         val = row['Valida']
