@@ -9,6 +9,8 @@ from datetime import datetime
 # --- Funzione di stile per None/nan invisibili e colorazione righe ---
 def combined_style(df):
     is_dark = st.get_option("theme.base") == "dark"
+    styles = []
+
     def row_style(row):
         base = [''] * len(row)
         if row.name == 0:
@@ -17,15 +19,22 @@ def combined_style(df):
             base = ['background-color: #fff3cd; color: black'] * len(row)
         else:
             base = [''] * len(row)
-        for i, val in enumerate(row):
-            sval = str(val).strip().lower()
-            if sval in ["none", "nan", ""]:
-                base[i] = f'color: #fff;' if is_dark else 'color: #000;'
         return base
-    return df.style.apply(row_style, axis=1)
+    
+    styles.append({'selector': '', 'props': [('color', 'black' if not is_dark else 'white')]})
+    
+    def hide_none(val):
+        sval = str(val).strip().lower()
+        if sval in ["none", "nan", ""]:
+            return 'color: transparent; text-shadow: none;'
+        return ''
+
+    styled_df = df.style.apply(row_style, axis=1)
+    styled_df = styled_df.map(hide_none)
+    
+    return styled_df
 
 # ---------------------------------------------------------------------
-
 st.set_page_config(page_title="Gestione Torneo Superba a Gironi by Legnaro72", layout="wide")
 
 st.markdown("""
