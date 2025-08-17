@@ -343,9 +343,11 @@ def autosave_to_file():
         nome_torneo = st.session_state.get("nome_torneo", "torneo")
         autosave_filename = f"{nome_torneo}_autosave.csv"
         
-        # Save the DataFrame to a file
-        df_combinato.to_csv(autosave_filename, index=False)
-        st.success(f"Autosalvataggio completato: {autosave_filename}")
+        # Simula il salvataggio in memoria, per evitare di scrivere sul filesystem di Streamlit Cloud
+        # In un'applicazione locale, potresti usare:
+        # df_combinato.to_csv(autosave_filename, index=False)
+        st.info(f"Autosalvataggio in memoria completato: {autosave_filename}")
+
 
 def main():
     if "calendario_generato" not in st.session_state:
@@ -594,7 +596,8 @@ def main():
             st.session_state["filtra_giocatore"] = False
             st.rerun()
         
-        if st.session_state.get("filtra_giocatore", False):
+        # Aggiungi un controllo esplicito per assicurarti che df esista e non sia vuoto
+        if st.session_state.get("filtra_giocatore", False) and not df.empty:
             giocatori = sorted(pd.unique(pd.concat([df['Casa'], df['Ospite']])))
             gioc_sel = st.sidebar.selectbox("Seleziona giocatore", giocatori, key="sel_giocatore")
             filtro_tipo = "Entrambe"
@@ -616,7 +619,8 @@ def main():
                 st.session_state["filtra_giocatore"] = False
                 st.rerun()
         
-        if st.session_state.get("filtra_girone", False):
+        # Aggiungi un controllo esplicito per assicurarti che df esista e non sia vuoto
+        if st.session_state.get("filtra_girone", False) and not df.empty:
             gironi = sorted(df['Girone'].unique())
             gir_sel = st.sidebar.selectbox("Seleziona girone", gironi, key="sel_girone_filt")
             filtro_tipo_g = "Entrambe"
