@@ -550,9 +550,31 @@ def main():
                 st.rerun()
         
         st.sidebar.markdown("---")
-        nome_torneo = st.session_state.get("nome_torneo", "torneo") + ".csv"
-        csv_bytes = df.to_csv(index=False).encode('utf-8')
-        st.sidebar.download_button("⬇️ Scarica CSV Torneo", data=csv_bytes, file_name=nome_torneo, mime="text/csv")
+        nome_torneo = st.session_state.get("nome_torneo", "torneo")
+        csv_filename = nome_torneo + ".csv"
+
+        df_calendario = st.session_state['df_torneo']
+        df_classifica = aggiorna_classifica(df_calendario)
+
+        if df_classifica is not None and not df_classifica.empty:
+            df_classifica['Tipo'] = 'Classifica'
+            df_calendario['Tipo'] = 'Calendario'
+            # Aggiungi colonne per unione
+            for col in df_classifica.columns:
+                if col not in df_calendario.columns:
+                    df_calendario[col] = ''
+            for col in df_calendario.columns:
+                if col not in df_classifica.columns:
+                    df_classifica[col] = ''
+
+            df_combinato = pd.concat([df_calendario, df_classifica], ignore_index=True)
+            df_combinato = df_combinato.sort_values(by=['Tipo', 'Girone'], ascending=[False, True])
+        else:
+            df_calendario['Tipo'] = 'Calendario'
+            df_combinato = df_calendario
+
+        csv_bytes = df_combinato.to_csv(index=False).encode('utf-8')
+        st.sidebar.download_button("⬇️ Scarica CSV Torneo + Classifica", data=csv_bytes, file_name=csv_filename, mime="text/csv")
         
         st.sidebar.markdown("---")
         if st.sidebar.button("📄 Esporta PDF Calendario + Classifica"):
