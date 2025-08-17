@@ -305,7 +305,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             df.at[idx, 'Valida'] = st.session_state[f"valida_{idx}"]
 
         st.session_state['df_torneo'] = df
-        st.session_state['last_save_time'] = time.time()
+        st.session_state['last_autosave_time'] = time.time()
         st.info("Risultati salvati!")
         
     st.button("Salva Risultati Giornata", on_click=salva_risultati_giornata)
