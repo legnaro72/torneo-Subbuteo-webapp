@@ -306,7 +306,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             df.at[idx, 'Valida'] = st.session_state[f"valida_{idx}"]
 
         st.session_state['df_torneo'] = df
-        st.rerun()
+        #st.rerun()
         
     st.button("Salva Risultati Giornata", on_click=salva_risultati_giornata)
 
@@ -442,32 +442,49 @@ def main():
                     st.session_state['gioc_info'][gioc]["Potenziale"] = potenziale_nuovo
                 
                 st.markdown("### Modalità di creazione dei gironi")
-                modalita_gironi = st.radio("Scegli come popolare i gironi", ["Popola Gironi Automaticamente", "Popola Gironi Manualmente"])
+                modalita_gironi = st.radio(
+                    "Scegli come popolare i gironi",
+                    ["Popola Gironi Automaticamente", "Popola Gironi Manualmente"]
+                )
                 
-                giocatori_formattati = []
-                valid_squadre = True
-                for gioc in st.session_state['giocatori_scelti']:
-                    squadra = st.session_state['gioc_info'][gioc]['Squadra'].strip()
-                    if squadra == "":
-                        valid_squadre = False
-                        break
-                    giocatori_formattati.append(f"{squadra} ({gioc})")
+                if st.button("✅ Conferma modalità gironi"):
+                    if modalita_gironi == "Popola Gironi Manualmente":
+                        st.session_state['mostra_gironi_manuali'] = True
+                    else:
+                        # Popola gironi automaticamente
+                        gironi_finali = [[] for _ in range(st.session_state['num_gironi'])]
+                        giocatori_formattati = [
+                            f"{st.session_state['gioc_info'][gioc]['Squadra']} ({gioc})"
+                            for gioc in st.session_state['giocatori_scelti']
+                        ]
+                        random.shuffle(giocatori_formattati)
+                        for i, g in enumerate(giocatori_formattati):
+                            gironi_finali[i % st.session_state['num_gironi']].append(g)
+                        
+                        df_torneo = genera_calendario_from_list(
+                            gironi_finali, st.session_state['tipo_calendario']
+                        )
+                        st.session_state['df_torneo'] = df_torneo
+                        st.success("Calendario generato automaticamente e salvato!")
+                        st.session_state.calendario_generato = True
+                        st.session_state['mostra_form'] = False
+                        st.session_state['mostra_assegnazione'] = False
+                        st.rerun()
                 
-                if not valid_squadre:
-                    st.error("Scegli un nome squadra valido per ogni giocatore.")
-                    return
-
-                if modalita_gironi == "Popola Gironi Manualmente":
+                # Se l’utente ha scelto manuale e ha confermato
+                if st.session_state.get('mostra_gironi_manuali', False):
                     st.subheader("Assegna i giocatori ai gironi")
                     st.info("Ogni giocatore deve comparire una sola volta. Assegna tutti i giocatori prima di confermare.")
-                
+                    
                     gironi_manuali = {}
-                    giocatori_disponibili = giocatori_formattati.copy()
-                
+                    giocatori_disponibili = [
+                        f"{st.session_state['gioc_info'][gioc]['Squadra']} ({gioc})"
+                        for gioc in st.session_state['giocatori_scelti']
+                    ]
+                    
                     for i in range(st.session_state['num_gironi']):
                         girone_key = f"manual_girone_{i+1}"
                         with st.expander(f"Girone {i+1}"):
-                            # Preseleziona eventuali valori salvati in sessione
                             default_val = st.session_state.get(girone_key, [])
                             selezionati = st.multiselect(
                                 f"Giocatori per Girone {i+1}",
@@ -478,21 +495,25 @@ def main():
                             gironi_manuali[f"Girone {i+1}"] = selezionati
                 
                     assegnati_unici = set(sum(gironi_manuali.values(), []))
-                    st.markdown(f"**Giocatori assegnati: {len(assegnati_unici)} / {len(giocatori_formattati)}**")
+                    st.markdown(f"**Giocatori assegnati: {len(assegnati_unici)} / {len(giocatori_disponibili)}**")
                 
-                    if len(assegnati_unici) != len(giocatori_formattati):
+                    if len(assegnati_unici) != len(giocatori_disponibili):
                         st.warning("⚠️ Devi assegnare tutti i giocatori, senza duplicati, per continuare.")
                     else:
                         if st.button("✅ Conferma gironi manuali e genera calendario"):
                             gironi_finali = list(gironi_manuali.values())
-                            df_torneo = genera_calendario_from_list(gironi_finali, st.session_state['tipo_calendario'])
+                            df_torneo = genera_calendario_from_list(
+                                gironi_finali, st.session_state['tipo_calendario']
+                            )
                             st.session_state['df_torneo'] = df_torneo
                             st.success("Calendario generato e salvato!")
                             st.session_state.calendario_generato = True
                             st.session_state['mostra_form'] = False
                             st.session_state['mostra_assegnazione'] = False
+                            st.session_state['mostra_gironi_manuali'] = False
                             st.rerun()
 
+                
 
     if st.session_state.calendario_generato:
         df = st.session_state['df_torneo']
@@ -523,6 +544,12 @@ def main():
         giornata_sel = st.session_state['giornata_sel']
         
         mostra_calendario_giornata(df, girone_sel, giornata_sel)
+
+        # Forza il refresh solo fuori dai callback
+        if st.session_state.get('__refresh_after_save', False):
+            st.session_state['__refresh_after_save'] = False
+            st.rerun()
+        
         classifica = aggiorna_classifica(st.session_state['df_torneo'])
         mostra_classifica_stilizzata(classifica, girone_sel)
 
