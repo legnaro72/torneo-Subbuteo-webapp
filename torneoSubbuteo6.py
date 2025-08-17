@@ -256,7 +256,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             st.number_input(
                 "", min_value=0, max_value=20,
                 key=f"golcasa_{idx}",
-                value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
+                value=int(row['GolCasa']) if pd.notna(row['GolCasa']) and str(row['GolCasa']).isdigit() else 0,
                 label_visibility="hidden"
             )
 
