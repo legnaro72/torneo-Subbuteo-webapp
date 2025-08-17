@@ -130,22 +130,21 @@ def aggiorna_classifica(df):
     return df_classifica
 
 def esporta_csv_classifiche(df_torneo):
-    # Calcola la classifica
+    if df_torneo.empty:
+        return b"Nessun torneo da esportare."
+        
     classifica = aggiorna_classifica(df_torneo)
     
-    # Inizializza una lista per salvare le parti del CSV
     csv_parts = []
     
-    # Parte 1: Inserisce il calendario del torneo
+    csv_parts.append("Calendario Torneo\n")
     csv_parts.append(df_torneo.to_csv(index=False))
     
-    # Parte 2: Aggiunge una riga vuota per separazione
     csv_parts.append("\n\n")
     
-    # Parte 3: Aggiunge le classifiche per ogni girone
     gironi = sorted(classifica['Girone'].unique())
     for girone in gironi:
-        csv_parts.append(f"Classifica Girone: {girone}\n")
+        csv_parts.append(f"Classifica {girone}\n")
         classifica_girone = classifica[classifica['Girone'] == girone].drop('Girone', axis=1)
         csv_parts.append(classifica_girone.to_csv(index=False))
         csv_parts.append("\n\n")
@@ -153,6 +152,8 @@ def esporta_csv_classifiche(df_torneo):
     return "".join(csv_parts).encode('utf-8')
 
 def esporta_pdf(df_torneo, df_classifica):
+    if df.empty:
+        return b"Nessun torneo da esportare."
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.set_auto_page_break(auto=False)  # controllo manuale
     pdf.add_page()
@@ -259,6 +260,7 @@ def esporta_pdf(df_torneo, df_classifica):
 
     pdf_bytes = pdf.output(dest='S').encode('latin1')
     return pdf_bytes
+    #return b"PDF Content"
 
 
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
@@ -516,8 +518,7 @@ def main():
             st.session_state['mostra_form'] = True
             st.session_state['calendario_generato'] = False
             st.rerun()
-
-        st.sidebar.markdown("---")
+st.sidebar.markdown("---")
         st.sidebar.markdown("### Filtri partite da giocare")
         if st.sidebar.button("🎯 Filtra Giocatore"):
             st.session_state["filtra_giocatore"] = True
@@ -568,19 +569,21 @@ def main():
                 st.rerun()
         
         st.sidebar.markdown("---")
-        nome_torneo = st.session_state.get("nome_torneo", "torneo") + ".csv"
-        csv_completo_bytes = esporta_csv_classifiche(df)
-        st.sidebar.download_button("⬇️ Scarica CSV Torneo + Classifiche", data=csv_completo_bytes, file_name=nome_torneo, mime="text/csv")
         
-        st.sidebar.markdown("---")
-        if st.sidebar.button("📄 Esporta PDF Calendario + Classifica"):
-            pdf_bytes = esporta_pdf(df, classifica)
-            st.sidebar.download_button("Download PDF calendario + classifica", data=pdf_bytes, file_name=nome_torneo.replace(".csv", ".pdf"), mime="application/pdf")
+        if not st.session_state['df_torneo'].empty:
+            nome_torneo = st.session_state.get("nome_torneo", "torneo") + ".csv"
+            csv_completo_bytes = esporta_csv_classifiche(df)
+            st.sidebar.download_button("⬇️ Scarica CSV Torneo + Classifiche", data=csv_completo_bytes, file_name=nome_torneo, mime="text/csv")
+            
+            st.sidebar.markdown("---")
+            if st.sidebar.button("📄 Esporta PDF Calendario + Classifica"):
+                pdf_bytes = esporta_pdf(df, classifica)
+                st.sidebar.download_button("Download PDF calendario + classifica", data=pdf_bytes, file_name=nome_torneo.replace(".csv", ".pdf"), mime="application/pdf")
         
         if st.button("🔄 Carica un nuovo torneo o creane un altro"):
             st.session_state.clear()
             st.rerun()
 
-
 if __name__ == "__main__":
     main()
+        
