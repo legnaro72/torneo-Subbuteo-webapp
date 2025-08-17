@@ -492,7 +492,29 @@ def main():
                             st.session_state['mostra_form'] = False
                             st.session_state['mostra_assegnazione'] = False
                             st.rerun()
-
+                else:
+                    # Popola gironi automaticamente
+                    gironi_finali = []
+                    giocatori_formattati = [f"{st.session_state['gioc_info'][gioc]['Squadra']} ({gioc})"
+                                            for gioc in st.session_state['giocatori_scelti']]
+                    num_gironi = st.session_state['num_gironi']
+                    
+                    # distribuisci i giocatori nei gironi
+                    random.shuffle(giocatori_formattati)
+                    for i, g in enumerate(giocatori_formattati):
+                        if len(gironi_finali) < num_gironi:
+                            gironi_finali.append([])
+                        gironi_finali[i % num_gironi].append(g)
+                    
+                    # genera calendario
+                    df_torneo = genera_calendario_from_list(gironi_finali, st.session_state['tipo_calendario'])
+                    st.session_state['df_torneo'] = df_torneo
+                    st.success("Calendario generato automaticamente e salvato!")
+                    st.session_state.calendario_generato = True
+                    st.session_state['mostra_form'] = False
+                    st.session_state['mostra_assegnazione'] = False
+                    st.rerun()
+                
 
     if st.session_state.calendario_generato:
         df = st.session_state['df_torneo']
