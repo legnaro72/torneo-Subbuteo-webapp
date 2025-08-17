@@ -331,4 +331,4 @@ def main():
             st.header("Dettagli Nuovo Torneo")
             nome_torneo = st.text_input("Nome del torneo:", value=nome_default, key="nome_torneo_nuovo")
             st.session_state["nome_torneo"] = nome_torneo
-            num_gironi = st.number_input("Numero di gironi", 1, 8, value=
+            num_gironi = st.number_input("Numero di gironi", 1, 8, value=2)
