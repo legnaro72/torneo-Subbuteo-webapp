@@ -5,7 +5,7 @@ from io import StringIO
 import random
 from fpdf import FPDF
 
-# --- funzione per nascondere None/nan/stringa vuota ---
+# Funzione per stile invisibile di None/nan/stringa vuota su tema chiaro/scuro
 def style_hide_none(df):
     is_dark = st.get_option("theme.base") == "dark"
     color = "#fff" if is_dark else "#000"
@@ -15,27 +15,18 @@ def style_hide_none(df):
             return f'color: {color};'
         return ''
     return df.style.applymap(style_func)
-# ------------------------------------------------------
 
 st.set_page_config(page_title="Gestione Torneo Superba a Gironi by Legnaro72", layout="wide")
 
 st.markdown("""
     <style>
-    /* Rimuove i puntini neri */
-    ul, li {
-        list-style-type: none !important;
-        padding-left: 0 !important;
-        margin-left: 0 !important;
-    }
+    ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
     </style>
 """, unsafe_allow_html=True)
 
 st.markdown("""
 <style>
-/* Rimuove l'asterisco dai campi con etichetta nascosta */
-div[data-testid="stNumberInput"] label::before {
-    content: none;
-}
+div[data-testid="stNumberInput"] label::before { content: none; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -241,6 +232,17 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
     if 'Valida' not in df_giornata.columns:
         df_giornata['Valida'] = False
 
+    def safe_int(val):
+        try:
+            if pd.isna(val):
+                return 0
+            sval = str(val).strip().lower()
+            if sval in ["none", "nan", ""]:
+                return 0
+            return int(float(val))
+        except (ValueError, TypeError):
+            return 0
+
     for idx, row in df_giornata.iterrows():
         casa = row['Casa']
         ospite = row['Ospite']
@@ -255,7 +257,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             st.number_input(
                 "", min_value=0, max_value=20,
                 key=f"golcasa_{idx}",
-                value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
+                value=safe_int(row['GolCasa']),
                 label_visibility="hidden"
             )
 
@@ -266,7 +268,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             st.number_input(
                 "", min_value=0, max_value=20,
                 key=f"golospite_{idx}",
-                value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
+                value=safe_int(row['GolOspite']),
                 label_visibility="hidden"
             )
 
@@ -313,7 +315,6 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
             return ['color: white'] * len(row) if is_dark else [''] * len(row)
 
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
-
     styled = style_hide_none(df_girone).apply(color_rows, axis=1)
     st.dataframe(styled, use_container_width=True)
 
