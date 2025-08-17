@@ -30,6 +30,16 @@ div[data-testid="stNumberInput"] label::before {
 
 URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLegna/refs/heads/main/giocatoriSuperba.csv"
 
+def style_hide_none(df):
+    is_dark = st.get_option("theme.base") == "dark"
+    color = "#fff" if is_dark else "#000"
+    def style_func(val):
+        # Nasconde 'None', 'nan', stringa vuota
+        if val in ["None", "nan", "", None]:
+            return f'color: {color};'
+        return ''
+    return df.style.applymap(style_func)
+
 def carica_giocatori_master(url=URL_GIOCATORI):
     try:
         r = requests.get(url)
@@ -304,19 +314,19 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
         st.info("Nessuna partita validata: la classifica sarà disponibile dopo l'inserimento e validazione dei risultati.")
         return
 
-    is_dark = st.get_option("theme.base") == "dark"
-
-    def color_rows(row):
-        if row.name == 0:
-            return ['background-color: #155724; color: white'] * len(row) if is_dark else ['background-color: #d4edda; color: black'] * len(row)
-        elif row.name <= 2:
-            return ['background-color: #856404; color: white'] * len(row) if is_dark else ['background-color: #fff3cd; color: black'] * len(row)
-        else:
-            return ['color: white'] * len(row) if is_dark else [''] * len(row)
-
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
 
-    st.dataframe(df_girone.style.apply(color_rows, axis=1), use_container_width=True)
+    def style_hide_none(df):
+        is_dark = st.get_option("theme.base") == "dark"
+        color = "#fff" if is_dark else "#000"
+        def style_func(val):
+            if val in ["None", "nan", "", None]:
+                return f'color: {color};'
+            return ''
+        return df.style.applymap(style_func)
+
+    styled_df = style_hide_none(df_girone)
+    st.dataframe(styled_df, use_container_width=True)
 
 def main():
     if "calendario_generato" not in st.session_state:
