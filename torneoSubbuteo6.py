@@ -357,6 +357,7 @@ def main():
             if len(set(giocatori_scelti)) < n_giocatori:
                 st.warning("Ci sono nomi duplicati tra i giocatori. Rimuovi i duplicati.")
                 st.stop()
+                
             st.markdown(f"**Giocatori selezionati:** {', '.join(giocatori_scelti)}")
             
             if st.button("Assegna Squadre"):
@@ -365,6 +366,8 @@ def main():
                 st.session_state['tipo_calendario'] = tipo_calendario
                 st.session_state.squadre_assegnate = True
                 st.rerun()
+            
+            if st.session_state.get('squadre_assegnate', False):
 
             if st.session_state.get('squadre_assegnate', False):
                 st.markdown("### Modifica Squadra e Potenziale")
