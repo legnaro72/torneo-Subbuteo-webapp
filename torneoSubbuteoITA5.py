@@ -577,15 +577,20 @@ def main():
         st.sidebar.download_button("⬇️ Scarica CSV Torneo + Classifica", data=csv_bytes, file_name=csv_filename, mime="text/csv")
         
         st.sidebar.markdown("---")
-        pdf_bytes = esporta_pdf(df, classifica)
-        nome_pdf = st.session_state.get("nome_torneo", "torneo") + ".pdf"
         
-        st.sidebar.download_button(
-            label="📄 Esporta PDF Calendario + Classifica",
-            data=pdf_bytes,
-            file_name=nome_pdf,
-            mime="application/pdf"
-        )
+        # Genera il PDF solo se la classifica esiste e non è vuota
+        if classifica is not None and not classifica.empty:
+            pdf_bytes = esporta_pdf(df, classifica)
+            nome_pdf = st.session_state.get("nome_torneo", "torneo") + ".pdf"
+            
+            st.sidebar.download_button(
+                label="📄 Esporta PDF Calendario + Classifica",
+                data=pdf_bytes,
+                file_name=nome_pdf,
+                mime="application/pdf"
+            )
+        else:
+            st.sidebar.info("La classifica non è ancora disponibile per l'esportazione.")
         
         # Aggiunta di un pulsante per il reset dell'app, posizionato in basso nel corpo principale
         if st.button("🔄 Carica un nuovo torneo o creane un altro"):
