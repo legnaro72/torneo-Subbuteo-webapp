@@ -473,7 +473,8 @@ def main():
 
 
     # Se calendario generato o caricato E form nascosta, mostro calendario + classifica
-    if 'df_torneo' in st.session_state and not st.session_state['mostra_form']:
+    # Se calendario generato o caricato, mostra il calendario e la classifica
+    if 'df_torneo' in st.session_state and st.session_state.calendario_generato:
         df = st.session_state['df_torneo']
 
         # --- Selettori inline nel corpo pagina (sotto il titolo torneo) ---
