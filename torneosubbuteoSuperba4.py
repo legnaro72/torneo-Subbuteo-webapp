@@ -1,3 +1,5 @@
+
+
 import streamlit as st
 import pandas as pd
 import requests
@@ -366,6 +368,27 @@ def main():
 
     scelta = st.sidebar.radio("Azione:", ["Nuovo torneo", "Carica torneo da CSV"])
 
+    # Nuova logica per il caricamento
+    # Se l'utente seleziona "Carica torneo da CSV", mostra il file uploader
+    if scelta == "Carica torneo da CSV":
+        uploaded_file = st.file_uploader("Carica CSV torneo", type=["csv"])
+        if uploaded_file is not None:
+            try:
+                df_caricato = pd.read_csv(uploaded_file)
+                expected_cols = ['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']
+                if all(col in df_caricato.columns for col in expected_cols):
+                    df_caricato['Valida'] = df_caricato['Valida'].astype(bool)
+                    st.session_state['df_torneo'] = df_caricato
+                    st.success("Torneo caricato correttamente!")
+                    st.session_state['mostra_form'] = False
+                    st.session_state.calendario_generato = True # Aggiungi questa riga!
+                    st.rerun() # Esegui il rerun per passare alla visualizzazione del torneo
+                else:
+                    st.error(f"Il CSV non contiene tutte le colonne richieste: {expected_cols}")
+            except Exception as e:
+                st.error(f"Errore nel caricamento CSV: {e}")
+    
+    
     if st.session_state['mostra_form']:
         # TUTTO il blocco NUOVO TORNEO + selezione giocatori + modifica squadra/potenziale
         if scelta == "Nuovo torneo":
@@ -456,22 +479,7 @@ def main():
                 st.session_state['mostra_form'] = False
                 st.rerun() 
 
-    elif scelta == "Carica torneo da CSV":
-        uploaded_file = st.file_uploader("Carica CSV torneo", type=["csv"])
-        if uploaded_file is not None:
-            try:
-                df_caricato = pd.read_csv(uploaded_file)
-                expected_cols = ['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']
-                if all(col in df_caricato.columns for col in expected_cols):
-                    df_caricato['Valida'] = df_caricato['Valida'].astype(bool)
-                    st.session_state['df_torneo'] = df_caricato
-                    st.success("Torneo caricato correttamente!")
-                    # Nascondi form se carico torneo
-                    st.session_state['mostra_form'] = False
-                else:
-                    st.error(f"Il CSV non contiene tutte le colonne richieste: {expected_cols}")
-            except Exception as e:
-                st.error(f"Errore nel caricamento CSV: {e}")
+
 
     # Se calendario generato o caricato E form nascosta, mostro calendario + classifica
     if 'df_torneo' in st.session_state and not st.session_state['mostra_form']:
@@ -618,7 +626,8 @@ def main():
 
         # --- ESPORTA CSV ---
         st.sidebar.markdown("---")
-        nome_torneo = st.session_state.get("nome_torneo", "torneo.csv")
+        #nome_torneo = st.session_state.get("nome_torneo", "torneo.csv")
+        nome_torneo = st.session_state.get("nome_torneo", "torneo") + ".csv"
         csv_bytes = df.to_csv(index=False).encode('utf-8')
         st.sidebar.download_button("⬇️ Scarica CSV Torneo", data=csv_bytes, file_name=nome_torneo, mime="text/csv")
 
