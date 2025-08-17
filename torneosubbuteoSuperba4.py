@@ -127,6 +127,28 @@ def aggiorna_classifica(df):
     df_classifica = df_classifica.sort_values(by=['Girone','Punti','DR'], ascending=[True,False,False])
     return df_classifica
 
+def esporta_csv_classifiche(df_torneo):
+    # Calcola la classifica
+    classifica = aggiorna_classifica(df_torneo)
+    
+    # Inizializza una lista per salvare le parti del CSV
+    csv_parts = []
+    
+    # Parte 1: Inserisce il calendario del torneo
+    csv_parts.append(df_torneo.to_csv(index=False))
+    
+    # Parte 2: Aggiunge una riga vuota per separazione
+    csv_parts.append("\n\n")
+    
+    # Parte 3: Aggiunge le classifiche per ogni girone
+    gironi = sorted(classifica['Girone'].unique())
+    for girone in gironi:
+        csv_parts.append(f"Classifica Girone: {girone}\n")
+        classifica_girone = classifica[classifica['Girone'] == girone].drop('Girone', axis=1)
+        csv_parts.append(classifica_girone.to_csv(index=False))
+        csv_parts.append("\n\n")
+        
+    return "".join(csv_parts).encode('utf-8')
 
 def esporta_pdf(df_torneo, df_classifica):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
@@ -324,14 +346,11 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.dataframe(df_girone.style.apply(color_rows, axis=1), use_container_width=True)
 
 def main():
-    
     if "calendario_generato" not in st.session_state:
         st.session_state.calendario_generato = False
     
-    # Questo titolo deve essere sempre visibile, indipendentemente dalla fase
     st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉")
     
-    # Visualizza il nome del torneo se esiste
     if "nome_torneo" in st.session_state:
         st.markdown(
             f"""
@@ -354,13 +373,12 @@ def main():
 
     df_master = carica_giocatori_master()
     
-    if 'mostra_form' not in st.session_state:
-        st.session_state['mostra_form'] = True
-    
-    scelta = st.sidebar.radio("Azione:", ["Nuovo torneo", "Carica torneo da CSV"])
-
-    # Blocco per il caricamento, ora è sempre disponibile e non dipende dal 'mostra_form'
-    if scelta == "Carica torneo da CSV":
+    # Questo blocco mostra il form di creazione o caricamento solo se non c'è un torneo attivo
+    if not st.session_state.calendario_generato:
+        st.subheader("Scegli un'azione")
+        
+        # Opzione 1: Carica torneo da CSV
+        st.info("Carica un torneo esistente da un file CSV.")
         uploaded_file = st.file_uploader("Carica CSV torneo", type=["csv"])
         if uploaded_file is not None:
             try:
@@ -370,32 +388,27 @@ def main():
                     df_caricato['Valida'] = df_caricato['Valida'].astype(bool)
                     st.session_state['df_torneo'] = df_caricato
                     st.success("Torneo caricato correttamente!")
-                    
-                    st.session_state['mostra_form'] = False
                     st.session_state.calendario_generato = True
                     st.rerun()
                 else:
                     st.error(f"Il CSV non contiene tutte le colonne richieste: {expected_cols}")
             except Exception as e:
                 st.error(f"Errore nel caricamento CSV: {e}")
-    
-    
-    if st.session_state['mostra_form']:
-        # TUTTO il blocco NUOVO TORNEO + selezione giocatori + modifica squadra/potenziale
-        if scelta == "Nuovo torneo":
+                
+        st.markdown("---")
+        
+        # Opzione 2: Crea un nuovo torneo
+        st.info("Crea un nuovo torneo da zero.")
+        if st.button("Crea un nuovo torneo"):
+            st.session_state['mostra_form'] = True
+        
+        if st.session_state.get('mostra_form', False):
             from datetime import datetime
-
-            mesi = {
-                1: "Gennaio", 2: "Febbraio", 3: "Marzo", 4: "Aprile",
-                5: "Maggio", 6: "Giugno", 7: "Luglio", 8: "Agosto",
-                9: "Settembre", 10: "Ottobre", 11: "Novembre", 12: "Dicembre"
-            }
-            
+            mesi = {1: "Gennaio", 2: "Febbraio", 3: "Marzo", 4: "Aprile", 5: "Maggio", 6: "Giugno", 7: "Luglio", 8: "Agosto", 9: "Settembre", 10: "Ottobre", 11: "Novembre", 12: "Dicembre"}
             oggi = datetime.now()
             nome_default = f"TorneoSubbuteo_{oggi.day}{mesi[oggi.month]}{oggi.year}"
             nome_torneo = st.text_input("Nome del torneo:", value=nome_default)
             st.session_state["nome_torneo"] = nome_torneo
-
             num_gironi = st.number_input("Numero di gironi", 1, 8, value=2)
             tipo_calendario = st.selectbox("Tipo calendario", ["Solo andata", "Andata e ritorno"])
             n_giocatori = st.number_input("Numero giocatori", 4, 32, value=8)
@@ -403,7 +416,6 @@ def main():
             st.markdown("### Amici del Club")
             amici = df_master['Giocatore'].tolist()
             all_seleziona = st.checkbox("Seleziona tutti gli amici", key="all_amici")
-
             if all_seleziona:
                 amici_selezionati = st.multiselect("Seleziona amici", amici, default=amici)
             else:
@@ -415,7 +427,6 @@ def main():
                 return
 
             st.markdown(f"Giocatori supplementari da inserire: **{num_supplementari}**")
-
             giocatori_supplementari = []
             for i in range(num_supplementari):
                 use = st.checkbox(f"Aggiungi giocatore supplementare G{i+1}", key=f"supp_{i}_check")
@@ -425,9 +436,7 @@ def main():
                         st.warning(f"Inserisci un nome valido per G{i+1}")
                         return
                     giocatori_supplementari.append(nome.strip())
-
             giocatori_scelti = amici_selezionati + giocatori_supplementari
-
             st.markdown(f"**Giocatori selezionati:** {', '.join(giocatori_scelti)}")
 
             if st.button("Assegna Squadre"):
@@ -439,195 +448,134 @@ def main():
                     st.session_state['tipo_calendario'] = tipo_calendario
                     st.success("Giocatori selezionati, passa alla fase successiva.")
 
-        if 'giocatori_scelti' in st.session_state and scelta == "Nuovo torneo":
-            st.markdown("### Modifica Squadra e Potenziale per i giocatori")
-            gioc_info = {}
-            for gioc in st.session_state['giocatori_scelti']:
-                if gioc in df_master['Giocatore'].values:
-                    row = df_master[df_master['Giocatore']==gioc].iloc[0]
-                    squadra_default = row['Squadra']
-                    potenziale_default = row['Potenziale']
-                else:
-                    squadra_default = ""
-                    potenziale_default = 4
-                squadra_nuova = st.text_input(f"Squadra per {gioc}", value=squadra_default, key=f"squadra_{gioc}")
-                potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, potenziale_default, key=f"potenziale_{gioc}")
-                gioc_info[gioc] = {"Squadra": squadra_nuova, "Potenziale": potenziale_nuovo}
-
-            if st.button("Conferma e genera calendario"):
-                giocatori_formattati = []
+            if 'giocatori_scelti' in st.session_state:
+                st.markdown("### Modifica Squadra e Potenziale per i giocatori")
+                gioc_info = {}
                 for gioc in st.session_state['giocatori_scelti']:
-                    squadra = gioc_info[gioc]['Squadra'].strip()
-                    if squadra == "":
-                        st.warning(f"Scegli un nome squadra valido per il giocatore {gioc}")
-                        return
-                    giocatori_formattati.append(f"{squadra} ({gioc})")
+                    if gioc in df_master['Giocatore'].values:
+                        row = df_master[df_master['Giocatore']==gioc].iloc[0]
+                        squadra_default = row['Squadra']
+                        potenziale_default = row['Potenziale']
+                    else:
+                        squadra_default = ""
+                        potenziale_default = 4
+                    squadra_nuova = st.text_input(f"Squadra per {gioc}", value=squadra_default, key=f"squadra_{gioc}")
+                    potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, potenziale_default, key=f"potenziale_{gioc}")
+                    gioc_info[gioc] = {"Squadra": squadra_nuova, "Potenziale": potenziale_nuovo}
+                if st.button("Conferma e genera calendario"):
+                    giocatori_formattati = []
+                    for gioc in st.session_state['giocatori_scelti']:
+                        squadra = gioc_info[gioc]['Squadra'].strip()
+                        if squadra == "":
+                            st.warning(f"Scegli un nome squadra valido per il giocatore {gioc}")
+                            return
+                        giocatori_formattati.append(f"{squadra} ({gioc})")
+                    df_torneo = genera_calendario(giocatori_formattati, st.session_state['num_gironi'], st.session_state['tipo_calendario'])
+                    st.session_state['df_torneo'] = df_torneo
+                    st.success("Calendario generato e salvato!")
+                    st.session_state.calendario_generato = True
+                    st.session_state['mostra_form'] = False
+                    st.rerun()
 
-                df_torneo = genera_calendario(giocatori_formattati, st.session_state['num_gironi'], st.session_state['tipo_calendario'])
-                st.session_state['df_torneo'] = df_torneo
-                st.success("Calendario generato e salvato!")
-                st.session_state.calendario_generato = True
-                st.session_state['mostra_form'] = False
-                st.rerun() 
-
-
-
-    # Se calendario generato o caricato E form nascosta, mostro calendario + classifica
-    # Se calendario generato o caricato, mostra il calendario e la classifica
-    if 'df_torneo' in st.session_state and st.session_state.calendario_generato:
+    # Se un torneo è stato generato o caricato, mostra il calendario e la classifica
+    if st.session_state.calendario_generato:
         df = st.session_state['df_torneo']
-
-        # --- Selettori inline nel corpo pagina (sotto il titolo torneo) ---
         gironi = sorted(df['Girone'].dropna().unique().tolist())
-        
-        # Persistenza selezioni
         if 'girone_sel' not in st.session_state:
             st.session_state['girone_sel'] = gironi[0]
-        
-        giornate_correnti = sorted(
-            df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist()
-        )
+        giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
         if 'giornata_sel' not in st.session_state:
             st.session_state['giornata_sel'] = giornate_correnti[0]
-        
-        # Titolo della sezione corrente
         st.subheader(f"Calendario {st.session_state['girone_sel']} - Giornata {st.session_state['giornata_sel']}")
-        
-        # Selettori allineati orizzontalmente
         sel_col1, sel_col2 = st.columns(2)
         with sel_col1:
-            nuovo_girone = st.selectbox(
-                "Seleziona Girone",
-                gironi,
-                index=gironi.index(st.session_state['girone_sel'])
-            )
-        
+            nuovo_girone = st.selectbox("Seleziona Girone", gironi, index=gironi.index(st.session_state['girone_sel']))
         with sel_col2:
-            # Aggiorna l’elenco giornate se cambia il girone
-            giornate_correnti = sorted(
-                df[df['Girone'] == nuovo_girone]['Giornata'].dropna().unique().tolist()
-            )
-            # Mantieni la giornata se ancora valida, altrimenti vai alla prima
-            giornata_index = (
-                giornate_correnti.index(st.session_state['giornata_sel'])
-                if st.session_state['giornata_sel'] in giornate_correnti else 0
-            )
-            nuova_giornata = st.selectbox(
-                "Seleziona Giornata",
-                giornate_correnti,
-                index=giornata_index
-            )
-        
-        # Se l’utente cambia qualcosa, aggiorna e ricarica
+            giornate_correnti = sorted(df[df['Girone'] == nuovo_girone]['Giornata'].dropna().unique().tolist())
+            giornata_index = (giornate_correnti.index(st.session_state['giornata_sel']) if st.session_state['giornata_sel'] in giornate_correnti else 0)
+            nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=giornata_index)
         if (nuovo_girone != st.session_state['girone_sel']) or (nuova_giornata != st.session_state['giornata_sel']):
             st.session_state['girone_sel'] = nuovo_girone
             st.session_state['giornata_sel'] = nuova_giornata
             st.rerun()
-        
         girone_sel = st.session_state['girone_sel']
         giornata_sel = st.session_state['giornata_sel']
-
-
         mostra_calendario_giornata(df, girone_sel, giornata_sel)
-
         classifica = aggiorna_classifica(st.session_state['df_torneo'])
         mostra_classifica_stilizzata(classifica, girone_sel)
 
-        # Pulsante per tornare indietro e modificare la selezione
         if st.button("🔙 Torna indietro e modifica giocatori"):
             st.session_state['mostra_form'] = True
+            st.session_state['calendario_generato'] = False
+            st.rerun()
 
-        # --- FILTRI ---
         st.sidebar.markdown("---")
         st.sidebar.markdown("### Filtri partite da giocare")
-
         if st.sidebar.button("🎯 Filtra Giocatore"):
             st.session_state["filtra_giocatore"] = True
         if st.sidebar.button("🏆 Filtra Girone"):
             st.session_state["filtra_girone"] = True
-
+        
         if st.session_state.get("filtra_giocatore", False):
             giocatori = sorted(pd.unique(pd.concat([df['Casa'], df['Ospite']])))
             gioc_sel = st.sidebar.selectbox("Seleziona giocatore", giocatori, key="sel_giocatore")
-        
             filtro_tipo = "Entrambe"
             if st.session_state.get("tipo_calendario") == "Andata e ritorno":
                 filtro_tipo = st.sidebar.radio("Mostra partite", ["Andata", "Ritorno", "Entrambe"], index=2, key="tipo_giocatore")
-        
-            df_filtrato = df[
-                ((df['Casa'] == gioc_sel) | (df['Ospite'] == gioc_sel)) &
-                (df['Valida'] == False)
-            ]
-        
+            df_filtrato = df[((df['Casa'] == gioc_sel) | (df['Ospite'] == gioc_sel)) & (df['Valida'] == False)]
             if filtro_tipo != "Entrambe":
                 n_giornate = df['Giornata'].max()
                 if filtro_tipo == "Andata":
                     df_filtrato = df_filtrato[df_filtrato['Giornata'] <= n_giornate / 2]
                 else:
                     df_filtrato = df_filtrato[df_filtrato['Giornata'] > n_giornate / 2]
-        
-            # --- SOLO INFO MINIMALI ---
             if not df_filtrato.empty:
-                df_min = pd.DataFrame({
-                    "Giornata": df_filtrato["Giornata"],
-                    "Partita": df_filtrato["Casa"] + " vs " + df_filtrato["Ospite"]
-                }).sort_values("Giornata").reset_index(drop=True)  # <-- elimina colonna indice
+                df_min = pd.DataFrame({"Giornata": df_filtrato["Giornata"], "Partita": df_filtrato["Casa"] + " vs " + df_filtrato["Ospite"]}).sort_values("Giornata").reset_index(drop=True)
                 st.sidebar.dataframe(df_min, use_container_width=True, hide_index=True)
-
-
             else:
                 st.sidebar.info("Nessuna partita da giocare.")
-        
             if st.sidebar.button("Chiudi filtro giocatore"):
                 st.session_state["filtra_giocatore"] = False
-
-
+                st.rerun()
         if st.session_state.get("filtra_girone", False):
             gironi = sorted(df['Girone'].unique())
             gir_sel = st.sidebar.selectbox("Seleziona girone", gironi, key="sel_girone")
-        
             filtro_tipo_g = "Entrambe"
             if st.session_state.get("tipo_calendario") == "Andata e ritorno":
                 filtro_tipo_g = st.sidebar.radio("Mostra partite", ["Andata", "Ritorno", "Entrambe"], index=2, key="tipo_girone")
-        
-            df_girone = df[
-                (df['Girone'] == gir_sel) &
-                (df['Valida'] == False)
-            ]
-        
+            df_girone = df[(df['Girone'] == gir_sel) & (df['Valida'] == False)]
             if filtro_tipo_g != "Entrambe":
                 n_giornate = df['Giornata'].max()
                 if filtro_tipo_g == "Andata":
                     df_girone = df_girone[df_girone['Giornata'] <= n_giornate / 2]
                 else:
                     df_girone = df_girone[df_girone['Giornata'] > n_giornate / 2]
-        
-            # --- SOLO INFO MINIMALI ---
             if not df_girone.empty:
-                df_min_g = pd.DataFrame({
-                    "Giornata": df_girone["Giornata"],
-                    "Partita": df_girone["Casa"] + " vs " + df_girone["Ospite"]
-                }).sort_values("Giornata").reset_index(drop=True)  # <-- elimina colonna indice
+                df_min_g = pd.DataFrame({"Giornata": df_girone["Giornata"], "Partita": df_girone["Casa"] + " vs " + df_girone["Ospite"]}).sort_values("Giornata").reset_index(drop=True)
                 st.sidebar.dataframe(df_min_g, use_container_width=True, hide_index=True)
-
             else:
                 st.sidebar.info("Nessuna partita da giocare.")
-        
             if st.sidebar.button("Chiudi filtro girone"):
                 st.session_state["filtra_girone"] = False
-
-        # --- ESPORTA CSV ---
+                st.rerun()
+        
         st.sidebar.markdown("---")
-        #nome_torneo = st.session_state.get("nome_torneo", "torneo.csv")
-        nome_torneo = st.session_state.get("nome_torneo", "torneo") + ".csv"
-        csv_bytes = df.to_csv(index=False).encode('utf-8')
-        st.sidebar.download_button("⬇️ Scarica CSV Torneo", data=csv_bytes, file_name=nome_torneo, mime="text/csv")
 
-        # --- ESPORTA PDF ---
+        nome_torneo = st.session_state.get("nome_torneo", "torneo") + ".csv"
+        csv_completo_bytes = esporta_csv_classifiche(df)
+        st.sidebar.download_button("⬇️ Scarica CSV Torneo + Classifiche", data=csv_completo_bytes, file_name=nome_torneo, mime="text/csv")
+        
         st.sidebar.markdown("---")
         if st.sidebar.button("📄 Esporta PDF Calendario + Classifica"):
             pdf_bytes = esporta_pdf(df, classifica)
-            st.sidebar.download_button("Download PDF calendario + classifica", data=pdf_bytes, file_name=nome_torneo, mime="application/pdf")
+            st.sidebar.download_button("Download PDF calendario + classifica", data=pdf_bytes, file_name=nome_torneo.replace(".csv", ".pdf"), mime="application/pdf")
+
+
+        
+        # Aggiunta di un pulsante per il reset dell'app, posizionato in basso nel corpo principale
+        if st.button("🔄 Carica un nuovo torneo o creane un altro"):
+            st.session_state.clear()
+            st.rerun()
 
 
 if __name__ == "__main__":
