@@ -6,6 +6,9 @@ import random
 from fpdf import FPDF
 from datetime import datetime
 
+st.title("Test rapido: l'app funziona?")
+st.write("Se vedi questo messaggio, la base di Streamlit funziona.")
+
 st.set_page_config(page_title="Gestione Torneo Superba a Gironi by Legnaro72", layout="wide")
 
 st.markdown("""
