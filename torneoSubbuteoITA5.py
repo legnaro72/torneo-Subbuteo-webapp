@@ -1,5 +1,6 @@
 
 
+
 import streamlit as st
 import pandas as pd
 import requests
@@ -554,31 +555,9 @@ def main():
         st.sidebar.download_button("⬇️ Scarica CSV Torneo", data=csv_bytes, file_name=nome_torneo, mime="text/csv")
         
         st.sidebar.markdown("---")
-        nome_torneo = st.session_state.get("nome_torneo", "torneo")
-        csv_filename = nome_torneo + ".csv"
-
-        df_calendario = st.session_state['df_torneo']
-        df_classifica = aggiorna_classifica(df_calendario)
-
-        if df_classifica is not None and not df_classifica.empty:
-            df_classifica['Tipo'] = 'Classifica'
-            df_calendario['Tipo'] = 'Calendario'
-            # Aggiungi colonne per unione
-            for col in df_classifica.columns:
-                if col not in df_calendario.columns:
-                    df_calendario[col] = ''
-            for col in df_calendario.columns:
-                if col not in df_classifica.columns:
-                    df_classifica[col] = ''
-
-            df_combinato = pd.concat([df_calendario, df_classifica], ignore_index=True)
-            df_combinato = df_combinato.sort_values(by=['Tipo', 'Girone'], ascending=[False, True])
-        else:
-            df_calendario['Tipo'] = 'Calendario'
-            df_combinato = df_calendario
-
-        csv_bytes = df_combinato.to_csv(index=False).encode('utf-8')
-        st.sidebar.download_button("⬇️ Scarica CSV Torneo + Classifica", data=csv_bytes, file_name=csv_filename, mime="text/csv")
+        if st.sidebar.button("📄 Esporta PDF Calendario + Classifica"):
+            pdf_bytes = esporta_pdf(df, classifica)
+            st.sidebar.download_button("Download PDF calendario + classifica", data=pdf_bytes, file_name=nome_torneo.replace(".csv", ".pdf"), mime="application/pdf")
         
         # Aggiunta di un pulsante per il reset dell'app, posizionato in basso nel corpo principale
         if st.button("🔄 Carica un nuovo torneo o creane un altro"):
