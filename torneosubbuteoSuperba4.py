@@ -376,7 +376,6 @@ def main():
     if 'mostra_form' not in st.session_state:
         st.session_state['mostra_form'] = False
     
-    # Mostra la schermata iniziale solo se non c'è un torneo in corso
     if not st.session_state.calendario_generato and not st.session_state.get('mostra_form'):
         st.subheader("Scegli la tua avventura")
         col1, col2 = st.columns(2)
@@ -408,12 +407,10 @@ def main():
                 except Exception as e:
                     st.error(f"Errore nel caricamento CSV: {e}")
     
-    # Mostra il form di creazione se l'utente ha cliccato il pulsante
     if st.session_state.get('mostra_form', False):
         st.markdown("---")
         st.subheader("Configura il tuo nuovo torneo")
         
-        from datetime import datetime
         mesi = {1: "Gennaio", 2: "Febbraio", 3: "Marzo", 4: "Aprile", 5: "Maggio", 6: "Giugno", 7: "Luglio", 8: "Agosto", 9: "Settembre", 10: "Ottobre", 11: "Novembre", 12: "Dicembre"}
         oggi = datetime.now()
         nome_default = f"TorneoSubbuteo_{oggi.day}{mesi[oggi.month]}{oggi.year}"
@@ -480,15 +477,13 @@ def main():
                         st.warning(f"Scegli un nome squadra valido per il giocatore {gioc}")
                         return
                     giocatori_formattati.append(f"{squadra} ({gioc})")
-                # df_torneo = genera_calendario(giocatori_formattati, st.session_state['num_gironi'], st.session_state['tipo_calendario'])
-                # Sostituisci la linea sopra con la tua implementazione della funzione
+                df_torneo = genera_calendario(giocatori_formattati, st.session_state['num_gironi'], st.session_state['tipo_calendario'])
                 st.session_state['df_torneo'] = df_torneo
                 st.success("Calendario generato e salvato!")
                 st.session_state.calendario_generato = True
                 st.session_state['mostra_form'] = False
                 st.rerun()
 
-    # Se un torneo è stato generato o caricato, mostra il calendario e la classifica
     if st.session_state.calendario_generato:
         df = st.session_state['df_torneo']
         gironi = sorted(df['Girone'].dropna().unique().tolist())
@@ -501,7 +496,7 @@ def main():
         sel_col1, sel_col2 = st.columns(2)
         with sel_col1:
             nuovo_girone = st.selectbox("Seleziona Girone", gironi, index=gironi.index(st.session_state['girone_sel']))
-        with sel_col2:
+        with col2:
             giornate_correnti = sorted(df[df['Girone'] == nuovo_girone]['Giornata'].dropna().unique().tolist())
             giornata_index = (giornate_correnti.index(st.session_state['giornata_sel']) if st.session_state['giornata_sel'] in giornate_correnti else 0)
             nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=giornata_index)
