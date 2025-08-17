@@ -518,72 +518,72 @@ def main():
             st.session_state['mostra_form'] = True
             st.session_state['calendario_generato'] = False
             st.rerun()
-st.sidebar.markdown("---")
-        st.sidebar.markdown("### Filtri partite da giocare")
-        if st.sidebar.button("🎯 Filtra Giocatore"):
-            st.session_state["filtra_giocatore"] = True
-        if st.sidebar.button("🏆 Filtra Girone"):
-            st.session_state["filtra_girone"] = True
-        
-        if st.session_state.get("filtra_giocatore", False):
-            giocatori = sorted(pd.unique(pd.concat([df['Casa'], df['Ospite']])))
-            gioc_sel = st.sidebar.selectbox("Seleziona giocatore", giocatori, key="sel_giocatore")
-            filtro_tipo = "Entrambe"
-            if st.session_state.get("tipo_calendario") == "Andata e ritorno":
-                filtro_tipo = st.sidebar.radio("Mostra partite", ["Andata", "Ritorno", "Entrambe"], index=2, key="tipo_giocatore")
-            df_filtrato = df[((df['Casa'] == gioc_sel) | (df['Ospite'] == gioc_sel)) & (df['Valida'] == False)]
-            if filtro_tipo != "Entrambe":
-                n_giornate = df['Giornata'].max()
-                if filtro_tipo == "Andata":
-                    df_filtrato = df_filtrato[df_filtrato['Giornata'] <= n_giornate / 2]
-                else:
-                    df_filtrato = df_filtrato[df_filtrato['Giornata'] > n_giornate / 2]
-            if not df_filtrato.empty:
-                df_min = pd.DataFrame({"Giornata": df_filtrato["Giornata"], "Partita": df_filtrato["Casa"] + " vs " + df_filtrato["Ospite"]}).sort_values("Giornata").reset_index(drop=True)
-                st.sidebar.dataframe(df_min, use_container_width=True, hide_index=True)
-            else:
-                st.sidebar.info("Nessuna partita da giocare.")
-            if st.sidebar.button("Chiudi filtro giocatore"):
-                st.session_state["filtra_giocatore"] = False
-                st.rerun()
-        if st.session_state.get("filtra_girone", False):
-            gironi = sorted(df['Girone'].unique())
-            gir_sel = st.sidebar.selectbox("Seleziona girone", gironi, key="sel_girone")
-            filtro_tipo_g = "Entrambe"
-            if st.session_state.get("tipo_calendario") == "Andata e ritorno":
-                filtro_tipo_g = st.sidebar.radio("Mostra partite", ["Andata", "Ritorno", "Entrambe"], index=2, key="tipo_girone")
-            df_girone = df[(df['Girone'] == gir_sel) & (df['Valida'] == False)]
-            if filtro_tipo_g != "Entrambe":
-                n_giornate = df['Giornata'].max()
-                if filtro_tipo_g == "Andata":
-                    df_girone = df_girone[df_girone['Giornata'] <= n_giornate / 2]
-                else:
-                    df_girone = df_girone[df_girone['Giornata'] > n_giornate / 2]
-            if not df_girone.empty:
-                df_min_g = pd.DataFrame({"Giornata": df_girone["Giornata"], "Partita": df_girone["Casa"] + " vs " + df_girone["Ospite"]}).sort_values("Giornata").reset_index(drop=True)
-                st.sidebar.dataframe(df_min_g, use_container_width=True, hide_index=True)
-            else:
-                st.sidebar.info("Nessuna partita da giocare.")
-            if st.sidebar.button("Chiudi filtro girone"):
-                st.session_state["filtra_girone"] = False
-                st.rerun()
-        
         st.sidebar.markdown("---")
+                st.sidebar.markdown("### Filtri partite da giocare")
+                if st.sidebar.button("🎯 Filtra Giocatore"):
+                    st.session_state["filtra_giocatore"] = True
+                if st.sidebar.button("🏆 Filtra Girone"):
+                    st.session_state["filtra_girone"] = True
+                
+                if st.session_state.get("filtra_giocatore", False):
+                    giocatori = sorted(pd.unique(pd.concat([df['Casa'], df['Ospite']])))
+                    gioc_sel = st.sidebar.selectbox("Seleziona giocatore", giocatori, key="sel_giocatore")
+                    filtro_tipo = "Entrambe"
+                    if st.session_state.get("tipo_calendario") == "Andata e ritorno":
+                        filtro_tipo = st.sidebar.radio("Mostra partite", ["Andata", "Ritorno", "Entrambe"], index=2, key="tipo_giocatore")
+                    df_filtrato = df[((df['Casa'] == gioc_sel) | (df['Ospite'] == gioc_sel)) & (df['Valida'] == False)]
+                    if filtro_tipo != "Entrambe":
+                        n_giornate = df['Giornata'].max()
+                        if filtro_tipo == "Andata":
+                            df_filtrato = df_filtrato[df_filtrato['Giornata'] <= n_giornate / 2]
+                        else:
+                            df_filtrato = df_filtrato[df_filtrato['Giornata'] > n_giornate / 2]
+                    if not df_filtrato.empty:
+                        df_min = pd.DataFrame({"Giornata": df_filtrato["Giornata"], "Partita": df_filtrato["Casa"] + " vs " + df_filtrato["Ospite"]}).sort_values("Giornata").reset_index(drop=True)
+                        st.sidebar.dataframe(df_min, use_container_width=True, hide_index=True)
+                    else:
+                        st.sidebar.info("Nessuna partita da giocare.")
+                    if st.sidebar.button("Chiudi filtro giocatore"):
+                        st.session_state["filtra_giocatore"] = False
+                        st.rerun()
+                if st.session_state.get("filtra_girone", False):
+                    gironi = sorted(df['Girone'].unique())
+                    gir_sel = st.sidebar.selectbox("Seleziona girone", gironi, key="sel_girone")
+                    filtro_tipo_g = "Entrambe"
+                    if st.session_state.get("tipo_calendario") == "Andata e ritorno":
+                        filtro_tipo_g = st.sidebar.radio("Mostra partite", ["Andata", "Ritorno", "Entrambe"], index=2, key="tipo_girone")
+                    df_girone = df[(df['Girone'] == gir_sel) & (df['Valida'] == False)]
+                    if filtro_tipo_g != "Entrambe":
+                        n_giornate = df['Giornata'].max()
+                        if filtro_tipo_g == "Andata":
+                            df_girone = df_girone[df_girone['Giornata'] <= n_giornate / 2]
+                        else:
+                            df_girone = df_girone[df_girone['Giornata'] > n_giornate / 2]
+                    if not df_girone.empty:
+                        df_min_g = pd.DataFrame({"Giornata": df_girone["Giornata"], "Partita": df_girone["Casa"] + " vs " + df_girone["Ospite"]}).sort_values("Giornata").reset_index(drop=True)
+                        st.sidebar.dataframe(df_min_g, use_container_width=True, hide_index=True)
+                    else:
+                        st.sidebar.info("Nessuna partita da giocare.")
+                    if st.sidebar.button("Chiudi filtro girone"):
+                        st.session_state["filtra_girone"] = False
+                        st.rerun()
+                
+                st.sidebar.markdown("---")
+                
+                if not st.session_state['df_torneo'].empty:
+                    nome_torneo = st.session_state.get("nome_torneo", "torneo") + ".csv"
+                    csv_completo_bytes = esporta_csv_classifiche(df)
+                    st.sidebar.download_button("⬇️ Scarica CSV Torneo + Classifiche", data=csv_completo_bytes, file_name=nome_torneo, mime="text/csv")
+                    
+                    st.sidebar.markdown("---")
+                    if st.sidebar.button("📄 Esporta PDF Calendario + Classifica"):
+                        pdf_bytes = esporta_pdf(df, classifica)
+                        st.sidebar.download_button("Download PDF calendario + classifica", data=pdf_bytes, file_name=nome_torneo.replace(".csv", ".pdf"), mime="application/pdf")
+                
+                if st.button("🔄 Carica un nuovo torneo o creane un altro"):
+                    st.session_state.clear()
+                    st.rerun()
         
-        if not st.session_state['df_torneo'].empty:
-            nome_torneo = st.session_state.get("nome_torneo", "torneo") + ".csv"
-            csv_completo_bytes = esporta_csv_classifiche(df)
-            st.sidebar.download_button("⬇️ Scarica CSV Torneo + Classifiche", data=csv_completo_bytes, file_name=nome_torneo, mime="text/csv")
-            
-            st.sidebar.markdown("---")
-            if st.sidebar.button("📄 Esporta PDF Calendario + Classifica"):
-                pdf_bytes = esporta_pdf(df, classifica)
-                st.sidebar.download_button("Download PDF calendario + classifica", data=pdf_bytes, file_name=nome_torneo.replace(".csv", ".pdf"), mime="application/pdf")
-        
-        if st.button("🔄 Carica un nuovo torneo o creane un altro"):
-            st.session_state.clear()
-            st.rerun()
-
-if __name__ == "__main__":
-    main()
-        
+        if __name__ == "__main__":
+            main()
+                
