@@ -6,6 +6,8 @@ import requests
 from io import StringIO
 import random
 from fpdf import FPDF
+import numpy as np
+from datetime import datetime
 
 st.set_page_config(page_title="Gestione Torneo Superba a Gironi by Legnaro72", layout="wide")
 
