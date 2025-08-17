@@ -4,27 +4,31 @@ import requests
 from io import StringIO
 import random
 from fpdf import FPDF
+from datetime import datetime
 
 st.set_page_config(page_title="Gestione Torneo Superba a Gironi by Legnaro72", layout="wide")
 
 st.markdown("""
     <style>
-    /* Rimuove i puntini neri */
     ul, li {
         list-style-type: none !important;
         padding-left: 0 !important;
         margin-left: 0 !important;
     }
+    div[data-testid="stNumberInput"] label::before {
+        content: none;
+    }
+    .big-title {
+        text-align: center;
+        font-size: clamp(16px, 4vw, 36px);
+        font-weight: bold;
+        margin-top: 10px;
+        margin-bottom: 20px;
+        color: red;
+        word-wrap: break-word;
+        white-space: normal;
+    }
     </style>
-""", unsafe_allow_html=True)
-
-st.markdown("""
-<style>
-/* Rimuove l'asterisco dai campi con etichetta nascosta */
-div[data-testid="stNumberInput"] label::before {
-    content: none;
-}
-</style>
 """, unsafe_allow_html=True)
 
 
@@ -35,13 +39,10 @@ def carica_giocatori_master(url=URL_GIOCATORI):
         r = requests.get(url)
         r.raise_for_status()
         df = pd.read_csv(StringIO(r.content.decode('latin1')))
-        for c in ["Giocatore","Squadra","Potenziale"]:
-            if c not in df.columns:
-                df[c] = ""
         df["Potenziale"] = pd.to_numeric(df["Potenziale"], errors='coerce').fillna(4).astype(int)
         return df[["Giocatore","Squadra","Potenziale"]]
     except Exception as e:
-        st.warning(f"Impossibile caricare lista giocatori dal CSV: {e}")
+        st.warning(f"Impossibile caricare lista giocatori: {e}")
         return pd.DataFrame(columns=["Giocatore","Squadra","Potenziale"])
 
 def genera_calendario(giocatori, num_gironi, tipo="Solo andata"):
@@ -49,7 +50,7 @@ def genera_calendario(giocatori, num_gironi, tipo="Solo andata"):
     gironi = [[] for _ in range(num_gironi)]
     for i, nome in enumerate(giocatori):
         gironi[i % num_gironi].append(nome)
-
+    
     partite = []
     for idx, girone in enumerate(gironi, 1):
         g = f"Girone {idx}"
@@ -73,12 +74,12 @@ def genera_calendario(giocatori, num_gironi, tipo="Solo andata"):
     return pd.DataFrame(partite)
 
 def aggiorna_classifica(df):
-    if df.empty or 'Girone' not in df.columns:
+    if df.empty or 'Girone' not in df.columns or not df[df['Valida'] == True].empty:
         return pd.DataFrame()
-
+    
     gironi = df['Girone'].dropna().unique()
     classifiche = []
-
+    
     for girone in gironi:
         partite = df[(df['Girone'] == girone) & (df['Valida'] == True)]
         if partite.empty:
@@ -119,7 +120,7 @@ def aggiorna_classifica(df):
         classifiche.append(df_stat)
 
     if not classifiche:
-        return pd.DataFrame() 
+        return pd.DataFrame()
 
     df_classifica = pd.concat(classifiche, ignore_index=True)
     df_classifica = df_classifica.sort_values(by=['Girone','Punti','DR'], ascending=[True,False,False])
@@ -229,13 +230,14 @@ def esporta_pdf(df_torneo, df_classifica):
     pdf_bytes = pdf.output(dest='S').encode('latin1')
     return pdf_bytes
 
-
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
     st.subheader(f"Calendario  {girone_sel} - Giornata {giornata_sel}")
     
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
-    if 'Valida' not in df_giornata.columns:
-        df_giornata['Valida'] = False
+    
+    if df_giornata.empty:
+        st.info("Nessuna partita da mostrare per questa giornata.")
+        return
 
     for idx, row in df_giornata.iterrows():
         casa = row['Casa']
@@ -293,13 +295,11 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.subheader(f"Classifica Girone {girone_sel}")
-
     if df_classifica.empty:
-        st.info("Nessuna partita validata: la classifica sarà disponibile dopo l'inserimento e validazione dei risultati.")
+        st.info("Nessuna partita validata.")
         return
 
     is_dark = st.get_option("theme.base") == "dark"
-
     def color_rows(row):
         if row.name == 0:
             return ['background-color: #155724; color: white'] * len(row) if is_dark else ['background-color: #d4edda; color: black'] * len(row)
@@ -309,51 +309,36 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
             return ['color: white'] * len(row) if is_dark else [''] * len(row)
 
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
-
     st.dataframe(df_girone.style.apply(color_rows, axis=1), use_container_width=True)
+
 
 def main():
     if "calendario_generato" not in st.session_state:
+        st.session_state.clear()
         st.session_state.calendario_generato = False
-    
+        st.session_state.mostra_form = False
+        st.session_state.filtra_giocatore = False
+        st.session_state.filtra_girone = False
+
     if st.session_state.get("calendario_generato", False):
         nome_torneo = st.session_state.get("nome_torneo", "Torneo")
-        st.markdown(
-            f"""
-            <style>
-            .big-title {{
-                text-align: center;
-                font-size: clamp(16px, 4vw, 36px);
-                font-weight: bold;
-                margin-top: 10px;
-                margin-bottom: 20px;
-                color: red;
-                word-wrap: break-word;
-                white-space: normal;
-            }}
-            </style>
-            <div class="big-title">🏆⚽{nome_torneo}🥇🥈🥉</div>
-            """,
-            unsafe_allow_html=True
-        )
+        st.markdown(f"<div class='big-title'>🏆⚽{nome_torneo}🥇🥈🥉</div>", unsafe_allow_html=True)
     else:
         st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉")
-        
     
     df_master = carica_giocatori_master()
+    if df_master.empty:
+        st.error("Impossibile procedere: non è stato possibile caricare la lista giocatori.")
+        return
 
     if not st.session_state.calendario_generato:
-        
         st.write("---")
         st.subheader("Scegli un'azione per iniziare:")
-        
         col1, col2 = st.columns(2)
         
         with col1:
             st.markdown("<h4 style='text-align: center;'>📁 Carica Torneo Esistente</h4>", unsafe_allow_html=True)
-            st.info("Se hai un torneo salvato in un file CSV, caricalo per continuare a giocare.")
             uploaded_file = st.file_uploader("Carica CSV torneo", type=["csv"], label_visibility="hidden")
-            
             if uploaded_file is not None:
                 try:
                     df_caricato = pd.read_csv(uploaded_file)
@@ -363,53 +348,127 @@ def main():
                         st.session_state['df_torneo'] = df_caricato
                         st.session_state["nome_torneo"] = uploaded_file.name.replace(".csv", "")
                         st.session_state.calendario_generato = True
-                        st.session_state.torneo_caricato = True
                         st.success("✅ Torneo caricato correttamente!")
                         st.rerun()
                     else:
-                        st.error(f"❌ Il CSV non contiene tutte le colonne richieste: {expected_cols}")
+                        st.error(f"❌ Il CSV non contiene le colonne richieste: {expected_cols}")
                 except Exception as e:
-                    st.error(f"❌ Errore nel caricamento CSV: {e}")
+                    st.error(f"❌ Errore nel caricamento: {e}")
 
         with col2:
             st.markdown("<h4 style='text-align: center;'>⚽ Crea Nuovo Torneo</h4>", unsafe_allow_html=True)
-            st.info("Inizia una nuova competizione configurando giocatori, gironi e tipo di calendario.")
             if st.button("➕ Crea Nuovo Torneo"):
                 st.session_state['mostra_form'] = True
-                
         st.write("---")
         
         if st.session_state.get('mostra_form', False):
-            from datetime import datetime
-            mesi = {1: "Gennaio", 2: "Febbraio", 3: "Marzo", 4: "Aprile", 5: "Maggio", 6: "Giugno", 7: "Luglio", 8: "Agosto", 9: "Settembre", 10: "Ottobre", 11: "Novembre", 12: "Dicembre"}
             oggi = datetime.now()
-            nome_default = f"TorneoSubbuteo_{oggi.day}{mesi[oggi.month]}{oggi.year}"
+            nome_default = f"TorneoSubbuteo_{oggi.day:02d}{oggi.month:02d}{oggi.year}"
             
             st.header("Dettagli Nuovo Torneo")
-            nome_torneo = st.text_input("Nome del torneo:", value=nome_default)
+            nome_torneo = st.text_input("Nome del torneo:", value=nome_default, key="nome_torneo_nuovo")
             st.session_state["nome_torneo"] = nome_torneo
-            num_gironi = st.number_input("Numero di gironi", 1, 8, value=2)
-            tipo_calendario = st.selectbox("Tipo calendario", ["Solo andata", "Andata e ritorno"])
-            n_giocatori = st.number_input("Numero giocatori", 4, 32, value=8)
+            num_gironi = st.number_input("Numero di gironi", 1, 8, value=2, key="num_gironi")
+            tipo_calendario = st.selectbox("Tipo calendario", ["Solo andata", "Andata e ritorno"], key="tipo_cal")
+            n_giocatori = st.number_input("Numero giocatori", 4, 32, value=8, key="n_giocatori")
 
             st.markdown("### 👥 Seleziona Giocatori")
             amici = df_master['Giocatore'].tolist()
             all_seleziona = st.checkbox("Seleziona tutti gli amici", key="all_amici")
-            if all_seleziona:
-                amici_selezionati = st.multiselect("Seleziona amici", amici, default=amici)
-            else:
-                amici_selezionati = st.multiselect("Seleziona amici", amici)
-
+            amici_selezionati = st.multiselect("Seleziona amici", amici, default=amici if all_seleziona else [])
+            
             num_supplementari = n_giocatori - len(amici_selezionati)
             if num_supplementari < 0:
-                st.warning(f"Hai selezionato più amici ({len(amici_selezionati)}) del numero partecipanti ({n_giocatori}). Riduci la selezione.")
-                return
+                st.warning(f"Hai selezionato troppi amici. Riduci la selezione o aumenta il numero di giocatori.")
+                st.stop()
 
             st.markdown(f"Giocatori supplementari da inserire: **{num_supplementari}**")
-            giocatori_supplementari = []
-            for i in range(num_supplementari):
-                use = st.checkbox(f"Aggiungi giocatore supplementare G{i+1}", key=f"supp_{i}_check")
-                if use:
-                    nome = st.text_input(f"Nome giocatore supplementare G{i+1}", key=f"supp_{i}_nome")
-                    if nome.strip() == "":
-                        st.warning
+            giocatori_supplementari = [st.text_input(f"Nome giocatore suppl. {i+1}", key=f"supp_nome_{i}") for i in range(num_supplementari)]
+            giocatori_supplementari_puliti = [n for n in giocatori_supplementari if n.strip() != ""]
+            
+            if len(giocatori_supplementari_puliti) < num_supplementari:
+                st.warning("Inserisci i nomi per tutti i giocatori supplementari.")
+                st.stop()
+
+            giocatori_scelti = amici_selezionati + giocatori_supplementari_puliti
+            if len(set(giocatori_scelti)) < n_giocatori:
+                st.warning("Ci sono nomi duplicati tra i giocatori. Rimuovi i duplicati.")
+                st.stop()
+
+            st.markdown(f"**Giocatori selezionati:** {', '.join(giocatori_scelti)}")
+
+            if st.button("Assegna Squadre"):
+                st.session_state['giocatori_scelti'] = giocatori_scelti
+                st.session_state['num_gironi'] = num_gironi
+                st.session_state['tipo_calendario'] = tipo_calendario
+                st.session_state.squadre_assegnate = True
+                st.rerun()
+
+            if st.session_state.get('squadre_assegnate', False):
+                st.markdown("### Modifica Squadra e Potenziale")
+                gioc_info = {}
+                for gioc in st.session_state['giocatori_scelti']:
+                    row = df_master[df_master['Giocatore']==gioc].iloc[0] if gioc in df_master['Giocatore'].values else None
+                    squadra_default = row['Squadra'] if row is not None else ""
+                    potenziale_default = int(row['Potenziale']) if row is not None else 4
+                    squadra_nuova = st.text_input(f"Squadra per {gioc}", value=squadra_default, key=f"squadra_{gioc}")
+                    potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, potenziale_default, key=f"potenziale_{gioc}")
+                    gioc_info[gioc] = {"Squadra": squadra_nuova, "Potenziale": potenziale_nuovo}
+                
+                if st.button("Conferma e genera calendario"):
+                    giocatori_formattati = []
+                    for gioc in st.session_state['giocatori_scelti']:
+                        squadra = gioc_info[gioc]['Squadra'].strip()
+                        if not squadra:
+                            st.warning(f"Scegli un nome squadra per {gioc}.")
+                            st.stop()
+                        giocatori_formattati.append(f"{squadra} ({gioc})")
+                    
+                    df_torneo = genera_calendario(giocatori_formattati, st.session_state['num_gironi'], st.session_state['tipo_calendario'])
+                    st.session_state['df_torneo'] = df_torneo
+                    st.success("Calendario generato e salvato!")
+                    st.session_state.calendario_generato = True
+                    st.session_state['mostra_form'] = False
+                    st.session_state.squadre_assegnate = False
+                    st.rerun()
+    
+    if st.session_state.get("calendario_generato", False):
+        if 'df_torneo' not in st.session_state or st.session_state['df_torneo'].empty:
+            st.error("Errore: DataFrame del torneo non trovato o vuoto. Torna alla schermata iniziale.")
+            if st.button("Ritorna alla schermata iniziale"):
+                st.session_state.clear()
+                st.rerun()
+            return
+            
+        df = st.session_state['df_torneo']
+        gironi = sorted(df['Girone'].dropna().unique().tolist())
+        if 'girone_sel' not in st.session_state or st.session_state['girone_sel'] not in gironi:
+            st.session_state['girone_sel'] = gironi[0] if gironi else None
+        
+        if st.session_state['girone_sel']:
+            giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
+            if 'giornata_sel' not in st.session_state or st.session_state['giornata_sel'] not in giornate_correnti:
+                st.session_state['giornata_sel'] = giornate_correnti[0] if giornate_correnti else None
+        else:
+            giornate_correnti = []
+            st.session_state['giornata_sel'] = None
+        
+        if gironi and giornate_correnti:
+            sel_col1, sel_col2 = st.columns(2)
+            with sel_col1:
+                nuovo_girone = st.selectbox("Seleziona Girone", gironi, index=gironi.index(st.session_state['girone_sel']), key="sel_girone_main")
+            with sel_col2:
+                giornata_index = giornate_correnti.index(st.session_state['giornata_sel']) if st.session_state['giornata_sel'] in giornate_correnti else 0
+                nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=giornata_index, key="sel_giornata_main")
+                
+            if (nuovo_girone != st.session_state['girone_sel']) or (nuova_giornata != st.session_state['giornata_sel']):
+                st.session_state['girone_sel'] = nuovo_girone
+                st.session_state['giornata_sel'] = nuova_giornata
+                st.rerun()
+                
+            girone_sel = st.session_state['girone_sel']
+            giornata_sel = st.session_state['giornata_sel']
+            
+            mostra_calendario_giornata(df, girone_sel, giornata_sel)
+            classifica = aggiorna_classifica(st.session_state['df_torneo'])
+            mostra_classifica_stilizzata(classifica, girone_sel)
