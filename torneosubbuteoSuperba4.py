@@ -583,3 +583,7 @@ st.sidebar.markdown("---")
         if st.button("🔄 Carica un nuovo torneo o creane un altro"):
             st.session_state.clear()
             st.rerun()
+
+
+if __name__ == "__main__":
+    main()
