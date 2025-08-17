@@ -2,12 +2,9 @@
 import streamlit as st
 import pandas as pd
 import requests
-import io
 from io import StringIO
 import random
 from fpdf import FPDF
-from datetime import datetime
-
 
 st.set_page_config(page_title="Gestione Torneo Superba a Gironi by Legnaro72", layout="wide")
 
@@ -128,42 +125,6 @@ def aggiorna_classifica(df):
     df_classifica = pd.concat(classifiche, ignore_index=True)
     df_classifica = df_classifica.sort_values(by=['Girone','Punti','DR'], ascending=[True,False,False])
     return df_classifica
-
-def salva_file_sidebar():
-    st.sidebar.markdown("## 💾 Salvataggio Torneo")
-
-    nome_torneo = st.session_state.get("nome_torneo", "torneo")
-
-    # --- CSV ---
-    if st.sidebar.button("💾 Salva CSV su disco"):
-        nome_file_csv = f"{nome_torneo}.csv"
-        df = st.session_state.get("df")
-        if df is not None:
-            df.to_csv(nome_file_csv, index=False, encoding="utf-8")
-            st.sidebar.success(f"File salvato: {nome_file_csv}")
-
-    df = st.session_state.get("df")
-    if df is not None:
-        csv_bytes = df.to_csv(index=False).encode("utf-8")
-        st.sidebar.download_button("⬇️ Scarica CSV", data=csv_bytes, file_name=f"{nome_torneo}.csv", mime="text/csv")
-
-    # --- PDF ---
-    if st.sidebar.button("💾 Salva PDF su disco"):
-        classifica = st.session_state.get("classifica")
-        df = st.session_state.get("df")
-        if df is not None and classifica is not None:
-            pdf_bytes = esporta_pdf(df, classifica)
-            nome_file_pdf = f"{nome_torneo}.pdf"
-            with open(nome_file_pdf, "wb") as f:
-                f.write(pdf_bytes)
-            st.sidebar.success(f"File salvato: {nome_file_pdf}")
-
-    if st.sidebar.button("⬇️ Scarica PDF"):
-        classifica = st.session_state.get("classifica")
-        df = st.session_state.get("df")
-        if df is not None and classifica is not None:
-            pdf_bytes = esporta_pdf(df, classifica)
-            st.sidebar.download_button("Scarica PDF", data=pdf_bytes, file_name=f"{nome_torneo}.pdf", mime="application/pdf")
 
 
 def esporta_pdf(df_torneo, df_classifica):
@@ -656,53 +617,19 @@ def main():
             if st.sidebar.button("Chiudi filtro girone"):
                 st.session_state["filtra_girone"] = False
 
-        
-        # --- PULSANTI DI SALVATAGGIO NEL SIDEBAR ---
-        #salva_file_sidebar()   # <--- QUESTO È IL PUNTO GIUSTO
-        # --- SALVATAGGIO ED ESPORTAZIONE ---
-        st.sidebar.markdown("## 💾 Salvataggio Torneo")
-        
-        nome_torneo = st.session_state.get("nome_torneo", "torneo")
-        df = st.session_state.get("df")
-        classifica = st.session_state.get("classifica")
-        
-        # --- SALVA CSV SU DISCO (solo se giri in locale su PC) ---
-        if st.sidebar.button("💾 Salva CSV su disco"):
-            if df is not None:
-                nome_file_csv = f"{nome_torneo}.csv"
-                df.to_csv(nome_file_csv, index=False, encoding="utf-8")
-                st.sidebar.success(f"File salvato in locale: {nome_file_csv}")
-        
-        # --- DOWNLOAD CSV ---
-        if df is not None:
-            csv_bytes = df.to_csv(index=False).encode("utf-8")
-            st.sidebar.download_button(
-                "⬇️ Scarica CSV",
-                data=csv_bytes,
-                file_name=f"{nome_torneo}.csv",
-                mime="text/csv"
-            )
-        
-        # --- SALVA PDF SU DISCO ---
-        if st.sidebar.button("💾 Salva PDF su disco"):
-            if df is not None and classifica is not None:
-                pdf_bytes = esporta_pdf(df, classifica)
-                nome_file_pdf = f"{nome_torneo}.pdf"
-                with open(nome_file_pdf, "wb") as f:
-                    f.write(pdf_bytes)
-                st.sidebar.success(f"File salvato in locale: {nome_file_pdf}")
-        
-        # --- DOWNLOAD PDF ---
-        if df is not None and classifica is not None:
-            pdf_bytes = esporta_pdf(df, classifica)
-            st.sidebar.download_button(
-                "⬇️ Scarica PDF",
-                data=pdf_bytes,
-                file_name=f"{nome_torneo}.pdf",
-                mime="application/pdf"
-            )
+        # --- ESPORTA CSV ---
+        st.sidebar.markdown("---")
+        #nome_torneo = st.session_state.get("nome_torneo", "torneo.csv")
+        nome_torneo = st.session_state.get("nome_torneo", "torneo") + ".csv"
+        csv_bytes = df.to_csv(index=False).encode('utf-8')
+        st.sidebar.download_button("⬇️ Scarica CSV Torneo", data=csv_bytes, file_name=nome_torneo, mime="text/csv")
 
-       
+        # --- ESPORTA PDF ---
+        st.sidebar.markdown("---")
+        if st.sidebar.button("📄 Esporta PDF Calendario + Classifica"):
+            pdf_bytes = esporta_pdf(df, classifica)
+            st.sidebar.download_button("Download PDF calendario + classifica", data=pdf_bytes, file_name=nome_torneo, mime="application/pdf")
+
 
 if __name__ == "__main__":
     main()
