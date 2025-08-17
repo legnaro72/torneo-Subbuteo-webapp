@@ -256,7 +256,7 @@ def main():
 
     # TEST: Rimuovi il commento da una sezione alla volta, salvando e riavviando dopo ogni step.
     # Quando la schermata bianca riappare, la riga che hai appena riattivato è quella che causa l'errore.
-    # st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉") # STEP 1
+    st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉") # STEP 1
     # df_master = carica_giocatori_master()                                  # STEP 2
     # if not st.session_state.calendario_generato:                          # STEP 3
     #     st.write("---")
