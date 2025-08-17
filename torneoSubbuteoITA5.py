@@ -498,6 +498,9 @@ def main():
             st.session_state['mostra_form'] = True
             st.session_state['calendario_generato'] = False
             st.rerun()
+        
+        # Aggiungi questa riga per prevenire l'output None
+        st.write("")
 
         st.sidebar.markdown("---")
         st.sidebar.markdown("### Filtri partite da giocare")
