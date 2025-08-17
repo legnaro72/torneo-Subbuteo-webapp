@@ -552,7 +552,6 @@ def main():
         if df_classifica is not None:
             df_classifica = df_classifica.fillna(0)   # 🔹 FIX: niente più None nella classifica
 
-
         if df_classifica is not None and not df_classifica.empty:
             df_classifica['Tipo'] = 'Classifica'
             df_calendario['Tipo'] = 'Calendario'
@@ -563,17 +562,17 @@ def main():
             for col in df_calendario.columns:
                 if col not in df_classifica.columns:
                     df_classifica[col] = ''
-
+        
             df_combinato = pd.concat([df_calendario, df_classifica], ignore_index=True)
             df_combinato = df_combinato.sort_values(by=['Tipo', 'Girone'], ascending=[False, True])
-            else:
-                df_calendario['Tipo'] = 'Calendario'
-                df_combinato = df_calendario
-            
-            df_combinato = df_combinato.fillna("")
-            for col in df_combinato.columns:
-                df_combinato[col] = df_combinato[col].astype(str)
-
+        else:
+            df_calendario['Tipo'] = 'Calendario'
+            df_combinato = df_calendario
+        
+        df_combinato = df_combinato.fillna("")
+        for col in df_combinato.columns:
+            df_combinato[col] = df_combinato[col].astype(str)
+        
         csv_bytes = df_combinato.to_csv(index=False).encode('utf-8')
         st.sidebar.download_button("⬇️ Scarica CSV Torneo + Classifica", data=csv_bytes, file_name=csv_filename, mime="text/csv")
         
