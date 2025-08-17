@@ -306,7 +306,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             df.at[idx, 'Valida'] = st.session_state[f"valida_{idx}"]
 
         st.session_state['df_torneo'] = df
-        st.rerun()
+        #st.rerun()
         
     st.button("Salva Risultati Giornata", on_click=salva_risultati_giornata)
 
@@ -523,6 +523,12 @@ def main():
         giornata_sel = st.session_state['giornata_sel']
         
         mostra_calendario_giornata(df, girone_sel, giornata_sel)
+
+        # Forza il refresh solo fuori dai callback
+        if st.session_state.get('__refresh_after_save', False):
+            st.session_state['__refresh_after_save'] = False
+            st.rerun()
+        
         classifica = aggiorna_classifica(st.session_state['df_torneo'])
         mostra_classifica_stilizzata(classifica, girone_sel)
 
