@@ -459,40 +459,32 @@ def main():
 
                 if modalita_gironi == "Popola Gironi Manualmente":
                     st.subheader("Assegna i giocatori ai gironi")
-                    st.info("Utilizza i selettori sottostanti per assegnare i giocatori a ciascun girone.")
-
-                    colonne = st.columns(st.session_state['num_gironi'])
+                    st.info("Ogni giocatore deve comparire una sola volta. Assegna tutti i giocatori prima di confermare.")
+                
                     gironi_manuali = {}
-
+                    giocatori_disponibili = giocatori_formattati.copy()
+                
                     for i in range(st.session_state['num_gironi']):
-                        with colonne[i]:
-                            st.markdown(f"#### Girone {i+1}")
-                            girone_key = f"manual_girone_{i+1}"
-                            
-                            # Inizializza il multiselect per il girone se non esiste
-                            if girone_key not in st.session_state:
-                                st.session_state[girone_key] = []
-                                
-                            gironi_manuali[f"Girone {i+1}"] = st.multiselect(
+                        girone_key = f"manual_girone_{i+1}"
+                        with st.expander(f"Girone {i+1}"):
+                            # Preseleziona eventuali valori salvati in sessione
+                            default_val = st.session_state.get(girone_key, [])
+                            selezionati = st.multiselect(
                                 f"Giocatori per Girone {i+1}",
-                                options=giocatori_formattati,
-                                default=st.session_state[girone_key],
+                                options=[g for g in giocatori_disponibili if g not in sum(gironi_manuali.values(), [])],
+                                default=default_val,
                                 key=girone_key
                             )
-                    
-                    assegnati_unici = set()
-                    for girone in gironi_manuali.values():
-                        for giocatore in girone:
-                            assegnati_unici.add(giocatore)
-                    
+                            gironi_manuali[f"Girone {i+1}"] = selezionati
+                
+                    assegnati_unici = set(sum(gironi_manuali.values(), []))
                     st.markdown(f"**Giocatori assegnati: {len(assegnati_unici)} / {len(giocatori_formattati)}**")
-                    
+                
                     if len(assegnati_unici) != len(giocatori_formattati):
-                        st.warning("Devi assegnare tutti i giocatori per continuare. Assicurati che ogni giocatore sia in un solo girone.")
+                        st.warning("⚠️ Devi assegnare tutti i giocatori, senza duplicati, per continuare.")
                     else:
-                        if st.button("Conferma gironi manuali e genera calendario"):
+                        if st.button("✅ Conferma gironi manuali e genera calendario"):
                             gironi_finali = list(gironi_manuali.values())
-                            
                             df_torneo = genera_calendario_from_list(gironi_finali, st.session_state['tipo_calendario'])
                             st.session_state['df_torneo'] = df_torneo
                             st.success("Calendario generato e salvato!")
@@ -500,15 +492,7 @@ def main():
                             st.session_state['mostra_form'] = False
                             st.session_state['mostra_assegnazione'] = False
                             st.rerun()
-                else: # Modalità automatica
-                    if st.button("Conferma e genera calendario"):
-                        df_torneo = genera_calendario_auto(giocatori_formattati, st.session_state['num_gironi'], st.session_state['tipo_calendario'])
-                        st.session_state['df_torneo'] = df_torneo
-                        st.success("Calendario generato e salvato!")
-                        st.session_state.calendario_generato = True
-                        st.session_state['mostra_form'] = False
-                        st.session_state['mostra_assegnazione'] = False
-                        st.rerun()
+
 
     if st.session_state.calendario_generato:
         df = st.session_state['df_torneo']
