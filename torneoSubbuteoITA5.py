@@ -298,6 +298,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         st.session_state['df_torneo'] = df
         st.success("Risultati salvati correttamente!")
         st.rerun()
+        st.empty() # Aggiungi questa riga per prevenire l'output None
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.subheader(f"Classifica Girone {girone_sel}")
