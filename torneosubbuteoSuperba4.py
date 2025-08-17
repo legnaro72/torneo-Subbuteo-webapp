@@ -324,14 +324,14 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.dataframe(df_girone.style.apply(color_rows, axis=1), use_container_width=True)
 
 def main():
+    
     if "calendario_generato" not in st.session_state:
         st.session_state.calendario_generato = False
     
-    # Mostra titolo solo se non ancora generato
-    if not st.session_state.calendario_generato:
-        st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉")
-
-    # Visualizza sempre il nome torneo se esiste in session_state
+    # Questo titolo deve essere sempre visibile, indipendentemente dalla fase
+    st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉")
+    
+    # Visualizza il nome del torneo se esiste
     if "nome_torneo" in st.session_state:
         st.markdown(
             f"""
@@ -343,8 +343,8 @@ def main():
                 margin-top: 10px;
                 margin-bottom: 20px;
                 color: red;
-                word-wrap: break-word;   /* forza il wrapping */
-                white-space: normal;     /* permette a Streamlit di andare a capo */
+                word-wrap: break-word;
+                white-space: normal;
             }}
             </style>
             <div class="big-title">🏆{st.session_state["nome_torneo"]}🏆</div>
@@ -352,24 +352,14 @@ def main():
             unsafe_allow_html=True
         )
 
-
-    # Visualizza sempre il nome torneo se esiste in session_state
-    # if "nome_torneo" in st.session_state:
-    #     st.markdown(
-    #         f'<h2 style="color: red; text-align: center;">🏆{st.session_state["nome_torneo"]}🏆</h2>', 
-    #         unsafe_allow_html=True
-    #     )
-        
     df_master = carica_giocatori_master()
-
-    # Inizializza stato per mostra/nascondi form
+    
     if 'mostra_form' not in st.session_state:
         st.session_state['mostra_form'] = True
-
+    
     scelta = st.sidebar.radio("Azione:", ["Nuovo torneo", "Carica torneo da CSV"])
 
-    # Nuova logica per il caricamento
-    # Se l'utente seleziona "Carica torneo da CSV", mostra il file uploader
+    # Blocco per il caricamento, ora è sempre disponibile e non dipende dal 'mostra_form'
     if scelta == "Carica torneo da CSV":
         uploaded_file = st.file_uploader("Carica CSV torneo", type=["csv"])
         if uploaded_file is not None:
@@ -380,9 +370,10 @@ def main():
                     df_caricato['Valida'] = df_caricato['Valida'].astype(bool)
                     st.session_state['df_torneo'] = df_caricato
                     st.success("Torneo caricato correttamente!")
+                    
                     st.session_state['mostra_form'] = False
-                    st.session_state.calendario_generato = True # Aggiungi questa riga!
-                    st.rerun() # Esegui il rerun per passare alla visualizzazione del torneo
+                    st.session_state.calendario_generato = True
+                    st.rerun()
                 else:
                     st.error(f"Il CSV non contiene tutte le colonne richieste: {expected_cols}")
             except Exception as e:
