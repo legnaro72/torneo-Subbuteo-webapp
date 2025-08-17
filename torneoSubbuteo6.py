@@ -5,6 +5,18 @@ from io import StringIO
 import random
 from fpdf import FPDF
 
+# --- funzione per nascondere None/nan/stringa vuota ---
+def style_hide_none(df):
+    is_dark = st.get_option("theme.base") == "dark"
+    color = "#fff" if is_dark else "#000"
+    def style_func(val):
+        strval = str(val).strip().lower()
+        if strval in ["none", "nan", ""]:
+            return f'color: {color};'
+        return ''
+    return df.style.applymap(style_func)
+# ------------------------------------------------------
+
 st.set_page_config(page_title="Gestione Torneo Superba a Gironi by Legnaro72", layout="wide")
 
 st.markdown("""
@@ -27,18 +39,7 @@ div[data-testid="stNumberInput"] label::before {
 </style>
 """, unsafe_allow_html=True)
 
-
 URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLegna/refs/heads/main/giocatoriSuperba.csv"
-
-def style_hide_none(df):
-    is_dark = st.get_option("theme.base") == "dark"
-    color = "#fff" if is_dark else "#000"
-    def style_func(val):
-        # Nasconde 'None', 'nan', stringa vuota
-        if val in ["None", "nan", "", None]:
-            return f'color: {color};'
-        return ''
-    return df.style.applymap(style_func)
 
 def carica_giocatori_master(url=URL_GIOCATORI):
     try:
@@ -75,10 +76,10 @@ def genera_calendario(giocatori, num_gironi, tipo="Solo andata"):
                 casa, ospite = teams[i], teams[-(i+1)]
                 if casa != "Riposo" and ospite != "Riposo":
                     partite.append({"Girone": g, "Giornata": giornata+1,
-                                    "Casa": casa, "Ospite": ospite, "GolCasa": "", "GolOspite": "", "Valida": False})
+                                    "Casa": casa, "Ospite": ospite, "GolCasa": None, "GolOspite": None, "Valida": False})
                     if tipo == "Andata e ritorno":
                         partite.append({"Girone": g, "Giornata": giornata+1 + (n - 1),
-                                        "Casa": ospite, "Ospite": casa, "GolCasa": "", "GolOspite": "", "Valida": False})
+                                        "Casa": ospite, "Ospite": casa, "GolCasa": None, "GolOspite": None, "Valida": False})
             teams = [teams[0]] + [teams[-1]] + teams[1:-1]
     return pd.DataFrame(partite)
 
@@ -129,30 +130,27 @@ def aggiorna_classifica(df):
         classifiche.append(df_stat)
 
     if len(classifiche) == 0:
-        return None  # <-- qui cambiato da DataFrame vuoto a None
+        return None
 
     df_classifica = pd.concat(classifiche, ignore_index=True)
     df_classifica = df_classifica.sort_values(by=['Girone','Punti','DR'], ascending=[True,False,False])
     return df_classifica
 
-
 def esporta_pdf(df_torneo, df_classifica):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
-    pdf.set_auto_page_break(auto=False)  # controllo manuale
+    pdf.set_auto_page_break(auto=False)
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 10, "Calendario e Classifiche Torneo", ln=True, align='C')
 
     line_height = 6
     margin_bottom = 15
-    page_height = 297  # A4 height in mm
+    page_height = 297
 
     gironi = df_torneo['Girone'].dropna().unique()
 
     for girone in gironi:
         pdf.set_font("Arial", 'B', 14)
-
-        # Controllo spazio per titolo girone
         if pdf.get_y() + 8 + margin_bottom > page_height:
             pdf.add_page()
         pdf.cell(0, 8, f"{girone}", ln=True)
@@ -160,15 +158,12 @@ def esporta_pdf(df_torneo, df_classifica):
         giornate = sorted(df_torneo[df_torneo['Girone'] == girone]['Giornata'].dropna().unique())
 
         for g in giornate:
-            # Spazio necessario: titolo giornata + intestazione tabella + almeno 1 riga + margine
             needed_space = 7 + line_height + line_height + margin_bottom
             if pdf.get_y() + needed_space > page_height:
                 pdf.add_page()
 
             pdf.set_font("Arial", 'B', 12)
             pdf.cell(0, 7, f"Giornata {g}", ln=True)
-
-            # Intestazione tabella
             pdf.set_font("Arial", 'B', 11)
             pdf.cell(60, 6, "Casa", border=1)
             pdf.cell(20, 6, "Gol", border=1, align='C')
@@ -180,10 +175,8 @@ def esporta_pdf(df_torneo, df_classifica):
             partite = df_torneo[(df_torneo['Girone'] == girone) & (df_torneo['Giornata'] == g)]
 
             for _, row in partite.iterrows():
-                # Controllo spazio per ogni riga
                 if pdf.get_y() + line_height + margin_bottom > page_height:
                     pdf.add_page()
-                    # Ripeto intestazione tabella in pagina nuova
                     pdf.set_font("Arial", 'B', 12)
                     pdf.cell(0, 7, f"Giornata {g} (continua)", ln=True)
                     pdf.set_font("Arial", 'B', 11)
@@ -203,7 +196,6 @@ def esporta_pdf(df_torneo, df_classifica):
                 pdf.ln()
             pdf.ln(3)
 
-        # Controllo spazio per classifica girone (circa 40mm + margine)
         if pdf.get_y() + 40 + margin_bottom > page_height:
             pdf.add_page()
 
@@ -220,10 +212,8 @@ def esporta_pdf(df_torneo, df_classifica):
         pdf.ln()
         pdf.set_font("Arial", '', 11)
         for _, r in df_c.iterrows():
-            # Controllo spazio per riga classifica
             if pdf.get_y() + line_height + margin_bottom > page_height:
                 pdf.add_page()
-                # Ripeto intestazione classifica
                 pdf.set_font("Arial", 'B', 11)
                 for i, h in enumerate(headers):
                     pdf.cell(col_widths[i], 6, h, border=1, align='C')
@@ -243,7 +233,6 @@ def esporta_pdf(df_torneo, df_classifica):
 
     pdf_bytes = pdf.output(dest='S').encode('latin1')
     return pdf_bytes
-
 
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
     st.subheader(f"Calendario  {girone_sel} - Giornata {giornata_sel}")
@@ -266,7 +255,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             st.number_input(
                 "", min_value=0, max_value=20,
                 key=f"golcasa_{idx}",
-                value=int(row['GolCasa']) if pd.notna(row['GolCasa']) and str(row['GolCasa']).isdigit() else 0,
+                value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
                 label_visibility="hidden"
             )
 
@@ -277,7 +266,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             st.number_input(
                 "", min_value=0, max_value=20,
                 key=f"golospite_{idx}",
-                value=int(row['GolOspite']) if pd.notna(row['GolOspite']) and str(row['GolOspite']).isdigit() else 0,
+                value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
                 label_visibility="hidden"
             )
 
@@ -288,7 +277,6 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
                 value=val
             )
         
-        # Non aggiornare il DataFrame qui. Lo faremo dopo con un pulsante
         if st.session_state.get(f"valida_{idx}", False):
             st.markdown("<hr>", unsafe_allow_html=True)
         else:
@@ -314,19 +302,20 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
         st.info("Nessuna partita validata: la classifica sarà disponibile dopo l'inserimento e validazione dei risultati.")
         return
 
+    is_dark = st.get_option("theme.base") == "dark"
+
+    def color_rows(row):
+        if row.name == 0:
+            return ['background-color: #155724; color: white'] * len(row) if is_dark else ['background-color: #d4edda; color: black'] * len(row)
+        elif row.name <= 2:
+            return ['background-color: #856404; color: white'] * len(row) if is_dark else ['background-color: #fff3cd; color: black'] * len(row)
+        else:
+            return ['color: white'] * len(row) if is_dark else [''] * len(row)
+
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
 
-    def style_hide_none(df):
-        is_dark = st.get_option("theme.base") == "dark"
-        color = "#fff" if is_dark else "#000"
-        def style_func(val):
-            if val in ["None", "nan", "", None]:
-                return f'color: {color};'
-            return ''
-        return df.style.applymap(style_func)
-
-    styled_df = style_hide_none(df_girone)
-    st.dataframe(styled_df, use_container_width=True)
+    styled = style_hide_none(df_girone).apply(color_rows, axis=1)
+    st.dataframe(styled, use_container_width=True)
 
 def main():
     if "calendario_generato" not in st.session_state:
@@ -358,7 +347,6 @@ def main():
     df_master = carica_giocatori_master()
 
     if not st.session_state.calendario_generato:
-        
         st.write("---")
         st.subheader("Scegli un'azione per iniziare:")
         
@@ -376,7 +364,7 @@ def main():
                     if all(col in df_caricato.columns for col in expected_cols):
                         df_caricato['Valida'] = df_caricato['Valida'].astype(bool)
                         st.session_state['df_torneo'] = df_caricato
-                        st.session_state["nome_torneo"] = uploaded_file.name.replace(".csv", "")  # <-- Aggiungi questa riga
+                        st.session_state["nome_torneo"] = uploaded_file.name.replace(".csv", "")
                         st.session_state.calendario_generato = True
                         st.session_state.torneo_caricato = True
                         st.success("✅ Torneo caricato correttamente!")
@@ -471,7 +459,6 @@ def main():
                     st.session_state['mostra_form'] = False
                     st.rerun()
 
-    # Se un torneo è stato generato o caricato, mostra il calendario e la classifica
     if st.session_state.calendario_generato:
         df = st.session_state['df_torneo']
         gironi = sorted(df['Girone'].dropna().unique().tolist())
@@ -559,41 +546,31 @@ def main():
 
         df_calendario = st.session_state['df_torneo']
         df_classifica = aggiorna_classifica(df_calendario)
-        df_classifica = df_classifica.replace({None: ""}).fillna("")
-        for col in df_classifica.columns:
-            df_classifica[col] = df_classifica[col].astype(str)
 
         if df_classifica is not None and not df_classifica.empty:
             df_classifica['Tipo'] = 'Classifica'
             df_calendario['Tipo'] = 'Calendario'
-            # Aggiungi colonne per unione
             for col in df_classifica.columns:
                 if col not in df_calendario.columns:
                     df_calendario[col] = ''
             for col in df_calendario.columns:
                 if col not in df_classifica.columns:
                     df_classifica[col] = ''
-        
+
             df_combinato = pd.concat([df_calendario, df_classifica], ignore_index=True)
             df_combinato = df_combinato.sort_values(by=['Tipo', 'Girone'], ascending=[False, True])
         else:
             df_calendario['Tipo'] = 'Calendario'
             df_combinato = df_calendario
-        
-        df_combinato = df_combinato.replace({None: ""}).fillna("")
-        for col in df_combinato.columns:
-            df_combinato[col] = df_combinato[col].astype(str)
-        
+
         csv_bytes = df_combinato.to_csv(index=False).encode('utf-8')
         st.sidebar.download_button("⬇️ Scarica CSV Torneo + Classifica", data=csv_bytes, file_name=csv_filename, mime="text/csv")
         
         st.sidebar.markdown("---")
         
-        # Genera il PDF solo se la classifica esiste e non è vuota
         if classifica is not None and not classifica.empty:
             pdf_bytes = esporta_pdf(df, classifica)
             nome_pdf = st.session_state.get("nome_torneo", "torneo") + ".pdf"
-            
             st.sidebar.download_button(
                 label="📄 Esporta PDF Calendario + Classifica",
                 data=pdf_bytes,
@@ -603,11 +580,9 @@ def main():
         else:
             st.sidebar.info("La classifica non è ancora disponibile per l'esportazione.")
         
-        # Aggiunta di un pulsante per il reset dell'app, posizionato in basso nel corpo principale
         if st.button("🔄 Carica un nuovo torneo o creane un altro"):
             st.session_state.clear()
             st.rerun()
-
 
 if __name__ == "__main__":
     main()
