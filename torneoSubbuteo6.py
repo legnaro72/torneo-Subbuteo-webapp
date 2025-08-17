@@ -596,8 +596,8 @@ def main():
             st.session_state["filtra_giocatore"] = False
             st.rerun()
         
-        # Aggiungi un controllo esplicito per assicurarti che df esista e non sia vuoto
-        if st.session_state.get("filtra_giocatore", False) and not df.empty:
+        if st.session_state.get("filtra_giocatore", False) and 'df_torneo' in st.session_state and not st.session_state['df_torneo'].empty:
+            df = st.session_state['df_torneo']
             giocatori = sorted(pd.unique(pd.concat([df['Casa'], df['Ospite']])))
             gioc_sel = st.sidebar.selectbox("Seleziona giocatore", giocatori, key="sel_giocatore")
             filtro_tipo = "Entrambe"
@@ -619,8 +619,8 @@ def main():
                 st.session_state["filtra_giocatore"] = False
                 st.rerun()
         
-        # Aggiungi un controllo esplicito per assicurarti che df esista e non sia vuoto
-        if st.session_state.get("filtra_girone", False) and not df.empty:
+        if st.session_state.get("filtra_girone", False) and 'df_torneo' in st.session_state and not st.session_state['df_torneo'].empty:
+            df = st.session_state['df_torneo']
             gironi = sorted(df['Girone'].unique())
             gir_sel = st.sidebar.selectbox("Seleziona girone", gironi, key="sel_girone_filt")
             filtro_tipo_g = "Entrambe"
