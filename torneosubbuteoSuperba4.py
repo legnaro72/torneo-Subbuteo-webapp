@@ -498,7 +498,7 @@ def main():
         sel_col1, sel_col2 = st.columns(2)
         with sel_col1:
             nuovo_girone = st.selectbox("Seleziona Girone", gironi, index=gironi.index(st.session_state['girone_sel']))
-        with col2:
+        with sel_col2:
             giornate_correnti = sorted(df[df['Girone'] == nuovo_girone]['Giornata'].dropna().unique().tolist())
             giornata_index = (giornate_correnti.index(st.session_state['giornata_sel']) if st.session_state['giornata_sel'] in giornate_correnti else 0)
             nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=giornata_index)
