@@ -368,8 +368,6 @@ def main():
                 st.rerun()
             
             if st.session_state.get('squadre_assegnate', False):
-
-            if st.session_state.get('squadre_assegnate', False):
                 st.markdown("### Modifica Squadra e Potenziale")
                 gioc_info = {}
                 for gioc in st.session_state['giocatori_scelti']:
