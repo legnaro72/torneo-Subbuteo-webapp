@@ -416,7 +416,7 @@ def main():
                     st.session_state['num_gironi'] = num_gironi
                     st.session_state['tipo_calendario'] = tipo_calendario
                     st.session_state['mostra_assegnazione'] = True
-                    st.session_state.pop('gioc_info', None) # Pulisce la vecchia info se si riparte
+                    st.session_state.pop('gioc_info', None) 
                     st.success("Giocatori selezionati, passa alla fase successiva.")
                     st.rerun()
 
@@ -450,46 +450,49 @@ def main():
                     squadra = st.session_state['gioc_info'][gioc]['Squadra'].strip()
                     if squadra == "":
                         valid_squadre = False
-                        st.error(f"Scegli un nome squadra valido per il giocatore {gioc}")
                         break
                     giocatori_formattati.append(f"{squadra} ({gioc})")
                 
                 if not valid_squadre:
+                    st.error("Scegli un nome squadra valido per ogni giocatore.")
                     return
 
                 if modalita_gironi == "Popola Gironi Manualmente":
-                    gironi_popolati = {f"Girone {i+1}": [] for i in range(st.session_state['num_gironi'])}
-                    
-                    st.markdown("---")
-                    st.subheader("Assegna i giocatori a mano")
-                    
-                    gioc_da_assegnare = [g for g in giocatori_formattati]
-                    
-                    cols = st.columns(st.session_state['num_gironi'])
+                    st.subheader("Assegna i giocatori ai gironi")
+                    st.info("Utilizza i selettori sottostanti per assegnare i giocatori a ciascun girone.")
+
+                    colonne = st.columns(st.session_state['num_gironi'])
+                    gironi_manuali = {}
+
                     for i in range(st.session_state['num_gironi']):
-                        with cols[i]:
+                        with colonne[i]:
                             st.markdown(f"#### Girone {i+1}")
                             girone_key = f"manual_girone_{i+1}"
+                            
+                            # Inizializza il multiselect per il girone se non esiste
                             if girone_key not in st.session_state:
                                 st.session_state[girone_key] = []
-                            
-                            st.session_state[girone_key] = st.multiselect(
-                                "",
-                                options=gioc_da_assegnare,
+                                
+                            gironi_manuali[f"Girone {i+1}"] = st.multiselect(
+                                f"Giocatori per Girone {i+1}",
+                                options=giocatori_formattati,
                                 default=st.session_state[girone_key],
                                 key=girone_key
                             )
-                            # Aggiorna la lista dei giocatori da assegnare
-                            gioc_da_assegnare = [g for g in giocatori_formattati if g not in [p for sublist in st.session_state.values() if isinstance(sublist, list) and sublist and sublist[0].startswith(f"squadra (") and sublist[0].endswith(f")")] for p in sublist]
-
-                    assegnati_count = sum(len(st.session_state.get(f"manual_girone_{i+1}", [])) for i in range(st.session_state['num_gironi']))
-                    st.markdown(f"**Giocatori assegnati: {assegnati_count} / {len(giocatori_formattati)}**")
                     
-                    if st.button("Conferma gironi manuali e genera calendario"):
-                        if assegnati_count != len(giocatori_formattati):
-                            st.error("Assicurati di aver assegnato **tutti** i giocatori a un girone.")
-                        else:
-                            gironi_finali = [st.session_state[f"manual_girone_{i+1}"] for i in range(st.session_state['num_gironi'])]
+                    assegnati_unici = set()
+                    for girone in gironi_manuali.values():
+                        for giocatore in girone:
+                            assegnati_unici.add(giocatore)
+                    
+                    st.markdown(f"**Giocatori assegnati: {len(assegnati_unici)} / {len(giocatori_formattati)}**")
+                    
+                    if len(assegnati_unici) != len(giocatori_formattati):
+                        st.warning("Devi assegnare tutti i giocatori per continuare. Assicurati che ogni giocatore sia in un solo girone.")
+                    else:
+                        if st.button("Conferma gironi manuali e genera calendario"):
+                            gironi_finali = list(gironi_manuali.values())
+                            
                             df_torneo = genera_calendario_from_list(gironi_finali, st.session_state['tipo_calendario'])
                             st.session_state['df_torneo'] = df_torneo
                             st.success("Calendario generato e salvato!")
@@ -497,7 +500,6 @@ def main():
                             st.session_state['mostra_form'] = False
                             st.session_state['mostra_assegnazione'] = False
                             st.rerun()
-
                 else: # Modalità automatica
                     if st.button("Conferma e genera calendario"):
                         df_torneo = genera_calendario_auto(giocatori_formattati, st.session_state['num_gironi'], st.session_state['tipo_calendario'])
