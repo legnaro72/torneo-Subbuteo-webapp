@@ -41,54 +41,37 @@ st.markdown("""
     .big-title { text-align: center; font-size: clamp(16px, 4vw, 36px); font-weight: bold; margin-top: 10px; margin-bottom: 20px; color: red; word-wrap: break-word; white-space: normal; }
     div[data-testid="stNumberInput"] label::before { content: none; }
     
-    /* Stili per la navigazione - MOBILE FIRST */
-    .stSelectbox, .stButton {
-        flex: 1;
-        margin: 0 2px;
-    }
-    .stSelectbox label {
-        white-space: nowrap;
-        font-size: 12px; /* Riduce la dimensione del testo della label */
-        margin-bottom: 2px;
-    }
-    
-    /* Riduce il padding e i margini per gli elementi del menu a tendina */
-    div[data-testid="stSelectbox"] div[role="listbox"] {
-        padding: 0;
-        margin: 0;
-    }
-    
-    /* Raggruppa i pulsanti e il menu a tendina per la navigazione */
-    .nav-container {
+    /* Nuovo stile per la riga di navigazione */
+    .nav-row {
         display: flex;
+        flex-direction: row;
         align-items: center;
-        justify-content: space-between;
-        gap: 5px; /* Spazio tra gli elementi */
-        width: 100%;
+        gap: 5px;
         margin: 10px 0;
     }
     
-    /* Rimuove le label per una visualizzazione più pulita su mobile */
-    .nav-container .stSelectbox label {
-        display: none;
+    .nav-box-title {
+        font-size: 14px;
+        font-weight: bold;
+        text-align: center;
+        white-space: nowrap;
+        margin: 0;
     }
-
-    /* Stile per i bottoni di navigazione */
-    .nav-button-style {
-        padding: 8px 10px;
-        font-size: 16px;
+    
+    .stButton > button {
+        padding: 5px 10px;
+        height: 100%;
         border-radius: 5px;
         border: 1px solid #ccc;
     }
-    
-    /* Allinea i pulsanti e le selectbox su una singola riga */
-    .stButton > button {
-        height: 100%;
-    }
     .stSelectbox > div[role="button"] {
-        height: 100%;
+        padding: 0px 5px;
+        min-width: 100px; /* Riduce la larghezza minima della selectbox */
     }
-
+    .stSelectbox label {
+        display: none; /* Nasconde l'etichetta del selectbox */
+    }
+    
     </style>
 """, unsafe_allow_html=True)
 
@@ -602,8 +585,8 @@ def main():
         if 'giornata_sel' not in st.session_state or st.session_state['giornata_sel'] not in giornate_correnti:
             st.session_state['giornata_sel'] = giornate_correnti[0]
 
-        # Container per la navigazione dei gironi
-        st.markdown('<div class="nav-container">', unsafe_allow_html=True)
+        # Navigazione Gironi
+        st.subheader("Navigazione Gironi")
         col_g1, col_g2, col_g3 = st.columns([1, 4, 1])
         with col_g1:
             if st.button("◀️", key="prev_girone"):
@@ -612,6 +595,7 @@ def main():
                     st.session_state['girone_sel'] = gironi[nuovo_girone_index - 1]
                     st.rerun()
         with col_g2:
+            st.markdown('<p class="nav-box-title">Girone</p>', unsafe_allow_html=True)
             nuovo_girone = st.selectbox("Girone", gironi, index=gironi.index(st.session_state['girone_sel']), key="girone_nav_sb")
             if nuovo_girone != st.session_state['girone_sel']:
                 st.session_state['girone_sel'] = nuovo_girone
@@ -624,11 +608,10 @@ def main():
                 if nuovo_girone_index < len(gironi) - 1:
                     st.session_state['girone_sel'] = gironi[nuovo_girone_index + 1]
                     st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
 
-        # Container per la navigazione delle giornate
+        # Navigazione Giornate
         giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
-        st.markdown('<div class="nav-container">', unsafe_allow_html=True)
+        st.subheader("Navigazione Giornate")
         col_giorn1, col_giorn2, col_giorn3 = st.columns([1, 4, 1])
         with col_giorn1:
             if st.button("⏪", key="prev_giornata"):
@@ -637,6 +620,7 @@ def main():
                     st.session_state['giornata_sel'] = giornate_correnti[nuova_giornata_index - 1]
                     st.rerun()
         with col_giorn2:
+            st.markdown('<p class="nav-box-title">Giornata</p>', unsafe_allow_html=True)
             nuova_giornata = st.selectbox("Giornata", giornate_correnti, index=giornate_correnti.index(st.session_state['giornata_sel']), key="giornata_nav_sb")
             if nuova_giornata != st.session_state['giornata_sel']:
                 st.session_state['giornata_sel'] = nuova_giornata
@@ -647,7 +631,6 @@ def main():
                 if nuova_giornata_index < len(giornate_correnti) - 1:
                     st.session_state['giornata_sel'] = giornate_correnti[nuova_giornata_index + 1]
                     st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
         
         st.subheader(f"Calendario {st.session_state['girone_sel']} - Giornata {st.session_state['giornata_sel']}")
         
