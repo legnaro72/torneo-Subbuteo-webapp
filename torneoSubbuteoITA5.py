@@ -600,7 +600,7 @@ def main():
             st.session_state['giornata_sel'] = giornate_correnti[0]
 
         # --- Navigazione Gironi (solo menu a tendina) ---
-        st.subheader("Gironi")
+        #st.subheader("Gironi")
         nuovo_girone = st.selectbox(
             "Seleziona Girone", 
             gironi, 
@@ -639,7 +639,7 @@ def main():
             unsafe_allow_html=True
         )
         
-        st.subheader(f"Calendario {st.session_state['girone_sel']} - Giornata {st.session_state['giornata_sel']}")
+        #st.subheader(f"Calendario {st.session_state['girone_sel']} - Giornata {st.session_state['giornata_sel']}")
         
         girone_sel = st.session_state['girone_sel']
         giornata_sel = st.session_state['giornata_sel']
