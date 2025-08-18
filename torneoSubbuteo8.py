@@ -45,6 +45,29 @@ st.markdown("""
 
 URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLegna/refs/heads/main/giocatoriSuperba.csv"
 
+# --- NAVIGAZIONE COMPATTA ---
+def navigation_controls(label, value, min_val, max_val, key_prefix=""):
+    col1, col2, col3 = st.columns([1, 3, 1])  # pulsante - testo - pulsante
+
+    with col1:
+        if st.button("◀️", key=f"{key_prefix}_prev", use_container_width=True):
+            st.session_state[value] = max(min_val, st.session_state[value] - 1)
+
+    with col2:
+        st.markdown(
+            f"<div style='text-align:center; font-weight:bold;'>{label} {st.session_state[value]}</div>",
+            unsafe_allow_html=True
+        )
+
+    with col3:
+        if st.button("▶️", key=f"{key_prefix}_next", use_container_width=True):
+            st.session_state[value] = min(max_val, st.session_state[value] + 1)
+
+if "girone" not in st.session_state:
+    st.session_state.girone = 1   # valore iniziale
+if "giornata" not in st.session_state:
+    st.session_state.giornata = 1 # valore iniziale
+    
 def carica_giocatori_master(url=URL_GIOCATORI):
     try:
         r = requests.get(url)
@@ -559,20 +582,49 @@ def main():
         if 'giornata_sel' not in st.session_state or st.session_state['giornata_sel'] not in giornate_correnti:
             st.session_state['giornata_sel'] = giornate_correnti[0]
         
-        st.subheader(f"Calendario {st.session_state['girone_sel']} - Giornata {st.session_state['giornata_sel']}")
+        # --- Navigazione compatta Girone / Giornata ---
+        gironi = sorted(df['Girone'].dropna().unique().tolist())
+        giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
         
-        sel_col1, sel_col2 = st.columns(2)
-        with sel_col1:
-            nuovo_girone = st.selectbox("Seleziona Girone", gironi, index=gironi.index(st.session_state['girone_sel']))
-        with sel_col2:
-            giornate_correnti = sorted(df[df['Girone'] == nuovo_girone]['Giornata'].dropna().unique().tolist())
-            giornata_index = (giornate_correnti.index(st.session_state['giornata_sel']) if st.session_state['giornata_sel'] in giornate_correnti else 0)
-            nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=giornata_index)
-            
-        if (nuovo_girone != st.session_state['girone_sel']) or (nuova_giornata != st.session_state['giornata_sel']):
-            st.session_state['girone_sel'] = nuovo_girone
-            st.session_state['giornata_sel'] = nuova_giornata
-            st.rerun()
+        # --- PRIMA RIGA: Selettore Girone ---
+        colg1, colg2, colg3 = st.columns([1,4,1])
+        with colg1:
+            if st.button("◀️", key="prev_girone"):
+                idx = gironi.index(st.session_state['girone_sel'])
+                st.session_state['girone_sel'] = gironi[(idx - 1) % len(gironi)]
+                st.session_state['giornata_sel'] = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].unique())[0]
+                st.rerun()
+        with colg2:
+            st.markdown(
+                f"<div style='text-align:center; font-weight:bold;'>Seleziona Girone: Gir {st.session_state['girone_sel'].split()[-1]}</div>",
+                unsafe_allow_html=True
+            )
+        with colg3:
+            if st.button("▶️", key="next_girone"):
+                idx = gironi.index(st.session_state['girone_sel'])
+                st.session_state['girone_sel'] = gironi[(idx + 1) % len(gironi)]
+                st.session_state['giornata_sel'] = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].unique())[0]
+                st.rerun()
+        
+        # --- SECONDA RIGA: Selettore Giornata ---
+        colj1, colj2, colj3 = st.columns([1,4,1])
+        with colj1:
+            if st.button("◀️", key="prev_giornata"):
+                idx = giornate_correnti.index(st.session_state['giornata_sel'])
+                st.session_state['giornata_sel'] = giornate_correnti[(idx - 1) % len(giornate_correnti)]
+                st.rerun()
+        with colj2:
+            st.markdown(
+                f"<div style='text-align:center; font-weight:bold;'>Seleziona Giornata: Gio {st.session_state['giornata_sel']}</div>",
+                unsafe_allow_html=True
+            )
+        with colj3:
+            if st.button("▶️", key="next_giornata"):
+                idx = giornate_correnti.index(st.session_state['giornata_sel'])
+                st.session_state['giornata_sel'] = giornate_correnti[(idx + 1) % len(giornate_correnti)]
+                st.rerun()
+
+
             
         girone_sel = st.session_state['girone_sel']
         giornata_sel = st.session_state['giornata_sel']
