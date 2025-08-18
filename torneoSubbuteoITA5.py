@@ -599,43 +599,40 @@ def main():
         if 'giornata_sel' not in st.session_state or st.session_state['giornata_sel'] not in giornate_correnti:
             st.session_state['giornata_sel'] = giornate_correnti[0]
 
-        # --- Navigazione Gironi ---
+        # --- Navigazione Gironi (solo menu a tendina) ---
         st.subheader("Gironi")
-        col_g1, col_g2, col_g3 = st.columns([1, 4, 1])
-        
-        with col_g1:
-            if st.button("◀️", key="prev_girone"):
-                idx = gironi.index(st.session_state['girone_sel'])
-                st.session_state['girone_sel'] = gironi[(idx - 1) % len(gironi)]
-                st.rerun()
-        
-        with col_g2:
-            st.markdown(
-                f"<h4 style='text-align:center;'>{st.session_state['girone_sel']}</h4>", 
-                unsafe_allow_html=True
+        nuovo_girone = st.selectbox(
+            "Seleziona Girone", 
+            gironi, 
+            index=gironi.index(st.session_state['girone_sel']), 
+            key="girone_nav_sb"
+        )
+        if nuovo_girone != st.session_state['girone_sel']:
+            st.session_state['girone_sel'] = nuovo_girone
+            giornate_correnti = sorted(
+                df[df['Girone'] == nuovo_girone]['Giornata'].dropna().unique().tolist()
             )
-        
-        with col_g3:
-            if st.button("▶️", key="next_girone"):
-                idx = gironi.index(st.session_state['girone_sel'])
-                st.session_state['girone_sel'] = gironi[(idx + 1) % len(gironi)]
-                st.rerun()
+            # converto in int per evitare 1.0, 2.0...
+            giornate_correnti = [int(g) for g in giornate_correnti]
+            st.session_state['giornata_sel'] = giornate_correnti[0]
+            st.rerun()
         
         
-        # --- Navigazione Giornate ---
+        # --- Navigazione Giornate (solo bottoni numerici) ---
         giornate_correnti = sorted(
             df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist()
         )
+        giornate_correnti = [int(g) for g in giornate_correnti]  # forza interi
         st.subheader("Giornate")
         
-        # Mostra le giornate come bottoni in griglia (5 per riga)
+        # Griglia bottoni (5 per riga)
         cols = st.columns(5)
         for i, g in enumerate(giornate_correnti):
             if cols[i % 5].button(str(g), key=f"giornata_{g}"):
                 st.session_state['giornata_sel'] = g
                 st.rerun()
         
-        # Evidenzia la giornata selezionata
+        # Mostra la giornata selezionata
         st.markdown(
             f"<p style='text-align:center; font-size:18px;'>📅 Giornata selezionata: "
             f"<b>{st.session_state['giornata_sel']}</b></p>", 
