@@ -599,50 +599,48 @@ def main():
         if 'giornata_sel' not in st.session_state or st.session_state['giornata_sel'] not in giornate_correnti:
             st.session_state['giornata_sel'] = giornate_correnti[0]
 
-        # Navigazione Gironi
+        # --- Navigazione Gironi ---
         st.subheader("Gironi")
         col_g1, col_g2, col_g3 = st.columns([1, 4, 1])
+        
         with col_g1:
             if st.button("◀️", key="prev_girone"):
-                nuovo_girone_index = gironi.index(st.session_state['girone_sel'])
-                if nuovo_girone_index > 0:
-                    st.session_state['girone_sel'] = gironi[nuovo_girone_index - 1]
-                    st.rerun()
-        with col_g2:
-            nuovo_girone = st.selectbox("", gironi, index=gironi.index(st.session_state['girone_sel']), key="girone_nav_sb")
-            if nuovo_girone != st.session_state['girone_sel']:
-                st.session_state['girone_sel'] = nuovo_girone
-                giornate_correnti = sorted(df[df['Girone'] == nuovo_girone]['Giornata'].dropna().unique().tolist())
-                st.session_state['giornata_sel'] = giornate_correnti[0]
+                idx = gironi.index(st.session_state['girone_sel'])
+                st.session_state['girone_sel'] = gironi[(idx - 1) % len(gironi)]
                 st.rerun()
+        
+        with col_g2:
+            st.markdown(
+                f"<h4 style='text-align:center;'>{st.session_state['girone_sel']}</h4>", 
+                unsafe_allow_html=True
+            )
+        
         with col_g3:
             if st.button("▶️", key="next_girone"):
-                nuovo_girone_index = gironi.index(st.session_state['girone_sel'])
-                if nuovo_girone_index < len(gironi) - 1:
-                    st.session_state['girone_sel'] = gironi[nuovo_girone_index + 1]
-                    st.rerun()
-
-        # Navigazione Giornate
-        giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
-        st.subheader("Giornate")
-        col_giorn1, col_giorn2, col_giorn3 = st.columns([1, 4, 1])
-        with col_giorn1:
-            if st.button("⏪", key="prev_giornata"):
-                nuova_giornata_index = giornate_correnti.index(st.session_state['giornata_sel'])
-                if nuova_giornata_index > 0:
-                    st.session_state['giornata_sel'] = giornate_correnti[nuova_giornata_index - 1]
-                    st.rerun()
-        with col_giorn2:
-            nuova_giornata = st.selectbox("", giornate_correnti, index=giornate_correnti.index(st.session_state['giornata_sel']), key="giornata_nav_sb")
-            if nuova_giornata != st.session_state['giornata_sel']:
-                st.session_state['giornata_sel'] = nuova_giornata
+                idx = gironi.index(st.session_state['girone_sel'])
+                st.session_state['girone_sel'] = gironi[(idx + 1) % len(gironi)]
                 st.rerun()
-        with col_giorn3:
-            if st.button("⏩", key="next_giornata"):
-                nuova_giornata_index = giornate_correnti.index(st.session_state['giornata_sel'])
-                if nuova_giornata_index < len(giornate_correnti) - 1:
-                    st.session_state['giornata_sel'] = giornate_correnti[nuova_giornata_index + 1]
-                    st.rerun()
+        
+        
+        # --- Navigazione Giornate ---
+        giornate_correnti = sorted(
+            df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist()
+        )
+        st.subheader("Giornate")
+        
+        # Mostra le giornate come bottoni in griglia (5 per riga)
+        cols = st.columns(5)
+        for i, g in enumerate(giornate_correnti):
+            if cols[i % 5].button(str(g), key=f"giornata_{g}"):
+                st.session_state['giornata_sel'] = g
+                st.rerun()
+        
+        # Evidenzia la giornata selezionata
+        st.markdown(
+            f"<p style='text-align:center; font-size:18px;'>📅 Giornata selezionata: "
+            f"<b>{st.session_state['giornata_sel']}</b></p>", 
+            unsafe_allow_html=True
+        )
         
         st.subheader(f"Calendario {st.session_state['girone_sel']} - Giornata {st.session_state['giornata_sel']}")
         
