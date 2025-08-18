@@ -594,14 +594,7 @@ def main():
                 if nuovo_girone_index > 0:
                     st.session_state['girone_sel'] = gironi[nuovo_girone_index - 1]
                     st.rerun()
-        with col_g2:
-            st.markdown('<p class="nav-box-title">Girone</p>', unsafe_allow_html=True)
-            nuovo_girone = st.selectbox("Girone", gironi, index=gironi.index(st.session_state['girone_sel']), key="girone_nav_sb")
-            if nuovo_girone != st.session_state['girone_sel']:
-                st.session_state['girone_sel'] = nuovo_girone
-                giornate_correnti = sorted(df[df['Girone'] == nuovo_girone]['Giornata'].dropna().unique().tolist())
-                st.session_state['giornata_sel'] = giornate_correnti[0]
-                st.rerun()
+
         with col_g3:
             if st.button("▶️", key="next_girone"):
                 nuovo_girone_index = gironi.index(st.session_state['girone_sel'])
@@ -619,12 +612,7 @@ def main():
                 if nuova_giornata_index > 0:
                     st.session_state['giornata_sel'] = giornate_correnti[nuova_giornata_index - 1]
                     st.rerun()
-        with col_giorn2:
-            st.markdown('<p class="nav-box-title">Giornata</p>', unsafe_allow_html=True)
-            nuova_giornata = st.selectbox("Giornata", giornate_correnti, index=giornate_correnti.index(st.session_state['giornata_sel']), key="giornata_nav_sb")
-            if nuova_giornata != st.session_state['giornata_sel']:
-                st.session_state['giornata_sel'] = nuova_giornata
-                st.rerun()
+
         with col_giorn3:
             if st.button("⏩", key="next_giornata"):
                 nuova_giornata_index = giornate_correnti.index(st.session_state['giornata_sel'])
