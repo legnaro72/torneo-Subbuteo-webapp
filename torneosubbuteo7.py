@@ -90,7 +90,13 @@ def genera_calendario_from_list(gironi_popolati, tipo="Solo andata"):
             teams = [teams[0]] + [teams[-1]] + teams[1:-1]
     return pd.DataFrame(partite)
 
+# Modifica la funzione in questo modo
 def aggiorna_classifica(df):
+    # --- CORREZIONE: Gestione del caso in cui df è None ---
+    if df is None:
+        return pd.DataFrame() # Ritorna un DataFrame vuoto per evitare l'errore
+    # --- FINE CORREZIONE ---
+
     if 'Girone' not in df.columns:
         return pd.DataFrame()
 
