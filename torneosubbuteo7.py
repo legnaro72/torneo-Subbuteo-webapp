@@ -47,7 +47,7 @@ st.markdown("""
         flex-direction: row;
         align-items: center;
         justify-content: center;
-        flex-wrap: wrap; /* Permette il wrap se lo spazio non è sufficiente, ma con le colonne non dovrebbe succedere */
+        flex-wrap: wrap; 
         gap: 5px;
         margin: 10px 0;
     }
@@ -65,26 +65,19 @@ st.markdown("""
         height: 100%;
         border-radius: 5px;
         border: 1px solid #ccc;
-        flex: 1; /* Rende i pulsanti flessibili */
+        flex: 1; 
     }
     
-    .select-button {
-        background-color: #f0f2f6;
-        border: 1px solid #ccc;
-        color: black;
-        padding: 5px 10px;
-        border-radius: 5px;
-        text-align: center;
-        font-size: 14px;
-        white-space: nowrap;
-        cursor: pointer;
+    .stButton > button:hover {
+        border-color: #007bff;
+        color: #007bff;
     }
-    .select-button:hover {
-        background-color: #e0e2e6;
-    }
-    .select-button.selected {
+    
+    /* Stile per i pulsanti selezionati */
+    .stButton > button[data-selected="true"] {
         background-color: #007bff;
         color: white;
+        border-color: #007bff;
     }
 
     </style>
@@ -593,40 +586,33 @@ def main():
     if st.session_state.calendario_generato:
         df = st.session_state['df_torneo']
         gironi = sorted(df['Girone'].dropna().unique().tolist())
-        giornate_correnti = sorted(df['Giornata'].dropna().unique().tolist())
-
+        giornate_correnti = sorted(df[df['Girone'] == gironi[0]]['Giornata'].dropna().unique().tolist())
+        
         if 'girone_sel_idx' not in st.session_state:
             st.session_state['girone_sel_idx'] = 0
         
         if 'giornata_sel_idx' not in st.session_state:
             st.session_state['giornata_sel_idx'] = 0
 
-        # Navigazione Gironi
         st.subheader("Seleziona Girone")
-        col_gironi = st.columns(len(gironi))
+        cols_gironi = st.columns(len(gironi))
         for i, girone in enumerate(gironi):
-            with col_gironi[i]:
-                is_selected = (i == st.session_state['girone_sel_idx'])
-                st.markdown(
-                    f'<button class="select-button {"selected" if is_selected else ""}" style="width:100%;" onclick="parent.postMessage(\'{{"streamlit_id": "girone_button_{i}", "value": true}}\', \'*\')" id="girone_button_{i}">{girone.replace("Girone ", "")}</button>',
-                    unsafe_allow_html=True
-                )
-                if st.button(f"{girone}", key=f"girone_btn_{i}", help="Clicca per selezionare questo girone"):
+            with cols_gironi[i]:
+                if st.button(girone, key=f"girone_btn_{i}"):
                     st.session_state['girone_sel_idx'] = i
-                    st.session_state['giornata_sel_idx'] = 0
+                    giornate_correnti = sorted(df[df['Girone'] == gironi[i]]['Giornata'].dropna().unique().tolist())
+                    if not giornate_correnti:
+                        st.session_state['giornata_sel_idx'] = 0
+                    else:
+                        st.session_state['giornata_sel_idx'] = 0
                     st.rerun()
-
+        
         st.subheader("Seleziona Giornata")
         giornate_del_girone = sorted(df[df['Girone'] == gironi[st.session_state['girone_sel_idx']]]['Giornata'].dropna().unique().tolist())
-        col_giornate = st.columns(len(giornate_del_girone))
+        cols_giornate = st.columns(len(giornate_del_girone))
         for i, giornata in enumerate(giornate_del_girone):
-            with col_giornate[i]:
-                is_selected = (i == st.session_state['giornata_sel_idx'])
-                st.markdown(
-                    f'<button class="select-button {"selected" if is_selected else ""}" style="width:100%;" onclick="parent.postMessage(\'{{"streamlit_id": "giornata_button_{i}", "value": true}}\', \'*\')" id="giornata_button_{i}">{giornata}</button>',
-                    unsafe_allow_html=True
-                )
-                if st.button(f"{giornata}", key=f"giornata_btn_{i}", help="Clicca per selezionare questa giornata"):
+            with cols_giornate[i]:
+                if st.button(str(giornata), key=f"giornata_btn_{i}"):
                     st.session_state['giornata_sel_idx'] = i
                     st.rerun()
         
@@ -639,7 +625,6 @@ def main():
         classifica = aggiorna_classifica(st.session_state['df_torneo'])
         mostra_classifica_stilizzata(classifica, girone_sel)
         
-        # ... (il resto del codice non modificato) ...
         if st.button("🔙 Torna indietro e modifica giocatori"):
             st.session_state['mostra_form'] = True
             st.session_state['calendario_generato'] = False
