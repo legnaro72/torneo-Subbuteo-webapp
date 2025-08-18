@@ -46,7 +46,8 @@ st.markdown("""
         display: flex;
         flex-direction: row;
         align-items: center;
-        gap: 5px;
+        justify-content: center;
+        gap: 10px;
         margin: 10px 0;
     }
     
@@ -71,9 +72,16 @@ st.markdown("""
     .stSelectbox label {
         display: none; /* Nasconde l'etichetta del selectbox */
     }
+    .nav-label {
+        font-size: 20px;
+        font-weight: bold;
+        text-align: center;
+        min-width: 80px;
+    }
     
     </style>
 """, unsafe_allow_html=True)
+
 
 URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLegna/refs/heads/main/giocatoriSuperba.csv"
 
@@ -575,10 +583,11 @@ def main():
                             st.session_state['mostra_assegnazione'] = False
                             st.session_state['mostra_gironi_manuali'] = False
                             st.rerun()
+                            
     if st.session_state.calendario_generato:
         df = st.session_state['df_torneo']
         gironi = sorted(df['Girone'].dropna().unique().tolist())
-        
+
         if 'girone_sel' not in st.session_state:
             st.session_state['girone_sel'] = gironi[0]
         giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
@@ -587,38 +596,38 @@ def main():
 
         # Navigazione Gironi
         st.subheader("Gironi")
-        col_g1, col_g2, col_g3 = st.columns([1, 4, 1])
+        col_g1, col_g2, col_g3 = st.columns([1, 2, 1])
         with col_g1:
             if st.button("◀️", key="prev_girone"):
                 nuovo_girone_index = gironi.index(st.session_state['girone_sel'])
                 if nuovo_girone_index > 0:
                     st.session_state['girone_sel'] = gironi[nuovo_girone_index - 1]
                     st.rerun()
-        
+
         with col_g2:
-            st.markdown(f"<h3 style='text-align: center;'>Girone</h3>", unsafe_allow_html=True)
-        
+            st.markdown(f'<div class="nav-label">{st.session_state["girone_sel"]}</div>', unsafe_allow_html=True)
+            
         with col_g3:
             if st.button("▶️", key="next_girone"):
                 nuovo_girone_index = gironi.index(st.session_state['girone_sel'])
                 if nuovo_girone_index < len(gironi) - 1:
                     st.session_state['girone_sel'] = gironi[nuovo_girone_index + 1]
                     st.rerun()
-        
+
         # Navigazione Giornate
         giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
         st.subheader("Giornate")
-        col_giorn1, col_giorn2, col_giorn3 = st.columns([1, 4, 1])
+        col_giorn1, col_giorn2, col_giorn3 = st.columns([1, 2, 1])
         with col_giorn1:
             if st.button("⏪", key="prev_giornata"):
                 nuova_giornata_index = giornate_correnti.index(st.session_state['giornata_sel'])
                 if nuova_giornata_index > 0:
                     st.session_state['giornata_sel'] = giornate_correnti[nuova_giornata_index - 1]
                     st.rerun()
-        
+
         with col_giorn2:
-            st.markdown(f"<h3 style='text-align: center;'>Giornata</h3>", unsafe_allow_html=True)
-        
+            st.markdown(f'<div class="nav-label">{st.session_state["giornata_sel"]}</div>', unsafe_allow_html=True)
+            
         with col_giorn3:
             if st.button("⏩", key="next_giornata"):
                 nuova_giornata_index = giornate_correnti.index(st.session_state['giornata_sel'])
