@@ -600,7 +600,7 @@ def main():
             st.session_state['giornata_sel'] = giornate_correnti[0]
 
         # --- Navigazione Gironi (solo menu a tendina) ---
-        #st.subheader("Gironi")
+        st.subheader("Girone")
         nuovo_girone = st.selectbox(
             "Seleziona Girone", 
             gironi, 
@@ -623,7 +623,7 @@ def main():
             df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist()
         )
         giornate_correnti = [int(g) for g in giornate_correnti]  # forza interi
-        st.subheader("Giornate")
+        st.subheader("Giornata")
         
         # Griglia bottoni (5 per riga)
         cols = st.columns(5)
