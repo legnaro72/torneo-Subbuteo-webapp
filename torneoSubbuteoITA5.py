@@ -632,10 +632,11 @@ def main():
                 st.session_state['giornata_sel'] = g
                 st.rerun()
         
-        # Mostra la giornata selezionata
+        # Mostra la giornata selezionata (sempre come intero)
+        giornata_sel_int = int(st.session_state['giornata_sel'])
         st.markdown(
             f"<p style='text-align:center; font-size:18px;'>📅 Giornata selezionata: "
-            f"<b>{st.session_state['giornata_sel']}</b></p>", 
+            f"<b>{giornata_sel_int}</b></p>", 
             unsafe_allow_html=True
         )
         
