@@ -5,8 +5,8 @@ from io import StringIO
 import random
 from fpdf import FPDF
 from datetime import datetime
-import json
 import time
+import base64
 
 # --- Funzione di stile per None/nan invisibili e colorazione righe ---
 def combined_style(df):
@@ -22,7 +22,7 @@ def combined_style(df):
 
     def hide_none(val):
         sval = str(val).strip().lower()
-        if sval in ["none", "nan", ""]:
+        if sval in ["none", "nan", ""] or pd.isna(val):
             return 'color: transparent; text-shadow: none;'
         return ''
 
@@ -41,21 +41,12 @@ st.markdown("""
     .big-title { text-align: center; font-size: clamp(16px, 4vw, 36px); font-weight: bold; margin-top: 10px; margin-bottom: 20px; color: red; word-wrap: break-word; white-space: normal; }
     div[data-testid="stNumberInput"] label::before { content: none; }
     
-    /* Nuovo stile per la riga di navigazione */
     .nav-row {
         display: flex;
         flex-direction: row;
         align-items: center;
         gap: 5px;
         margin: 10px 0;
-    }
-    
-    .nav-box-title {
-        font-size: 14px;
-        font-weight: bold;
-        text-align: center;
-        white-space: nowrap;
-        margin: 0;
     }
     
     .stButton > button {
@@ -65,16 +56,10 @@ st.markdown("""
         border: 1px solid #ccc;
     }
     
-    /* Stile per i menu a tendina */
-    .stSelectbox > div[role="button"] {
-        padding: 0px 5px;
-        min-width: 100px;
-        text-align: center;
+    div[data-testid="stSelectbox"] > label {
+        display: none;
     }
-    .stSelectbox label {
-        display: none; /* Nasconde l'etichetta del selectbox */
-    }
-    
+
     /* Fix per mantenere le colonne sulla stessa riga anche su mobile */
     @media (max-width: 600px) {
         div[data-testid="stHorizontalBlock"] {
@@ -85,6 +70,7 @@ st.markdown("""
         }
         .stSelectbox {
             min-width: 120px !important;
+            max-width: 120px !important;
         }
     }
     
@@ -92,6 +78,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLegna/refs/heads/main/giocatoriSuperba.csv"
+
+def get_base64_of_bin_file(bin_file):
+    with open(bin_file, 'rb') as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
 
 def carica_giocatori_master(url=URL_GIOCATORI):
     try:
@@ -106,14 +97,6 @@ def carica_giocatori_master(url=URL_GIOCATORI):
     except Exception as e:
         st.warning(f"Impossibile caricare lista giocatori dal CSV: {e}")
         return pd.DataFrame(columns=["Giocatore","Squadra","Potenziale"])
-
-def genera_calendario_auto(giocatori, num_gironi, tipo="Solo andata"):
-    random.shuffle(giocatori)
-    gironi = [[] for _ in range(num_gironi)]
-    for i, nome in enumerate(giocatori):
-        gironi[i % num_gironi].append(nome)
-    
-    return genera_calendario_from_list(gironi, tipo)
 
 def genera_calendario_from_list(gironi_popolati, tipo="Solo andata"):
     partite = []
@@ -227,7 +210,6 @@ def esporta_pdf(df_torneo, df_classifica):
             pdf.ln()
 
             pdf.set_font("Arial", '', 11)
-            # CORREZIONE: Ho sostituito 'df' con 'df_torneo'
             partite = df_torneo[(df_torneo['Girone'] == girone) & (df_torneo['Giornata'] == g)]
 
             for _, row in partite.iterrows():
@@ -374,26 +356,38 @@ def autosave_to_file():
         df_calendario = st.session_state['df_torneo']
         df_classifica = aggiorna_classifica(df_calendario)
 
+        df_completo = pd.DataFrame()
+
         if df_classifica is not None and not df_classifica.empty:
             df_classifica['Tipo'] = 'Classifica'
             df_calendario['Tipo'] = 'Calendario'
             for col in df_classifica.columns:
                 if col not in df_calendario.columns:
-                    df_calendario[col] = ''
+                    df_calendario[col] = pd.NA
             for col in df_calendario.columns:
                 if col not in df_classifica.columns:
-                    df_classifica[col] = ''
-            df_combinato = pd.concat([df_calendario, df_classifica], ignore_index=True)
-            df_combinato = df_combinato.sort_values(by=['Tipo', 'Girone'], ascending=[False, True])
+                    df_classifica[col] = pd.NA
+            df_completo = pd.concat([df_calendario, df_classifica], ignore_index=True)
+            df_completo = df_completo.sort_values(by=['Tipo', 'Girone'], ascending=[False, True])
         else:
             df_calendario['Tipo'] = 'Calendario'
-            df_combinato = df_calendario
+            df_completo = df_calendario
         
         nome_torneo = st.session_state.get("nome_torneo", "torneo")
         autosave_filename = f"{nome_torneo}_autosave.csv"
         
-        # Simula il salvataggio in memoria, per evitare di scrivere sul filesystem di Streamlit Cloud
-        st.info(f"Autosalvataggio in memoria completato: {autosave_filename}")
+        csv_buffer = StringIO()
+        df_completo.to_csv(csv_buffer, index=False)
+        csv_bytes = csv_buffer.getvalue().encode('utf-8')
+        
+        st.download_button(
+            label=f"Scarica {autosave_filename}",
+            data=csv_bytes,
+            file_name=autosave_filename,
+            mime="text/csv",
+            key='autosave_download_button',
+            help="Clicca per scaricare l'ultimo salvataggio automatico."
+        )
 
 def main():
     if "calendario_generato" not in st.session_state:
@@ -403,6 +397,7 @@ def main():
         st.session_state.last_autosave_time = time.time()
     
     if st.session_state.calendario_generato and (time.time() - st.session_state.last_autosave_time) > 60:
+        st.info("Autosalvataggio in corso...")
         autosave_to_file()
         st.session_state.last_autosave_time = time.time()
     
@@ -435,7 +430,7 @@ def main():
                     if all(col in df_caricato.columns for col in expected_cols):
                         df_caricato['Valida'] = df_caricato['Valida'].astype(bool)
                         st.session_state['df_torneo'] = df_caricato
-                        st.session_state["nome_torneo"] = uploaded_file.name.replace(".csv", "")
+                        st.session_state["nome_torneo"] = uploaded_file.name.replace("_autosave.csv", "")
                         st.session_state.calendario_generato = True
                         st.session_state.torneo_caricato = True
                         st.success("✅ Torneo caricato correttamente!")
@@ -591,13 +586,16 @@ def main():
                             st.session_state['mostra_assegnazione'] = False
                             st.session_state['mostra_gironi_manuali'] = False
                             st.rerun()
-    if st.session_state.calendario_generato:
+
+    if st.session_state.get("calendario_generato", False):
         df = st.session_state['df_torneo']
         gironi = sorted(df['Girone'].dropna().unique().tolist())
         
         if 'girone_sel' not in st.session_state:
             st.session_state['girone_sel'] = gironi[0]
+        
         giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
+        
         if 'giornata_sel' not in st.session_state or st.session_state['giornata_sel'] not in giornate_correnti:
             st.session_state['giornata_sel'] = giornate_correnti[0]
 
@@ -655,13 +653,48 @@ def main():
         classifica = aggiorna_classifica(st.session_state['df_torneo'])
         mostra_classifica_stilizzata(classifica, girone_sel)
 
-        if st.button("🔙 Torna indietro e modifica giocatori"):
-            st.session_state['mostra_form'] = True
-            st.session_state['calendario_generato'] = False
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("### Azioni")
+        
+        # Download button per il CSV del torneo
+        csv_buffer = StringIO()
+        df.to_csv(csv_buffer, index=False)
+        csv_bytes = csv_buffer.getvalue().encode('utf-8')
+        st.sidebar.download_button(
+            label="Scarica file CSV torneo",
+            data=csv_bytes,
+            file_name=f"{st.session_state.get('nome_torneo', 'Torneo')}.csv",
+            mime="text/csv",
+            key='download_csv'
+        )
+        
+        # Genera e scarica PDF
+        if st.sidebar.button("Genera e scarica PDF"):
+            if 'df_torneo' in st.session_state:
+                with st.spinner("Generazione PDF in corso..."):
+                    pdf_bytes = esporta_pdf(st.session_state['df_torneo'], aggiorna_classifica(st.session_state['df_torneo']))
+                st.sidebar.download_button(
+                    label="Scarica PDF",
+                    data=pdf_bytes,
+                    file_name=f"{st.session_state.get('nome_torneo', 'Torneo')}.pdf",
+                    mime="application/pdf",
+                    key='download_pdf_button'
+                )
+                st.success("PDF generato. Clicca sul pulsante 'Scarica PDF' nella sidebar.")
+            else:
+                st.warning("Genera prima il calendario per creare un PDF.")
+
+        if st.sidebar.button("🔙 Torna indietro e modifica giocatori"):
+            st.session_state.pop('calendario_generato', None)
+            st.session_state.pop('df_torneo', None)
+            st.session_state.pop('mostra_form', None)
+            st.session_state.pop('giocatori_scelti', None)
+            st.session_state.pop('gioc_info', None)
             st.rerun()
 
         st.sidebar.markdown("---")
         st.sidebar.markdown("### Filtri partite da giocare")
+        
         if st.sidebar.button("🎯 Filtra Giocatore"):
             st.session_state["filtra_giocatore"] = True
             st.session_state["filtra_girone"] = False
