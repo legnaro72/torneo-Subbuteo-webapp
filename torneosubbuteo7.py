@@ -586,7 +586,7 @@ def main():
             st.session_state['giornata_sel'] = giornate_correnti[0]
 
         # Navigazione Gironi
-        st.subheader("Navigazione Gironi")
+        st.subheader("Gironi")
         col_g1, col_g2, col_g3 = st.columns([1, 4, 1])
         with col_g1:
             if st.button("◀️", key="prev_girone"):
@@ -594,17 +594,20 @@ def main():
                 if nuovo_girone_index > 0:
                     st.session_state['girone_sel'] = gironi[nuovo_girone_index - 1]
                     st.rerun()
-
+        
+        with col_g2:
+            st.markdown(f"<h3 style='text-align: center;'>Girone</h3>", unsafe_allow_html=True)
+        
         with col_g3:
             if st.button("▶️", key="next_girone"):
                 nuovo_girone_index = gironi.index(st.session_state['girone_sel'])
                 if nuovo_girone_index < len(gironi) - 1:
                     st.session_state['girone_sel'] = gironi[nuovo_girone_index + 1]
                     st.rerun()
-
+        
         # Navigazione Giornate
         giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
-        st.subheader("Navigazione Giornate")
+        st.subheader("Giornate")
         col_giorn1, col_giorn2, col_giorn3 = st.columns([1, 4, 1])
         with col_giorn1:
             if st.button("⏪", key="prev_giornata"):
@@ -612,13 +615,17 @@ def main():
                 if nuova_giornata_index > 0:
                     st.session_state['giornata_sel'] = giornate_correnti[nuova_giornata_index - 1]
                     st.rerun()
-
+        
+        with col_giorn2:
+            st.markdown(f"<h3 style='text-align: center;'>Giornata</h3>", unsafe_allow_html=True)
+        
         with col_giorn3:
             if st.button("⏩", key="next_giornata"):
                 nuova_giornata_index = giornate_correnti.index(st.session_state['giornata_sel'])
                 if nuova_giornata_index < len(giornate_correnti) - 1:
                     st.session_state['giornata_sel'] = giornate_correnti[nuova_giornata_index + 1]
                     st.rerun()
+
         
         st.subheader(f"Calendario {st.session_state['girone_sel']} - Giornata {st.session_state['giornata_sel']}")
         
