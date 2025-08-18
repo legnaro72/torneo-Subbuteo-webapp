@@ -583,22 +583,27 @@ def main():
         if 'giornata_sel' not in st.session_state or st.session_state['giornata_sel'] not in giornate_correnti:
             st.session_state['giornata_sel'] = giornate_correnti[0]
         
-        # --- Navigazione compatta Girone / Giornata ---
-        gironi = sorted(df['Girone'].dropna().unique().tolist())
-        giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
-        
+               
         # --- Navigazione Gironi (solo menu a tendina) ---
         st.subheader("Girone")
+        
+        # converto i nomi "Girone X" in solo numeri per il menu
+        gironi_numeri = [g.replace("Girone ", "") for g in gironi]
+        
+        # selettore senza label
         nuovo_girone = st.selectbox(
-            "Seleziona Girone", 
-            gironi, 
-            index=gironi.index(st.session_state['girone_sel']), 
+            "",  # etichetta vuota
+            gironi_numeri, 
+            index=gironi_numeri.index(str(int(st.session_state['girone_sel'].replace("Girone ","")))), 
             key="girone_nav_sb"
         )
-        if nuovo_girone != st.session_state['girone_sel']:
-            st.session_state['girone_sel'] = nuovo_girone
+        
+        # aggiorno lo stato con il formato originale "Girone X"
+        girone_selezionato = f"Girone {nuovo_girone}"
+        if girone_selezionato != st.session_state['girone_sel']:
+            st.session_state['girone_sel'] = girone_selezionato
             giornate_correnti = sorted(
-                df[df['Girone'] == nuovo_girone]['Giornata'].dropna().unique().tolist()
+                df[df['Girone'] == girone_selezionato]['Giornata'].dropna().unique().tolist()
             )
             # converto in int per evitare 1.0, 2.0...
             giornate_correnti = [int(g) for g in giornate_correnti]
