@@ -605,21 +605,44 @@ def main():
             st.rerun()
         
         
-        # --- Navigazione Giornate (solo bottoni numerici) ---
+        # --- Navigazione Giornate (bottoni numerici con evidenziazione) ---
         giornate_correnti = sorted(
             df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist()
         )
         giornate_correnti = [int(g) for g in giornate_correnti]  # forza interi
-        st.subheader("Giornata")
+        st.subheader("Giornate")
         
-        # Griglia bottoni (5 per riga)
+        # CSS per bottone evidenziato
+        st.markdown("""
+            <style>
+            div[data-testid="stButton"] > button[selected="true"] {
+                background-color: mediumseagreen !important;
+                color: white !important;
+                font-weight: bold !important;
+                border: 2px solid #2e8b57 !important;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+        
         cols = st.columns(5)
         for i, g in enumerate(giornate_correnti):
+            selected = (g == int(st.session_state['giornata_sel']))
             if cols[i % 5].button(str(g), key=f"giornata_{g}"):
                 st.session_state['giornata_sel'] = g
                 st.rerun()
+            # aggiungo attributo selected al bottone attuale
+            if selected:
+                st.markdown(
+                    f"""
+                    <script>
+                    var btn = window.parent.document.querySelector('button[k="giornata_{g}"]');
+                    if(btn) btn.setAttribute("selected","true");
+                    </script>
+                    """,
+                    unsafe_allow_html=True
+                )
         
-        # Mostra la giornata selezionata (sempre come intero)
+        # Mostra la giornata selezionata
         giornata_sel_int = int(st.session_state['giornata_sel'])
         st.markdown(
             f"<p style='text-align:center; font-size:18px;'>📅 Giornata selezionata: "
