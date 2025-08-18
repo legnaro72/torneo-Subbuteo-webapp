@@ -40,6 +40,27 @@ st.markdown("""
     ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
     .big-title { text-align: center; font-size: clamp(16px, 4vw, 36px); font-weight: bold; margin-top: 10px; margin-bottom: 20px; color: red; word-wrap: break-word; white-space: normal; }
     div[data-testid="stNumberInput"] label::before { content: none; }
+    .stSelectbox, .stButton {
+        flex: 1;
+        margin: 0 5px;
+    }
+    .stSelectbox label {
+        white-space: nowrap;
+    }
+    /* Stili per allineare pulsanti e selectbox */
+    .stSelectbox + .stButton {
+        margin-left: 0;
+    }
+    /* Regola il layout per i dispositivi mobili */
+    @media (max-width: 600px) {
+        .stSelectbox, .stButton {
+            width: 100%; /* I pulsanti e i menu a tendina occupano tutta la larghezza */
+            margin: 5px 0; /* Aggiungi un po' di spazio tra loro */
+        }
+        .stSelectbox + .stButton {
+            margin-left: 0;
+        }
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -83,20 +104,14 @@ def genera_calendario_from_list(gironi_popolati, tipo="Solo andata"):
                 casa, ospite = teams[i], teams[-(i+1)]
                 if casa != "Riposo" and ospite != "Riposo":
                     partite.append({"Girone": g, "Giornata": giornata+1,
-                                    "Casa": casa, "Ospite": ospite, "GolCasa": None, "GolOspite": None, "Valida": False})
+                                     "Casa": casa, "Ospite": ospite, "GolCasa": None, "GolOspite": None, "Valida": False})
                     if tipo == "Andata e ritorno":
                         partite.append({"Girone": g, "Giornata": giornata+1 + (n - 1),
-                                        "Casa": ospite, "Ospite": casa, "GolCasa": None, "GolOspite": None, "Valida": False})
+                                         "Casa": ospite, "Ospite": casa, "GolCasa": None, "GolOspite": None, "Valida": False})
             teams = [teams[0]] + [teams[-1]] + teams[1:-1]
     return pd.DataFrame(partite)
 
-# Modifica la funzione in questo modo
 def aggiorna_classifica(df):
-    # --- CORREZIONE: Gestione del caso in cui df è None ---
-    if df is None:
-        return pd.DataFrame() # Ritorna un DataFrame vuoto per evitare l'errore
-    # --- FINE CORREZIONE ---
-
     if 'Girone' not in df.columns:
         return pd.DataFrame()
 
@@ -185,6 +200,7 @@ def esporta_pdf(df_torneo, df_classifica):
             pdf.ln()
 
             pdf.set_font("Arial", '', 11)
+            # CORREZIONE: Ho sostituito 'df' con 'df_torneo'
             partite = df_torneo[(df_torneo['Girone'] == girone) & (df_torneo['Giornata'] == g)]
 
             for _, row in partite.iterrows():
@@ -317,7 +333,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
     st.button("Salva Risultati Giornata", on_click=salva_risultati_giornata)
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
-    st.subheader(f"Classifica {girone_sel}")
+    st.subheader(f"Classifica Girone {girone_sel}")
     if df_classifica is None or df_classifica.empty:
         st.info("Nessuna partita validata: la classifica sarà disponibile dopo l'inserimento e validazione dei risultati.")
         return
@@ -354,85 +370,32 @@ def autosave_to_file():
         # df_combinato.to_csv(autosave_filename, index=False)
         st.info(f"Autosalvataggio in memoria completato: {autosave_filename}")
 
-def genera_finali(df_classifica, mode="knockout", num_qualificati=2):
-    if df_classifica is None or df_classifica.empty:
-        st.error("Classifiche non disponibili. Assicurati che tutte le partite del girone siano state giocate e validate.")
-        return None, None, None
+def navigation_buttons(type, options, current_index_key, new_value_key, label, selectbox_key):
+    col1, col2, col3 = st.columns([1, 4, 1])
 
-    squadre_qualificate = []
-    gironi_originali = sorted(df_classifica['Girone'].unique())
-    num_gironi_originali = len(gironi_originali)
-    
-    for girone in gironi_originali:
-        top_teams = df_classifica[df_classifica['Girone'] == girone].head(num_qualificati).copy()
-        for i in range(num_qualificati):
-            try:
-                squadre_qualificate.append(f"{girone} {top_teams.iloc[i]['Squadra']}")
-            except IndexError:
-                continue
+    with col1:
+        if st.button("<", key=f"prev_{type}_btn"):
+            current_index = st.session_state.get(current_index_key, 0)
+            if current_index > 0:
+                st.session_state[new_value_key] = options[current_index - 1]
+                st.session_state[current_index_key] = current_index - 1
+                st.rerun()
 
-    if not squadre_qualificate:
-        st.warning("Nessuna squadra qualificata.")
-        return None, None, None
+    with col2:
+        new_value = st.selectbox(label, options, key=selectbox_key, index=st.session_state.get(current_index_key, 0))
+        st.session_state[new_value_key] = new_value
 
-    if mode == "knockout" and num_gironi_originali == 2:
-        if len(squadre_qualificate) < 4:
-            st.warning("Non ci sono abbastanza squadre per le finali a scontro diretto (minimo 4 squadre).")
-            return None, None, None
+    with col3:
+        if st.button(">", key=f"next_{type}_btn"):
+            current_index = st.session_state.get(current_index_key, 0)
+            if current_index < len(options) - 1:
+                st.session_state[new_value_key] = options[current_index + 1]
+                st.session_state[current_index_key] = current_index + 1
+                st.rerun()
 
-        quarti = []
-        # Inserisci le prime 2 di ogni girone
-        # Prima del Girone 1 vs Seconda del Girone 2, ecc.
-        quarti.append({"Girone": "Finali", "Giornata": 1, "Casa": squadre_qualificate[0], "Ospite": squadre_qualificate[3], "GolCasa": None, "GolOspite": None, "Valida": False})
-        quarti.append({"Girone": "Finali", "Giornata": 1, "Casa": squadre_qualificate[1], "Ospite": squadre_qualificate[2], "GolCasa": None, "GolOspite": None, "Valida": False})
-
-        # Partite per 3°/4° posto e finale (si giocano dopo i quarti)
-        semifinali = [] # Placeholder per le semifinali (da implementare)
-        finali = [] # Placeholder per le finali (da implementare)
-
-        df_finali = pd.DataFrame(quarti)
-        st.info(f"Finali generate a scontro diretto (totale {len(squadre_qualificate)} squadre).")
-        return df_finali, [], []
-
-    elif mode == "new_groups":
-        num_gironi_finali = st.session_state['num_gironi_finali']
-        gironi_finali = [[] for _ in range(num_gironi_finali)]
-        
-        if len(squadre_qualificate) < num_gironi_finali:
-            st.warning("Non ci sono abbastanza squadre qualificate per formare il numero di gironi richiesto.")
-            return None, None, None
-        
-        # Ordina le squadre qualificate per girone originale e punti
-        squadre_sort = df_classifica.sort_values(by=['Punti', 'DR'], ascending=[False, False])
-        squadre_sort_finali = []
-        gironi_count = len(gironi_originali)
-        
-        # Aggiungi le squadre ordinate in base alla loro posizione (1°, 2°, 3°, ...) in tutti i gironi
-        for pos in range(1, num_qualificati + 1):
-            for girone in gironi_originali:
-                squadra_pos = squadre_sort[squadre_sort['Girone'] == girone].head(pos).tail(1)
-                # CORREZIONE: Aggiunto controllo per il DataFrame vuoto
-                if not squadra_pos.empty:
-                    squadra_sort_finali.append(f"{squadra_pos.iloc[0]['Girone']} {squadra_pos.iloc[0]['Squadra']}")
-
-        # Popola i nuovi gironi
-        for i, nome in enumerate(squadra_sort_finali):
-            gironi_finali[i % num_gironi_finali].append(nome)
-
-        df_finali = genera_calendario_from_list(gironi_finali, "Solo andata")
-        df_class_finali = None
-        st.info(f"Finali generate a gironi (totale {len(squadre_qualificate)} squadre in {num_gironi_finali} gironi).")
-        return df_finali, df_class_finali, gironi_finali
-    
-    else:
-        st.warning("Modalità di finali non supportata.")
-        return None, None, None
-        
 def main():
     if "calendario_generato" not in st.session_state:
         st.session_state.calendario_generato = False
-    if "fasi_finali_attive" not in st.session_state:
-        st.session_state.fasi_finali_attive = False
     
     # Inizializza il timestamp di autosave se non esiste
     if "last_autosave_time" not in st.session_state:
@@ -454,7 +417,7 @@ def main():
         st.error("Impossibile procedere: non è stato possibile caricare la lista giocatori.")
         return
 
-    if not st.session_state.calendario_generato and not st.session_state.fasi_finali_attive:
+    if not st.session_state.calendario_generato:
         st.write("---")
         st.subheader("Scegli un'azione per iniziare:")
         
@@ -534,7 +497,6 @@ def main():
                     st.session_state['giocatori_scelti'] = giocatori_scelti
                     st.session_state['num_gironi'] = num_gironi
                     st.session_state['tipo_calendario'] = tipo_calendario
-                    st.session_state['mostra_assegnazione'] = True
                     st.session_state.pop('gioc_info', None)
                     st.success("Giocatori selezionati, passa alla fase successiva.")
                     st.rerun()
@@ -629,39 +591,67 @@ def main():
                             st.session_state['mostra_assegnazione'] = False
                             st.session_state['mostra_gironi_manuali'] = False
                             st.rerun()
-
-    if st.session_state.calendario_generato or st.session_state.fasi_finali_attive:
+    if st.session_state.calendario_generato:
         df = st.session_state['df_torneo']
         gironi = sorted(df['Girone'].dropna().unique().tolist())
         
-        is_finali = st.session_state.get('fasi_finali_attive', False)
-
-        if is_finali:
-            st.subheader("Fasi Finali")
-        else:
-            st.subheader("Fase a Gironi")
-        
-        # Gestione della selezione di girone e giornata
-        if 'girone_sel' not in st.session_state or st.session_state['girone_sel'] not in gironi:
+        # Inizializzazione degli stati per la navigazione
+        if 'girone_sel' not in st.session_state:
             st.session_state['girone_sel'] = gironi[0]
+            st.session_state['girone_index'] = 0
         
         giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
         if 'giornata_sel' not in st.session_state or st.session_state['giornata_sel'] not in giornate_correnti:
             st.session_state['giornata_sel'] = giornate_correnti[0]
+            st.session_state['giornata_index'] = 0
+
+        # Controlla se la selezione è cambiata
+        nuovo_girone_index = gironi.index(st.session_state['girone_sel'])
+        nuova_giornata_index = giornate_correnti.index(st.session_state['giornata_sel'])
+
+        # Navigazione Gironi
+        col_g1, col_g2, col_g3 = st.columns([1, 4, 1])
+        with col_g1:
+            if st.button("◀️", key="prev_girone"):
+                if nuovo_girone_index > 0:
+                    st.session_state['girone_sel'] = gironi[nuovo_girone_index - 1]
+                    st.session_state['giornata_sel'] = 1
+                    st.rerun()
+        with col_g2:
+            nuovo_girone = st.selectbox("Seleziona Girone", gironi, index=nuovo_girone_index, key="girone_nav_sb")
+        with col_g3:
+            if st.button("▶️", key="next_girone"):
+                if nuovo_girone_index < len(gironi) - 1:
+                    st.session_state['girone_sel'] = gironi[nuovo_girone_index + 1]
+                    st.session_state['giornata_sel'] = 1
+                    st.rerun()
+
+        # Navigazione Giornate
+        col_giorn1, col_giorn2, col_giorn3 = st.columns([1, 4, 1])
+        with col_giorn1:
+            if st.button("⏪", key="prev_giornata"):
+                if nuova_giornata_index > 0:
+                    st.session_state['giornata_sel'] = giornate_correnti[nuova_giornata_index - 1]
+                    st.rerun()
+        with col_giorn2:
+            nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=nuova_giornata_index, key="giornata_nav_sb")
+        with col_giorn3:
+            if st.button("⏩", key="next_giornata"):
+                if nuova_giornata_index < len(giornate_correnti) - 1:
+                    st.session_state['giornata_sel'] = giornate_correnti[nuova_giornata_index + 1]
+                    st.rerun()
         
-        sel_col1, sel_col2 = st.columns(2)
-        with sel_col1:
-            nuovo_girone = st.selectbox("Seleziona Girone", gironi, index=gironi.index(st.session_state['girone_sel']))
-        with sel_col2:
-            giornate_correnti_nuovo = sorted(df[df['Girone'] == nuovo_girone]['Giornata'].dropna().unique().tolist())
-            giornata_index = (giornate_correnti_nuovo.index(st.session_state['giornata_sel']) if st.session_state['giornata_sel'] in giornate_correnti_nuovo else 0)
-            nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti_nuovo, index=giornata_index)
-            
-        if (nuovo_girone != st.session_state['girone_sel']) or (nuova_giornata != st.session_state['giornata_sel']):
+        # Aggiorna gli stati se il selectbox cambia
+        if (nuovo_girone != st.session_state['girone_sel']):
             st.session_state['girone_sel'] = nuovo_girone
+            st.session_state['giornata_sel'] = giornate_correnti[0]
+            st.rerun()
+        if (nuova_giornata != st.session_state['giornata_sel']):
             st.session_state['giornata_sel'] = nuova_giornata
             st.rerun()
-            
+
+        st.subheader(f"Calendario {st.session_state['girone_sel']} - Giornata {st.session_state['giornata_sel']}")
+        
         girone_sel = st.session_state['girone_sel']
         giornata_sel = st.session_state['giornata_sel']
         
@@ -669,120 +659,70 @@ def main():
         classifica = aggiorna_classifica(st.session_state['df_torneo'])
         mostra_classifica_stilizzata(classifica, girone_sel)
 
-        # Controlla se tutte le partite sono state giocate per mostrare il pulsante per le fasi finali
-        partite_non_valide = df['Valida'].sum() < len(df)
+        if st.button("🔙 Torna indietro e modifica giocatori"):
+            st.session_state['mostra_form'] = True
+            st.session_state['calendario_generato'] = False
+            st.rerun()
+
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("### Filtri partite da giocare")
+        if st.sidebar.button("🎯 Filtra Giocatore"):
+            st.session_state["filtra_giocatore"] = True
+            st.session_state["filtra_girone"] = False
+            st.rerun()
+        if st.sidebar.button("🏆 Filtra Girone"):
+            st.session_state["filtra_girone"] = True
+            st.session_state["filtra_giocatore"] = False
+            st.rerun()
         
-        if not is_finali and not partite_non_valide:
-            st.write("---")
-            st.success("Tutte le partite della fase a gironi sono state completate!")
-            st.subheader("Passa alle Fasi Finali")
-            
-            # Opzione per la modalità delle fasi finali
-            col_finali1, col_finali2 = st.columns(2)
-            
-            with col_finali1:
-                st.session_state['tipo_finali'] = st.radio(
-                    "Scegli la modalità delle fasi finali:",
-                    ["Gironi finali", "Scontro diretto"],
-                    key="finali_mode_radio"
-                )
-
-            with col_finali2:
-                if st.session_state['tipo_finali'] == "Gironi finali":
-                    st.session_state['num_gironi_finali'] = st.number_input(
-                        "Numero gironi finali:",
-                        min_value=1,
-                        max_value=2,
-                        value=1,
-                        key="num_gironi_finali_input"
-                    )
-                    st.session_state['num_qualificati'] = st.number_input(
-                        "Numero squadre qualificate per girone:",
-                        min_value=1,
-                        max_value=4,
-                        value=2,
-                        key="num_qualificati_input"
-                    )
-                else: # Scontro diretto
-                    st.session_state['num_gironi_finali'] = None
-                    st.session_state['num_qualificati'] = st.number_input(
-                        "Numero squadre qualificate per girone:",
-                        min_value=2,
-                        max_value=4,
-                        value=2,
-                        key="num_qualificati_knockout"
-                    )
-
-            if st.button("Genera Fasi Finali", key="genera_finali_button"):
-                if st.session_state['tipo_finali'] == "Gironi finali":
-                    mode = "new_groups"
+        if st.session_state.get("filtra_giocatore", False) and 'df_torneo' in st.session_state and not st.session_state['df_torneo'].empty:
+            df = st.session_state['df_torneo']
+            giocatori = sorted(pd.unique(pd.concat([df['Casa'], df['Ospite']])))
+            gioc_sel = st.sidebar.selectbox("Seleziona giocatore", giocatori, key="sel_giocatore")
+            filtro_tipo = "Entrambe"
+            if st.session_state.get("tipo_calendario") == "Andata e ritorno":
+                filtro_tipo = st.sidebar.radio("Mostra partite", ["Andata", "Ritorno", "Entrambe"], index=2, key="tipo_giocatore")
+            df_filtrato = df[((df['Casa'] == gioc_sel) | (df['Ospite'] == gioc_sel)) & (df['Valida'] == False)]
+            if filtro_tipo != "Entrambe":
+                n_giornate = df['Giornata'].max()
+                if filtro_tipo == "Andata":
+                    df_filtrato = df_filtrato[df_filtrato['Giornata'] <= n_giornate / 2]
                 else:
-                    mode = "knockout"
-                
-                # Chiama la funzione con i parametri corretti
-                nuovo_calendario_finali, _, _ = genera_finali(
-                    classifica,
-                    mode,
-                    num_qualificati=st.session_state['num_qualificati']
-                )
-
-                if nuovo_calendario_finali is not None:
-                    nuovo_calendario_finali['Girone'] = 'Finali'
-                    st.session_state['df_torneo'] = nuovo_calendario_finali
-                    st.session_state.fasi_finali_attive = True
-                    st.session_state.calendario_generato = False
-                    st.rerun()
-
-    # Sezione di download
-    st.write("---")
-    st.subheader("Strumenti Utili")
-    
-    col_download1, col_download2, col_download3 = st.columns(3)
-
-    with col_download1:
-        if st.session_state.get('calendario_generato', False) or st.session_state.get('fasi_finali_attive', False):
-            df_to_save = st.session_state['df_torneo'].copy()
-            csv_file = df_to_save.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Scarica Calendario CSV",
-                data=csv_file,
-                file_name=f"{st.session_state['nome_torneo']}_calendario.csv",
-                mime='text/csv',
-                key="download_csv"
-            )
-
-    with col_download2:
-        classifica_attuale = aggiorna_classifica(st.session_state.get('df_torneo'))
-        if classifica_attuale is not None:
-            csv_classifica = classifica_attuale.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Scarica Classifica CSV",
-                data=csv_classifica,
-                file_name=f"{st.session_state['nome_torneo']}_classifica.csv",
-                mime='text/csv',
-                key="download_classifica_csv"
-            )
-
-    with col_download3:
-        if st.session_state.get('calendario_generato', False) or st.session_state.get('fasi_finali_attive', False):
-            try:
-                df_torneo_pdf = st.session_state['df_torneo']
-                df_classifica_pdf = aggiorna_classifica(df_torneo_pdf)
-                pdf_bytes = esporta_pdf(df_torneo_pdf, df_classifica_pdf)
-                st.download_button(
-                    label="📥 Scarica PDF Completo",
-                    data=pdf_bytes,
-                    file_name=f"{st.session_state['nome_torneo']}_calendario_classifiche.pdf",
-                    mime="application/pdf"
-                )
-            except Exception as e:
-                st.error(f"Errore nella generazione del PDF: {e}")
-
-    st.write("---")
-    if st.button("Reset Torneo", help="Cancella tutti i dati e ricomincia da zero."):
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.rerun()
-
-if __name__ == '__main__':
-    main()
+                    df_filtrato = df_filtrato[df_filtrato['Giornata'] > n_giornate / 2]
+            if not df_filtrato.empty:
+                df_min = pd.DataFrame({"Giornata": df_filtrato["Giornata"], "Partita": df_filtrato["Casa"] + " vs " + df_filtrato["Ospite"]}).sort_values("Giornata").reset_index(drop=True)
+                st.sidebar.dataframe(df_min, use_container_width=True, hide_index=True)
+            else:
+                st.sidebar.info("Nessuna partita da giocare.")
+            if st.sidebar.button("Chiudi filtro giocatore"):
+                st.session_state["filtra_giocatore"] = False
+                st.rerun()
+        
+        if st.session_state.get("filtra_girone", False) and 'df_torneo' in st.session_state and not st.session_state['df_torneo'].empty:
+            df = st.session_state['df_torneo']
+            gironi = sorted(df['Girone'].unique())
+            gir_sel = st.sidebar.selectbox("Seleziona girone", gironi, key="sel_girone_filt")
+            filtro_tipo_g = "Entrambe"
+            if st.session_state.get("tipo_calendario") == "Andata e ritorno":
+                filtro_tipo_g = st.sidebar.radio("Mostra partite", ["Andata", "Ritorno", "Entrambe"], index=2, key="tipo_girone_filt")
+            df_girone = df[(df['Girone'] == gir_sel) & (df['Valida'] == False)]
+            if filtro_tipo_g != "Entrambe":
+                n_giornate = df['Giornata'].max()
+                if filtro_tipo_g == "Andata":
+                    df_girone = df_girone[df_girone['Giornata'] <= n_giornate / 2]
+                else:
+                    df_girone = df_girone[df_girone['Giornata'] > n_giornate / 2]
+            if not df_girone.empty:
+                df_min_g = pd.DataFrame({"Giornata": df_girone["Giornata"], "Partita": df_girone["Casa"] + " vs " + df_girone["Ospite"]}).sort_values("Giornata").reset_index(drop=True)
+                st.sidebar.dataframe(df_min_g, use_container_width=True, hide_index=True)
+            else:
+                st.sidebar.info("Nessuna partita da giocare.")
+            if st.sidebar.button("Chiudi filtro girone"):
+                st.session_state["filtra_girone"] = False
+                st.rerun()
+        
+        st.sidebar.markdown("---")
+        nome_torneo = st.session_state.get("nome_torneo", "torneo")
+        csv_filename = nome_torneo + ".csv"
+        df_calendario = st.session_state['df_torneo']
+        df_classifica = aggiorna_classifica(df_calendario)
