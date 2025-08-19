@@ -585,12 +585,14 @@ def main():
         
         #########Inizio 
 
+        # Inizializza lo stato della sessione (se non già fatto nel resto dello script)
+        # Imposto il menu a tendina come vista predefinita
         if 'girone_sel' not in st.session_state:
             st.session_state['girone_sel'] = 'Girone 1' # Valore predefinito
         if 'giornata_sel' not in st.session_state:
             st.session_state['giornata_sel'] = 1 # Valore predefinito
         if 'vista_giornate' not in st.session_state:
-            st.session_state['vista_giornate'] = 'Bottoni'
+            st.session_state['vista_giornate'] = 'Menu a tendina'
         
         # --- Simulo il DataFrame per poter eseguire lo script ---
         data = {'Girone': ['Girone 1', 'Girone 1', 'Girone 1', 'Girone 2', 'Girone 2', 'Girone 3'],
@@ -624,11 +626,11 @@ def main():
         ### Navigazione Giornate
         st.subheader("Giornate")
         
-        # Selettore della vista
-        st.session_state['vista_giornate'] = st.radio(
+        # Sposta il selettore della vista nella sidebar
+        st.session_state['vista_giornate'] = st.sidebar.radio(
             "Scegli la visualizzazione:",
-            ("Bottoni", "Menu a tendina"),
-            index=["Bottoni", "Menu a tendina"].index(st.session_state['vista_giornate'])
+            ("Menu a tendina", "Bottoni"),
+            index=["Menu a tendina", "Bottoni"].index(st.session_state['vista_giornate'])
         )
          
         giornate_correnti = sorted(
