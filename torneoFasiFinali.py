@@ -183,6 +183,11 @@ def on_fase_change():
 # Inizializzazione della fase dell'app
 if 'app_phase' not in st.session_state:
     st.session_state['app_phase'] = 'upload'
+if 'show_gironi_form' not in st.session_state:
+    st.session_state.show_gironi_form = False
+if 'show_ko_form' not in st.session_state:
+    st.session_state.show_ko_form = False
+
 
 # =========================
 # Fase 1: Caricamento File
@@ -233,10 +238,10 @@ elif st.session_state['app_phase'] == 'main_app':
             horizontal=True,
             on_change=on_fase_change
         )
-
     st.markdown("<span class='small-muted'>Le squadre vengono **estratte dal CSV** e ordinate per piazzamento complessivo. I migliori affrontano i peggiori nelle fasi ad eliminazione; nei gironi la distribuzione è **a serpentina**.</span>", unsafe_allow_html=True)
     st.write("")
 
+    # Inizializzazione controlli
     if 'df_finale_gironi' not in st.session_state:
         st.session_state['df_finale_gironi'] = None
     if 'rounds_ko' not in st.session_state:
@@ -249,7 +254,6 @@ elif st.session_state['app_phase'] == 'main_app':
         with st.expander("⚙️ Impostazioni Gironi", expanded=True):
             num_gironi = st.number_input("Numero di gironi", min_value=1, max_value=16, value=2, step=1, key="gironi_num")
             andata_ritorno = st.checkbox("Andata e ritorno", value=False, key="gironi_ar")
-
             df_class = st.session_state['df_class']
             totale = len(df_class)
             max_per_girone = math.ceil(totale/num_gironi)
@@ -261,7 +265,6 @@ elif st.session_state['app_phase'] == 'main_app':
                 gironi = serpentino_seed(seeds, num_gironi)
                 labels = [chr(ord('A') + i) for i in range(num_gironi)]
                 assegnazione = {f"Girone {labels[i]}": gironi[i] for i in range(num_gironi)}
-
                 rows = []
                 for lab, teams in assegnazione.items():
                     df_rr = round_robin(teams, andata_ritorno=andata_ritorno)
@@ -276,9 +279,10 @@ elif st.session_state['app_phase'] == 'main_app':
                 )
                 st.session_state['gironi_seed'] = assegnazione
                 st.session_state['df_finale_gironi'] = df_finale
+                st.session_state.show_gironi_form = True # Imposta il flag per mostrare la form
                 st.rerun()
 
-        if st.session_state['df_finale_gironi'] is not None:
+        if st.session_state.show_gironi_form and st.session_state['df_finale_gironi'] is not None:
             st.subheader("📋 Assegnazione Gironi (serpentina)")
             col1, col2 = st.columns(2)
             items = list(st.session_state['gironi_seed'].items())
@@ -378,9 +382,10 @@ elif st.session_state['app_phase'] == 'main_app':
                                 'SquadraA': a, 'SquadraB': b,
                                 'GolA': None, 'GolB': None, 'Valida': False, 'Vincitore': None})
             st.session_state['rounds_ko'] = [pd.DataFrame(pairs)]
+            st.session_state.show_ko_form = True # Imposta il flag per mostrare la form
             st.rerun()
 
-        if st.session_state['rounds_ko'] is not None:
+        if st.session_state.show_ko_form and st.session_state['rounds_ko'] is not None:
             def render_round(df_round: pd.DataFrame):
                 st.markdown(f"### 🏁 {df_round['Round'].iloc[0]}")
                 for i, row in df_round.iterrows():
