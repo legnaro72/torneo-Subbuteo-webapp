@@ -165,12 +165,15 @@ def reset_fase_finale():
     keys = [
         'gironi_num', 'gironi_ar', 'gironi_seed', 'df_finale_gironi',
         'girone_sel', 'giornata_sel', 'round_corrente', 'rounds_ko', 'seeds_ko', 'n_inizio_ko',
-        # Nuove chiavi per gestire la visibilità
         'show_gironi_content', 'show_ko_content'
     ]
     for k in keys:
         if k in st.session_state:
             del st.session_state[k]
+
+# Callback per il cambio della fase
+def on_fase_change():
+    reset_fase_finale()
 
 # ==============
 # Header
@@ -209,21 +212,27 @@ st.dataframe(df_class, use_container_width=True)
 
 st.divider()
 
-# Inizializzazione degli stati di visibilità
-if 'show_gironi_content' not in st.session_state:
-    st.session_state.show_gironi_content = False
-if 'show_ko_content' not in st.session_state:
-    st.session_state.show_ko_content = False
-
 # =========================
 # Scelta della Fase Finale
 # =========================
 colA, colB = st.columns([1,1])
 with colA:
-    fase = st.radio("Formula fase finale", ["Gironi", "Eliminazione diretta"], key="fase_scelta", horizontal=True)
+    fase = st.radio(
+        "Formula fase finale", 
+        ["Gironi", "Eliminazione diretta"], 
+        key="fase_scelta", 
+        horizontal=True,
+        on_change=on_fase_change # Callback per resettare lo stato al cambio
+    )
 
 st.markdown("<span class='small-muted'>Le squadre vengono **estratte dal CSV** e ordinate per piazzamento complessivo. I migliori affrontano i peggiori nelle fasi ad eliminazione; nei gironi la distribuzione è **a serpentina**.</span>", unsafe_allow_html=True)
 st.write("")
+
+# Inizializzazione degli stati di visibilità
+if 'show_gironi_content' not in st.session_state:
+    st.session_state.show_gironi_content = False
+if 'show_ko_content' not in st.session_state:
+    st.session_state.show_ko_content = False
 
 # =================================================================
 # Modalità A: Gironi (fase finale a gruppi con calendario e risultati)
@@ -233,16 +242,13 @@ if fase == "Gironi":
         num_gironi = st.number_input("Numero di gironi", min_value=1, max_value=16, value=2, step=1, key="gironi_num")
         andata_ritorno = st.checkbox("Andata e ritorno", value=False, key="gironi_ar")
 
-        # Quante squadre partecipano alla fase a gironi? Default: tutte
         totale = len(df_class)
         max_per_girone = math.ceil(totale/num_gironi)
         n_partecipanti = st.slider("Numero partecipanti alla fase finale a gironi", min_value=num_gironi, max_value=totale, value=totale, step=1)
         st.caption(f"Distribuzione massima per girone ~ {max_per_girone} (con {totale} totali).")
 
         if st.button("🎲 Genera Gironi (serpentina)"):
-            reset_fase_finale()
             st.session_state.show_gironi_content = True
-            st.session_state.show_ko_content = False
             
             seeds = df_class['Squadra'].tolist()[:n_partecipanti]
             gironi = serpentino_seed(seeds, num_gironi)
@@ -268,10 +274,9 @@ if fase == "Gironi":
             st.session_state['df_finale_gironi'] = df_finale
 
     if st.session_state.show_gironi_content:
-        # Mostra assegnazione e calendario + inserimento risultati
+        st.subheader("📋 Assegnazione Gironi (serpentina)")
+        col1, col2 = st.columns(2)
         if 'gironi_seed' in st.session_state:
-            st.subheader("📋 Assegnazione Gironi (serpentina)")
-            col1, col2 = st.columns(2)
             items = list(st.session_state['gironi_seed'].items())
             half = math.ceil(len(items)/2)
             with col1:
@@ -351,7 +356,6 @@ if fase == "Eliminazione diretta":
         start_round_label = st.selectbox("Parti da", list(round_map.keys()))
     n_start = round_map[start_round_label]
 
-    # Per KO usiamo sempre le top N squadre
     topN = len(df_class)
     if topN < n_start:
         st.warning(f"Servono almeno **{n_start}** squadre per partire da {start_round_label.lower()}. Nel CSV ci sono {topN} squadre.")
@@ -359,15 +363,12 @@ if fase == "Eliminazione diretta":
 
     st.caption(f"Parteciperanno le **prime {n_start}** della classifica complessiva.")
     if st.button("🧩 Genera tabellone iniziale"):
-        reset_fase_finale()
         st.session_state.show_ko_content = True
-        st.session_state.show_gironi_content = False
         
         seeds = df_class['Squadra'].tolist()[:n_start]
         st.session_state['seeds_ko'] = seeds
         st.session_state['n_inizio_ko'] = n_start
         st.session_state['round_corrente'] = start_round_label
-        # Crea round iniziale
         pairs = []
         for i in range(n_start//2):
             a = seeds[i]; b = seeds[-(i+1)]
@@ -395,7 +396,6 @@ if fase == "Eliminazione diretta":
                                              key=f"ko_gb_{i}", label_visibility="hidden")
                 with c5:
                     val = st.checkbox("Valida", value=bool(row['Valida']), key=f"ko_val_{i}")
-                # Gestione pareggi: se ga==gb o non validata -> scelta vincitore opzionale
                 vincitori = [row['SquadraA'], row['SquadraB']]
                 default_w = row['Vincitore'] if pd.notna(row['Vincitore']) else vincitori[0]
                 with c6:
@@ -449,7 +449,6 @@ if fase == "Eliminazione diretta":
                     return "Finale"
                 return None
 
-        # Rendering ed avanzamento turni
         if 'rounds_ko' in st.session_state and st.session_state['rounds_ko']:
             round_corr = st.session_state['rounds_ko'][-1]
             render_round(round_corr)
