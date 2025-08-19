@@ -610,7 +610,7 @@ def main():
             index=gironi_numeri.index(str(int(st.session_state['girone_sel'].replace("Girone ","")))),
             key="girone_nav_sb"
         )
-         
+        
         girone_selezionato = f"Girone {nuovo_girone}"
         if girone_selezionato != st.session_state['girone_sel']:
             st.session_state['girone_sel'] = girone_selezionato
