@@ -618,7 +618,7 @@ def main():
         
         # Scelta modalità visualizzazione
         modo_giornate = st.radio(
-            "Modalità navigazione giornate",
+            "",
             ["Menu a tendina", "Bottoni"],
             index=0,  # di default menu a tendina
             horizontal=True,
