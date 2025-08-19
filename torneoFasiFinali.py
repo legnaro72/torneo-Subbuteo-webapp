@@ -3,6 +3,9 @@ import pandas as pd
 import math
 import os
 import re # Importa il modulo 're' per le espressioni regolari
+import io
+from fpdf import FPDF
+import base64
 
 # =========================
 # Config & stile di pagina
@@ -21,6 +24,8 @@ hr { margin: 0.6rem 0 1rem 0; }
     text-align: center;
     margin-bottom: 2rem;
 }
+.match-undone { color: red; }
+.match-done { color: green; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -78,7 +83,7 @@ def classifica_complessiva(df: pd.DataFrame) -> pd.DataFrame:
             stats[osp]['Punti'] += 2; stats[osp]['V'] += 1; stats[casa]['S'] += 1
         else:
             stats[casa]['Punti'] += 1; stats[osp]['Punti'] += 1
-        stats[casa]['P'] += 1; stats[osp]['P'] += 1
+            stats[casa]['P'] += 1; stats[osp]['P'] += 1
 
     rows = []
     for s, d in stats.items():
@@ -163,7 +168,7 @@ def standings_from_matches(df: pd.DataFrame, key_group: str) -> pd.DataFrame:
                 stats[o]['Punti'] += 2; stats[o]['V'] += 1; stats[c]['S'] += 1
             else:
                 stats[c]['Punti'] += 1; stats[o]['Punti'] += 1
-            stats[c]['P'] += 1; stats[o]['P'] += 1
+                stats[c]['P'] += 1; stats[o]['P'] += 1
         for s, d in stats.items():
             d['DR'] = d['GF'] - d['GS']
             out.append({'Gruppo': gruppo, 'Squadra': s, **d})
@@ -183,7 +188,7 @@ def reset_fase_finale():
         'fase_scelta','gironi_num','gironi_ar','gironi_seed',
         'df_finale_gironi','girone_sel','giornata_sel',
         'round_corrente','rounds_ko','seeds_ko','n_inizio_ko',
-        'giornate_mode', 'tournament_name_raw'
+        'giornate_mode', 'tournament_name_raw', 'player_filter_gironi', 'girone_filter_gironi'
     ]
     for k in keys:
         if k in st.session_state:
@@ -220,7 +225,7 @@ else:
 if st.session_state['ui_show_pre']:
     file = st.file_uploader("📁 Carica CSV torneo concluso", type=["csv"])
     if file is None:
-        st.info("Suggerimento: il CSV deve contenere le colonne: " + ", ".join(REQUIRED_COLS))
+        st.info("Suggerimento: il CSV deve contenere le colonne: " + ", ".invece(REQUIRED_COLS))
         st.stop()
 
     try:
@@ -359,50 +364,91 @@ if not st.session_state['ui_show_pre']:
 
         if 'df_finale_gironi' in st.session_state and not st.session_state['df_finale_gironi'].empty:
             dfg = st.session_state['df_finale_gironi']
-            gironi_labels = sorted(dfg['GironeFinale'].unique().tolist())
-            if 'girone_sel' not in st.session_state and gironi_labels:
-                st.session_state['girone_sel'] = gironi_labels[0]
-            girone_sel = st.selectbox("Seleziona Girone Finale", gironi_labels, index=gironi_labels.index(st.session_state['girone_sel']))
-            st.session_state['girone_sel'] = girone_sel
+            
+            st.divider()
+            
+            st.subheader("Filtri e Visualizzazione")
+            
+            col_fil_gironi, col_fil_giocatori = st.columns(2)
+            with col_fil_gironi:
+                gironi_labels = sorted(dfg['GironeFinale'].unique().tolist())
+                all_gironi_option = 'Tutti i gironi'
+                girone_filter = st.selectbox("Filtra per girone", [all_gironi_option] + gironi_labels, key='girone_filter_gironi')
 
-            if 'giornate_mode' not in st.session_state:
-                st.session_state['giornate_mode'] = "Menu a tendina"
-            giornate_mode = st.radio(
-                "Selezione giornata con:",
-                ["Menu a tendina", "Bottoni"],
-                index=0 if st.session_state['giornate_mode'] == "Menu a tendina" else 1,
-                horizontal=True
-            )
-            st.session_state['giornate_mode'] = giornate_mode
+            with col_fil_giocatori:
+                all_squadre = sorted(pd.unique(dfg[['Casa', 'Ospite']].values.ravel('K')))
+                all_squadre_option = 'Tutti i giocatori'
+                player_filter = st.selectbox("Filtra per giocatore", [all_squadre_option] + all_squadre, key='player_filter_gironi')
+            
+            filtered_dfg = dfg.copy()
+            
+            if girone_filter != all_gironi_option:
+                filtered_dfg = filtered_dfg[filtered_dfg['GironeFinale'] == girone_filter]
+                
+            if player_filter != all_squadre_option:
+                filtered_dfg = filtered_dfg[(filtered_dfg['Casa'] == player_filter) | (filtered_dfg['Ospite'] == player_filter)]
+            
+            # NUOVO: Filtro partite ancora da giocare
+            st.markdown("### 🏟️ Partite ancora da giocare")
+            
+            # Filtra le partite ancora da giocare (Valida == False)
+            undone_matches = filtered_dfg[~to_bool_series(filtered_dfg['Valida'])]
+            if not undone_matches.empty:
+                st.dataframe(undone_matches[['GironeFinale', 'Giornata', 'Casa', 'Ospite']], hide_index=True, use_container_width=True)
+            else:
+                st.info("Tutte le partite sono state giocate e validate nel girone/per il giocatore selezionato.")
 
-            giornate = sorted(dfg[dfg['GironeFinale']==girone_sel]['Giornata'].unique().tolist())
-            if 'giornata_sel' not in st.session_state and giornate:
-                st.session_state['giornata_sel'] = giornate[0]
-
-            # --- Modalità menu a tendina (default) ---
-            if giornate_mode == "Menu a tendina":
-                giornata_sel = st.selectbox(
-                    "Seleziona Giornata",
-                    giornate,
-                    index=giornate.index(st.session_state['giornata_sel']) if giornate else 0
+            st.divider()
+            
+            st.subheader("Calendario e Risultati")
+            
+            col_disp, col_mode = st.columns([2,1])
+            with col_disp:
+                # NUOVO: Filtro sul calendario
+                view_mode = st.radio(
+                    "Modalità di visualizzazione",
+                    ["Tutte le partite", "Per giornata", "Per girone"],
+                    key="view_mode_gironi",
+                    horizontal=True
                 )
-            else:
-                # --- Modalità bottoni ---
-                if giornate:
-                    cols = st.columns(len(giornate))
-                    for i, g in enumerate(giornate):
-                        if cols[i].button(f"{g}", key=f"giornata_btn_{g}"):
-                            st.session_state['giornata_sel'] = g
-                giornata_sel = st.session_state.get('giornata_sel', giornate[0] if giornate else None)
 
-            if giornata_sel is None:
-                st.info("Nessuna giornata disponibile.")
-            else:
-                st.session_state['giornata_sel'] = giornata_sel
-                st.write(f"📅 Giornata selezionata: {giornata_sel}")
+            # Controlla se la modalità 'Per giornata' è attiva
+            if view_mode == "Per giornata":
+                giornate = sorted(filtered_dfg['Giornata'].unique().tolist())
+                if 'giornata_sel_gironi' not in st.session_state and giornate:
+                    st.session_state['giornata_sel_gironi'] = giornate[0]
+                giornata_sel = st.selectbox("Seleziona Giornata", giornate, key='giornata_sel_gironi')
+                filtered_dfg = filtered_dfg[filtered_dfg['Giornata'] == giornata_sel]
+            
+            # Controlla se la modalità 'Per girone' è attiva
+            if view_mode == "Per girone":
+                # La selezione del girone è già gestita dal filtro
+                pass # Non facciamo nulla qui, il filtro iniziale basta
 
-                blocco = dfg[(dfg['GironeFinale']==girone_sel) & (dfg['Giornata']==giornata_sel)].copy()
-                st.markdown("### ✏️ Inserisci risultati")
+            # Funzione per formattare i risultati
+            def format_results(df):
+                out = []
+                for _, row in df.iterrows():
+                    valida = to_bool_series(pd.Series([row['Valida']]))[0]
+                    style_class = "match-done" if valida else "match-undone"
+                    risultato = f"{int(row['GolCasa'])} - {int(row['GolOspite'])}" if valida and not (pd.isna(row['GolCasa']) or pd.isna(row['GolOspite'])) else " - "
+                    out.append(f"<span class='{style_class}'>**{row['Casa']}** {risultato} **{row['Ospite']}**</span>")
+                return pd.DataFrame(out, columns=['Partita']).to_html(escape=False)
+            
+            if not filtered_dfg.empty:
+                st.markdown(format_results(filtered_dfg), unsafe_allow_html=True)
+            else:
+                st.info("Nessuna partita da mostrare con i filtri selezionati.")
+
+            st.divider()
+
+            st.markdown("### ✏️ Inserisci risultati")
+            
+            blocco = filtered_dfg.copy()
+
+            if blocco.empty:
+                st.info("Nessuna partita da inserire con i filtri selezionati.")
+            else:
                 for idx, row in blocco.iterrows():
                     c1, c2, c3, c4, c5 = st.columns([4,1.2,0.6,1.2,1.6])
                     with c1:
@@ -415,36 +461,148 @@ if not st.session_state['ui_show_pre']:
                         _ = st.number_input(" ", min_value=0, max_value=99, value=0 if pd.isna(row['GolOspite']) else int(row['GolOspite']), key=f"f_golo_{idx}", label_visibility="hidden")
                     with c5:
                         _ = st.checkbox("Valida", value=bool(row['Valida']), key=f"f_val_{idx}")
-
+                
                 def salva_giornata():
                     df_loc = st.session_state['df_finale_gironi']
-                    loc_idx = (df_loc['GironeFinale']==girone_sel) & (df_loc['Giornata']==giornata_sel)
-                    idxs = df_loc[loc_idx].index.tolist()
-                    for i in idxs:
+                    
+                    # Identifica gli indici da aggiornare basandosi sul blocco filtrato
+                    idxs_to_update = blocco.index.tolist()
+                    
+                    for i in idxs_to_update:
                         df_loc.at[i,'GolCasa'] = st.session_state.get(f"f_golc_{i}", 0)
                         df_loc.at[i,'GolOspite'] = st.session_state.get(f"f_golo_{i}", 0)
                         df_loc.at[i,'Valida'] = st.session_state.get(f"f_val_{i}", False)
+                    
                     st.session_state['df_finale_gironi'] = df_loc
                     st.success("✅ Risultati salvati.")
 
                 st.button("💾 Salva risultati giornata", on_click=salva_giornata)
-
-                st.markdown("### 📊 Classifica del girone selezionato")
+            
+            st.markdown("### 📊 Classifiche dei gironi")
+            
+            # NUOVO: Filtro sulle classifiche
+            class_filter = st.selectbox("Mostra classifiche per girone", ['Tutti i gironi'] + gironi_labels)
+            
+            if class_filter == 'Tutti i gironi':
                 class_g = standings_from_matches(
-                    st.session_state['df_finale_gironi'][st.session_state['df_finale_gironi']['GironeFinale']==girone_sel].rename(columns={'GironeFinale':'Gruppo'}),
+                    st.session_state['df_finale_gironi'].rename(columns={'GironeFinale':'Gruppo'}),
+                    key_group='Gruppo'
+                )
+                if class_g.empty:
+                    st.info("Nessuna partita validata finora.")
+                else:
+                    st.dataframe(class_g, use_container_width=True)
+            else:
+                class_g = standings_from_matches(
+                    st.session_state['df_finale_gironi'][st.session_state['df_finale_gironi']['GironeFinale']==class_filter].rename(columns={'GironeFinale':'Gruppo'}),
                     key_group='Gruppo'
                 )
                 if class_g.empty:
                     st.info("Nessuna partita validata finora nel girone selezionato.")
                 else:
                     st.dataframe(class_g, use_container_width=True)
+            
+            # NUOVO: Funzione per generare il PDF
+            def create_pdf(df_partite, df_classifiche):
+                class PDF(FPDF):
+                    def header(self):
+                        self.set_font('Arial', 'B', 15)
+                        self.cell(0, 10, 'Risultati e Classifiche Fasi Finali', 0, 1, 'C')
+                        self.ln(5)
 
+                    def footer(self):
+                        self.set_y(-15)
+                        self.set_font('Arial', 'I', 8)
+                        self.cell(0, 10, f'Pagina {self.page_no()}', 0, 0, 'C')
+
+                    def chapter_title(self, title):
+                        self.set_font('Arial', 'B', 12)
+                        self.cell(0, 6, title, 0, 1, 'L')
+                        self.ln(2)
+
+                    def chapter_body(self, df, title):
+                        self.chapter_title(title)
+                        self.set_font('Arial', '', 10)
+                        # Intesta le colonne
+                        for col in df.columns:
+                            self.cell(30, 7, col, 1, 0, 'C')
+                        self.ln()
+                        # Dati
+                        for index, row in df.iterrows():
+                            for col in df.columns:
+                                self.cell(30, 7, str(row[col]), 1, 0, 'C')
+                            self.ln()
+                        self.ln(5)
+
+                pdf = PDF()
+                pdf.add_page()
+                pdf.set_font('Arial', 'B', 16)
+                pdf.cell(0, 10, 'Risultati Partite', ln=1, align='C')
+                
+                # Assicurati di usare un DataFrame che può essere renderizzato in modo pulito
+                df_to_pdf = df_partite[['GironeFinale','Giornata','Casa','Ospite','GolCasa','GolOspite','Valida']].copy()
+                df_to_pdf['Valida'] = df_to_pdf['Valida'].apply(lambda x: 'Sì' if x else 'No')
+                df_to_pdf = df_to_pdf.rename(columns={'GironeFinale': 'Girone', 'GolCasa': 'Gol C', 'GolOspite': 'Gol O', 'Valida': 'Validata'})
+                
+                # Aggiunge le partite al PDF
+                for _, row in df_to_pdf.iterrows():
+                    match_str = f"Girone: {row['Girone']} - Giornata: {row['Giornata']} | {row['Casa']} {row['Gol C']} - {row['Gol O']} {row['Ospite']} | Validata: {row['Validata']}"
+                    pdf.cell(0, 10, match_str, ln=1)
+
+                pdf.add_page()
+                pdf.set_font('Arial', 'B', 16)
+                pdf.cell(0, 10, 'Classifiche Gironi', ln=1, align='C')
+                
+                # Aggiunge le classifiche al PDF, per girone
+                gironi_classifiche = df_classifiche.groupby('Gruppo')
+                for girone, class_df in gironi_classifiche:
+                    pdf.chapter_title(f"Classifica {girone}")
+                    pdf.set_font('Arial', '', 10)
+                    
+                    headers = ['Pos', 'Squadra', 'Punti', 'V', 'P', 'S', 'GF', 'GS', 'DR']
+                    col_widths = [15, 30, 15, 10, 10, 10, 10, 10, 10]
+                    
+                    for i, header in enumerate(headers):
+                        pdf.cell(col_widths[i], 7, header, 1, 0, 'C')
+                    pdf.ln()
+
+                    class_df = class_df.sort_values(by=['Punti','DR','GF','V','Squadra'], ascending=[False, False, False, False, True])
+                    class_df = class_df.reset_index(drop=True)
+                    class_df.index = class_df.index + 1
+                    
+                    for index, row in class_df.iterrows():
+                        pdf.cell(col_widths[0], 7, str(index), 1, 0, 'C')
+                        pdf.cell(col_widths[1], 7, str(row['Squadra']), 1, 0, 'L')
+                        pdf.cell(col_widths[2], 7, str(row['Punti']), 1, 0, 'C')
+                        pdf.cell(col_widths[3], 7, str(row['V']), 1, 0, 'C')
+                        pdf.cell(col_widths[4], 7, str(row['P']), 1, 0, 'C')
+                        pdf.cell(col_widths[5], 7, str(row['S']), 1, 0, 'C')
+                        pdf.cell(col_widths[6], 7, str(row['GF']), 1, 0, 'C')
+                        pdf.cell(col_widths[7], 7, str(row['GS']), 1, 0, 'C')
+                        pdf.cell(col_widths[8], 7, str(row['DR']), 1, 0, 'C')
+                        pdf.ln()
+                    pdf.ln(5)
+
+                pdf_output = pdf.output(dest='S').encode('latin1')
+                return pdf_output
+
+            class_g_all = standings_from_matches(st.session_state['df_finale_gironi'].rename(columns={'GironeFinale':'Gruppo'}), key_group='Gruppo')
+            
+            if not st.session_state['df_finale_gironi'].empty and not class_g_all.empty:
+                pdf_data = create_pdf(st.session_state['df_finale_gironi'], class_g_all)
                 st.download_button(
-                    "📥 Esporta calendario fase a gironi (CSV)",
-                    data=st.session_state['df_finale_gironi'].to_csv(index=False).encode('utf-8'),
-                    file_name="fase_finale_gironi_calendario.csv",
-                    mime="text/csv",
+                    label="⬇️ Esporta risultati e classifiche (PDF)",
+                    data=pdf_data,
+                    file_name="risultati_classifiche_fase_finale.pdf",
+                    mime="application/pdf"
                 )
+                
+            st.download_button(
+                "📥 Esporta calendario fase a gironi (CSV)",
+                data=st.session_state['df_finale_gironi'].to_csv(index=False).encode('utf-8'),
+                file_name="fase_finale_gironi_calendario.csv",
+                mime="text/csv",
+            )
 
     # ------ Modalità B: Eliminazione Diretta (POST) ------
     if st.session_state.get('fase_modalita') == "Eliminazione diretta":
