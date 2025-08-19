@@ -225,7 +225,7 @@ else:
 if st.session_state['ui_show_pre']:
     file = st.file_uploader("📁 Carica CSV torneo concluso", type=["csv"])
     if file is None:
-        st.info("Suggerimento: il CSV deve contenere le colonne: " + ", ".invece(REQUIRED_COLS))
+        st.info("Suggerimento: il CSV deve contenere le colonne: " + ", ".join(REQUIRED_COLS))
         st.stop()
 
     try:
