@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import math
 import os
+import re # Importa il modulo 're' per le espressioni regolari
 
 # =========================
 # Config & stile di pagina
@@ -205,7 +206,9 @@ if 'fase_modalita' not in st.session_state:
 
 # Mostra il nome torneo solo se già impostato
 if 'tournament_name_raw' in st.session_state and not st.session_state['ui_show_pre']:
-    st.markdown(f'<h1 class="main-title">🏆 FASE FINALE ({st.session_state["tournament_name_raw"]})</h1>', unsafe_allow_html=True)
+    # Modifica qui: pulizia della stringa prima di visualizzarla
+    cleaned_name = re.sub(r'\(.*\)', '', st.session_state["tournament_name_raw"]).strip()
+    st.markdown(f'<h1 class="main-title">🏆 FASE FINALE {cleaned_name}</h1>', unsafe_allow_html=True)
 else:
     st.title("🏆 Fasi Finali")
     if 'tournament_name_raw' in st.session_state and st.session_state['ui_show_pre']:
