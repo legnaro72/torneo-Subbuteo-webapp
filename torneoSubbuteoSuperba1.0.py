@@ -620,9 +620,7 @@ def main():
             giornate_correnti = [int(g) for g in giornate_correnti]
             st.session_state['giornata_sel'] = giornate_correnti[0]
             st.rerun()
-        
-        ---
-        
+            
         ### Navigazione Giornate
         st.subheader("Giornate")
         
