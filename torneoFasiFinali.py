@@ -198,7 +198,13 @@ def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
         pdf.set_font("Helvetica", "", 10)
         
         classifica = standings_from_matches(girone_blocco.rename(columns={'GironeFinale': 'Gruppo'}), key_group='Gruppo')
+        
+        # FIX: Aggiunge la colonna 'Pos' e gestisce l'ordinamento
         if not classifica.empty:
+            classifica = classifica.sort_values(by=['Punti', 'DR', 'GF', 'V', 'Squadra'], ascending=[False, False, False, False, True]).reset_index(drop=True)
+            classifica.index = classifica.index + 1
+            classifica.insert(0, 'Pos', classifica.index)
+
             # Table header
             col_widths = [10, 40, 15, 15, 15, 15, 15, 15, 15]
             headers = ["Pos", "Squadra", "Punti", "V", "P", "S", "GF", "GS", "DR"]
@@ -208,7 +214,7 @@ def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
             # Table rows
             for _, r in classifica.iterrows():
                 for i, c in enumerate(headers):
-                    val = r[c]
+                    val = r.get(c, "N/A") # Usa .get() per evitare KeyError
                     if c == 'Pos':
                         val = int(val)
                     pdf.cell(col_widths[i], 7, str(val), 1, 0, 'C')
@@ -229,7 +235,7 @@ def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
             else:
                 pdf.set_text_color(0, 0, 0) # Nero altrimenti
             
-            res = f"{partita['GolCasa']} - {partita['GolOspite']}" if partita['Valida'] else " - "
+            res = f"{int(partita['GolCasa'])} - {int(partita['GolOspite'])}" if partita['Valida'] and pd.notna(partita['GolCasa']) and pd.notna(partita['GolOspite']) else " - "
             pdf.cell(0, 7, f"Giornata {int(partita['Giornata'])}: {partita['Casa']} vs {partita['Ospite']} ({res})", 0, 1)
 
         pdf.set_text_color(0, 0, 0)
@@ -258,13 +264,12 @@ def generate_pdf_ko(rounds_ko: list[pd.DataFrame]) -> bytes:
             else:
                 pdf.set_text_color(0, 0, 0) # Nero
                 
-            res = f"{match['GolA']} - {match['GolB']}" if match['Valida'] else " - "
+            res = f"{int(match['GolA'])} - {int(match['GolB'])}" if match['Valida'] and pd.notna(match['GolA']) and pd.notna(match['GolB']) else " - "
             pdf.cell(0, 7, f"Partita {int(match['Match'])}: {match['SquadraA']} vs {match['SquadraB']} ({res})", 0, 1)
 
     # Re-imposta colore a nero per il resto
     pdf.set_text_color(0, 0, 0)
     return pdf.output(dest='S').encode('latin1')
-
 
 # ==================================
 # Gestione stato applicazione
@@ -710,4 +715,3 @@ if not st.session_state['ui_show_pre']:
                     if st.button("🔁 Reimposta fase KO"):
                         reset_fase_finale()
                         st.rerun()
-
