@@ -10,28 +10,28 @@ st.set_page_config(
 st.title("🎯 Hub Tornei Subbuteo")
 st.write("Seleziona la web app da aprire:")
 
-# Creazione dei bottoni per le altre web app
-col1, col2, col3 = st.columns(3)
+# CSS per rendere i link come bottoni
+st.markdown("""
+    <style>
+    .hub-button {
+        display: inline-block;
+        padding: 15px 25px;
+        margin: 10px;
+        font-size: 18px;
+        font-weight: bold;
+        color: white;
+        background-color: #4CAF50;
+        border-radius: 12px;
+        text-decoration: none;
+        transition: 0.3s;
+    }
+    .hub-button:hover {
+        background-color: #45a049;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-with col1:
-    if st.button("🏁 Campionato / Fase Preliminare"):
-        st.markdown(
-            '[Apri qui](https://torneo-subbuteo-superba.streamlit.app/)',
-            unsafe_allow_html=True
-        )
-
-with col2:
-    if st.button("🏆 Fase Finale"):
-        st.markdown(
-            '[Apri qui](https://torneo-subbuteo-finali.streamlit.app/)',
-            unsafe_allow_html=True
-        )
-
-with col3:
-    if st.button("🇨🇭 Torneo Svizzero x Club"):
-        st.markdown(
-            '[Apri qui](https://torneosvizzerobylegnaxclub.streamlit.app/)',
-            unsafe_allow_html=True
-        )
-
-st.info("Cliccando sul link, la web app si aprirà in una nuova scheda del browser.")
+# Bottoni (in realtà link stilizzati)
+st.markdown('<a class="hub-button" href="https://torneo-subbuteo-superba.streamlit.app/" target="_blank">🏁 Campionato / Fase Preliminare</a>', unsafe_allow_html=True)
+st.markdown('<a class="hub-button" href="https://torneo-subbuteo-finali.streamlit.app/" target="_blank">🏆 Fase Finale</a>', unsafe_allow_html=True)
+st.markdown('<a class="hub-button" href="https://torneosvizzerobylegnaxclub.streamlit.app/" target="_blank">🇨🇭 Torneo Svizzero x Club</a>', unsafe_allow_html=True)
