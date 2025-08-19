@@ -195,7 +195,6 @@ if 'show_ko_form' not in st.session_state:
 if st.session_state['app_phase'] == 'upload':
     st.title("🏆 Fase Finale Torneo")
     st.caption("Carica un CSV di torneo **completamente concluso e validato** per generare la fase finale.")
-
     file = st.file_uploader("📁 Carica CSV torneo concluso", type=["csv"])
 
     if file is not None:
@@ -221,7 +220,6 @@ if st.session_state['app_phase'] == 'upload':
 # =========================
 elif st.session_state['app_phase'] == 'main_app':
     st.title("🏆 Fase Finale Torneo")
-
     st.subheader("📊 Classifica Finale")
     st.dataframe(st.session_state['df_class'], use_container_width=True)
     st.divider()
@@ -241,7 +239,6 @@ elif st.session_state['app_phase'] == 'main_app':
     st.markdown("<span class='small-muted'>Le squadre vengono **estratte dal CSV** e ordinate per piazzamento complessivo. I migliori affrontano i peggiori nelle fasi ad eliminazione; nei gironi la distribuzione è **a serpentina**.</span>", unsafe_allow_html=True)
     st.write("")
 
-    # Inizializzazione controlli
     if 'df_finale_gironi' not in st.session_state:
         st.session_state['df_finale_gironi'] = None
     if 'rounds_ko' not in st.session_state:
