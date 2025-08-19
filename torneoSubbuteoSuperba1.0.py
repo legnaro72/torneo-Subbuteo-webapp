@@ -632,7 +632,7 @@ def main():
             ("Menu a tendina", "Bottoni"),
             index=["Menu a tendina", "Bottoni"].index(st.session_state['vista_giornate'])
         )
-         
+        
         giornate_correnti = sorted(
             df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist()
         )
