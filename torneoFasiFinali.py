@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 import math
 
-# =========================
+# =========================================================
 # Configurazione e stile
-# =========================
+# =========================================================
 st.set_page_config(page_title="Fase Finale Torneo", layout="wide")
 st.markdown("""
 <style>
@@ -13,9 +13,9 @@ hr { margin: 0.6rem 0 1rem 0; }
 </style>
 """, unsafe_allow_html=True)
 
-# =========================
-# Utilità
-# =========================
+# =========================================================
+# Utilità (Funzioni di calcolo e generazione)
+# =========================================================
 REQUIRED_COLS = ['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']
 
 def check_csv_structure(df: pd.DataFrame) -> tuple[bool, str]:
@@ -156,18 +156,17 @@ def standings_from_matches(df: pd.DataFrame, key_group: str) -> pd.DataFrame:
     dfc = dfc.sort_values(by=['Gruppo','Punti','DR','GF','V','Squadra'], ascending=[True,False,False,False,False,True])
     return dfc.reset_index(drop=True)
 
-# ==================================
+# =========================================================
 # Gestione stato applicazione
-# ==================================
+# =========================================================
 def reset_app_state():
     """Resetta l'intera applicazione allo stato iniziale."""
-    for key in st.session_state.keys():
-        del st.session_state[key]
+    st.session_state.clear()
     st.session_state['app_phase'] = 'upload'
     st.rerun()
 
 def reset_fase_finale():
-    """Resetta lo stato della fase finale per ricominciare."""
+    """Resetta solo lo stato della fase finale per ricominciare."""
     keys = [
         'gironi_num', 'gironi_ar', 'gironi_seed', 'df_finale_gironi',
         'girone_sel', 'giornata_sel', 'round_corrente', 'rounds_ko', 'seeds_ko', 'n_inizio_ko',
@@ -177,21 +176,16 @@ def reset_fase_finale():
             del st.session_state[k]
 
 def on_fase_change():
-    """Callback per resettare lo stato al cambio di fase finale."""
+    """Callback per resettare lo stato al cambio di formula (Gironi/KO)."""
     reset_fase_finale()
 
-# Inizializzazione della fase dell'app
+# Inizializzazione della fase dell'app all'avvio
 if 'app_phase' not in st.session_state:
     st.session_state['app_phase'] = 'upload'
-if 'show_gironi_form' not in st.session_state:
-    st.session_state.show_gironi_form = False
-if 'show_ko_form' not in st.session_state:
-    st.session_state.show_ko_form = False
 
-
-# =========================
-# Fase 1: Caricamento File
-# =========================
+# =========================================================
+# Fase 1: Caricamento File (Solo UI per l'upload)
+# =========================================================
 if st.session_state['app_phase'] == 'upload':
     st.title("🏆 Fase Finale Torneo")
     st.caption("Carica un CSV di torneo **completamente concluso e validato** per generare la fase finale.")
@@ -211,13 +205,14 @@ if st.session_state['app_phase'] == 'upload':
                     st.session_state['app_phase'] = 'main_app'
                     st.session_state['df_class'] = classifica_complessiva(df_in)
                     st.success("✅ Torneo completo e valido! Scegli la formula della fase finale.")
+                    # Utilizziamo st.rerun() per forzare il ricaricamento e mostrare la UI principale
                     st.rerun()
         except Exception as e:
             st.error(f"❌ Errore nel caricamento del CSV: {e}")
 
-# =========================
-# Fase 2: Applicazione Principale
-# =========================
+# =========================================================
+# Fase 2: Applicazione Principale (mostra UI dopo l'upload)
+# =========================================================
 elif st.session_state['app_phase'] == 'main_app':
     st.title("🏆 Fase Finale Torneo")
     st.subheader("📊 Classifica Finale")
@@ -227,22 +222,15 @@ elif st.session_state['app_phase'] == 'main_app':
     st.button("Torna al Caricamento File", on_click=reset_app_state)
     st.divider()
 
-    colA, colB = st.columns([1,1])
-    with colA:
-        fase = st.radio(
-            "Formula fase finale", 
-            ["Gironi", "Eliminazione diretta"], 
-            key="fase_scelta", 
-            horizontal=True,
-            on_change=on_fase_change
-        )
+    fase = st.radio(
+        "Formula fase finale", 
+        ["Gironi", "Eliminazione diretta"], 
+        key="fase_scelta", 
+        horizontal=True,
+        on_change=on_fase_change
+    )
     st.markdown("<span class='small-muted'>Le squadre vengono **estratte dal CSV** e ordinate per piazzamento complessivo. I migliori affrontano i peggiori nelle fasi ad eliminazione; nei gironi la distribuzione è **a serpentina**.</span>", unsafe_allow_html=True)
     st.write("")
-
-    if 'df_finale_gironi' not in st.session_state:
-        st.session_state['df_finale_gironi'] = None
-    if 'rounds_ko' not in st.session_state:
-        st.session_state['rounds_ko'] = None
 
     # =================================================================
     # Modalità A: Gironi (fase finale a gruppi con calendario e risultati)
@@ -276,10 +264,10 @@ elif st.session_state['app_phase'] == 'main_app':
                 )
                 st.session_state['gironi_seed'] = assegnazione
                 st.session_state['df_finale_gironi'] = df_finale
-                st.session_state.show_gironi_form = True # Imposta il flag per mostrare la form
                 st.rerun()
 
-        if st.session_state.show_gironi_form and st.session_state['df_finale_gironi'] is not None:
+        # Il form dei gironi viene mostrato solo se il DataFrame è stato generato
+        if 'df_finale_gironi' in st.session_state and st.session_state['df_finale_gironi'] is not None:
             st.subheader("📋 Assegnazione Gironi (serpentina)")
             col1, col2 = st.columns(2)
             items = list(st.session_state['gironi_seed'].items())
@@ -379,10 +367,10 @@ elif st.session_state['app_phase'] == 'main_app':
                                 'SquadraA': a, 'SquadraB': b,
                                 'GolA': None, 'GolB': None, 'Valida': False, 'Vincitore': None})
             st.session_state['rounds_ko'] = [pd.DataFrame(pairs)]
-            st.session_state.show_ko_form = True # Imposta il flag per mostrare la form
             st.rerun()
-
-        if st.session_state.show_ko_form and st.session_state['rounds_ko'] is not None:
+            
+        # Il form KO viene mostrato solo se il DataFrame è stato generato
+        if 'rounds_ko' in st.session_state and st.session_state['rounds_ko'] is not None:
             def render_round(df_round: pd.DataFrame):
                 st.markdown(f"### 🏁 {df_round['Round'].iloc[0]}")
                 for i, row in df_round.iterrows():
@@ -390,15 +378,17 @@ elif st.session_state['app_phase'] == 'main_app':
                     with c1:
                         st.markdown(f"**{row['SquadraA']}** vs **{row['SquadraB']}**")
                     with c2:
+                        gol_a_val = row['GolA'] if pd.notna(row['GolA']) else 0
                         ga = st.number_input(" ", min_value=0, max_value=99,
-                                                 value=0 if pd.isna(row['GolA']) else int(row['GolA']),
-                                                 key=f"ko_ga_{i}", label_visibility="hidden")
+                                             value=int(gol_a_val),
+                                             key=f"ko_ga_{i}", label_visibility="hidden")
                     with c3:
                         st.markdown("—")
                     with c4:
+                        gol_b_val = row['GolB'] if pd.notna(row['GolB']) else 0
                         gb = st.number_input("  ", min_value=0, max_value=99,
-                                                 value=0 if pd.isna(row['GolB']) else int(row['GolB']),
-                                                 key=f"ko_gb_{i}", label_visibility="hidden")
+                                             value=int(gol_b_val),
+                                             key=f"ko_gb_{i}", label_visibility="hidden")
                     with c5:
                         val = st.checkbox("Valida", value=bool(row['Valida']), key=f"ko_val_{i}")
                     vincitori = [row['SquadraA'], row['SquadraB']]
