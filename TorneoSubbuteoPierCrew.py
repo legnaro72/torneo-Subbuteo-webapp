@@ -611,11 +611,11 @@ def main():
             st.rerun()
 
         #Inizio scelta giornate
-        # --- Navigazione Giornate ---
 
+        # --- Navigazione Giornate ---
         st.subheader("Giornate")
         
-        # Scelta modalità visualizzazione (senza scritta sopra)
+        # Scelta modalità visualizzazione
         modo_giornate = st.radio(
             "",
             ["Menu a tendina", "Bottoni"],
@@ -656,11 +656,11 @@ def main():
         
             cols = st.columns(5)
             for i, g in enumerate(giornate_correnti):
+                selected = (g == int(st.session_state['giornata_sel']))
                 if cols[i % 5].button(str(g), key=f"giornata_{g}"):
                     st.session_state['giornata_sel'] = g
                     st.rerun()
 
-        
 
         #Fine scelta giornate
         
