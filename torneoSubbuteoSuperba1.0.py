@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import requests
@@ -583,91 +584,81 @@ def main():
         if 'giornata_sel' not in st.session_state or st.session_state['giornata_sel'] not in giornate_correnti:
             st.session_state['giornata_sel'] = giornate_correnti[0]
         
-        #########Inizio 
-
-        # --- Inizializza lo stato della sessione ---
-        if 'girone_sel' not in st.session_state:
-            st.session_state['girone_sel'] = 'Girone 1'
-        if 'giornata_sel' not in st.session_state:
-            st.session_state['giornata_sel'] = 1
-        if 'vista_giornate' not in st.session_state:
-            st.session_state['vista_giornate'] = 'Menu a tendina'
-        
-        # --- Simulo il DataFrame per esempio ---
-        data = {'Girone': ['Girone 1', 'Girone 1', 'Girone 1', 'Girone 2', 'Girone 2', 'Girone 3'],
-                'Giornata': [1, 2, 3, 1, 2, 1]}
-        df = pd.DataFrame(data)
-        
-        # --- Navigazione Gironi ---
+               
+        # --- Navigazione Gironi (solo menu a tendina) ---
         st.subheader("Girone")
-        gironi = sorted(df['Girone'].dropna().unique().tolist())
+        
+        # converto i nomi "Girone X" in solo numeri per il menu
         gironi_numeri = [g.replace("Girone ", "") for g in gironi]
         
+        # selettore senza label
         nuovo_girone = st.selectbox(
-            "", 
-            gironi_numeri,
-            index=gironi_numeri.index(st.session_state['girone_sel'].replace("Girone ", "")),
+            "",  # etichetta vuota
+            gironi_numeri, 
+            index=gironi_numeri.index(str(int(st.session_state['girone_sel'].replace("Girone ","")))), 
             key="girone_nav_sb"
         )
         
+        # aggiorno lo stato con il formato originale "Girone X"
         girone_selezionato = f"Girone {nuovo_girone}"
         if girone_selezionato != st.session_state['girone_sel']:
             st.session_state['girone_sel'] = girone_selezionato
             giornate_correnti = sorted(
                 df[df['Girone'] == girone_selezionato]['Giornata'].dropna().unique().tolist()
             )
-            st.session_state['giornata_sel'] = int(giornate_correnti[0])
+            # converto in int per evitare 1.0, 2.0...
+            giornate_correnti = [int(g) for g in giornate_correnti]
+            st.session_state['giornata_sel'] = giornate_correnti[0]
             st.rerun()
         
-        # --- Navigazione Giornate ---
-        st.subheader("Giornate")
         
-        # Selettore della vista (in sidebar)
-        st.session_state['vista_giornate'] = st.sidebar.radio(
-            "Scegli la visualizzazione:",
-            ("Menu a tendina", "Bottoni"),
-            index=["Menu a tendina", "Bottoni"].index(st.session_state['vista_giornate'])
-        )
-        
+        # --- Navigazione Giornate (bottoni numerici con evidenziazione) ---
         giornate_correnti = sorted(
             df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist()
         )
-        giornate_correnti = [int(g) for g in giornate_correnti]
+        giornate_correnti = [int(g) for g in giornate_correnti]  # forza interi
+        st.subheader("Giornate")
         
-        if st.session_state['vista_giornate'] == "Menu a tendina":
-            nuova_giornata = st.selectbox(
-                "",
-                giornate_correnti,
-                index=giornate_correnti.index(st.session_state['giornata_sel']),
-                key="giornata_nav_sb"
-            )
-            if nuova_giornata != st.session_state['giornata_sel']:
-                st.session_state['giornata_sel'] = nuova_giornata
+        # CSS per bottone evidenziato
+        st.markdown("""
+            <style>
+            div[data-testid="stButton"] > button[selected="true"] {
+                background-color: mediumseagreen !important;
+                color: white !important;
+                font-weight: bold !important;
+                border: 2px solid #2e8b57 !important;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+        
+        cols = st.columns(5)
+        for i, g in enumerate(giornate_correnti):
+            selected = (g == int(st.session_state['giornata_sel']))
+            if cols[i % 5].button(str(g), key=f"giornata_{g}"):
+                st.session_state['giornata_sel'] = g
                 st.rerun()
-        
-        else:  # Vista a bottoni
-            cols = st.columns(min(len(giornate_correnti), 5))
-            for i, g in enumerate(giornate_correnti):
-                with cols[i % 5]:
-                    if st.button(f"{g}", key=f"giornata_{g}"):
-                        st.session_state['giornata_sel'] = g
-                        st.rerun()
-                    if g == st.session_state['giornata_sel']:
-                        st.markdown(
-                            f"<div style='text-align:center; color:mediumseagreen; font-weight:bold;'>✔</div>",
-                            unsafe_allow_html=True
-                        )
+            # aggiungo attributo selected al bottone attuale
+            if selected:
+                st.markdown(
+                    f"""
+                    <script>
+                    var btn = window.parent.document.querySelector('button[k="giornata_{g}"]');
+                    if(btn) btn.setAttribute("selected","true");
+                    </script>
+                    """,
+                    unsafe_allow_html=True
+                )
         
         # Mostra la giornata selezionata
+        giornata_sel_int = int(st.session_state['giornata_sel'])
         st.markdown(
             f"<p style='text-align:center; font-size:18px;'>📅 Giornata selezionata: "
-            f"<b>{st.session_state['giornata_sel']}</b></p>",
+            f"<b>{giornata_sel_int}</b></p>", 
             unsafe_allow_html=True
         )
+        
 
-        
-        ######## FINE
-        
+            
         girone_sel = st.session_state['girone_sel']
         giornata_sel = st.session_state['giornata_sel']
         
