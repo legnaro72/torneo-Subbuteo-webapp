@@ -165,7 +165,8 @@ def reset_fase_finale():
     keys = [
         'gironi_num', 'gironi_ar', 'gironi_seed', 'df_finale_gironi',
         'girone_sel', 'giornata_sel', 'round_corrente', 'rounds_ko', 'seeds_ko', 'n_inizio_ko',
-        'show_gironi_content', 'show_ko_content'
+        # Rimuoviamo gli stati di visibilità obsoleti
+        #'show_gironi_content', 'show_ko_content'
     ]
     for k in keys:
         if k in st.session_state:
@@ -193,7 +194,7 @@ if file is None:
 try:
     df_in = pd.read_csv(file)
 except Exception as e:
-    st.error(f"Errore nel caricamento del CSV: {e}")
+    st.error(f"❌ Errore nel caricamento del CSV: {e}")
     st.stop()
 
 ok, msg = check_csv_structure(df_in)
@@ -228,11 +229,11 @@ with colA:
 st.markdown("<span class='small-muted'>Le squadre vengono **estratte dal CSV** e ordinate per piazzamento complessivo. I migliori affrontano i peggiori nelle fasi ad eliminazione; nei gironi la distribuzione è **a serpentina**.</span>", unsafe_allow_html=True)
 st.write("")
 
-# Inizializzazione degli stati di visibilità
-if 'show_gironi_content' not in st.session_state:
-    st.session_state.show_gironi_content = False
-if 'show_ko_content' not in st.session_state:
-    st.session_state.show_ko_content = False
+# Inizializzazione degli stati che contengono i dati
+if 'df_finale_gironi' not in st.session_state:
+    st.session_state['df_finale_gironi'] = None
+if 'rounds_ko' not in st.session_state:
+    st.session_state['rounds_ko'] = None
 
 # =================================================================
 # Modalità A: Gironi (fase finale a gruppi con calendario e risultati)
@@ -248,8 +249,6 @@ if fase == "Gironi":
         st.caption(f"Distribuzione massima per girone ~ {max_per_girone} (con {totale} totali).")
 
         if st.button("🎲 Genera Gironi (serpentina)"):
-            st.session_state.show_gironi_content = True
-            
             seeds = df_class['Squadra'].tolist()[:n_partecipanti]
             gironi = serpentino_seed(seeds, num_gironi)
             labels = []
@@ -273,7 +272,7 @@ if fase == "Gironi":
             st.session_state['gironi_seed'] = assegnazione
             st.session_state['df_finale_gironi'] = df_finale
 
-    if st.session_state.show_gironi_content:
+    if st.session_state['df_finale_gironi'] is not None:
         st.subheader("📋 Assegnazione Gironi (serpentina)")
         col1, col2 = st.columns(2)
         if 'gironi_seed' in st.session_state:
@@ -363,8 +362,6 @@ if fase == "Eliminazione diretta":
 
     st.caption(f"Parteciperanno le **prime {n_start}** della classifica complessiva.")
     if st.button("🧩 Genera tabellone iniziale"):
-        st.session_state.show_ko_content = True
-        
         seeds = df_class['Squadra'].tolist()[:n_start]
         st.session_state['seeds_ko'] = seeds
         st.session_state['n_inizio_ko'] = n_start
@@ -377,7 +374,7 @@ if fase == "Eliminazione diretta":
                             'GolA': None, 'GolB': None, 'Valida': False, 'Vincitore': None})
         st.session_state['rounds_ko'] = [pd.DataFrame(pairs)]
 
-    if st.session_state.show_ko_content:
+    if st.session_state['rounds_ko'] is not None:
         def render_round(df_round: pd.DataFrame):
             st.markdown(f"### 🏁 {df_round['Round'].iloc[0]}")
             for i, row in df_round.iterrows():
@@ -443,49 +440,44 @@ if fase == "Eliminazione diretta":
                 idx = order.index(curr)
                 return order[idx+1]
             except ValueError:
-                if curr == "Quarti":
-                    return "Semifinali"
-                if curr == "Semifinali":
-                    return "Finale"
                 return None
 
-        if 'rounds_ko' in st.session_state and st.session_state['rounds_ko']:
-            round_corr = st.session_state['rounds_ko'][-1]
-            render_round(round_corr)
+        round_corr = st.session_state['rounds_ko'][-1]
+        render_round(round_corr)
 
-            colx, coly = st.columns([1,1])
-            with colx:
-                if st.button("➡️ Genera turno successivo"):
-                    if not all_matches_have_winners(round_corr):
-                        st.error("Per avanzare, **tutte** le partite del turno devono essere **validate** e con **vincitore** determinato.")
+        colx, coly = st.columns([1,1])
+        with colx:
+            if st.button("➡️ Genera turno successivo"):
+                if not all_matches_have_winners(round_corr):
+                    st.error("Per avanzare, **tutte** le partite del turno devono essere **validate** e con **vincitore** determinato.")
+                else:
+                    winners = compute_winners(round_corr)
+                    if len(winners) == 1:
+                        st.balloons()
+                        st.success(f"🏆 Campione: **{winners[0]}**")
                     else:
-                        winners = compute_winners(round_corr)
-                        if len(winners) == 1:
-                            st.balloons()
-                            st.success(f"🏆 Campione: **{winners[0]}**")
+                        nxt = next_round_label(round_corr['Round'].iloc[0])
+                        if nxt is None:
+                            st.error("Impossibile determinare il turno successivo.")
                         else:
-                            nxt = next_round_label(round_corr['Round'].iloc[0])
-                            if nxt is None:
-                                st.error("Impossibile determinare il turno successivo.")
-                            else:
-                                pairs = []
-                                for i in range(0, len(winners), 2):
-                                    a, b = winners[i], winners[i+1]
-                                    pairs.append({'Round': nxt, 'Match': (i//2)+1,
-                                                    'SquadraA': a, 'SquadraB': b,
-                                                    'GolA': None, 'GolB': None, 'Valida': False, 'Vincitore': None})
-                                st.session_state['rounds_ko'].append(pd.DataFrame(pairs))
-                                st.session_state['round_corrente'] = nxt
-                                st.rerun()
-            with coly:
-                if st.button("🔁 Reimposta fase KO"):
-                    reset_fase_finale()
-                    st.experimental_rerun()
+                            pairs = []
+                            for i in range(0, len(winners), 2):
+                                a, b = winners[i], winners[i+1]
+                                pairs.append({'Round': nxt, 'Match': (i//2)+1,
+                                                'SquadraA': a, 'SquadraB': b,
+                                                'GolA': None, 'GolB': None, 'Valida': False, 'Vincitore': None})
+                            st.session_state['rounds_ko'].append(pd.DataFrame(pairs))
+                            st.session_state['round_corrente'] = nxt
+                            st.rerun()
+        with coly:
+            if st.button("🔁 Reimposta fase KO"):
+                reset_fase_finale()
+                st.rerun()
 
-            all_rounds_df = pd.concat(st.session_state['rounds_ko'], ignore_index=True)
-            st.download_button(
-                "📥 Esporta tabellone (CSV)",
-                data=all_rounds_df.to_csv(index=False).encode('utf-8'),
-                file_name="fase_finale_tabellone.csv",
-                mime="text/csv"
-            )
+        all_rounds_df = pd.concat(st.session_state['rounds_ko'], ignore_index=True)
+        st.download_button(
+            "📥 Esporta tabellone (CSV)",
+            data=all_rounds_df.to_csv(index=False).encode('utf-8'),
+            file_name="fase_finale_tabellone.csv",
+            mime="text/csv"
+        )
