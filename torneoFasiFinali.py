@@ -292,7 +292,7 @@ if st.session_state['ui_show_pre']:
             st.session_state['ui_show_pre'] = False
             st.session_state['fase_modalita'] = "Gironi"
             st.session_state['giornate_mode'] = "Menu a tendina"
-            st.experimental_rerun()
+            st.rerun()
 
     # -------------------------
     # Modalità B: Eliminazione diretta (SETUP)
@@ -324,7 +324,7 @@ if st.session_state['ui_show_pre']:
             st.session_state['rounds_ko'] = [pd.DataFrame(pairs)]
             st.session_state['ui_show_pre'] = False
             st.session_state['fase_modalita'] = "Eliminazione diretta"
-            st.experimental_rerun()
+            st.rerun()
 
 # =========================
 # VISTA POST (solo fase scelta)
@@ -558,11 +558,11 @@ if not st.session_state['ui_show_pre']:
                                     pairs.append({'Round': nxt, 'Match': (i//2)+1, 'SquadraA': a, 'SquadraB': b, 'GolA': None, 'GolB': None, 'Valida': False, 'Vincitore': None})
                                 st.session_state['rounds_ko'].append(pd.DataFrame(pairs))
                                 st.session_state['round_corrente'] = nxt
-                                st.experimental_rerun()
+                                st.rerun()
             with coly:
                 if st.button("🔁 Reimposta fase KO"):
                     reset_fase_finale()
-                    st.experimental_rerun()
+                    st.rerun()
 
             # Export semplice del tabellone corrente (tutti i turni)
             all_rounds_df = pd.concat(st.session_state['rounds_ko'], ignore_index=True)
