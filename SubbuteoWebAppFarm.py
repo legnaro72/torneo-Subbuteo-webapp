@@ -4,34 +4,62 @@ import streamlit as st
 st.set_page_config(
     page_title="Hub Tornei Subbuteo",
     page_icon="🏆",
-    layout="centered"
+    layout="wide"
 )
 
 st.title("🎯 Hub Tornei Subbuteo")
-st.write("Seleziona la web app da aprire:")
+st.write("Benvenuto! Seleziona la modalità di torneo che vuoi gestire:")
 
-# CSS per rendere i link come bottoni
+# --- CSS per cards ---
 st.markdown("""
     <style>
-    .hub-button {
+    .card {
+        background-color: #262730;
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
+        text-align: center;
+        color: white;
+        transition: transform 0.2s;
+    }
+    .card:hover {
+        transform: scale(1.05);
+    }
+    .card-title {
+        font-size: 22px;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+    .card-desc {
+        font-size: 16px;
+        margin-bottom: 20px;
+        color: #ddd;
+    }
+    .card-link {
         display: inline-block;
-        padding: 15px 25px;
-        margin: 10px;
-        font-size: 18px;
+        padding: 10px 18px;
+        font-size: 16px;
         font-weight: bold;
         color: white;
         background-color: #4CAF50;
-        border-radius: 12px;
+        border-radius: 10px;
         text-decoration: none;
-        transition: 0.3s;
     }
-    .hub-button:hover {
+    .card-link:hover {
         background-color: #45a049;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Bottoni (in realtà link stilizzati)
-st.markdown('<a class="hub-button" href="https://torneo-subbuteo-superba.streamlit.app/" target="_blank">🏁 Campionato / Fase Preliminare</a>', unsafe_allow_html=True)
-st.markdown('<a class="hub-button" href="https://torneo-subbuteo-finali.streamlit.app/" target="_blank">🏆 Fase Finale</a>', unsafe_allow_html=True)
-st.markdown('<a class="hub-button" href="https://torneosvizzerobylegnaxclub.streamlit.app/" target="_blank">🇨🇭 Torneo Svizzero x Club</a>', unsafe_allow_html=True)
+# --- Layout in 3 colonne ---
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.markdown("""
+        <div class="card">
+            <div class="card-title">🏁 Campionato / Fase Preliminare</div>
+            <div class="card-desc">
+                Da usare per disputare un campionato o la <b>prima parte</b> di un torneo 
+                articolato che prevede una successiva fase finale.
+            </div>
+            <a class="card-link" href="h
