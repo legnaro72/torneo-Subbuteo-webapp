@@ -583,103 +583,120 @@ def main():
         if 'giornata_sel' not in st.session_state or st.session_state['giornata_sel'] not in giornate_correnti:
             st.session_state['giornata_sel'] = giornate_correnti[0]
         
-               
+        #########Inizio 
+        # Inizializza lo stato della sessione (se non già fatto nel resto dello script)
+        if 'girone_sel' not in st.session_state:
+            st.session_state['girone_sel'] = 'Girone 1' # Valore predefinito
+        if 'giornata_sel' not in st.session_state:
+            st.session_state['giornata_sel'] = 1 # Valore predefinito
+        if 'vista_giornate' not in st.session_state:
+            st.session_state['vista_giornate'] = 'Bottoni'
+        
+        # --- Simulo il DataFrame per poter eseguire lo script ---
+        data = {'Girone': ['Girone 1', 'Girone 1', 'Girone 1', 'Girone 2', 'Girone 2'],
+                'Giornata': [1, 2, 3, 1, 2]}
+        df = pd.DataFrame(data)
+        
         # --- Navigazione Gironi (solo menu a tendina) ---
         st.subheader("Girone")
-         
-        # converto i nomi "Girone X" in solo numeri per il menu
+        gironi = sorted(df['Girone'].dropna().unique().tolist())
         gironi_numeri = [g.replace("Girone ", "") for g in gironi]
          
-        # selettore senza label
         nuovo_girone = st.selectbox(
-            "",  # etichetta vuota
-            gironi_numeri,
-            index=gironi_numeri.index(str(int(st.session_state['girone_sel'].replace("Girone ","")))),
-            key="girone_nav_sb"
+            "",  # etichetta vuota
+            gironi_numeri,
+            index=gironi_numeri.index(str(int(st.session_state['girone_sel'].replace("Girone ","")))),
+            key="girone_nav_sb"
         )
          
-        # aggiorno lo stato con il formato originale "Girone X"
         girone_selezionato = f"Girone {nuovo_girone}"
         if girone_selezionato != st.session_state['girone_sel']:
-            st.session_state['girone_sel'] = girone_selezionato
-            giornate_correnti = sorted(
-                df[df['Girone'] == girone_selezionato]['Giornata'].dropna().unique().tolist()
-            )
-            # converto in int per evitare 1.0, 2.0...
-            giornate_correnti = [int(g) for g in giornate_correnti]
-            st.session_state['giornata_sel'] = giornate_correnti[0]
-            st.rerun()
+            st.session_state['girone_sel'] = girone_selezionato
+            giornate_correnti = sorted(
+                df[df['Girone'] == girone_selezionato]['Giornata'].dropna().unique().tolist()
+            )
+            giornate_correnti = [int(g) for g in giornate_correnti]
+            st.session_state['giornata_sel'] = giornate_correnti[0]
+            st.rerun()
         
         ---
-        ## Navigazione Giornate
-         
+        
+        ### Navigazione Giornate
+        
         # Selettore della vista
-        vista_selezionata = st.radio(
-            "Scegli la visualizzazione delle giornate:",
-            ("Bottoni", "Menu a tendina"),
-            key="vista_giornate"
+        st.session_state['vista_giornate'] = st.radio(
+            "Scegli la visualizzazione delle giornate:",
+            ("Bottoni", "Menu a tendina"),
+            index=["Bottoni", "Menu a tendina"].index(st.session_state['vista_giornate']),
+            key="vista_giornate_radio"
         )
          
         giornate_correnti = sorted(
-            df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist()
+            df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist()
         )
-        giornate_correnti = [int(g) for g in giornate_correnti] # forza interi
+        giornate_correnti = [int(g) for g in giornate_correnti]
          
-        # LOGICA CONDIZIONALE PER LA VISTA
-        if vista_selezionata == "Menu a tendina":
-            st.subheader("Giornata")
-            nuova_giornata = st.selectbox(
-                "", # etichetta vuota
-                giornate_correnti,
-                index=giornate_correnti.index(int(st.session_state['giornata_sel'])),
-                key="giornata_nav_sb"
-            )
-            if nuova_giornata != int(st.session_state['giornata_sel']):
-                st.session_state['giornata_sel'] = nuova_giornata
-                st.rerun()
+        giornata_scelta = None # Variabile temporanea per la nuova selezione
+         
+        if st.session_state['vista_giornate'] == "Menu a tendina":
+            st.subheader("Giornata")
+            nuova_giornata = st.selectbox(
+                "", # etichetta vuota
+                giornate_correnti,
+                index=giornate_correnti.index(int(st.session_state['giornata_sel'])),
+                key="giornata_nav_sb"
+            )
+            # L'evento di selezione nel menu a tendina aggiorna automaticamente la variabile
+            giornata_scelta = nuova_giornata
          
         else: # Vista "Bottoni"
-            st.subheader("Giornate")
-            # CSS per bottone evidenziato
-            st.markdown("""
-                <style>
-                div[data-testid="stButton"] > button[selected="true"] {
-                    background-color: mediumseagreen !important;
-                    color: white !important;
-                    font-weight: bold !important;
-                    border: 2px solid #2e8b57 !important;
-                }
-                </style>
-            """, unsafe_allow_html=True)
-            
-            cols = st.columns(5)
-            for i, g in enumerate(giornate_correnti):
-                selected = (g == int(st.session_state['giornata_sel']))
-                if cols[i % 5].button(str(g), key=f"giornata_{g}"):
-                    st.session_state['giornata_sel'] = g
-                    st.rerun()
-                # aggiungo attributo selected al bottone attuale
-                if selected:
-                    st.markdown(
-                        f"""
-                        <script>
-                        var btn = window.parent.document.querySelector('button[k="giornata_{g}"]');
-                        if(btn) btn.setAttribute("selected","true");
-                        </script>
-                    """,
-                        unsafe_allow_html=True
-                    )
+            st.subheader("Giornate")
+            # CSS per bottone evidenziato
+            st.markdown("""
+                <style>
+                div[data-testid="stButton"] > button[selected="true"] {
+                    background-color: mediumseagreen !important;
+                    color: white !important;
+                    font-weight: bold !important;
+                    border: 2px solid #2e8b57 !important;
+                }
+                </style>
+            """, unsafe_allow_html=True)
+             
+            cols = st.columns(5)
+            for i, g in enumerate(giornate_correnti):
+                selected = (g == int(st.session_state['giornata_sel']))
+                if cols[i % 5].button(str(g), key=f"giornata_{g}"):
+                    giornata_scelta = g # Catturo la selezione del bottone
+                    st.rerun()
+                # aggiungo attributo selected al bottone attuale
+                if selected:
+                    st.markdown(
+                        f"""
+                        <script>
+                        var btn = window.parent.document.querySelector('button[k="giornata_{g}"]');
+                        if(btn) btn.setAttribute("selected","true");
+                        </script>
+                        """,
+                        unsafe_allow_html=True
+                    )
+        
+        # Sincronizzo lo stato della sessione solo se una nuova giornata è stata scelta
+        if giornata_scelta is not None and giornata_scelta != st.session_state['giornata_sel']:
+            st.session_state['giornata_sel'] = giornata_scelta
+            st.rerun()
         
         ---
+        
         # Mostra la giornata selezionata
         giornata_sel_int = int(st.session_state['giornata_sel'])
         st.markdown(
-            f"<p style='text-align:center; font-size:18px;'>📅 Giornata selezionata: "
-            f"<b>{giornata_sel_int}</b></p>",
-            unsafe_allow_html=True
+            f"<p style='text-align:center; font-size:18px;'>📅 Giornata selezionata: "
+            f"<b>{giornata_sel_int}</b></p>",
+            unsafe_allow_html=True
         )
         
-
+        ######## FINE
             
         girone_sel = st.session_state['girone_sel']
         giornata_sel = st.session_state['giornata_sel']
