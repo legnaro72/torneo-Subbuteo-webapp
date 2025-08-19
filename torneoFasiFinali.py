@@ -697,6 +697,14 @@ if not st.session_state['ui_show_pre']:
 
         # ------ Modalità B: Eliminazione Diretta (POST) ------
         if st.session_state.get('fase_modalita') == "Eliminazione diretta":
+            
+            # Funzione di callback per la checkbox 'Valida'
+            def validate_match_callback(ga_key, gb_key, val_key):
+                if st.session_state.get(val_key, False):
+                    if st.session_state.get(ga_key, 0) == st.session_state.get(gb_key, 0):
+                        st.session_state[val_key] = False
+                        st.warning("I risultati finali non possono essere un pareggio nelle fasi ad eliminazione diretta.")
+
             def render_round(df_round: pd.DataFrame):
                 st.markdown(f"### 🏁 {df_round['Round'].iloc[0]}")
                 for _, row in df_round.iterrows():
@@ -716,13 +724,8 @@ if not st.session_state['ui_show_pre']:
                     with c4:
                         _ = st.number_input(" ", min_value=0 if pd.notna(row['GolB']) else None, max_value=99, value=0 if pd.isna(row['GolB']) else int(row['GolB']), key=gb_key, label_visibility="hidden")
                     with c5:
-                        _ = st.checkbox("Valida", value=bool(row['Valida']), key=val_key)
+                        _ = st.checkbox("Valida", value=bool(row['Valida']), key=val_key, on_change=validate_match_callback, args=(ga_key, gb_key, val_key))
                     with c6:
-                        if not row['Valida'] and st.session_state.get(val_key, False):
-                            if st.session_state.get(ga_key, 0) == st.session_state.get(gb_key, 0):
-                                st.error("I risultati finali non possono essere un pareggio nelle fasi ad eliminazione diretta.")
-                                st.session_state[val_key] = False
-                                # Rimosso st.rerun()
                         winner = "Vincitore: "
                         if row['Valida']:
                             winner += f"**{row['Vincitore']}**"
