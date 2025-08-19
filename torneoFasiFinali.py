@@ -193,6 +193,7 @@ def salva_giornata():
         df_loc.at[i,'Valida'] = st.session_state.get(f"f_val_{i}", False)
     st.session_state['df_finale_gironi'] = df_loc
     st.success("✅ Risultati salvati.")
+    st.rerun()
 
 # Funzione corretta per salvare i risultati della fase a eliminazione diretta
 def salva_round():
@@ -207,6 +208,7 @@ def salva_round():
             df_round.at[i,'Vincitore'] = None
     st.session_state['rounds_ko'][-1] = df_round
     st.success("✅ Risultati del turno salvati.")
+    st.rerun()
 
 
 # Inizializzazione della fase dell'app
