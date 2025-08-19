@@ -11,6 +11,15 @@ st.markdown("""
 <style>
 .small-muted { font-size: 0.9rem; opacity: 0.8; }
 hr { margin: 0.6rem 0 1rem 0; }
+
+/* Stile per il titolo rosso grande */
+.main-title {
+    font-size: 2.5rem; /* Puoi aumentare o diminuire questo valore */
+    color: #FF0000; /* Rosso */
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 2rem;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -173,12 +182,11 @@ def reset_fase_finale():
         'fase_scelta','gironi_num','gironi_ar','gironi_seed',
         'df_finale_gironi','girone_sel','giornata_sel',
         'round_corrente','rounds_ko','seeds_ko','n_inizio_ko',
-        'giornate_mode'
+        'giornate_mode', 'tournament_name_raw'
     ]
     for k in keys:
         if k in st.session_state:
             del st.session_state[k]
-
 
 def reset_to_setup():
     reset_fase_finale()
@@ -192,19 +200,22 @@ if 'fase_modalita' not in st.session_state:
     st.session_state['fase_modalita'] = None
 
 # ==============
-# Header
+# Header dinamico
 # ==============
-st.title("🏆 Fasi Finali")
 
-# Mostra il nome torneo se già impostato (una sola volta)
-if 'tournament_name' in st.session_state and st.session_state['tournament_name']:
-    st.markdown(f"### 🏷️ {st.session_state['tournament_name']}")
+# Mostra il nome torneo solo se già impostato
+if 'tournament_name_raw' in st.session_state and not st.session_state['ui_show_pre']:
+    st.markdown(f'<h1 class="main-title">🏆 FASE FINALE ({st.session_state["tournament_name_raw"]})</h1>', unsafe_allow_html=True)
+else:
+    st.title("🏆 Fasi Finali")
+    if 'tournament_name_raw' in st.session_state and st.session_state['ui_show_pre']:
+        st.markdown(f"### 🏷️ {st.session_state['tournament_name_raw']}")
 
 # =========================
 # Uploader CSV (vista PRE)
 # =========================
 if st.session_state['ui_show_pre']:
-    file = st.file_uploader("📁 Carica CSV torneo concluso", type=["csv"]) 
+    file = st.file_uploader("📁 Carica CSV torneo concluso", type=["csv"])
     if file is None:
         st.info("Suggerimento: il CSV deve contenere le colonne: " + ", ".join(REQUIRED_COLS))
         st.stop()
@@ -232,7 +243,7 @@ if st.session_state['ui_show_pre']:
         if base.endswith(suf):
             base = base[: -len(suf)]
     base = base.rstrip('_')
-    st.session_state['tournament_name'] = f"FASE FINALE {base}"
+    st.session_state['tournament_name_raw'] = base
 
     # Mostra la classifica complessiva (pre)
     df_class = classifica_complessiva(df_in)
@@ -265,9 +276,6 @@ if st.session_state['ui_show_pre']:
 
         if st.button("🎲 Genera Gironi (serpentina)"):
             # Genera e passa alla VISTA POST (nascondendo classifica e scelta)
-            reset_fase_finale()
-            # Manteniamo il nome torneo
-            # (già impostato in session_state)
             seeds = df_class['Squadra'].tolist()[:n_partecipanti]
             gironi = serpentino_seed(seeds, num_gironi)
             labels = [chr(ord('A') + i) for i in range(num_gironi)]
@@ -310,7 +318,6 @@ if st.session_state['ui_show_pre']:
         st.caption(f"Parteciperanno le **prime {n_start}** della classifica complessiva.")
 
         if st.button("🧩 Genera tabellone iniziale"):
-            reset_fase_finale()
             seeds = df_class['Squadra'].tolist()[:n_start]
             st.session_state['seeds_ko'] = seeds
             st.session_state['n_inizio_ko'] = n_start
@@ -331,9 +338,6 @@ if st.session_state['ui_show_pre']:
 # =========================
 if not st.session_state['ui_show_pre']:
     # Mostra solo il nome torneo (se presente) e pulsante per tornare
-    if 'tournament_name' in st.session_state and st.session_state['tournament_name']:
-        st.markdown(f"### 🏷️ {st.session_state['tournament_name']}")
-
     st.button("⬅️ Torna a classifica e scelta fase finale", on_click=reset_to_setup)
 
     # ------ Modalità A: Gironi (POST) ------
@@ -572,5 +576,3 @@ if not st.session_state['ui_show_pre']:
                 file_name="fase_finale_tabellone.csv",
                 mime="text/csv",
             )
-
-# Fine script
