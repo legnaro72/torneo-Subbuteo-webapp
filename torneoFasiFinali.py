@@ -394,8 +394,9 @@ with st.sidebar:
     if not st.session_state['ui_show_pre']:
         if st.button("⬅️ Torna a classifica e scelta fase finale"):
             reset_to_setup()
-            st.rerun()
-        st.divider()
+            # Rimosso st.rerun()
+
+    st.divider()
 
     st.subheader("📤 Esportazione")
     if st.session_state.get('fase_modalita') == "Gironi" and 'df_finale_gironi' in st.session_state:
@@ -460,7 +461,7 @@ with st.sidebar:
                     st.session_state['filter_girone'] = None
                 else:
                     st.session_state['filter_player'] = None
-                st.rerun()
+                # Rimosso st.rerun()
 
         if st.session_state.get('fase_modalita') == "Gironi" and 'df_finale_gironi' in st.session_state:
             with st.expander("Filtra per Girone"):
@@ -472,14 +473,14 @@ with st.sidebar:
                         st.session_state['filter_player'] = None
                     else:
                         st.session_state['filter_girone'] = None
-                    st.rerun()
+                    # Rimosso st.rerun()
                         
         if st.session_state.get('filter_player') or st.session_state.get('filter_girone'):
             st.warning("Filtri attivi. Premi il pulsante qui sotto per rimuoverli.")
             if st.button("❌ Rimuovi Filtri"):
                 st.session_state['filter_player'] = None
                 st.session_state['filter_girone'] = None
-                st.rerun()
+                # Rimosso st.rerun()
 
 # ==============================================================================
 # 📂 Uploader CSV (vista PRE-generazione)
@@ -552,7 +553,7 @@ if st.session_state['ui_show_pre']:
             st.session_state['ui_show_pre'] = False
             st.session_state['fase_modalita'] = "Gironi"
             st.session_state['giornate_mode'] = "Menu a tendina"
-            st.rerun()
+            # Rimosso st.rerun()
     if fase_scelta == "Eliminazione diretta":
         round_map = {"Ottavi":16, "Quarti":8, "Semifinali":4, "Finale":2}
         col1, col2 = st.columns([1,1])
@@ -576,7 +577,7 @@ if st.session_state['ui_show_pre']:
             st.session_state['rounds_ko'] = [pd.DataFrame(pairs)]
             st.session_state['ui_show_pre'] = False
             st.session_state['fase_modalita'] = "Eliminazione diretta"
-            st.rerun()
+            # Rimosso st.rerun()
 
 # ==============================================================================
 # 🏟️ VISTA POST-generazione (calendario e tabellone)
@@ -721,7 +722,7 @@ if not st.session_state['ui_show_pre']:
                             if st.session_state.get(ga_key, 0) == st.session_state.get(gb_key, 0):
                                 st.error("I risultati finali non possono essere un pareggio nelle fasi ad eliminazione diretta.")
                                 st.session_state[val_key] = False
-                                st.rerun()
+                                # Rimosso st.rerun()
                         winner = "Vincitore: "
                         if row['Valida']:
                             winner += f"**{row['Vincitore']}**"
@@ -791,7 +792,7 @@ if not st.session_state['ui_show_pre']:
                     else:
                         st.balloons()
                         st.success(f"🏆 Il torneo è finito! Il vincitore è: **{winners[0]}**")
-                st.rerun()
+                # Rimosso st.rerun()
 
             for df_round in st.session_state['rounds_ko']:
                 render_round(df_round)
