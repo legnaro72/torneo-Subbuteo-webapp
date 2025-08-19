@@ -363,15 +363,28 @@ with st.sidebar:
     if not st.session_state['ui_show_pre'] and st.session_state.get('fase_modalita') in ["Gironi", "Eliminazione diretta"]:
         st.subheader("Filtri Partite")
         
-        # Filtro per giocatore
+        # --- Filtro per giocatore (menu a tendina) ---
         with st.expander("Filtra per Giocatore"):
-            player_name = st.text_input("Inserisci il nome del giocatore:")
+            # Determina lista giocatori in base alla modalità
+            if st.session_state.get('fase_modalita') == "Gironi" and 'df_finale_gironi' in st.session_state:
+                df_players = st.session_state['df_finale_gironi']
+                players_list = sorted(pd.unique(df_players[['Casa','Ospite']].values.ravel('K')))
+            elif st.session_state.get('fase_modalita') == "Eliminazione diretta" and 'rounds_ko' in st.session_state:
+                df_players = pd.concat(st.session_state['rounds_ko'], ignore_index=True)
+                players_list = sorted(pd.unique(df_players[['SquadraA','SquadraB']].values.ravel('K')))
+            else:
+                players_list = []
+        
+            # Menu a tendina con default "Nessuno"
+            selected_player = st.selectbox("Seleziona Giocatore:", ["Nessuno"] + players_list)
+        
             if st.button("Filtra Giocatore"):
-                if player_name:
-                    st.session_state['filter_player'] = player_name
+                if selected_player != "Nessuno":
+                    st.session_state['filter_player'] = selected_player
                     st.session_state['filter_girone'] = None
                 else:
                     st.session_state['filter_player'] = None
+
         
         # Filtro per girone (solo per fase a gironi)
         if st.session_state.get('fase_modalita') == "Gironi" and 'df_finale_gironi' in st.session_state:
