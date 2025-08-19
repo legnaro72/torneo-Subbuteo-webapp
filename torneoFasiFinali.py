@@ -180,37 +180,6 @@ def on_fase_change():
     """Callback per resettare lo stato al cambio di fase finale."""
     reset_fase_finale()
 
-# Funzione corretta per salvare i risultati della fase a gironi
-def salva_giornata():
-    df_loc = st.session_state['df_finale_gironi']
-    girone_sel = st.session_state.get('girone_sel')
-    giornata_sel = st.session_state.get('giornata_sel')
-    loc_idx = (df_loc['GironeFinale']==girone_sel) & (df_loc['Giornata']==giornata_sel)
-    idxs = df_loc[loc_idx].index.tolist()
-    for i in idxs:
-        df_loc.at[i,'GolCasa'] = st.session_state.get(f"f_golc_{i}", 0)
-        df_loc.at[i,'GolOspite'] = st.session_state.get(f"f_golo_{i}", 0)
-        df_loc.at[i,'Valida'] = st.session_state.get(f"f_val_{i}", False)
-    st.session_state['df_finale_gironi'] = df_loc
-    st.success("✅ Risultati salvati.")
-    st.rerun()
-
-# Funzione corretta per salvare i risultati della fase a eliminazione diretta
-def salva_round():
-    df_round = st.session_state['rounds_ko'][-1]
-    for i in df_round.index:
-        df_round.at[i,'GolA'] = st.session_state.get(f"ko_ga_{i}", 0)
-        df_round.at[i,'GolB'] = st.session_state.get(f"ko_gb_{i}", 0)
-        df_round.at[i,'Valida'] = st.session_state.get(f"ko_val_{i}", False)
-        if df_round.at[i,'GolA'] == df_round.at[i,'GolB']:
-            df_round.at[i,'Vincitore'] = st.session_state.get(f"ko_w_{i}", df_round.at[i,'SquadraA'])
-        else:
-            df_round.at[i,'Vincitore'] = None
-    st.session_state['rounds_ko'][-1] = df_round
-    st.success("✅ Risultati del turno salvati.")
-    st.rerun()
-
-
 # Inizializzazione della fase dell'app
 if 'app_phase' not in st.session_state:
     st.session_state['app_phase'] = 'upload'
@@ -352,7 +321,19 @@ elif st.session_state['app_phase'] == 'main_app':
                     with c5:
                         valida = st.checkbox("Valida", value=bool(row['Valida']), key=f"f_val_{idx}")
                 
-                st.button("💾 Salva risultati giornata", on_click=salva_giornata)
+                if st.button("💾 Salva risultati giornata"):
+                    df_loc = st.session_state['df_finale_gironi']
+                    girone_sel = st.session_state.get('girone_sel')
+                    giornata_sel = st.session_state.get('giornata_sel')
+                    loc_idx = (df_loc['GironeFinale']==girone_sel) & (df_loc['Giornata']==giornata_sel)
+                    idxs = df_loc[loc_idx].index.tolist()
+                    for i in idxs:
+                        df_loc.at[i,'GolCasa'] = st.session_state.get(f"f_golc_{i}", 0)
+                        df_loc.at[i,'GolOspite'] = st.session_state.get(f"f_golo_{i}", 0)
+                        df_loc.at[i,'Valida'] = st.session_state.get(f"f_val_{i}", False)
+                    st.session_state['df_finale_gironi'] = df_loc
+                    st.success("✅ Risultati salvati.")
+                    st.rerun()
 
                 st.markdown("### 📊 Classifica del girone selezionato")
                 class_g = standings_from_matches(dfg[dfg['GironeFinale']==girone_sel].rename(columns={'GironeFinale':'Gruppo'}), key_group='Gruppo')
@@ -424,7 +405,19 @@ elif st.session_state['app_phase'] == 'main_app':
                         if vincitori:
                           w = st.selectbox("Vincitore (se pari)", options=vincitori, index=vincitori.index(default_w) if default_w in vincitori else 0, key=f"ko_w_{i}")
 
-                st.button("💾 Salva risultati turno", on_click=salva_round)
+                if st.button("💾 Salva risultati turno"):
+                    df_round = st.session_state['rounds_ko'][-1]
+                    for i in df_round.index:
+                        df_round.at[i,'GolA'] = st.session_state.get(f"ko_ga_{i}", 0)
+                        df_round.at[i,'GolB'] = st.session_state.get(f"ko_gb_{i}", 0)
+                        df_round.at[i,'Valida'] = st.session_state.get(f"ko_val_{i}", False)
+                        if df_round.at[i,'GolA'] == df_round.at[i,'GolB']:
+                            df_round.at[i,'Vincitore'] = st.session_state.get(f"ko_w_{i}", df_round.at[i,'SquadraA'])
+                        else:
+                            df_round.at[i,'Vincitore'] = None
+                    st.session_state['rounds_ko'][-1] = df_round
+                    st.success("✅ Risultati del turno salvati.")
+                    st.rerun()
 
                 st.markdown("<span class='small-muted'>Nota: in caso di pareggio, la selezione **Vincitore (se pari)** determina chi avanza (supplementari/rigori). Convalidare il match per includerlo nella verifica di avanzamento.</span>", unsafe_allow_html=True)
 
