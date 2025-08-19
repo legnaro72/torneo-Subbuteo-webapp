@@ -11,7 +11,7 @@ st.title("🎯 Hub Tornei Subbuteo")
 st.write("Benvenuto! Seleziona la modalità di torneo che vuoi gestire:")
 
 # --- CSS per cards ---
-st.markdown("""
+st.markdown('''
     <style>
     .card {
         background-color: #262730;
@@ -49,17 +49,43 @@ st.markdown("""
         background-color: #45a049;
     }
     </style>
-""", unsafe_allow_html=True)
+''', unsafe_allow_html=True)
 
 # --- Layout in 3 colonne ---
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.markdown("""
+    st.markdown('''
         <div class="card">
             <div class="card-title">🏁 Campionato / Fase Preliminare</div>
             <div class="card-desc">
                 Da usare per disputare un campionato o la <b>prima parte</b> di un torneo 
                 articolato che prevede una successiva fase finale.
             </div>
-            <a class="card-link" href="h
+            <a class="card-link" href="https://torneo-subbuteo-superba.streamlit.app/" target="_blank">Apri App</a>
+        </div>
+    ''', unsafe_allow_html=True)
+
+with col2:
+    st.markdown('''
+        <div class="card">
+            <div class="card-title">🏆 Fase Finale</div>
+            <div class="card-desc">
+                Da selezionare per disputare la <b>fase finale</b> del torneo, 
+                che può essere organizzata a <b>Gironi</b> o ad <b>Eliminazione Diretta</b>.
+            </div>
+            <a class="card-link" href="https://torneo-subbuteo-finali.streamlit.app/" target="_blank">Apri App</a>
+        </div>
+    ''', unsafe_allow_html=True)
+
+with col3:
+    st.markdown('''
+        <div class="card">
+            <div class="card-title">🇨🇭 Torneo Svizzero x Club</div>
+            <div class="card-desc">
+                Torneo sviluppato con il <b>criterio svizzero</b>, perfetto per gestire 
+                competizioni equilibrate tra più squadre/club.
+            </div>
+            <a class="card-link" href="https://torneosvizzerobylegnaxclub.streamlit.app/" target="_blank">Apri App</a>
+        </div>
+    ''', unsafe_allow_html=True)
