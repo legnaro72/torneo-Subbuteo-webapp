@@ -19,18 +19,20 @@ hr { margin: 0.6rem 0 1rem 0; }
 REQUIRED_COLS = ['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']
 
 def check_csv_structure(df: pd.DataFrame) -> tuple[bool, str]:
+    """Verifica se il DataFrame ha tutte le colonne richieste."""
     missing = [c for c in REQUIRED_COLS if c not in df.columns]
     if missing:
         return False, f"Colonne mancanti nel CSV: {missing}"
     return True, ""
 
 def to_bool_series(s):
-    # Gestisce True/False come bool, 'true'/'false' come str, 1/0 ecc.
+    """Converte una serie in booleana, gestendo vari formati (True/False, 'true'/'false', 1/0)."""
     if s.dtype == bool:
         return s
     return s.astype(str).str.strip().str.lower().isin(["true", "1", "s", "si", "sì", "y", "yes"])
 
 def tournament_is_complete(df: pd.DataFrame) -> tuple[bool, str]:
+    """Controlla se tutte le partite sono valide e i gol sono numerici."""
     # Tutte validate e gol presenti numerici
     v = to_bool_series(df['Valida'])
     if not v.all():
@@ -162,6 +164,7 @@ def standings_from_matches(df: pd.DataFrame, key_group: str) -> pd.DataFrame:
 # Gestione stato applicazione
 # ==================================
 def reset_fase_finale():
+    """Resetta lo stato della fase finale per ricominciare."""
     keys = [
         'gironi_num', 'gironi_ar', 'gironi_seed', 'df_finale_gironi',
         'girone_sel', 'giornata_sel', 'round_corrente', 'rounds_ko', 'seeds_ko', 'n_inizio_ko',
@@ -172,6 +175,7 @@ def reset_fase_finale():
 
 # Callback per il cambio della fase
 def on_fase_change():
+    """Resetta lo stato quando la fase finale cambia."""
     reset_fase_finale()
 
 # ==============
@@ -394,7 +398,7 @@ if fase == "Eliminazione diretta":
                 vincitori = [row['SquadraA'], row['SquadraB']]
                 default_w = row['Vincitore'] if pd.notna(row['Vincitore']) else vincitori[0]
                 with c6:
-                    w = st.selectbox("Vincitore (se pari)", options=vincitori, index=vincitori.index(default_w), key=f"ko_w_{i}")
+                    w = st.selectbox("Vincitore (se pari)", options=vincitori, index=vincitori.index(default_w) if default_w in vincitori else 0, key=f"ko_w_{i}")
 
             def salva_round():
                 for i in df_round.index:
