@@ -165,8 +165,6 @@ def reset_fase_finale():
     keys = [
         'gironi_num', 'gironi_ar', 'gironi_seed', 'df_finale_gironi',
         'girone_sel', 'giornata_sel', 'round_corrente', 'rounds_ko', 'seeds_ko', 'n_inizio_ko',
-        # Rimuoviamo gli stati di visibilità obsoleti
-        #'show_gironi_content', 'show_ko_content'
     ]
     for k in keys:
         if k in st.session_state:
