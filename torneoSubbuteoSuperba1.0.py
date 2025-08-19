@@ -637,7 +637,7 @@ def main():
             df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist()
         )
         giornate_correnti = [int(g) for g in giornate_correnti]
-         
+        
         if st.session_state['vista_giornate'] == "Menu a tendina":
             # Mostra il menu a tendina
             nuova_giornata = st.selectbox(
@@ -650,7 +650,7 @@ def main():
             if nuova_giornata != st.session_state['giornata_sel']:
                 st.session_state['giornata_sel'] = nuova_giornata
                 st.rerun()
-         
+                
         else: # Vista "Bottoni"
             # CSS per bottone evidenziato
             st.markdown("""
@@ -663,7 +663,7 @@ def main():
                 }
                 </style>
             """, unsafe_allow_html=True)
-        
+            
             cols = st.columns(min(len(giornate_correnti), 5))
             for i, g in enumerate(giornate_correnti):
                 with cols[i % 5]:
@@ -682,9 +682,7 @@ def main():
                             """,
                             unsafe_allow_html=True
                         )
-            
-        ---
-        
+                        
         # Mostra la giornata selezionata
         giornata_sel_int = int(st.session_state['giornata_sel'])
         st.markdown(
@@ -694,7 +692,7 @@ def main():
         )
         
         ######## FINE
-            
+        
         girone_sel = st.session_state['girone_sel']
         giornata_sel = st.session_state['giornata_sel']
         
