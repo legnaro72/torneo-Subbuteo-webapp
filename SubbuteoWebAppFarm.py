@@ -89,3 +89,14 @@ with col3:
             <a class="card-link" href="https://torneosvizzerobylegnaxclub.streamlit.app/" target="_blank">Apri App</a>
         </div>
     ''', unsafe_allow_html=True)
+    
+with st.container():
+    st.markdown('''
+        <div class="card" style="background-color:#0B5FFF;">
+            <div class="card-title">📖 Manuale Utente</div>
+            <div class="card-desc">
+                Consulta il manuale completo per usare al meglio tutte le funzionalità dell'Hub Tornei Subbuteo.
+            </div>
+            <a class="card-link" href="https://github.com/legnaro72/torneo-Subbuteo-webapp/blob/0bec13d2e90240390b6515b419e51a7ed7157cd5/%F0%9F%93%96%20Manuale%20Utente_%20Hub%20tornei%20Subbuteo.pdf" target="_blank">Apri PDF</a>
+        </div>
+    ''', unsafe_allow_html=True)
