@@ -90,8 +90,8 @@ with col3:
         </div>
     ''', unsafe_allow_html=True)
 
-
-with col4:  # puoi posizionarla in una nuova riga se vuoi
+with st.container():
+#with col1:  # puoi posizionarla in una nuova riga se vuoi
     st.markdown('''
         <div class="card">
             <div class="card-title">📖 Manuale Utente</div>
