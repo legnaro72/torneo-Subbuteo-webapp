@@ -89,7 +89,18 @@ with col3:
             <a class="card-link" href="https://torneosvizzerobylegnaxclub.streamlit.app/" target="_blank">Apri App</a>
         </div>
     ''', unsafe_allow_html=True)
-    
+
+
+# Scarica il PDF in memoria
+pdf_url = "https://github.com/legnaro72/torneo-Subbuteo-webapp/blob/0bec13d2e90240390b6515b419e51a7ed7157cd5/%F0%9F%93%96%20Manuale%20Utente_%20Hub%20tornei%20Subbuteo.pdf?raw=true"
+try:
+    r = requests.get(pdf_url)
+    r.raise_for_status()
+    pdf_bytes = BytesIO(r.content)
+except:
+    pdf_bytes = None
+
+# Mostra card + download
 with st.container():
     st.markdown('''
         <div class="card" style="background-color:#0B5FFF;">
@@ -97,6 +108,15 @@ with st.container():
             <div class="card-desc">
                 Consulta il manuale completo per usare al meglio tutte le funzionalità dell'Hub Tornei Subbuteo.
             </div>
-            <a class="card-link" href="https://github.com/legnaro72/torneo-Subbuteo-webapp/blob/0bec13d2e90240390b6515b419e51a7ed7157cd5/%F0%9F%93%96%20Manuale%20Utente_%20Hub%20tornei%20Subbuteo.pdf" target="_blank">Apri PDF</a>
         </div>
     ''', unsafe_allow_html=True)
+
+    if pdf_bytes:
+        st.download_button(
+            label="⬇️ Scarica PDF Manuale",
+            data=pdf_bytes,
+            file_name="Manuale_Utente_Hub_Tornei_Subbuteo.pdf",
+            mime="application/pdf"
+        )
+    else:
+        st.warning("Errore nel caricamento del PDF. Controlla la connessione o l'URL.")
