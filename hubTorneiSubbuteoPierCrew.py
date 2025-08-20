@@ -86,7 +86,7 @@ with col3:
                 Torneo sviluppato con il <b>criterio svizzero</b>, perfetto per gestire 
                 competizioni equilibrate tra più squadre/club.
             </div>
-            <a class="card-link" href="https://torneosvizzerobylegnaxclub.streamlit.app/" target="_blank">Apri App</a>
+            <a class="card-link" href="https://torneosvizzeropiercrewbylegnaro72.streamlit.app/" target="_blank">Apri App</a>
         </div>
     ''', unsafe_allow_html=True)
     
