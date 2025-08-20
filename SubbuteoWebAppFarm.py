@@ -93,13 +93,14 @@ with col3:
 with st.container():
 #with col1:  # puoi posizionarla in una nuova riga se vuoi
     st.markdown('''
-        <div class="card">
+        <div class="card" style="background-color:#0B5FFF;">
             <div class="card-title">📖 Manuale Utente</div>
             <div class="card-desc">
-                Scarica il PDF con le istruzioni complete per usare l'Hub Tornei Subbuteo.
+                Consulta il manuale completo per usare al meglio tutte le funzionalità dell'Hub Tornei Subbuteo.
             </div>
         </div>
     ''', unsafe_allow_html=True)
+
 
     pdf_url = "https://github.com/legnaro72/torneo-Subbuteo-webapp/raw/0bec13d2e90240390b6515b419e51a7ed7157cd5/%F0%9F%93%96%20Manuale%20Utente_%20Hub%20tornei%20Subbuteo.pdf"
 
