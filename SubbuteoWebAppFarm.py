@@ -91,32 +91,28 @@ with col3:
     ''', unsafe_allow_html=True)
 
 
-# Scarica il PDF in memoria
-pdf_url = "https://github.com/legnaro72/torneo-Subbuteo-webapp/blob/0bec13d2e90240390b6515b419e51a7ed7157cd5/%F0%9F%93%96%20Manuale%20Utente_%20Hub%20tornei%20Subbuteo.pdf?raw=true"
-try:
-    r = requests.get(pdf_url)
-    r.raise_for_status()
-    pdf_bytes = BytesIO(r.content)
-except:
-    pdf_bytes = None
-
-# Mostra card + download
-with st.container():
+with col1:  # puoi posizionarla in una nuova riga se vuoi
     st.markdown('''
-        <div class="card" style="background-color:#0B5FFF;">
+        <div class="card">
             <div class="card-title">📖 Manuale Utente</div>
             <div class="card-desc">
-                Consulta il manuale completo per usare al meglio tutte le funzionalità dell'Hub Tornei Subbuteo.
+                Scarica il PDF con le istruzioni complete per usare l'Hub Tornei Subbuteo.
             </div>
         </div>
     ''', unsafe_allow_html=True)
 
-    if pdf_bytes:
+    pdf_url = "https://github.com/legnaro72/torneo-Subbuteo-webapp/raw/0bec13d2e90240390b6515b419e51a7ed7157cd5/%F0%9F%93%96%20Manuale%20Utente_%20Hub%20tornei%20Subbuteo.pdf"
+
+    try:
+        import requests, io
+        r = requests.get(pdf_url)
+        r.raise_for_status()
+        pdf_bytes = io.BytesIO(r.content)
         st.download_button(
-            label="⬇️ Scarica PDF Manuale",
+            label="⬇️ Scarica Manuale PDF",
             data=pdf_bytes,
             file_name="Manuale_Utente_Hub_Tornei_Subbuteo.pdf",
             mime="application/pdf"
         )
-    else:
+    except Exception as e:
         st.warning("Errore nel caricamento del PDF. Controlla la connessione o l'URL.")
