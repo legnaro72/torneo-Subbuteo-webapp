@@ -51,7 +51,7 @@ db = None
 @st.cache_resource(ttl=3600)
 def init_db_connection():
     try:
-        MONGO_URI = st.secrets["MONGO_URI"]
+        MONGO_URI=st.secrets["MONGO_URI"]
         server_api = ServerApi('1')
         client = MongoClient(MONGO_URI, server_api=server_api)
         
