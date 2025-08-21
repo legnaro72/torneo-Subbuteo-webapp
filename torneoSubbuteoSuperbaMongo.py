@@ -8,6 +8,9 @@ from fpdf import FPDF
 from datetime import datetime
 import json
 import time
+from pymongo import MongoClient
+from pymongo.server_api import ServerApi
+
 
 # --- Funzione di stile per None/nan invisibili e colorazione righe ---
 def combined_style(df):
@@ -34,7 +37,27 @@ def combined_style(df):
 
 # ---------------------------------------------------------------------
 
-st.set_page_config(page_title="Gestione Torneo Superba a Gironi by Legnaro72", layout="wide")
+st.set_page_config(page_title="⚽ Torneo Subbuteo - Sistema Svizzero", layout="wide")
+
+# -------------------------
+# Connessione a MongoDB Atlas
+# -------------------------
+
+players_collection = None
+st.info("Tentativo di connessione a MongoDB...")
+try:
+    MONGO_URI = st.secrets["MONGO_URI"]
+    server_api = ServerApi('1')
+    client = MongoClient(MONGO_URI, server_api=server_api)
+    
+    # Ho corretto il nome del database e della collection
+    db = client.get_database("giocatori_subbuteo")
+    players_collection = db.get_collection("superba_players") 
+
+    _ = players_collection.find_one()
+    st.success("✅ Connessione a MongoDB Atlas riuscita per la lettura dei giocatori.")
+except Exception as e:
+    st.error(f"❌ Errore di connessione a MongoDB: {e}. Non sarà possibile caricare i giocatori dal database.")
 
 st.markdown("""
     <style>
@@ -45,6 +68,34 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLegna/refs/heads/main/giocatoriSuperba.csv"
+
+def carica_giocatori_da_db():
+    if 'players_collection' in globals() and players_collection is not None:
+        try:
+            count = players_collection.count_documents({})
+            if count == 0:
+                st.warning("⚠️ La collection 'superba_players' è vuota o non esiste. Non è stato caricato alcun giocatore.")
+                return pd.DataFrame()
+            else:
+                st.info(f"✅ Trovati {count} giocatori nel database. Caricamento in corso...")
+            
+            df = pd.DataFrame(list(players_collection.find()))
+            
+            if '_id' in df.columns:
+                df = df.drop(columns=['_id'])
+            
+            if 'Giocatore' not in df.columns:
+                st.error("❌ Errore: la colonna 'Giocatore' non è presente nel database dei giocatori.")
+                return pd.DataFrame()
+                
+            return df
+        except Exception as e:
+            st.error(f"❌ Errore durante la lettura dalla collection dei giocatori: {e}")
+            return pd.DataFrame()
+    else:
+        st.warning("⚠️ La connessione a MongoDB non è attiva.")
+        return pd.DataFrame()
+
 
 # --- NAVIGAZIONE COMPATTA ---
 def navigation_controls(label, value, min_val, max_val, key_prefix=""):
