@@ -47,8 +47,7 @@ try:
     client = MongoClient(MONGO_URI, server_api=server_api)
     
     db = client.get_database("giocatori_subbuteo")
-    players_collection = db.get_collection("superba_players")  # CORRETTO qui
-
+    players_collection = db.get_collection("superba_players")
     _ = players_collection.find_one()
     st.success("✅ Connessione a MongoDB Atlas riuscita per la lettura dei giocatori.")
 except Exception as e:
@@ -238,7 +237,6 @@ def esporta_pdf(df_torneo, df_classifica):
             pdf.ln()
 
             pdf.set_font("Arial", '', 11)
-            # CORREZIONE: Ho sostituito 'df' con 'df_torneo'
             partite = df_torneo[(df_torneo['Girone'] == girone) & (df_torneo['Giornata'] == g)]
 
             for _, row in partite.iterrows():
@@ -363,3 +361,132 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             df.at[idx, 'GolCasa'] = st.session_state[f"golcasa_{idx}"]
             df.at[idx, 'GolOspite'] = st.session_state[f"golospite_{idx}"]
             df.at[idx, 'Valida'] = st.session_state[f"valida_{idx}"]
+            
+# -------------------------
+# Logica Principale dell'Applicazione
+# -------------------------
+
+st.title("⚽ Torneo Subbuteo - Superba 🏆")
+st.markdown("---")
+
+df_giocatori_master = carica_giocatori_da_db()
+
+# Inizializzazione session_state
+if 'df_giocatori' not in st.session_state:
+    st.session_state.df_giocatori = df_giocatori_master
+if 'df_torneo' not in st.session_state:
+    st.session_state.df_torneo = pd.DataFrame()
+if 'df_classifica' not in st.session_state:
+    st.session_state.df_classifica = pd.DataFrame()
+if 'gironi_esistenti' not in st.session_state:
+    st.session_state.gironi_esistenti = []
+
+# --- Sidebar ---
+st.sidebar.header("Gestione Torneo")
+opzioni_torneo = st.sidebar.radio("Seleziona Azione", ["Nuovo Torneo", "Gestisci Torneo"], index=1 if not st.session_state.df_torneo.empty else 0)
+
+if opzioni_torneo == "Nuovo Torneo":
+    st.subheader("Genera un Nuovo Torneo")
+    st.info("⚠️ **Attenzione:** La generazione di un nuovo torneo cancellerà i risultati precedenti.")
+
+    # Sezione per la selezione dei giocatori
+    if not st.session_state.df_giocatori.empty:
+        giocatori_selezionati = st.multiselect(
+            'Seleziona i giocatori per il torneo:',
+            st.session_state.df_giocatori['Giocatore'].tolist(),
+            default=st.session_state.df_giocatori['Giocatore'].tolist()
+        )
+    else:
+        st.error("Nessun giocatore caricato dal database. Impossibile generare il torneo.")
+        giocatori_selezionati = []
+        
+    num_giocatori_selezionati = len(giocatori_selezionati)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        num_gironi_input = st.number_input('Numero di Gironi', min_value=1, max_value=num_giocatori_selezionati, value=min(2, num_giocatori_selezionati), step=1)
+    with col2:
+        tipo_torneo = st.radio("Tipo di Partite", ["Solo andata", "Andata e ritorno"])
+
+    if st.button("Genera Calendario"):
+        with st.spinner('Generazione calendario in corso...'):
+            df_partite = genera_calendario_auto(giocatori_selezionati, num_gironi_input, tipo_torneo)
+            st.session_state.df_torneo = df_partite
+            st.session_state.gironi_esistenti = sorted(df_partite['Girone'].dropna().unique())
+            st.session_state.giornate_esistenti = sorted(df_partite['Giornata'].dropna().unique())
+            st.session_state.girone = st.session_state.gironi_esistenti[0]
+            st.session_state.giornata = st.session_state.giornate_esistenti[0]
+            st.session_state.df_classifica = aggiorna_classifica(st.session_state.df_torneo)
+        st.success("✅ Calendario generato con successo!")
+
+elif opzioni_torneo == "Gestisci Torneo":
+    if not st.session_state.df_torneo.empty:
+        st.subheader("Modifica Risultati e Visualizza Classifiche")
+
+        # Visualizzazione e navigazione
+        if len(st.session_state.gironi_esistenti) > 1:
+            st.markdown("#### Seleziona Girone")
+            girone_selezionato = st.selectbox(
+                "Scegli un girone:",
+                st.session_state.gironi_esistenti,
+                key="selezione_girone"
+            )
+            st.session_state.girone = girone_selezionato
+        else:
+            st.session_state.girone = st.session_state.gironi_esistenti[0]
+            st.markdown(f"#### Girone {st.session_state.girone.split(' ')[1]}")
+        
+        st.markdown("#### Seleziona Giornata")
+        giornata_max = st.session_state.df_torneo[st.session_state.df_torneo['Girone'] == st.session_state.girone]['Giornata'].max()
+        navigation_controls("Giornata", "giornata", 1, giornata_max, "giornata_nav")
+
+        # Mostra le partite della giornata selezionata
+        mostra_calendario_giornata(st.session_state.df_torneo, st.session_state.girone, st.session_state.giornata)
+
+        # Pulsante di salvataggio
+        if st.button("Salva Risultati Giornata e Aggiorna Classifica"):
+            # Chiamata alla funzione interna di salvataggio
+            df_giornata_copia = st.session_state.df_torneo[
+                (st.session_state.df_torneo['Girone'] == st.session_state.girone) & 
+                (st.session_state.df_torneo['Giornata'] == st.session_state.giornata)
+            ].copy()
+            for idx, _ in df_giornata_copia.iterrows():
+                st.session_state.df_torneo.at[idx, 'GolCasa'] = st.session_state.get(f"golcasa_{idx}", None)
+                st.session_state.df_torneo.at[idx, 'GolOspite'] = st.session_state.get(f"golospite_{idx}", None)
+                st.session_state.df_torneo.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
+                
+            st.session_state.df_classifica = aggiorna_classifica(st.session_state.df_torneo)
+            st.success("Risultati salvati e classifica aggiornata!")
+
+        st.markdown("---")
+
+        # Visualizzazione Classifica
+        st.subheader("Classifiche del Torneo")
+        if st.session_state.df_classifica is not None and not st.session_state.df_classifica.empty:
+            
+            classifiche_selezionate = st.multiselect(
+                "Seleziona i gironi da visualizzare:",
+                st.session_state.gironi_esistenti,
+                default=st.session_state.gironi_esistenti
+            )
+            
+            for girone in classifiche_selezionate:
+                st.markdown(f"#### {girone}")
+                df_girone_classifica = st.session_state.df_classifica[st.session_state.df_classifica['Girone'] == girone].sort_values(by=['Punti','DR', 'V'], ascending=[False, False, False])
+                df_girone_classifica = df_girone_classifica.reset_index(drop=True).rename_axis('Posizione').reset_index()
+                df_girone_classifica['Posizione'] = df_girone_classifica['Posizione'] + 1
+                st.dataframe(df_girone_classifica.style.apply(combined_style, axis=None))
+                
+            # Pulsante per esportare in PDF
+            st.download_button(
+                label="Esporta Calendario e Classifica in PDF",
+                data=esporta_pdf(st.session_state.df_torneo, st.session_state.df_classifica),
+                file_name=f"torneo_subbuteo_superba_{datetime.now().strftime('%Y%m%d')}.pdf",
+                mime="application/pdf"
+            )
+            
+        else:
+            st.warning("Nessun dato valido per generare la classifica. Salva i risultati delle partite per visualizzarla.")
+            
+    else:
+        st.info("Ancora nessun torneo generato. Usa la sezione 'Nuovo Torneo' per iniziare.")
