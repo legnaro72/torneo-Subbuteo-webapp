@@ -48,6 +48,12 @@ st.markdown('''
     .card-link:hover {
         background-color: #45a049;
     }
+    .card-link-red {
+        background-color: #f44336;
+    }
+    .card-link-red:hover {
+        background-color: #d32f2f;
+    }
     </style>
 ''', unsafe_allow_html=True)
 
@@ -76,9 +82,11 @@ with col2:
                 Da selezionare per disputare la <b>fase finale</b> del torneo, 
                 che può essere organizzata a <b>Gironi</b> o ad <b>Eliminazione Diretta</b>.
             </div>
-            <a class="card-link" href="https://torneo-subbuteo-superbamongo.streamlit.app/" target="_blank">Apri App</a>
+            <a class="card-link" href="https://torneo-subbuteo-finali.streamlit.app/" target="_blank">Apri App</a>
         </div>
     ''', unsafe_allow_html=True)
+
+st.markdown("<br><br>", unsafe_allow_html=True) # Aggiunta per distanziare le righe
 
 # Seconda riga di carte
 col3, col4 = st.columns(2)
@@ -91,7 +99,7 @@ with col3:
                 Torneo sviluppato con il <b>criterio svizzero</b>, perfetto per gestire 
                 competizioni equilibrate tra più squadre/club.
             </div>
-            <a class="card-link" href="https://torneosvizzerosuperbamongo.streamlit.app/" target="_blank">Apri App</a>
+            <a class="card-link" href="https://torneosvizzerosuperba.streamlit.app/" target="_blank">Apri App</a>
         </div>
     ''', unsafe_allow_html=True)
 
@@ -102,7 +110,7 @@ with col4:
             <div class="card-desc">
                 Permette di inserire, modificare e cancellare i giocatori affiliati al club.
             </div>
-            <a class="card-link" href="https://editsuperbamongo.streamlit.app/" target="_blank">Apri App</a>
+            <a class="card-link card-link-red" href="https://gestione-database-giocatori.streamlit.app/" target="_blank">Apri App</a>
         </div>
     ''', unsafe_allow_html=True)
 
