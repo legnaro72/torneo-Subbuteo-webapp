@@ -9,6 +9,11 @@ from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 from bson.objectid import ObjectId
 
+# Aggiungi questo blocco subito dopo gli import
+# Questo garantisce che 'df_torneo' esista sempre in session_state
+if 'df_torneo' not in st.session_state:
+    st.session_state['df_torneo'] = pd.DataFrame() 
+
 # --- Funzione di stile per None/nan invisibili e colorazione righe ---
 def combined_style(df):
     is_dark = st.get_option("theme.base") == "dark"
@@ -120,12 +125,14 @@ def carica_torneo_da_db(tournament_id):
                 df_torneo['Valida'] = df_torneo['Valida'].astype(bool)
                 df_torneo['GolCasa'] = df_torneo['GolCasa'].astype('Int64')
                 df_torneo['GolOspite'] = df_torneo['GolOspite'].astype('Int64')
+                # Aggiungi questa riga per salvare il DataFrame nello stato della sessione
+                st.session_state['df_torneo'] = df_torneo
             return torneo_data
         except Exception as e:
             st.error(f"❌ Errore durante il caricamento del torneo dal database: {e}")
             return None
     return None
-
+    
 def salva_torneo_su_db(df_torneo, nome_torneo):
     if tournaments_collection is not None:
         try:
@@ -344,7 +351,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
                 key=f"golcasa_{idx}",
                 value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
                 label_visibility="hidden",
-                disabled=val # Disabilita l'input se la partita è valida
+                disabled=val
             )
                 
         with col3:
@@ -356,7 +363,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
                 key=f"golospite_{idx}",
                 value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
                 label_visibility="hidden",
-                disabled=val # Disabilita l'input se la partita è valida
+                disabled=val
             )
 
         with col5:
@@ -393,12 +400,6 @@ def salva_risultati_giornata(girone_sel, giornata_sel):
             st.warning("⚠️ Errore nel salvataggio dei risultati su MongoDB.")
     else:
         st.info("✅ Risultati aggiornati in memoria.")
-
-# Chiamata alla funzione del calendario
-mostra_calendario_giornata(df_torneo, girone_sel, giornata_sel)
-
-# Questo pulsante deve essere a questo livello di indentazione
-st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata, args=(girone_sel, giornata_sel))
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.subheader(f"Classifica Girone {girone_sel}")
@@ -599,6 +600,19 @@ def main():
         mostra_calendario_giornata(df, girone_sel, giornata_sel)
         classifica = aggiorna_classifica(st.session_state['df_torneo'])
         mostra_classifica_stilizzata(classifica, girone_sel)
+
+        if 'df_torneo' in st.session_state and not st.session_state['df_torneo'].empty:
+            # Qui devi assicurarti che 'girone_sel' e 'giornata_sel' siano già definiti
+            girone_sel = st.session_state.get('girone_sel', 'A')
+            giornata_sel = st.session_state.get('giornata_sel', 1)
+        
+            mostra_calendario_giornata(st.session_state['df_torneo'], girone_sel, giornata_sel)
+            
+            # Questo è il pulsante. Deve essere al LORO STESSO LIVELLO DI INDENTAZIONE.
+            st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata, args=(girone_sel, giornata_sel))
+        else:
+            st.info("⚠️ Carica un torneo o creane uno nuovo per visualizzare il calendario.")
+
 
         if st.button("?"):
             st.markdown("---")
