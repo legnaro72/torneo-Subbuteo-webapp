@@ -12,7 +12,7 @@ from pymongo.server_api import ServerApi
 
 # --- Funzione di stile per None/nan invisibili e colorazione righe ---
 def combined_style(df):
-    is_dark = st.get_option("theme.base") == "dark"
+    is_dark=st.get_option("theme.base")=="dark"
     def apply_row_style(row):
         base = [''] * len(row)
         if row.name == 0:
