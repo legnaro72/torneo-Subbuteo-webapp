@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import requests
@@ -10,7 +9,6 @@ import json
 import time
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
-
 
 # --- Funzione di stile per None/nan invisibili e colorazione righe ---
 def combined_style(df):
@@ -34,7 +32,6 @@ def combined_style(df):
     styled_df = styled_df.map(hide_none)
     
     return styled_df
-
 # ---------------------------------------------------------------------
 
 st.set_page_config(page_title="⚽ Torneo Subbuteo - Sistema Svizzero", layout="wide")
@@ -47,17 +44,18 @@ players_collection = None
 st.info("Tentativo di connessione a MongoDB...")
 try:
     MONGO_URI = st.secrets["MONGO_URI"]
-    server_api = ServerApi('1')
-    client = MongoClient(MONGO_URI, server_api=server_api)
-    
-    # Ho corretto il nome del database e della collection
-    db = client.get_database("giocatori_subbuteo")
-    players_collection = db.get_collection("superba_players") 
+    client = MongoClient(MONGO_URI)
+    st.write("Client creato con successo")
 
-    _ = players_collection.find_one()
-    st.success("✅ Connessione a MongoDB Atlas riuscita per la lettura dei giocatori.")
+    st.write("Database disponibili:", client.list_database_names())
+    db = client.get_database("giocatori_subbuteo")
+    st.write("Collection disponibili:", db.list_collection_names())
+
+    players_collection = db.get_collection("superba_players") 
+    sample = players_collection.find_one()
+    st.success(f"✅ Connessione riuscita. Esempio record: {sample}")
 except Exception as e:
-    st.error(f"❌ Errore di connessione a MongoDB: {e}. Non sarà possibile caricare i giocatori dal database.")
+    st.error(f"❌ Errore di connessione: {e}")
 
 
 st.markdown("""
