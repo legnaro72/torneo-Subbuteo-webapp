@@ -13,14 +13,18 @@ from bson import ObjectId
 # =============================
 @st.cache_resource
 def init_connection():
-    return MongoClient(
-        st.secrets["MONGO_URI"],
-        server_api=ServerApi("1")
-    )
-
-client = init_connection()
-db = client["torneo_subbuteo_app"]
-
+    try:
+        # 🔍 Debug: stampo le chiavi dei secrets disponibili
+        st.write("🔑 Secrets disponibili:", list(st.secrets.keys()))
+        
+        mongo_uri = st.secrets["MONGO_URI"]
+        st.write("✅ Uso MONGO_URI da secrets.toml")
+    except KeyError:
+        # Fallback: se non trova MONGO_URI nei secrets
+        st.warning("⚠️ MONGO_URI non trovato nei secrets. Uso URI di fallback hardcoded.")
+        mongo_uri = "mongodb+srv://utente:password@cluster.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+    
+    return MongoClient(mongo_uri, server_api=ServerApi("1"))
 # Collezioni
 players_collection = client["giocatori_subbuteo"]["superba_players"]
 tournaments_collection = db["tournaments"]
