@@ -339,8 +339,8 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
                     value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
                     label_visibility="hidden"
                 )
-
-        with col3:
+                
+        with col3:
             st.markdown("-")
 
         with col4:
