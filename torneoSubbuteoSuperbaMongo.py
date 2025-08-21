@@ -59,6 +59,7 @@ try:
 except Exception as e:
     st.error(f"❌ Errore di connessione a MongoDB: {e}. Non sarà possibile caricare i giocatori dal database.")
 
+
 st.markdown("""
     <style>
     ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
