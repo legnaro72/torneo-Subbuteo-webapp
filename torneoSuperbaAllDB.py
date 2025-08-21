@@ -61,9 +61,7 @@ def init_db_connection():
         st.error(f"❌ Errore di connessione a MongoDB: {e}. Non sarà possibile caricare i dati.")
         tournaments_collection = None
 
-
-
-    
+    #
     try:
         MONGO_URI=st.secrets["MONGO_URI"]
         server_api = ServerApi('1')
