@@ -365,13 +365,18 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         else:
             st.markdown('<div style="color:red; margin-bottom: 15px;">Partita non ancora validata ❌</div>', unsafe_allow_html=True)
 
-    def salva_risultati_giornata():
+def salva_risultati_giornata():
         df = st.session_state['df_torneo']
         df_giornata_copia = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
-        for idx, _ in df_giornata_copia.iterrows():
-            df.at[idx, 'GolCasa'] = st.session_state[f"golcasa_{idx}"]
-            df.at[idx, 'GolOspite'] = st.session_state[f"golospite_{idx}"]
-            df.at[idx, 'Valida'] = st.session_state[f"valida_{idx}"]
+        for idx, row in df_giornata_copia.iterrows():
+            # Controlla se le chiavi esistono prima di aggiornare il DataFrame
+            if f"golcasa_{idx}" in st.session_state:
+                df.at[idx, 'GolCasa'] = st.session_state[f"golcasa_{idx}"]
+            if f"golospite_{idx}" in st.session_state:
+                df.at[idx, 'GolOspite'] = st.session_state[f"golospite_{idx}"]
+            if f"valida_{idx}" in st.session_state:
+                df.at[idx, 'Valida'] = st.session_state[f"valida_{idx}"]
+        
         st.session_state['df_torneo'] = df
         if 'tournament_id' in st.session_state:
             success = aggiorna_torneo_su_db(st.session_state['tournament_id'], df)
@@ -381,7 +386,6 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
                 st.warning("⚠️ Errore nel salvataggio dei risultati su MongoDB.")
         else:
             st.info("✅ Risultati aggiornati in memoria.")
-    st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata)
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.subheader(f"Classifica Girone {girone_sel}")
