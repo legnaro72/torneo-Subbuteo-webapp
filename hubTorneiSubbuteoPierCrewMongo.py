@@ -128,6 +128,7 @@ with st.container():
     ''', unsafe_allow_html=True)
 
     pdf_url = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/%F0%9F%93%96%20Manuale%20Utente_%20Hub%20tornei%20Subbuteo.pdf"
+
     
     try:
         import requests, io
