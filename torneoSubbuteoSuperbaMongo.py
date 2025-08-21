@@ -117,19 +117,6 @@ if "girone" not in st.session_state:
 if "giornata" not in st.session_state:
     st.session_state.giornata = 1 # valore iniziale
     
-def carica_giocatori_master(url=URL_GIOCATORI):
-    try:
-        r = requests.get(url)
-        r.raise_for_status()
-        df = pd.read_csv(StringIO(r.content.decode('latin1')))
-        for c in ["Giocatore","Squadra","Potenziale"]:
-            if c not in df.columns:
-                df[c] = ""
-        df["Potenziale"] = pd.to_numeric(df["Potenziale"], errors='coerce').fillna(4).astype(int)
-        return df[["Giocatore","Squadra","Potenziale"]]
-    except Exception as e:
-        st.warning(f"⚠️ Impossibile caricare lista giocatori dal CSV: {e}")
-        return pd.DataFrame(columns=["Giocatore","Squadra","Potenziale"])
 
 def genera_calendario_auto(giocatori, num_gironi, tipo="Solo andata"):
     random.shuffle(giocatori)
