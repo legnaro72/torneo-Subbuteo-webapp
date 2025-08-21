@@ -17,7 +17,7 @@ def init_connection():
         # 🔍 Debug: stampo le chiavi dei secrets disponibili
         st.write("🔑 Secrets disponibili:", list(st.secrets.keys()))
         
-        mongo_uri = st.secrets["MONGO_URI"]
+        mongo_uri=st.secrets["MONGO_URI"]
         st.write("✅ Uso MONGO_URI da secrets.toml")
     except KeyError:
         # Fallback: se non trova MONGO_URI nei secrets
