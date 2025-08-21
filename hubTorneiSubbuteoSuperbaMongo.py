@@ -51,8 +51,10 @@ st.markdown('''
     </style>
 ''', unsafe_allow_html=True)
 
-# --- Layout in 3 colonne ---
-col1, col2, col3 = st.columns(3)
+# --- Layout in due righe e due colonne per le 4 carte principali ---
+
+# Prima riga di carte
+col1, col2 = st.columns(2)
 
 with col1:
     st.markdown('''
@@ -74,9 +76,12 @@ with col2:
                 Da selezionare per disputare la <b>fase finale</b> del torneo, 
                 che può essere organizzata a <b>Gironi</b> o ad <b>Eliminazione Diretta</b>.
             </div>
-            <a class="card-link" href="https://torneo-subbuteo-finali.streamlit.app/" target="_blank">Apri App</a>
+            <a class="card-link" href="https://torneo-subbuteo-superbamongo.streamlit.app/" target="_blank">Apri App</a>
         </div>
     ''', unsafe_allow_html=True)
+
+# Seconda riga di carte
+col3, col4 = st.columns(2)
 
 with col3:
     st.markdown('''
@@ -86,12 +91,25 @@ with col3:
                 Torneo sviluppato con il <b>criterio svizzero</b>, perfetto per gestire 
                 competizioni equilibrate tra più squadre/club.
             </div>
-            <a class="card-link" href="https://torneosvizzerosuperba.streamlit.app/" target="_blank">Apri App</a>
+            <a class="card-link" href="https://torneosvizzerosuperbamongo.streamlit.app/" target="_blank">Apri App</a>
         </div>
     ''', unsafe_allow_html=True)
 
+with col4:
+    st.markdown('''
+        <div class="card">
+            <div class="card-title">🧑‍💻 Gestione Database Giocatori Club</div>
+            <div class="card-desc">
+                Permette di inserire, modificare e cancellare i giocatori affiliati al club.
+            </div>
+            <a class="card-link" href="https://editsuperbamongo.streamlit.app/" target="_blank">Apri App</a>
+        </div>
+    ''', unsafe_allow_html=True)
+
+st.markdown("---")
+
+# Container separato per il Manuale Utente
 with st.container():
-#with col1:  # puoi posizionarla in una nuova riga se vuoi
     st.markdown('''
         <div class="card" style="background-color:#0B5FFF;">
             <div class="card-title">📖 Manuale Utente</div>
@@ -100,7 +118,6 @@ with st.container():
             </div>
         </div>
     ''', unsafe_allow_html=True)
-
 
     pdf_url = "https://github.com/legnaro72/torneo-Subbuteo-webapp/raw/0bec13d2e90240390b6515b419e51a7ed7157cd5/%F0%9F%93%96%20Manuale%20Utente_%20Hub%20tornei%20Subbuteo.pdf"
 
