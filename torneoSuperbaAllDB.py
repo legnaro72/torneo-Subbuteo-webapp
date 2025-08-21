@@ -1,4 +1,12 @@
-import streamlit as st import pandas as pd from datetime import datetime import random import time from fpdf import FPDF from pymongo import MongoClient from pymongo.server_api import ServerApi from bson import ObjectId
+import streamlit as st
+import pandas as pd
+from datetime import datetime
+import random
+import time
+from fpdf import FPDF
+from pymongo import MongoClient
+from pymongo.server_api import ServerApi
+from bson import ObjectId
 
 =============================
 
