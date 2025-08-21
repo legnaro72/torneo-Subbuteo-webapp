@@ -112,7 +112,15 @@ def carica_tornei_da_db():
 def carica_torneo_da_db(tournament_id):
     if tournaments_collection is not None:
         try:
-            return tournaments_collection.find_one({"_id": ObjectId(tournament_id)})
+            torneo_data = tournaments_collection.find_one({"_id": ObjectId(tournament_id)})
+            if torneo_data:
+                df_torneo = pd.DataFrame(torneo_data['calendario'])
+                if 'Valida' not in df_torneo.columns:
+                    df_torneo['Valida'] = False
+                df_torneo['Valida'] = df_torneo['Valida'].astype(bool)
+                df_torneo['GolCasa'] = df_torneo['GolCasa'].astype('Int64')
+                df_torneo['GolOspite'] = df_torneo['GolOspite'].astype('Int64')
+            return torneo_data
         except Exception as e:
             st.error(f"❌ Errore durante il caricamento del torneo dal database: {e}")
             return None
@@ -325,34 +333,31 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         casa = row['Casa']
         ospite = row['Ospite']
         val = row['Valida']
+        
         col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
         with col1:
             st.markdown(f"**{casa}** vs **{ospite}**")
 
         with col2:
-            if val: # Se la partita è valida, mostra il risultato salvato
-                st.markdown(f"<div style='text-align:center; font-weight:bold;'>{str(row['GolCasa'])}</div>", unsafe_allow_html=True)
-            else: # Altrimenti, mostra l'input per il risultato
-                st.number_input(
-                    "", min_value=0, max_value=20,
-                    key=f"golcasa_{idx}",
-                    value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
-                    label_visibility="hidden"
-                )
+            st.number_input(
+                "", min_value=0, max_value=20,
+                key=f"golcasa_{idx}",
+                value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
+                label_visibility="hidden",
+                disabled=val # Disabilita l'input se la partita è valida
+            )
                 
         with col3:
             st.markdown("-")
 
         with col4:
-            if val: # Se la partita è valida, mostra il risultato salvato
-                st.markdown(f"<div style='text-align:center; font-weight:bold;'>{str(row['GolOspite'])}</div>", unsafe_allow_html=True)
-            else: # Altrimenti, mostra l'input per il risultato
-                st.number_input(
-                    "", min_value=0, max_value=20,
-                    key=f"golospite_{idx}",
-                    value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
-                    label_visibility="hidden"
-                )
+            st.number_input(
+                "", min_value=0, max_value=20,
+                key=f"golospite_{idx}",
+                value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
+                label_visibility="hidden",
+                disabled=val # Disabilita l'input se la partita è valida
+            )
 
         with col5:
             st.checkbox(
@@ -368,16 +373,17 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
 def salva_risultati_giornata():
         df = st.session_state['df_torneo']
         df_giornata_copia = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
-        for idx, row in df_giornata_copia.iterrows():
-            # Controlla se le chiavi esistono prima di aggiornare il DataFrame
-            if f"golcasa_{idx}" in st.session_state:
-                df.at[idx, 'GolCasa'] = st.session_state[f"golcasa_{idx}"]
-            if f"golospite_{idx}" in st.session_state:
-                df.at[idx, 'GolOspite'] = st.session_state[f"golospite_{idx}"]
-            if f"valida_{idx}" in st.session_state:
-                df.at[idx, 'Valida'] = st.session_state[f"valida_{idx}"]
         
+        for idx, row in df_giornata_copia.iterrows():
+            if not row['Valida']: # Aggiorna solo se non è ancora validata
+                df.at[idx, 'GolCasa'] = st.session_state.get(f"golcasa_{idx}", 0)
+                df.at[idx, 'GolOspite'] = st.session_state.get(f"golospite_{idx}", 0)
+                df.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
+                
+        df['GolCasa'] = df['GolCasa'].astype('Int64')
+        df['GolOspite'] = df['GolOspite'].astype('Int64')
         st.session_state['df_torneo'] = df
+        
         if 'tournament_id' in st.session_state:
             success = aggiorna_torneo_su_db(st.session_state['tournament_id'], df)
             if success:
@@ -386,6 +392,7 @@ def salva_risultati_giornata():
                 st.warning("⚠️ Errore nel salvataggio dei risultati su MongoDB.")
         else:
             st.info("✅ Risultati aggiornati in memoria.")
+    st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata)
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.subheader(f"Classifica Girone {girone_sel}")
