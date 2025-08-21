@@ -127,8 +127,8 @@ with st.container():
         </div>
     ''', unsafe_allow_html=True)
 
-    pdf_url = "https://github.com/legnaro72/torneo-Subbuteo-webapp/raw/0bec13d2e90240390b6515b419e51a7ed7157cd5/%F0%9F%93%96%20Manuale%20Utente_%20Hub%20tornei%20Subbuteo.pdf"
-
+    pdf_url = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/%F0%9F%93%96%20Manuale%20Utente_%20Hub%20tornei%20Subbuteo.pdf"
+    
     try:
         import requests, io
         r = requests.get(pdf_url)
