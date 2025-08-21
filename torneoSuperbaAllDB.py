@@ -317,7 +317,7 @@ def esporta_pdf(df_torneo, df_classifica):
     return pdf_bytes
 
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
-    df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
+    df_giornata=df[(df['Girone']==girone_sel)&(df['Giornata']==giornata_sel)].copy()
     if 'Valida' not in df_giornata.columns:
         df_giornata['Valida'] = False
 
