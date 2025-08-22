@@ -28,7 +28,7 @@ st.info("Tentativo di connessione ai database...")
 
 try:
     # Connessione al database dei giocatori
-    MONGO_URI = st.secrets["MONGO_URI"]
+    MONGO_URI=st.secrets["MONGO_URI"]
     players_client = MongoClient(MONGO_URI, server_api=ServerApi('1'))
     players_db = players_client.get_database("giocatori_subbuteo")
     players_collection = players_db.get_collection("superba_players")
@@ -36,7 +36,7 @@ try:
     st.success("✅ Connessione al database giocatori riuscita.")
 
     # Connessione al database dei tornei
-    MONGO_URI_TOURNAMENTS = st.secrets["MONGO_URI_TOURNAMENTS"]
+    MONGO_URI_TOURNAMENTS=st.secrets["MONGO_URI_TOURNAMENTS"]
     tournaments_client = MongoClient(MONGO_URI_TOURNAMENTS, server_api=ServerApi('1'))
     tournaments_db = tournaments_client.get_database("subbuteo_tournaments")
     tournaments_collection = tournaments_db.get_collection("tournaments")
