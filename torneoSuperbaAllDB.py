@@ -2,6 +2,14 @@ import streamlit as st
 import pandas as pd
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
+import requests
+from io import StringIO
+import random
+from fpdf import FPDF
+from datetime import datetime
+import json
+import time
+
 
 st.write("Chiavi disponibili nei secrets:", list(st.secrets.keys()))
 
