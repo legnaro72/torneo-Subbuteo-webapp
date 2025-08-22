@@ -51,18 +51,6 @@ db = None
 @st.cache_resource(ttl=3600)
 def init_db_connection():
     try:
-        uri = st.secrets["MONGO_URI"]
-        client = MongoClient(uri)
-        tournaments_collection = client['tornei_db']['tornei_collection']
-    except KeyError:
-        st.error("❌ Errore di connessione a MongoDB: 'st.secrets has no key \"MONGO_URI\". Did you forget to add it to secrets.toml, mount it to secret directory, or the app settings on Streamlit Cloud? More info: https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/secrets-management'. Non sarà possibile caricare i dati.")
-        tournaments_collection = None
-    except Exception as e:
-        st.error(f"❌ Errore di connessione a MongoDB: {e}. Non sarà possibile caricare i dati.")
-        tournaments_collection = None
-
-    #
-    try:
         MONGO_URI=st.secrets["MONGO_URI"]
         server_api = ServerApi('1')
         client = MongoClient(MONGO_URI, server_api=server_api)
