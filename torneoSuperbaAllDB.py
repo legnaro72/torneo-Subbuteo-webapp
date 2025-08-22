@@ -18,7 +18,26 @@ if 'df_torneo' not in st.session_state:
 players_collection = None
 tournaments_collection = None
 db = None
-MONGO_URI="mongodb+srv://massimilianoferrando:Legnaro21!$@cluster0.t3750lc.mongodb.net/?retryWrites=true&w=majority"
+
+# -------------------------
+# Connessione a MongoDB Atlas
+# -------------------------
+
+players_collection = None
+st.info("Tentativo di connessione a MongoDB...")
+try:
+    MONGO_URI = st.secrets["MONGO_URI"]
+    server_api = ServerApi('1')
+    client = MongoClient(MONGO_URI, server_api=server_api)
+    
+    # Ho corretto il nome del database e della collection
+    db = client.get_database("giocatori_subbuteo")
+    players_collection = db.get_collection("superba_players") 
+
+    _ = players_collection.find_one()
+    st.success("✅ Connessione a MongoDB Atlas riuscita per la lettura dei giocatori.")
+except Exception as e:
+    st.error(f"❌ Errore di connessione a MongoDB: {e}. Non sarà possibile caricare i giocatori dal database.")
 
 def init_db_connection():
     global players_collection, tournaments_collection, db
