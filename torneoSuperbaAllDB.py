@@ -9,61 +9,53 @@ from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 from bson.objectid import ObjectId
 
-# Aggiungi questo blocco subito dopo gli import
 # Questo garantisce che 'df_torneo' esista sempre in session_state
 if 'df_torneo' not in st.session_state:
-    st.session_state['df_torneo'] = pd.DataFrame() 
+    st.session_state['df_torneo'] = pd.DataFrame()
     
-# Variabili globali DB
+# Variabili globali per le connessioni ai database
+players_client = None
+tournaments_client = None
 players_collection = None
 tournaments_collection = None
-db = None
+players_db = None
+tournaments_db = None
 
 # -------------------------
 # Connessione a MongoDB Atlas
 # -------------------------
+st.info("Tentativo di connessione ai database...")
 
-players_collection = None
-st.info("Tentativo di connessione a MongoDB...")
 try:
-    MONGO_URI = st.secrets["MONGO_URI"]
-    server_api = ServerApi('1')
-    client = MongoClient(MONGO_URI, server_api=server_api)
-    
-    # Ho corretto il nome del database e della collection
-    db = client.get_database("giocatori_subbuteo")
-    players_collection = db.get_collection("superba_players") 
-
+    # Connessione al database dei giocatori
+    MONGO_URI_PLAYERS = st.secrets["MONGO_URI_PLAYERS"]
+    players_client = MongoClient(MONGO_URI_PLAYERS, server_api=ServerApi('1'))
+    players_db = players_client.get_database("giocatori_subbuteo")
+    players_collection = players_db.get_collection("superba_players")
     _ = players_collection.find_one()
-    st.success("✅ Connessione a MongoDB Atlas riuscita per la lettura dei giocatori.")
+    st.success("✅ Connessione al database giocatori riuscita.")
+
+    # Connessione al database dei tornei
+    MONGO_URI_TOURNAMENTS = st.secrets["MONGO_URI_TOURNAMENTS"]
+    tournaments_client = MongoClient(MONGO_URI_TOURNAMENTS, server_api=ServerApi('1'))
+    tournaments_db = tournaments_client.get_database("subbuteo_tournaments")
+    tournaments_collection = tournaments_db.get_collection("tournaments")
+    _ = tournaments_collection.find_one()
+    st.success("✅ Connessione al database tornei riuscita.")
+
+except KeyError as e:
+    st.error(f"❌ Errore: Manca la chiave di connessione '{e}'. Assicurati che 'MONGO_URI_PLAYERS' e 'MONGO_URI_TOURNAMENTS' siano configurate in st.secrets.")
+    players_collection = None
+    tournaments_collection = None
 except Exception as e:
-    st.error(f"❌ Errore di connessione a MongoDB: {e}. Non sarà possibile caricare i giocatori dal database.")
-
-def init_db_connection():
-    global players_collection, tournaments_collection, db
-    try:
-        uri = st.secrets["MONGO_URI"]
-        client = MongoClient(uri, server_api=ServerApi("1"))
-        # Test ping immediato
-        client.admin.command("ping")
-        st.success("✅ Connessione a MongoDB riuscita!")
-        db = client['tornei_db']
-        tournaments_collection = db['tornei_collection']
-        players_collection = db['superba_players']
-        return players_collection, tournaments_collection, db
-    except KeyError:
-        st.error("❌ Manca la chiave 'MONGO_URI' in st.secrets.")
-        return None, None, None
-    except Exception as e:
-        st.error(f"❌ Errore di connessione a MongoDB: {e}")
-        return None, None, None
-
+    st.error(f"❌ Errore di connessione a MongoDB: {e}. Non sarà possibile procedere.")
+    players_collection = None
+    tournaments_collection = None
 
 
 # --- Funzione di stile per None/nan invisibili e colorazione righe ---
 def combined_style(df):
     is_dark = st.get_option("theme.base") == "dark"
-
     def apply_row_style(row):
         base = [''] * len(row)
         if row.name == 0:
@@ -71,16 +63,13 @@ def combined_style(df):
         elif row.name <= 2:
             base = ['background-color: #fff3cd; color: black'] * len(row)
         return base
-
     def hide_none(val):
         sval = str(val).strip().lower()
         if sval in ["none", "nan", ""]:
             return 'color: transparent; text-shadow: none;'
         return ''
-
     styled_df = df.style.apply(apply_row_style, axis=1)
     styled_df = styled_df.map(hide_none)
-    
     return styled_df
 # ---------------------------------------------------------------------
 
@@ -89,26 +78,22 @@ def carica_giocatori_da_db():
         try:
             count = players_collection.count_documents({})
             if count == 0:
-                st.warning("⚠️ La collection 'superba_players' è vuota o non esiste. Non è stato caricato alcun giocatore.")
+                st.warning("⚠️ La collection 'superba_players' è vuota. Nessun giocatore caricato.")
                 return pd.DataFrame()
             else:
                 st.info(f"✅ Trovati {count} giocatori nel database. Caricamento in corso...")
-            
             df = pd.DataFrame(list(players_collection.find()))
-            
             if '_id' in df.columns:
                 df = df.drop(columns=['_id'])
-            
             if 'Giocatore' not in df.columns:
                 st.error("❌ Errore: la colonna 'Giocatore' non è presente nel database dei giocatori.")
                 return pd.DataFrame()
-                
             return df
         except Exception as e:
             st.error(f"❌ Errore durante la lettura dalla collection dei giocatori: {e}")
             return pd.DataFrame()
     else:
-        st.warning("⚠️ La connessione a MongoDB non è attiva.")
+        st.warning("⚠️ La connessione al database dei giocatori non è attiva.")
         return pd.DataFrame()
 
 def carica_tornei_da_db():
@@ -131,7 +116,6 @@ def carica_torneo_da_db(tournament_id):
                 df_torneo['Valida'] = df_torneo['Valida'].astype(bool)
                 df_torneo['GolCasa'] = df_torneo['GolCasa'].astype('Int64')
                 df_torneo['GolOspite'] = df_torneo['GolOspite'].astype('Int64')
-                # Aggiungi questa riga per salvare il DataFrame nello stato della sessione
                 st.session_state['df_torneo'] = df_torneo
             return torneo_data
         except Exception as e:
@@ -142,7 +126,6 @@ def carica_torneo_da_db(tournament_id):
 def salva_torneo_su_db(df_torneo, nome_torneo):
     if tournaments_collection is not None:
         try:
-            # Converte il DataFrame in un formato che può essere salvato su MongoDB
             torneo_data = {
                 "nome_torneo": nome_torneo,
                 "calendario": df_torneo.to_dict('records')
@@ -152,11 +135,11 @@ def salva_torneo_su_db(df_torneo, nome_torneo):
         except Exception as e:
             st.error(f"❌ Errore durante il salvataggio del torneo su MongoDB: {e}")
             return None
+    return None
 
 def aggiorna_torneo_su_db(tournament_id, df_torneo):
     if tournaments_collection is not None:
         try:
-            # Aggiorna solo il campo 'calendario'
             tournaments_collection.update_one(
                 {"_id": ObjectId(tournament_id)},
                 {"$set": {"calendario": df_torneo.to_dict('records')}}
@@ -341,16 +324,13 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if 'Valida' not in df_giornata.columns:
         df_giornata['Valida'] = False
-
     for idx, row in df_giornata.iterrows():
         casa = row['Casa']
         ospite = row['Ospite']
         val = row['Valida']
-        
         col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
         with col1:
             st.markdown(f"**{casa}** vs **{ospite}**")
-
         with col2:
             st.number_input(
                 "", min_value=0, max_value=20,
@@ -359,10 +339,8 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
                 label_visibility="hidden",
                 disabled=val
             )
-                
         with col3:
             st.markdown("-")
-
         with col4:
             st.number_input(
                 "", min_value=0, max_value=20,
@@ -371,7 +349,6 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
                 label_visibility="hidden",
                 disabled=val
             )
-
         with col5:
             st.checkbox(
                 "Valida",
@@ -386,18 +363,14 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
 def salva_risultati_giornata(girone_sel, giornata_sel):
     df = st.session_state['df_torneo']
     df_giornata_copia = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
-    
     for idx, row in df_giornata_copia.iterrows():
-        # Aggiorna solo se la partita non è ancora stata validata
         if not row['Valida']:
             df.at[idx, 'GolCasa'] = st.session_state.get(f"golcasa_{idx}", 0)
             df.at[idx, 'GolOspite'] = st.session_state.get(f"golospite_{idx}", 0)
             df.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
-            
     df['GolCasa'] = df['GolCasa'].astype('Int64')
     df['GolOspite'] = df['GolOspite'].astype('Int64')
     st.session_state['df_torneo'] = df
-    
     if 'tournament_id' in st.session_state:
         success = aggiorna_torneo_su_db(st.session_state['tournament_id'], df)
         if success:
@@ -422,31 +395,21 @@ def main():
     else:
         nome_torneo = st.session_state.get("nome_torneo", "Torneo")
         st.markdown(f"<div class='big-title'>🏆⚽{nome_torneo}🥇🥈🥉</div>", unsafe_allow_html=True)
-
-    players_collection, tournaments_collection, db = init_db_connection()
-
-    st.markdown("""
-        <style>
-        ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
-        .big-title { text-align: center; font-size: clamp(16px, 4vw, 36px); font-weight: bold; margin-top: 10px; margin-bottom: 20px; color: red; word-wrap: break-word; white-space: normal; }
-        div[data-testid="stNumberInput"] label::before { content: none; }
-        </style>
-    """, unsafe_allow_html=True)
     
+    # Non chiamare init_db_connection qui, le connessioni sono già gestite a livello globale
+    global players_collection, tournaments_collection
     if players_collection is None or tournaments_collection is None:
+        st.error("❌ Impossibile procedere: Connessione ai database non riuscita. Controlla le configurazioni.")
         return
 
     df_master = carica_giocatori_da_db()
     if df_master.empty:
         st.error("❌ Impossibile procedere: non è stato possibile caricare la lista giocatori.")
         return
-
     if not st.session_state.calendario_generato:
         st.write("---")
         st.subheader("Scegli un'azione per iniziare: 👇")
-        
         col1, col2 = st.columns(2)
-        
         with col1:
             st.markdown("<h4 style='text-align: center;'>📁 Carica Torneo Esistente</h4>", unsafe_allow_html=True)
             st.info("Seleziona un torneo salvato su MongoDB per continuare a giocare. 🎮")
@@ -468,20 +431,16 @@ def main():
                         st.rerun()
             else:
                 st.warning("⚠️ Nessun torneo trovato nel database.")
-
         with col2:
             st.markdown("<h4 style='text-align: center;'>⚽ Crea Nuovo Torneo</h4>", unsafe_allow_html=True)
             st.info("Inizia una nuova competizione configurando giocatori, gironi e tipo di calendario. ✍️")
             if st.button("➕ Crea Nuovo Torneo"):
                 st.session_state['mostra_form'] = True
-                
         st.write("---")
-        
         if st.session_state.get('mostra_form', False):
             oggi = datetime.now()
             mesi = {1: "Gennaio", 2: "Febbraio", 3: "Marzo", 4: "Aprile", 5: "Maggio", 6: "Giugno", 7: "Luglio", 8: "Agosto", 9: "Settembre", 10: "Ottobre", 11: "Novembre", 12: "Dicembre"}
             nome_default = f"TorneoSubbuteo_{oggi.day}{mesi[oggi.month]}{oggi.year}"
-            
             st.header("Dettagli Nuovo Torneo")
             nome_torneo = st.text_input("📝 Nome del torneo:", value=nome_default)
             st.session_state["nome_torneo"] = nome_torneo
@@ -495,12 +454,10 @@ def main():
                 amici_selezionati = st.multiselect("Seleziona giocatori", amici, default=amici)
             else:
                 amici_selezionati = st.multiselect("Seleziona giocatori", amici)
-            
             num_supplementari = n_giocatori - len(amici_selezionati)
             if num_supplementari < 0:
                 st.warning(f"⚠️ Hai selezionato più amici ({len(amici_selezionati)}) del numero partecipanti ({n_giocatori}). Riduci la selezione.")
                 return
-            
             st.markdown(f"Giocatori supplementari da inserire: **{num_supplementari}**")
             giocatori_supplementari = []
             for i in range(num_supplementari):
@@ -512,7 +469,6 @@ def main():
                         return
                     giocatori_supplementari.append(nome.strip())
             giocatori_scelti = amici_selezionati + giocatori_supplementari
-            
             if st.button("Genera Calendario"):
                 if len(set(giocatori_scelti)) < 4:
                     st.warning("⚠️ Inserisci almeno 4 giocatori diversi.")
@@ -525,11 +481,9 @@ def main():
                     random.shuffle(giocatori_formattati)
                     for i, g in enumerate(giocatori_formattati):
                         gironi_finali[i % num_gironi].append(g)
-                    
                     df_torneo = genera_calendario_from_list(
                         gironi_finali, tipo_calendario
                     )
-                    
                     tournament_id = salva_torneo_su_db(df_torneo, nome_torneo)
                     if tournament_id:
                         st.session_state['df_torneo'] = df_torneo
@@ -540,17 +494,14 @@ def main():
                         st.rerun()
                     else:
                         st.error("❌ Errore nel salvataggio del nuovo torneo.")
-
     if st.session_state.get('calendario_generato', False):
         df = st.session_state['df_torneo']
         gironi = sorted(df['Girone'].dropna().unique().tolist())
         if 'girone_sel' not in st.session_state:
             st.session_state['girone_sel'] = gironi[0]
-        
         giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
         if 'giornata_sel' not in st.session_state or st.session_state['giornata_sel'] not in giornate_correnti:
             st.session_state['giornata_sel'] = giornate_correnti[0]
-        
         st.subheader("Girone")
         gironi_numeri = [g.replace("Girone ", "") for g in gironi]
         nuovo_girone = st.selectbox(
@@ -568,7 +519,6 @@ def main():
             giornate_correnti = [int(g) for g in giornate_correnti]
             st.session_state['giornata_sel'] = giornate_correnti[0]
             st.rerun()
-
         st.subheader("Giornate")
         modo_giornate = st.radio(
             "",
@@ -577,12 +527,10 @@ def main():
             horizontal=True,
             key="modo_giornate"
         )
-        
         giornate_correnti = sorted(
             df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist()
         )
         giornate_correnti = [int(g) for g in giornate_correnti]
-        
         if modo_giornate == "Menu a tendina":
             nuova_giornata = st.selectbox(
                 "",
@@ -610,27 +558,19 @@ def main():
                 if cols[i % 5].button(str(g), key=f"giornata_{g}"):
                     st.session_state['giornata_sel'] = g
                     st.rerun()
-
         girone_sel = st.session_state['girone_sel']
         giornata_sel = st.session_state['giornata_sel']
         mostra_calendario_giornata(df, girone_sel, giornata_sel)
         classifica = aggiorna_classifica(st.session_state['df_torneo'])
         mostra_classifica_stilizzata(classifica, girone_sel)
-
         if 'df_torneo' in st.session_state and not st.session_state['df_torneo'].empty:
-            # Qui devi assicurarti che 'girone_sel' e 'giornata_sel' siano già definiti
             girone_sel = st.session_state.get('girone_sel', 'A')
             giornata_sel = st.session_state.get('giornata_sel', 1)
-        
             mostra_calendario_giornata(st.session_state['df_torneo'], girone_sel, giornata_sel)
-            
-            # Questo è il pulsante. Deve essere al LORO STESSO LIVELLO DI INDENTAZIONE.
             st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata, args=(girone_sel, giornata_sel))
         else:
             st.info("⚠️ Carica un torneo o creane uno nuovo per visualizzare il calendario.")
-
-
-        if st.button("?"):
+        if st.button("Esporta PDF"):
             st.markdown("---")
             st.subheader("Esporta PDF")
             if 'df_torneo' in st.session_state and not st.session_state['df_torneo'].empty:
