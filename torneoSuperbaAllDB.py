@@ -52,13 +52,13 @@ db = None
 def init_db_connection():
     try:
         MONGO_URI=st.secrets["MONGO_URI"]
-        server_api = ServerApi('1')
-        client = MongoClient(MONGO_URI, server_api=server_api)
+        server_api=ServerApi('1')
+        client=MongoClient(MONGO_URI, server_api=server_api)
         
         # Connessione alle collection
-        db = client.get_database("giocatori_subbuteo")
-        players_collection = db.get_collection("superba_players")
-        tournaments_collection = db.get_collection("tournaments_subbuteo")
+        db=client.get_database("giocatori_subbuteo")
+        players_collection=db.get_collection("superba_players")
+        tournaments_collection=db.get_collection("tournaments_subbuteo")
 
         # Ping per testare la connessione
         _ = players_collection.find_one()
