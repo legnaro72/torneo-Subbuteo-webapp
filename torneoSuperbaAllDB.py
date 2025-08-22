@@ -18,7 +18,7 @@ if 'df_torneo' not in st.session_state:
 players_collection = None
 tournaments_collection = None
 db = None
-
+MONGO_URI="mongodb+srv://massimilianoferrando:Legnaro21!$@cluster0.t3750lc.mongodb.net/?retryWrites=true&w=majority"
 
 def init_db_connection():
     global players_collection, tournaments_collection, db
