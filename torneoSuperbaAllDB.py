@@ -28,8 +28,8 @@ st.info("Tentativo di connessione ai database...")
 
 try:
     # Connessione al database dei giocatori
-    MONGO_URI_PLAYERS = st.secrets["MONGO_URI_PLAYERS"]
-    players_client = MongoClient(MONGO_URI_PLAYERS, server_api=ServerApi('1'))
+    MONGO_URI = st.secrets["MONGO_URI"]
+    players_client = MongoClient(MONGO_URI, server_api=ServerApi('1'))
     players_db = players_client.get_database("giocatori_subbuteo")
     players_collection = players_db.get_collection("superba_players")
     _ = players_collection.find_one()
@@ -44,7 +44,7 @@ try:
     st.success("✅ Connessione al database tornei riuscita.")
 
 except KeyError as e:
-    st.error(f"❌ Errore: Manca la chiave di connessione '{e}'. Assicurati che 'MONGO_URI_PLAYERS' e 'MONGO_URI_TOURNAMENTS' siano configurate in st.secrets.")
+    st.error(f"❌ Errore: Manca la chiave di connessione '{e}'. Assicurati che 'MONGO_URI' e 'MONGO_URI_TOURNAMENTS' siano configurate in st.secrets.")
     players_collection = None
     tournaments_collection = None
 except Exception as e:
