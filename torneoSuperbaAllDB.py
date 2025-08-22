@@ -3,6 +3,8 @@ import pandas as pd
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 
+st.write("Chiavi disponibili nei secrets:", list(st.secrets.keys()))
+
 # -------------------------
 # Connessione a MongoDB Atlas
 # -------------------------
