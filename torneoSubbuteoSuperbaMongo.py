@@ -10,6 +10,11 @@ import time
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 
+
+st.write("Chiavi disponibili nei secrets:", list(st.secrets.keys()))
+
+
+st.write("Chiavi disponibili nei secrets:", list(st.secrets.keys()))
 # --- Funzione di stile per None/nan invisibili e colorazione righe ---
 def combined_style(df):
     is_dark = st.get_option("theme.base") == "dark"
