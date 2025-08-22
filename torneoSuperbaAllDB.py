@@ -60,13 +60,7 @@ def init_db_connection():
         players_collection=db.get_collection("superba_players")
         #tournaments_collection=db.get_collection("tournaments_subbuteo")
 
-        # Ping per testare la connessione
-        _ = players_collection.find_one()
-        st.success("✅ Connessione a MongoDB Atlas riuscita.")
-        return players_collection, tournaments_collection, db
-    except Exception as e:
-        st.error(f"❌ Errore di connessione a MongoDB: {e}. Non sarà possibile caricare i dati.")
-        return None, None, None
+    
 
 players_collection, tournaments_collection, db = init_db_connection()
 
