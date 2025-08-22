@@ -53,19 +53,6 @@ def combined_style(df):
     return styled_df
 # ---------------------------------------------------------------------
 
-st.set_page_config(page_title="⚽ Torneo Subbuteo - Sistema Svizzero", layout="wide")
-
-
-players_collection, tournaments_collection, db = init_db_connection()
-
-st.markdown("""
-    <style>
-    ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
-    .big-title { text-align: center; font-size: clamp(16px, 4vw, 36px); font-weight: bold; margin-top: 10px; margin-bottom: 20px; color: red; word-wrap: break-word; white-space: normal; }
-    div[data-testid="stNumberInput"] label::before { content: none; }
-    </style>
-""", unsafe_allow_html=True)
-
 def carica_giocatori_da_db():
     if players_collection is not None:
         try:
@@ -404,6 +391,16 @@ def main():
     else:
         nome_torneo = st.session_state.get("nome_torneo", "Torneo")
         st.markdown(f"<div class='big-title'>🏆⚽{nome_torneo}🥇🥈🥉</div>", unsafe_allow_html=True)
+
+    players_collection, tournaments_collection, db = init_db_connection()
+
+    st.markdown("""
+        <style>
+        ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
+        .big-title { text-align: center; font-size: clamp(16px, 4vw, 36px); font-weight: bold; margin-top: 10px; margin-bottom: 20px; color: red; word-wrap: break-word; white-space: normal; }
+        div[data-testid="stNumberInput"] label::before { content: none; }
+        </style>
+    """, unsafe_allow_html=True)
     
     if players_collection is None or tournaments_collection is None:
         return
