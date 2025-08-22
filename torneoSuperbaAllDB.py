@@ -13,21 +13,29 @@ from bson.objectid import ObjectId
 # Questo garantisce che 'df_torneo' esista sempre in session_state
 if 'df_torneo' not in st.session_state:
     st.session_state['df_torneo'] = pd.DataFrame() 
+    
+# Variabili globali DB
+players_collection = None
+tournaments_collection = None
+db = None
+
 
 def init_db_connection():
+    global players_collection, tournaments_collection, db
     try:
         uri = st.secrets["MONGO_URI"]
-        client = MongoClient(uri)
+        client = MongoClient(uri, server_api=ServerApi("1"))
         db = client['tornei_db']
         tournaments_collection = db['tornei_collection']
-        players_collection = db['players_collection']
+        players_collection = db['superba_players']  # 🔹 occhio al nome della tua collection
         return players_collection, tournaments_collection, db
     except KeyError:
-        st.error("❌ Errore di connessione a MongoDB: 'st.secrets has no key \"MONGO_URI\". Did you forget to add it to secrets.toml, mount it to secret directory, or the app settings on Streamlit Cloud? More info: https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/secrets-management'. Non sarà possibile caricare i dati.")
+        st.error("❌ Manca la chiave 'MONGO_URI' in st.secrets. Vai nelle impostazioni di Streamlit Cloud e aggiungila.")
         return None, None, None
     except Exception as e:
-        st.error(f"❌ Errore di connessione a MongoDB: {e}. Non sarà possibile caricare i dati.")
+        st.error(f"❌ Errore di connessione a MongoDB: {e}")
         return None, None, None
+
 
 # --- Funzione di stile per None/nan invisibili e colorazione righe ---
 def combined_style(df):
