@@ -58,7 +58,7 @@ def init_db_connection():
         # Connessione alle collection
         db=client.get_database("giocatori_subbuteo")
         players_collection=db.get_collection("superba_players")
-        tournaments_collection=db.get_collection("tournaments_subbuteo")
+        #tournaments_collection=db.get_collection("tournaments_subbuteo")
 
         # Ping per testare la connessione
         _ = players_collection.find_one()
