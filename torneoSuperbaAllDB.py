@@ -45,22 +45,20 @@ st.set_page_config(page_title="⚽ Torneo Subbuteo - Sistema Svizzero", layout="
 # -------------------------
 
 players_collection = None
-tournaments_collection = None
-db = None
-
-@st.cache_resource(ttl=3600)
-def init_db_connection():
-    try:
-        MONGO_URI=st.secrets["MONGO_URI"]
-        server_api=ServerApi('1')
-        client=MongoClient(MONGO_URI, server_api=server_api)
-        
-        # Connessione alle collection
-        db=client.get_database("giocatori_subbuteo")
-        players_collection=db.get_collection("superba_players")
-        #tournaments_collection=db.get_collection("tournaments_subbuteo")
-
+st.info("Tentativo di connessione a MongoDB...")
+try:
+    MONGO_URI = st.secrets["MONGO_URI"]
+    server_api = ServerApi('1')
+    client = MongoClient(MONGO_URI, server_api=server_api)
     
+    # Ho corretto il nome del database e della collection
+    db = client.get_database("giocatori_subbuteo")
+    players_collection = db.get_collection("superba_players") 
+
+    _ = players_collection.find_one()
+    st.success("✅ Connessione a MongoDB Atlas riuscita per la lettura dei giocatori.")
+except Exception as e:
+    st.error(f"❌ Errore di connessione a MongoDB: {e}. Non sarà possibile caricare i giocatori dal database.")
 
 players_collection, tournaments_collection, db = init_db_connection()
 
