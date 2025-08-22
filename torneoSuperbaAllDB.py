@@ -25,16 +25,20 @@ def init_db_connection():
     try:
         uri = st.secrets["MONGO_URI"]
         client = MongoClient(uri, server_api=ServerApi("1"))
-        db = client['giocatori_subbuteo']
-        tournaments_collection = db['tournaments_subbuteo']
-        players_collection = db['superba_players']  # 🔹 occhio al nome della tua collection
+        # Test ping immediato
+        client.admin.command("ping")
+        st.success("✅ Connessione a MongoDB riuscita!")
+        db = client['tornei_db']
+        tournaments_collection = db['tornei_collection']
+        players_collection = db['superba_players']
         return players_collection, tournaments_collection, db
     except KeyError:
-        st.error("❌ Manca la chiave 'MONGO_URI' in st.secrets. Vai nelle impostazioni di Streamlit Cloud e aggiungila.")
+        st.error("❌ Manca la chiave 'MONGO_URI' in st.secrets.")
         return None, None, None
     except Exception as e:
         st.error(f"❌ Errore di connessione a MongoDB: {e}")
         return None, None, None
+
 
 
 # --- Funzione di stile per None/nan invisibili e colorazione righe ---
