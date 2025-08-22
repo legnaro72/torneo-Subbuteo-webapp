@@ -25,8 +25,8 @@ def init_db_connection():
     try:
         uri = st.secrets["MONGO_URI"]
         client = MongoClient(uri, server_api=ServerApi("1"))
-        db = client['tornei_db']
-        tournaments_collection = db['tornei_collection']
+        db = client['giocatori_subbuteo']
+        tournaments_collection = db['tournaments_subbuteo']
         players_collection = db['superba_players']  # 🔹 occhio al nome della tua collection
         return players_collection, tournaments_collection, db
     except KeyError:
