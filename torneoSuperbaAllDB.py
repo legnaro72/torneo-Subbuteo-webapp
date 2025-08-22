@@ -14,6 +14,21 @@ from bson.objectid import ObjectId
 if 'df_torneo' not in st.session_state:
     st.session_state['df_torneo'] = pd.DataFrame() 
 
+def init_db_connection():
+    try:
+        uri = st.secrets["MONGO_URI"]
+        client = MongoClient(uri)
+        db = client['tornei_db']
+        tournaments_collection = db['tornei_collection']
+        players_collection = db['players_collection']
+        return players_collection, tournaments_collection, db
+    except KeyError:
+        st.error("❌ Errore di connessione a MongoDB: 'st.secrets has no key \"MONGO_URI\". Did you forget to add it to secrets.toml, mount it to secret directory, or the app settings on Streamlit Cloud? More info: https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/secrets-management'. Non sarà possibile caricare i dati.")
+        return None, None, None
+    except Exception as e:
+        st.error(f"❌ Errore di connessione a MongoDB: {e}. Non sarà possibile caricare i dati.")
+        return None, None, None
+
 # --- Funzione di stile per None/nan invisibili e colorazione righe ---
 def combined_style(df):
     is_dark = st.get_option("theme.base") == "dark"
@@ -40,25 +55,6 @@ def combined_style(df):
 
 st.set_page_config(page_title="⚽ Torneo Subbuteo - Sistema Svizzero", layout="wide")
 
-# -------------------------
-# Connessione a MongoDB Atlas
-# -------------------------
-
-players_collection = None
-st.info("Tentativo di connessione a MongoDB...")
-try:
-    MONGO_URI = st.secrets["MONGO_URI"]
-    server_api = ServerApi('1')
-    client = MongoClient(MONGO_URI, server_api=server_api)
-    
-    # Ho corretto il nome del database e della collection
-    db = client.get_database("giocatori_subbuteo")
-    players_collection = db.get_collection("superba_players") 
-
-    _ = players_collection.find_one()
-    st.success("✅ Connessione a MongoDB Atlas riuscita per la lettura dei giocatori.")
-except Exception as e:
-    st.error(f"❌ Errore di connessione a MongoDB: {e}. Non sarà possibile caricare i giocatori dal database.")
 
 players_collection, tournaments_collection, db = init_db_connection()
 
