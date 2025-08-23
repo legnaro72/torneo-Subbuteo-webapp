@@ -9,11 +9,8 @@ import json
 import time
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
-import sys
 
-st.write("streamlit:", getattr(sys.modules.get("streamlit"), "__file__", "??"))
-st.write("pymongo:", getattr(sys.modules.get("pymongo"), "__file__", "??"))
-st.write("nome file attuale:", __file__)
+
 
 # --- Funzione di stile per None/nan invisibili e colorazione righe ---
 def combined_style(df):
@@ -54,7 +51,7 @@ try:
     
     # Ho corretto il nome del database e della collection
     db = client.get_database("giocatori_subbuteo")
-    players_collection = db.get_collection("piercrew_players") 
+    players_collection = db.get_collection("superba_players") 
 
     _ = players_collection.find_one()
     st.success("✅ Connessione a MongoDB Atlas riuscita per la lettura dei giocatori.")
@@ -76,7 +73,7 @@ def carica_giocatori_da_db():
         try:
             count = players_collection.count_documents({})
             if count == 0:
-                st.warning("⚠️ La collection 'piercrew_players' è vuota o non esiste. Non è stato caricato alcun giocatore.")
+                st.warning("⚠️ La collection 'superba_players' è vuota o non esiste. Non è stato caricato alcun giocatore.")
                 return pd.DataFrame()
             else:
                 st.info(f"✅ Trovati {count} giocatori nel database. Caricamento in corso...")
@@ -431,7 +428,7 @@ def main():
         nome_torneo = st.session_state.get("nome_torneo", "Torneo")
         st.markdown(f"<div class='big-title'>🏆⚽{nome_torneo}🥇🥈🥉</div>", unsafe_allow_html=True)
     else:
-        st.title("🏆⚽Gestione Torneo PierCrew a Gironi by Legnaro72🥇🥈🥉")
+        st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉")
     
     df_master = carica_giocatori_da_db()
     if df_master.empty:
