@@ -49,7 +49,7 @@ try:
     
     # Ho corretto il nome del database e della collection
     db = client.get_database("giocatori_subbuteo")
-    players_collection = db.get_collection("piercrew_players") 
+    players_collection = db.get_collection("superba_players") 
 
     _ = players_collection.find_one()
     st.success("✅ Connessione a MongoDB Atlas riuscita per la lettura dei giocatori.")
@@ -64,7 +64,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-#URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLegna/refs/heads/main/giocatoriSuperba.csv"
 
 def carica_giocatori_da_db():
     if 'players_collection' in globals() and players_collection is not None:
