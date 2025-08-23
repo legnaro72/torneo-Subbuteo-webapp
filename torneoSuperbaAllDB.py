@@ -41,10 +41,10 @@ st.info("Tentativo di connessione a MongoDB (tournaments)...")
 
 try:
     MONGO_URI_TOURNAMENTS=st.secrets["MONGO_URI_TOURNAMENTS"]
-    client_tournaments = MongoClient(MONGO_URI_TOURNAMENTS, server_api=server_api)
+    client_tournaments=MongoClient(MONGO_URI_TOURNAMENTS, server_api=server_api)
 
-    db_tournaments = client_tournaments.get_database("subbuteo_tournement")
-    tournaments_collection = db_tournaments.get_collection("tournement")
+    db_tournaments=client_tournaments.get_database("subbuteo_tournement")
+    tournaments_collection=db_tournaments.get_collection("tournement")
 
     _ = tournaments_collection.find_one()
     st.success("✅ Connessione a MongoDB Atlas (tournaments) riuscita.")
