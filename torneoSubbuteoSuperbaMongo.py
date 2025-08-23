@@ -8,6 +8,10 @@ from datetime import datetime
 import json
 import time
 
+
+print("streamlit viene caricato da:", sys.modules["streamlit"].__file__)
+print("pymongo viene caricato da:", sys.modules["pymongo"].__file__)
+
 # --- Funzione di stile per None/nan invisibili e colorazione righe ---
 def combined_style(df):
     is_dark = st.get_option("theme.base") == "dark"
