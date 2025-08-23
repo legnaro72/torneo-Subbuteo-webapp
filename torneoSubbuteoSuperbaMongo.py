@@ -7,11 +7,8 @@ from fpdf import FPDF
 from datetime import datetime
 import json
 import time
-import sys
-
-
-print("streamlit viene caricato da:", sys.modules["streamlit"].__file__)
-print("pymongo viene caricato da:", sys.modules["pymongo"].__file__)
+from pymongo import MongoClient
+from pymongo.server_api import ServerApi
 
 # --- Funzione di stile per None/nan invisibili e colorazione righe ---
 def combined_style(df):
@@ -35,10 +32,29 @@ def combined_style(df):
     styled_df = styled_df.map(hide_none)
     
     return styled_df
-
 # ---------------------------------------------------------------------
 
-st.set_page_config(page_title="Gestione Torneo PierCrew a Gironi by Legnaro72", layout="wide")
+st.set_page_config(page_title="⚽ Torneo Subbuteo - Sistema Svizzero", layout="wide")
+
+# -------------------------
+# Connessione a MongoDB Atlas
+# -------------------------
+
+players_collection = None
+st.info("Tentativo di connessione a MongoDB...")
+try:
+    MONGO_URI = st.secrets["MONGO_URI"]
+    server_api = ServerApi('1')
+    client = MongoClient(MONGO_URI, server_api=server_api)
+    
+    # Ho corretto il nome del database e della collection
+    db = client.get_database("giocatori_subbuteo")
+    players_collection = db.get_collection("piercrew_players") 
+
+    _ = players_collection.find_one()
+    st.success("✅ Connessione a MongoDB Atlas riuscita per la lettura dei giocatori.")
+except Exception as e:
+    st.error(f"❌ Errore di connessione a MongoDB: {e}. Non sarà possibile caricare i giocatori dal database.")
 
 st.markdown("""
     <style>
@@ -48,7 +64,35 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLegna/refs/heads/main/giocatoriPierCrew.csv"
+#URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLegna/refs/heads/main/giocatoriSuperba.csv"
+
+def carica_giocatori_da_db():
+    if 'players_collection' in globals() and players_collection is not None:
+        try:
+            count = players_collection.count_documents({})
+            if count == 0:
+                st.warning("⚠️ La collection 'piercrew_players' è vuota o non esiste. Non è stato caricato alcun giocatore.")
+                return pd.DataFrame()
+            else:
+                st.info(f"✅ Trovati {count} giocatori nel database. Caricamento in corso...")
+            
+            df = pd.DataFrame(list(players_collection.find()))
+            
+            if '_id' in df.columns:
+                df = df.drop(columns=['_id'])
+            
+            if 'Giocatore' not in df.columns:
+                st.error("❌ Errore: la colonna 'Giocatore' non è presente nel database dei giocatori.")
+                return pd.DataFrame()
+                
+            return df
+        except Exception as e:
+            st.error(f"❌ Errore durante la lettura dalla collection dei giocatori: {e}")
+            return pd.DataFrame()
+    else:
+        st.warning("⚠️ La connessione a MongoDB non è attiva.")
+        return pd.DataFrame()
+
 
 # --- NAVIGAZIONE COMPATTA ---
 def navigation_controls(label, value, min_val, max_val, key_prefix=""):
@@ -73,19 +117,6 @@ if "girone" not in st.session_state:
 if "giornata" not in st.session_state:
     st.session_state.giornata = 1 # valore iniziale
     
-def carica_giocatori_master(url=URL_GIOCATORI):
-    try:
-        r = requests.get(url)
-        r.raise_for_status()
-        df = pd.read_csv(StringIO(r.content.decode('latin1')))
-        for c in ["Giocatore","Squadra","Potenziale"]:
-            if c not in df.columns:
-                df[c] = ""
-        df["Potenziale"] = pd.to_numeric(df["Potenziale"], errors='coerce').fillna(4).astype(int)
-        return df[["Giocatore","Squadra","Potenziale"]]
-    except Exception as e:
-        st.warning(f"⚠️ Impossibile caricare lista giocatori dal CSV: {e}")
-        return pd.DataFrame(columns=["Giocatore","Squadra","Potenziale"])
 
 def genera_calendario_auto(giocatori, num_gironi, tipo="Solo andata"):
     random.shuffle(giocatori)
@@ -397,7 +428,7 @@ def main():
     else:
         st.title("🏆⚽Gestione Torneo PierCrew a Gironi by Legnaro72🥇🥈🥉")
     
-    df_master = carica_giocatori_master()
+    df_master = carica_giocatori_da_db()
     if df_master.empty:
         st.error("❌ Impossibile procedere: non è stato possibile caricare la lista giocatori.")
         return
@@ -615,7 +646,7 @@ def main():
             st.session_state['giornata_sel'] = giornate_correnti[0]
             st.rerun()
 
-        #Inizio scelta giornate
+        ####INIZIO
 
         # --- Navigazione Giornate ---
         st.subheader("Giornate")
@@ -667,7 +698,8 @@ def main():
                     st.rerun()
 
 
-        #Fine scelta giornate
+
+        ####FINE
         
 
             
