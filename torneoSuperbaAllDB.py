@@ -40,7 +40,7 @@ tournaments_collection = None
 st.info("Tentativo di connessione a MongoDB (tournaments)...")
 
 try:
-    MONGO_URI_TOURNAMENTS = st.secrets["MONGO_URI_TOURNAMENTS"]
+    MONGO_URI_TOURNAMENTS=st.secrets["MONGO_URI_TOURNAMENTS"]
     client_tournaments = MongoClient(MONGO_URI_TOURNAMENTS, server_api=server_api)
 
     db_tournaments = client_tournaments.get_database("subbuteo_tournament")
