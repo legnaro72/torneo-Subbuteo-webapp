@@ -578,10 +578,14 @@ def main():
         classifica = aggiorna_classifica(st.session_state['df_torneo'])
         mostra_classifica_stilizzata(classifica, girone_sel)
         if 'df_torneo' in st.session_state and not st.session_state['df_torneo'].empty:
-            girone_sel = st.session_state.get('girone_sel', 'A')
-            giornata_sel = st.session_state.get('giornata_sel', 1)
+            # Mostra il calendario della giornata selezionata UNA sola volta
             mostra_calendario_giornata(st.session_state['df_torneo'], girone_sel, giornata_sel)
-            st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata, args=(girone_sel, giornata_sel))
+            st.button(
+                "💾 Salva Risultati Giornata",
+                on_click=salva_risultati_giornata,
+                args=(girone_sel, giornata_sel)
+            )
+
         else:
             st.info("⚠️ Carica un torneo o creane uno nuovo per visualizzare il calendario.")
         if st.button("Esporta PDF"):
