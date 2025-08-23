@@ -43,7 +43,7 @@ st.set_page_config(page_title="⚽ Torneo Subbuteo - Sistema Svizzero", layout="
 players_collection = None
 st.info("Tentativo di connessione a MongoDB...")
 try:
-    MONGO_URI = st.secrets["MONGO_URI"]
+    MONGO_URI=st.secrets["MONGO_URI"]
     server_api = ServerApi('1')
     client = MongoClient(MONGO_URI, server_api=server_api)
     
