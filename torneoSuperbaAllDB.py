@@ -574,7 +574,7 @@ def main():
                     st.rerun()
         girone_sel = st.session_state['girone_sel']
         giornata_sel = st.session_state['giornata_sel']
-        mostra_calendario_giornata(df, girone_sel, giornata_sel)
+        
         classifica = aggiorna_classifica(st.session_state['df_torneo'])
         mostra_classifica_stilizzata(classifica, girone_sel)
         if 'df_torneo' in st.session_state and not st.session_state['df_torneo'].empty:
