@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import requests
@@ -43,13 +44,13 @@ st.set_page_config(page_title="⚽ Torneo Subbuteo - Sistema Svizzero", layout="
 players_collection = None
 st.info("Tentativo di connessione a MongoDB...")
 try:
-    MONGO_URI=st.secrets["MONGO_URI"]
+    MONGO_URI = st.secrets["MONGO_URI"]
     server_api = ServerApi('1')
     client = MongoClient(MONGO_URI, server_api=server_api)
     
     # Ho corretto il nome del database e della collection
     db = client.get_database("giocatori_subbuteo")
-    players_collection = db.get_collection("superba_players") 
+    players_collection = db.get_collection("piercrew_players") 
 
     _ = players_collection.find_one()
     st.success("✅ Connessione a MongoDB Atlas riuscita per la lettura dei giocatori.")
@@ -64,13 +65,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+#URL_GIOCATORI = "https://raw.githubusercontent.com/legnaro72/torneoSvizzerobyLegna/refs/heads/main/giocatoriSuperba.csv"
 
 def carica_giocatori_da_db():
     if 'players_collection' in globals() and players_collection is not None:
         try:
             count = players_collection.count_documents({})
             if count == 0:
-                st.warning("⚠️ La collection 'superba_players' è vuota o non esiste. Non è stato caricato alcun giocatore.")
+                st.warning("⚠️ La collection 'piercrew_players' è vuota o non esiste. Non è stato caricato alcun giocatore.")
                 return pd.DataFrame()
             else:
                 st.info(f"✅ Trovati {count} giocatori nel database. Caricamento in corso...")
@@ -425,7 +427,7 @@ def main():
         nome_torneo = st.session_state.get("nome_torneo", "Torneo")
         st.markdown(f"<div class='big-title'>🏆⚽{nome_torneo}🥇🥈🥉</div>", unsafe_allow_html=True)
     else:
-        st.title("🏆⚽Gestione Torneo Superba a Gironi by Legnaro72🥇🥈🥉")
+        st.title("🏆⚽Gestione Torneo PierCrew a Gironi by Legnaro72🥇🥈🥉")
     
     df_master = carica_giocatori_da_db()
     if df_master.empty:
