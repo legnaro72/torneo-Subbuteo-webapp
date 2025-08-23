@@ -24,9 +24,10 @@ except Exception as e:
 
 # ------------------------- Funzioni utilità -------------------------
 def carica_giocatori_da_db():
-    if players_collection:
+    if players_collection is not None:
         df = pd.DataFrame(list(players_collection.find()))
-        if '_id' in df.columns: df = df.drop(columns=['_id'])
+        if '_id' in df.columns: 
+            df = df.drop(columns=['_id'])
         return df
     return pd.DataFrame()
 
