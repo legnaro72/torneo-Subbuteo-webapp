@@ -21,37 +21,51 @@ tournaments_collection = None
 players_db = None
 tournaments_db = None
 
+st.title("Test connessione MongoDB")
+
+# Debug: mostra chiavi disponibili nei secrets
+st.write("Chiavi disponibili nei secrets:", list(st.secrets.keys()))
+
 # -------------------------
-# Connessione a MongoDB Atlas
+# Connessione a MongoDB Atlas - Giocatori
 # -------------------------
-st.info("Tentativo di connessione ai database...")
+
+players_collection = None
+tournaments_collection = None
+server_api = ServerApi('1')  # riusabile per entrambi
 
 try:
-    # Connessione al database dei giocatori
-    MONGO_URI=st.secrets["MONGO_URI"]
-    players_client = MongoClient(MONGO_URI, server_api=ServerApi('1'))
-    players_db = players_client.get_database("giocatori_subbuteo")
-    players_collection = players_db.get_collection("superba_players")
+    # Connessione Giocatori
+    MONGO_URI = st.secrets["MONGO_URI"]
+    client_players = MongoClient(MONGO_URI, server_api=server_api)
+
+    db_players = client_players.get_database("giocatori_subbuteo")
+    players_collection = db_players.get_collection("superba_players")
+
     _ = players_collection.find_one()
-    st.success("✅ Connessione al database giocatori riuscita.")
+    st.success("✅ Connessione a MongoDB Atlas (giocatori) riuscita.")
 
-    # Connessione al database dei tornei
-    MONGO_URI_TOURNAMENTS=st.secrets["MONGO_URI_TOURNAMENTS"]
-    tournaments_client = MongoClient(MONGO_URI_TOURNAMENTS, server_api=ServerApi('1'))
-    tournaments_db = tournaments_client.get_database("subbuteo_tournaments")
-    tournaments_collection = tournaments_db.get_collection("tournaments")
-    _ = tournaments_collection.find_one()
-    st.success("✅ Connessione al database tornei riuscita.")
-
-except KeyError as e:
-    st.error(f"❌ Errore: Manca la chiave di connessione '{e}'. Assicurati che 'MONGO_URI' e 'MONGO_URI_TOURNAMENTS' siano configurate in st.secrets.")
-    players_collection = None
-    tournaments_collection = None
 except Exception as e:
-    st.error(f"❌ Errore di connessione a MongoDB: {e}. Non sarà possibile procedere.")
-    players_collection = None
-    tournaments_collection = None
+    st.error(f"❌ Errore di connessione a MongoDB (giocatori): {e}")
 
+
+# -------------------------
+# Connessione a MongoDB Atlas - Tournaments
+# -------------------------
+
+try:
+    # Connessione Tournaments
+    MONGO_URI_TOURNEMENTS = st.secrets["MONGO_URI_TOURNEMENTS"]
+    client_tournaments = MongoClient(MONGO_URI_TOURNEMENTS, server_api=server_api)
+
+    db_tournaments = client_tournaments.get_database("subbuteo_tournament")
+    tournaments_collection = db_tournaments.get_collection("tournament")
+
+    _ = tournaments_collection.find_one()
+    st.success("✅ Connessione a MongoDB Atlas (tournaments) riuscita.")
+
+except Exception as e:
+    st.error(f"❌ Errore di connessione a MongoDB (tournaments): {e}")
 
 # --- Funzione di stile per None/nan invisibili e colorazione righe ---
 def combined_style(df):
@@ -560,14 +574,19 @@ def main():
                     st.rerun()
         girone_sel = st.session_state['girone_sel']
         giornata_sel = st.session_state['giornata_sel']
-        mostra_calendario_giornata(df, girone_sel, giornata_sel)
-        classifica = aggiorna_classifica(st.session_state['df_torneo'])
-        mostra_classifica_stilizzata(classifica, girone_sel)
+        
+        
         if 'df_torneo' in st.session_state and not st.session_state['df_torneo'].empty:
-            girone_sel = st.session_state.get('girone_sel', 'A')
-            giornata_sel = st.session_state.get('giornata_sel', 1)
+            # Mostra il calendario della giornata selezionata UNA sola volta
             mostra_calendario_giornata(st.session_state['df_torneo'], girone_sel, giornata_sel)
-            st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata, args=(girone_sel, giornata_sel))
+            st.button(
+                "💾 Salva Risultati Giornata",
+                on_click=salva_risultati_giornata,
+                args=(girone_sel, giornata_sel)
+            )
+            classifica = aggiorna_classifica(st.session_state['df_torneo'])
+            mostra_classifica_stilizzata(classifica, girone_sel)
+
         else:
             st.info("⚠️ Carica un torneo o creane uno nuovo per visualizzare il calendario.")
         if st.button("Esporta PDF"):
