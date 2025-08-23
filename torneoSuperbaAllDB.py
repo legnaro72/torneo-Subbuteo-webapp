@@ -18,7 +18,7 @@ from pymongo.server_api import ServerApi
 players_collection = None
 tournaments_collection = None
 
-st.info("Tentativo di connessione a MongoDB (giocatori)...")
+st.info("Tentativo di connessione a MongoDB ...")
 
 try:
     MONGO_URI = st.secrets["MONGO_URI"]  # 🔑 preso da .streamlit/secrets.toml
@@ -31,8 +31,8 @@ try:
     _ = players_collection.find_one()
     st.success("✅ Connessione a MongoDB Atlas (giocatori) riuscita.")
 
-    db_tournaments=client_tournaments.get_database("subbuteo_tournement")
-    tournaments_collection=db_tournaments.get_collection("tournement")
+    db_tournaments = client_tournaments.get_database("subbuteo_tournement")
+    tournaments_collection = db_tournaments.get_collection("tournement")
 
     _ = tournaments_collection.find_one()
 
