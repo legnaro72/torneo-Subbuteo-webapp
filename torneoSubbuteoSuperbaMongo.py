@@ -45,13 +45,13 @@ st.set_page_config(page_title="⚽ Torneo Subbuteo - Sistema Svizzero", layout="
 players_collection = None
 st.info("Tentativo di connessione a MongoDB...")
 try:
-    MONGO_URI = st.secrets["MONGO_URI"]
+    MONGO_URI=st.secrets["MONGO_URI"]
     server_api = ServerApi('1')
-    client = MongoClient(MONGO_URI, server_api=server_api)
+    client = MongoClient(MONGO_URI,server_api=server_api)
     
     # Ho corretto il nome del database e della collection
-    db = client.get_database("giocatori_subbuteo")
-    players_collection = db.get_collection("superba_players") 
+    db=client.get_database("giocatori_subbuteo")
+    players_collection=db.get_collection("superba_players") 
 
     _ = players_collection.find_one()
     st.success("✅ Connessione a MongoDB Atlas riuscita per la lettura dei giocatori.")
