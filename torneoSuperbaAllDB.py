@@ -43,8 +43,8 @@ try:
     MONGO_URI_TOURNAMENTS = st.secrets["MONGO_URI_TOURNAMENTS"]
     client_tournaments = MongoClient(MONGO_URI_TOURNAMENTS, server_api=server_api)
 
-    db_tournaments = client_tournaments.get_database("subbuteo_tournaments")
-    tournaments_collection = db_tournaments.get_collection("tournaments")
+    db_tournaments = client_tournaments.get_database("subbuteo_tournament")
+    tournaments_collection = db_tournaments.get_collection("tournament")
 
     _ = tournaments_collection.find_one()
     st.success("✅ Connessione a MongoDB Atlas (tournaments) riuscita.")
