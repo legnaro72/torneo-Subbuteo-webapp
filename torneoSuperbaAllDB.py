@@ -16,6 +16,8 @@ from pymongo.server_api import ServerApi
 # -------------------------
 
 players_collection = None
+tournaments_collection = None
+
 st.info("Tentativo di connessione a MongoDB (giocatori)...")
 
 try:
