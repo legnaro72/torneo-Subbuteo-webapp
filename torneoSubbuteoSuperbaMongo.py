@@ -7,6 +7,7 @@ from fpdf import FPDF
 from datetime import datetime
 import json
 import time
+import sys
 
 
 print("streamlit viene caricato da:", sys.modules["streamlit"].__file__)
