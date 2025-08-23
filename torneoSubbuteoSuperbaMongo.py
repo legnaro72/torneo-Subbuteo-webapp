@@ -9,6 +9,12 @@ import json
 import time
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
+import sys
+
+# Debug: mostra da dove vengono caricati i moduli
+print("streamlit:", getattr(sys.modules.get("streamlit"), "__file__", "??"))
+print("pymongo:", getattr(sys.modules.get("pymongo"), "__file__", "??"))
+print("nome file attuale:", __file__)
 
 # --- Funzione di stile per None/nan invisibili e colorazione righe ---
 def combined_style(df):
