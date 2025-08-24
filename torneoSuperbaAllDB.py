@@ -54,6 +54,7 @@ def init_mongo_connection(uri, db_name, collection_name):
         st.error(f"❌ Errore di connessione a {db_name}.{collection_name}: {e}")
         return None
 
+# Cattura esplicitamente il ritorno, senza stamparlo
 players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players")
 tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "subbuteo_tournament", "tournament")
 
