@@ -4,39 +4,37 @@ import random
 from fpdf import FPDF
 from datetime import datetime
 from pymongo import MongoClient
-from pymongo.server_api import ServerApi  # L'hai importata correttamente
+from pymongo.server_api import ServerApi
 from bson.objectid import ObjectId
 import json
 
-st.set_page_config(page_title="⚽Campionato/Torneo PreliminariSubbuteo", layout="wide")
+# Questo garantisce che 'df_torneo' esista sempre in session_state
+if 'df_torneo' not in st.session_state:
+    st.session_state['df_torneo'] = pd.DataFrame()
 
 # -------------------------
 # FUNZIONI CONNESSIONE MONGO
 # -------------------------
-# Con la decorazione @st.cache_resource, la connessione viene creata una sola volta
 @st.cache_resource
 def init_mongo_connection(uri, db_name, collection_name):
     try:
-        # Qui viene creata l'istanza di ServerApi, come richiesto
         client = MongoClient(uri, server_api=ServerApi('1'))
         db = client.get_database(db_name)
         col = db.get_collection(collection_name)
-        _ = col.find_one({})  # Test per la connessione
+        _ = col.find_one({})
         st.success(f"✅ Connessione a {db_name}.{collection_name} riuscita.")
         return col
     except Exception as e:
         st.error(f"❌ Errore di connessione a {db_name}.{collection_name}: {e}")
         return None
 
-# Connessioni
+# Connessioni (utilizzando st.cache_resource)
 players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players")
 tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "subbuteo_tournament", "tournament")
 
 # -------------------------
 # SESSION_STATE DEFAULT
 # -------------------------
-if 'df_torneo' not in st.session_state:
-    st.session_state['df_torneo'] = pd.DataFrame()
 if 'calendario_generato' not in st.session_state:
     st.session_state['calendario_generato'] = False
 if 'mostra_form_creazione' not in st.session_state:
@@ -49,6 +47,8 @@ if 'mostra_assegnazione' not in st.session_state:
     st.session_state['mostra_assegnazione'] = False
 if 'mostra_gironi_manuali' not in st.session_state:
     st.session_state['mostra_gironi_manuali'] = False
+
+st.set_page_config(page_title="⚽Campionato/Torneo PreliminariSubbuteo", layout="wide")
 
 # -------------------------
 # UTILITY
@@ -153,7 +153,7 @@ def aggiorna_torneo_su_db(tournament_id, df_torneo):
 # -------------------------
 def genera_calendario_from_list(gironi, tipo="Solo andata"):
     partite = []
-    for idx, girone in enumerate(gironi,1):
+    for idx, girone in enumerate(gironi, 1):
         gname = f"Girone {idx}"
         gr = girone[:]
         if len(gr)%2==1:
@@ -335,9 +335,6 @@ def main():
         </style>
     """, unsafe_allow_html=True)
     
-    # Non è necessario connettersi a MongoDB qui, la funzione `init_mongo_connection` lo fa
-    # e le collections sono già disponibili
-    
     df_master = carica_giocatori_da_db()
     
     if players_collection is None and tournaments_collection is None:
@@ -356,10 +353,13 @@ def main():
                     st.session_state['tournament_id'] = tornei_map[nome_sel]
                     st.session_state['nome_torneo'] = nome_sel
                     torneo_data = carica_torneo_da_db(st.session_state['tournament_id'])
-                    if torneo_data:
+                    # Aggiungi questa verifica per assicurare che il caricamento sia andato a buon fine
+                    if torneo_data and 'calendario' in torneo_data:
                         st.session_state['calendario_generato'] = True
                         st.success("✅ Torneo caricato con successo.")
                         st.rerun()
+                    else:
+                        st.error("❌ Errore durante il caricamento del torneo. Riprova.")
             else:
                 st.info("Nessun torneo salvato trovato su MongoDB.")
         
@@ -455,12 +455,20 @@ def main():
                         st.success("✅ Calendario generato e salvato su MongoDB!")
                         st.rerun()
     else:
+        # Aggiungi questa verifica all'inizio del blocco
+        if st.session_state['df_torneo'].empty:
+            st.error("❌ Il DataFrame del torneo è vuoto. Ritorna alla schermata iniziale per caricare o creare un nuovo torneo.")
+            if st.button("🔙 Torna alla schermata iniziale"):
+                st.session_state['calendario_generato'] = False
+                st.session_state.pop('df_torneo', None)
+                st.rerun()
+            return
+
         # Codice per il display del torneo in corso
         df = st.session_state['df_torneo']
         gironi = sorted(df['Girone'].dropna().unique().tolist())
         giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
         
-        # Sostituisci i bottoni di navigazione con il SelectBox
         st.subheader("Navigazione Giornate")
         col_giornata, col_girone = st.columns(2)
         with col_girone:
