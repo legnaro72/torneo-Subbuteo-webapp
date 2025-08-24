@@ -296,8 +296,14 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
     if df_classifica is None or df_classifica.empty:
         st.info("⚽ Nessuna partita validata")
         #return None
+
+    # ✅ Controllo che esista la colonna 'Girone'
+    if 'Girone' not in df_classifica.columns:
+        st.warning("⚠️ Classifica non valida: manca la colonna 'Girone'")
+
+    
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
-    df_girone_display = df_girone.fillna('-')
+    #df_girone_display = df_girone.fillna('-')
 
     # Usa lo Styler -> HTML, non st.dataframe
     styled = combined_style(df_girone_display)
