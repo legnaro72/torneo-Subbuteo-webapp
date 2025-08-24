@@ -145,12 +145,22 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
         if torneo_data and 'calendario' in torneo_data:
             df_torneo = pd.DataFrame(torneo_data['calendario'])
             df_torneo['Valida'] = df_torneo['Valida'].astype(bool)
-            df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').astype('Int64')
-            df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').astype('Int64')
             
-            # --- MODIFICA AGGIUNTA QUI ---
-            df_torneo = df_torneo.fillna('')
-            # ---------------------------
+            # ----------------------------------------------------
+            # MODIFICA: Gestione robusta dei valori GolCasa e GolOspite
+            #
+            # 'errors=coerce' trasforma i valori non numerici (incluso None) in NaN.
+            # .fillna(0) sostituisce tutti i NaN con 0.
+            # .astype('Int64') converte correttamente in intero a 64 bit.
+            #
+            # ----------------------------------------------------
+            df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').fillna(0).astype('Int64')
+            df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').fillna(0).astype('Int64')
+            
+            # ---------------------------------------------------------------------------------------------------------------------------------------
+            # NOTA: La riga 'df_torneo = df_torneo.fillna('')' causava il problema e per questo è stata rimossa, in quanto non è necessaria.
+            # ---------------------------------------------------------------------------------------------------------------------------------------
+
             df_torneo = normalizza_colonne_gol(df_torneo)
             st.session_state['df_torneo'] = df_torneo
             
@@ -264,11 +274,8 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
 
         col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
         
-        # --- MODIFICA AGGIUNTA QUI ---
-        # Formatta i nomi per non mostrare "None"
-        casa_display = row['Casa'].replace("None", "").strip()
-        ospite_display = row['Ospite'].replace("None", "").strip()
-        # ---------------------------
+        casa_display = str(row['Casa']).replace("None", "").strip()
+        ospite_display = str(row['Ospite']).replace("None", "").strip()
 
         with col1:
             st.markdown(f"**{casa_display}** vs **{ospite_display}**")
@@ -548,7 +555,6 @@ def main():
                     st.rerun()
 
             mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
-            #st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata, args=(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel']))
             if st.button("💾 Salva Risultati Giornata", key="save_giornata_btn"):
                 salva_risultati_giornata(
                     tournaments_collection,
