@@ -75,17 +75,17 @@ def combined_style(df):
     styled_df = styled_df.map(hide_none)
     return styled_df
 
-def navigation_controls(label, value, min_val, max_val, key_prefix=""):
+def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
     col1, col2, col3 = st.columns([1, 3, 1])
     with col1:
         if st.button("◀️", key=f"{key_prefix}_prev", use_container_width=True):
-            st.session_state[value] = max(min_val, st.session_state[value] - 1)
+            st.session_state[value_key] = max(min_val, st.session_state[value_key] - 1)
             st.rerun()
     with col2:
-        st.markdown(f"<div style='text-align:center; font-weight:bold;'>{label} {st.session_state[value]}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align:center; font-weight:bold;'>{label} {st.session_state[value_key]}</div>", unsafe_allow_html=True)
     with col3:
         if st.button("▶️", key=f"{key_prefix}_next", use_container_width=True):
-            st.session_state[value] = min(max_val, st.session_state[value] + 1)
+            st.session_state[value_key] = min(max_val, st.session_state[value_key] + 1)
             st.rerun()
 
 # -------------------------
@@ -526,19 +526,25 @@ def main():
         gironi = sorted(df['Girone'].dropna().unique().tolist())
         giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
 
-        st.subheader("Navigazione Giornate")
-        col_giornata, col_girone = st.columns(2)
+        st.subheader("Navigazione Calendario")
+        
+        col_girone, col_giornata = st.columns(2)
         with col_girone:
             nuovo_girone = st.selectbox("Seleziona Girone", gironi, index=gironi.index(st.session_state['girone_sel']))
             if nuovo_girone != st.session_state['girone_sel']:
                 st.session_state['girone_sel'] = nuovo_girone
+                st.session_state['giornata_sel'] = 1
                 st.rerun()
 
         with col_giornata:
-            nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=giornate_correnti.index(st.session_state['giornata_sel']))
-            if nuova_giornata != st.session_state['giornata_sel']:
-                st.session_state['giornata_sel'] = nuova_giornata
-                st.rerun()
+            st.session_state['usa_bottoni'] = st.checkbox("Usa bottoni", value=st.session_state.get('usa_bottoni', False), key='usa_bottoni_checkbox')
+            if st.session_state['usa_bottoni']:
+                navigation_buttons("Giornata", 'giornata_sel', 1, len(giornate_correnti))
+            else:
+                nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=giornate_correnti.index(st.session_state['giornata_sel']))
+                if nuova_giornata != st.session_state['giornata_sel']:
+                    st.session_state['giornata_sel'] = nuova_giornata
+                    st.rerun()
 
         mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
         st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata, args=(st.session_state['girone_sel'], st.session_state['giornata_sel']))
