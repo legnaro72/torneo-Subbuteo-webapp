@@ -59,10 +59,10 @@ def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
         col = db.get_collection(collection_name)
         _ = col.find_one({})
         if show_ok:
-            st.info(f"Connessione a {db_name}.{collection_name} ok.")
+            st.toast(f"Connessione a {db_name}.{collection_name} ok.")
         return col
     except Exception as e:
-        st.error(f"❌ Errore di connessione a {db_name}.{collection_name}: {e}")
+        st.toast(f"❌ Errore di connessione a {db_name}.{collection_name}: {e}")
         return None
 
 # -------------------------
@@ -307,15 +307,15 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
     st.write("DEBUG contenuto classifica:", df_classifica.head())
 
     if df_classifica is None:
-        st.info("⚽ Nessuna classifica disponibile")
+        st.toast("⚽ Nessuna classifica disponibile")
         return
 
     if df_classifica.empty:
-        st.info("⚽ Nessuna partita validata")
+        st.toast("⚽ Nessuna partita validata")
         return
 
     if 'Girone' not in df_classifica.columns:
-        st.warning("⚠️ Classifica non valida: manca la colonna 'Girone'")
+        st.toast("⚠️ Classifica non valida: manca la colonna 'Girone'")
         return
 
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
@@ -488,7 +488,7 @@ def main():
                     )
                     st.dataframe(df_filtrato_show.reset_index(drop=True), use_container_width=True)
                 else:
-                    st.info("🎉 Nessuna partita da giocare trovata per questo giocatore.")
+                    st.toast("🎉 Nessuna partita da giocare trovata per questo giocatore.")
 
         elif st.session_state['filtro_attivo'] == 'Girone':
             st.sidebar.markdown("#### Filtra per Girone")
@@ -513,7 +513,7 @@ def main():
                 )
                 st.dataframe(df_filtrato_show.reset_index(drop=True), use_container_width=True)
             else:
-                st.info("🎉 Tutte le partite di questo girone sono state giocate.")
+                st.toast("🎉 Tutte le partite di questo girone sono state giocate.")
 
         st.markdown("---")
         if st.session_state['filtro_attivo'] == 'Nessuno':
@@ -576,7 +576,7 @@ def main():
                     else:
                         st.error("❌ Errore durante il caricamento del torneo. Riprova.")
             else:
-                st.info("Nessun torneo salvato trovato su MongoDB.")
+                st.toast("Nessun torneo salvato trovato su MongoDB.")
 
         with col2:
             st.markdown("---")
@@ -693,11 +693,11 @@ def main():
                             st.toast("Gironi manuali assegnati ✅")
                             st.rerun()
                         else:
-                            st.error("❌ Assicurati di assegnare tutti i giocatori e che ogni giocatore sia in un solo girone.")
+                            st.toast("❌ Assicurati di assegnare tutti i giocatori e che ogni giocatore sia in un solo girone.")
 
                 if st.button("Genera Calendario"):
                     if modalita_gironi == "Popola Gironi Manualmente" and not st.session_state.get('gironi_manuali_completi', False):
-                        st.error("❌ Per generare il calendario manualmente, clicca prima su 'Valida e Assegna Gironi Manuali'.")
+                        st.toast("❌ Per generare il calendario manualmente, clicca prima su 'Valida e Assegna Gironi Manuali'.")
                         return
 
                     giocatori_formattati = [
