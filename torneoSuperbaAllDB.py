@@ -8,26 +8,69 @@ from pymongo.server_api import ServerApi
 from bson.objectid import ObjectId
 import json
 
-st.set_page_config(page_title="⚽ Torneo Subbuteo", layout="wide")
+# Questo garantisce che 'df_torneo' esista sempre in session_state
+if 'df_torneo' not in st.session_state:
+    st.session_state['df_torneo'] = pd.DataFrame()
+    
+# Variabili globali per le connessioni ai database
+players_client = None
+tournaments_client = None
+players_collection = None
+tournaments_collection = None
+players_db = None
+tournaments_db = None
+
+st.title("Test connessione MongoDB")
+
+# Debug: mostra chiavi disponibili nei secrets
+st.write("Chiavi disponibili nei secrets:", list(st.secrets.keys()))
+
+st.set_page_config(page_title="⚽Campionato/Torneo PreliminariSubbuteo", layout="wide")
 
 # -------------------------
-# FUNZIONI CONNESSIONE MONGO
+# Connessione a MongoDB Atlas - Giocatori
 # -------------------------
-@st.cache_resource
-def init_mongo_connection(uri, db_name, collection_name):
-    try:
-        client = MongoClient(uri, server_api=ServerApi('1'))
-        db = client.get_database(db_name)
-        col = db.get_collection(collection_name)
-        _ = col.find_one({})  # Testa la connessione
-        st.success(f"✅ Connessione a {db_name}.{collection_name} riuscita.")
-        return col
-    except Exception as e:
-        st.error(f"❌ Errore di connessione a {db_name}.{collection_name}: {e}")
-        return None
 
-players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players")
-tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "subbuteo_tournament", "superba_tournament")
+# Variabili globali per le connessioni ai database
+players_client = None
+tournaments_client = None
+players_collection = None
+tournaments_collection = None
+players_db = None
+tournaments_db = None
+
+try:
+    # Connessione Giocatori
+    MONGO_URI = st.secrets["MONGO_URI"]
+    client_players = MongoClient(MONGO_URI, server_api=server_api)
+
+    db_players = client_players.get_database("giocatori_subbuteo")
+    players_collection = db_players.get_collection("superba_players")
+
+    _ = players_collection.find_one()
+    st.success("✅ Connessione a MongoDB Atlas (giocatori) riuscita.")
+
+except Exception as e:
+    st.error(f"❌ Errore di connessione a MongoDB (giocatori): {e}")
+
+
+# -------------------------
+# Connessione a MongoDB Atlas - Tournaments
+# -------------------------
+
+try:
+    # Connessione Tournaments
+    MONGO_URI_TOURNEMENTS = st.secrets["MONGO_URI_TOURNEMENTS"]
+    client_tournaments = MongoClient(MONGO_URI_TOURNEMENTS, server_api=server_api)
+
+    db_tournaments = client_tournaments.get_database("subbuteo_tournament")
+    tournaments_collection = db_tournaments.get_collection("tournament")
+
+    _ = tournaments_collection.find_one()
+    st.success("✅ Connessione a MongoDB Atlas (tournaments) riuscita.")
+
+except Exception as e:
+    st.error(f"❌ Errore di connessione a MongoDB (tournaments): {e}")
 
 # -------------------------
 # SESSION_STATE DEFAULT
