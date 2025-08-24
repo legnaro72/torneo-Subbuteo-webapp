@@ -150,11 +150,9 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
             df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').fillna(0).astype('Int64')
             df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').fillna(0).astype('Int64')
             
-            # --- AGGIUNTA QUI ---
             # Pulisci i nomi dei giocatori/squadre dalla stringa "None"
             df_torneo['Casa'] = df_torneo['Casa'].astype(str).str.replace('None', '', regex=False)
             df_torneo['Ospite'] = df_torneo['Ospite'].astype(str).str.replace('None', '', regex=False)
-            # ---------------------------
 
             df_torneo = normalizza_colonne_gol(df_torneo)
             st.session_state['df_torneo'] = df_torneo
@@ -198,12 +196,12 @@ def genera_calendario_from_list(gironi, tipo="Solo andata"):
                 if casa != "Riposo" and ospite != "Riposo":
                     partite.append({
                         "Girone": gname, "Giornata": giornata + 1,
-                        "Casa": casa, "Ospite": ospite, "GolCasa": None, "GolOspite": None, "Valida": False
+                        "Casa": casa, "Ospite": ospite, "GolCasa": 0, "GolOspite": 0, "Valida": False
                     })
                     if tipo == "Andata e ritorno":
                         partite.append({
                             "Girone": gname, "Giornata": giornata + 1 + n - 1,
-                            "Casa": ospite, "Ospite": casa, "GolCasa": None, "GolOspite": None, "Valida": False
+                            "Casa": ospite, "Ospite": casa, "GolCasa": 0, "GolOspite": 0, "Valida": False
                         })
             teams = [teams[0]] + [teams[-1]] + teams[1:-1]
     return pd.DataFrame(partite)
