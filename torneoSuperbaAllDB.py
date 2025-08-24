@@ -293,6 +293,10 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     st.rerun()
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
+    # DEBUG
+    st.write("DEBUG classifica:", type(df_classifica))
+    st.write(df_classifica)
+
     if df_classifica is None:
         st.info("⚽ Nessuna classifica disponibile")
         return
@@ -308,10 +312,6 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
     df_girone_display = df_girone.fillna('-')
 
-    st.write("DEBUG classifica:", type(classifica))
-    st.write(classifica)
-
-    # Usa lo Styler -> HTML, non st.dataframe
     styled = combined_style(df_girone_display)
     st.markdown(styled.to_html(), unsafe_allow_html=True)
 
