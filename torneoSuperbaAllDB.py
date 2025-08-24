@@ -119,6 +119,10 @@ def carica_tornei_da_db(tournaments_collection):
         st.error(f"❌ Errore caricamento tornei: {e}")
         return []
 
+def normalizza_colonne_gol(df):
+    for col in ['GolCasa', 'GolOspite']:
+        df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
+    return df
 
 
 def salva_torneo_su_db(tournaments_collection, df_torneo, nome_torneo):
@@ -147,8 +151,9 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
             # --- MODIFICA AGGIUNTA QUI ---
             #df_torneo = df_torneo.fillna('-')
             # ---------------------------
-            
+            df_torneo = normalizza_colonne_gol(df_torneo)
             st.session_state['df_torneo'] = df_torneo
+            
         return torneo_data
     except Exception as e:
         st.error(f"❌ Errore caricamento torneo: {e}")
