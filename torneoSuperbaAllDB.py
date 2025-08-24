@@ -302,9 +302,6 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     st.rerun()
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
-    # DEBUG: mostra tipo e prime righe
-    st.write("DEBUG tipo classifica:", type(df_classifica))
-    st.write("DEBUG contenuto classifica:", df_classifica.head())
 
     if df_classifica is None:
         st.info("⚽ Nessuna classifica disponibile")
