@@ -119,21 +119,7 @@ def carica_tornei_da_db(tournaments_collection):
         st.error(f"❌ Errore caricamento tornei: {e}")
         return []
 
-def carica_torneo_da_db(tournaments_collection, tournament_id):
-    if tournaments_collection is None:
-        return None
-    try:
-        torneo_data = tournaments_collection.find_one({"_id": ObjectId(tournament_id)})
-        if torneo_data and 'calendario' in torneo_data:
-            df_torneo = pd.DataFrame(torneo_data['calendario'])
-            df_torneo['Valida'] = df_torneo['Valida'].astype(bool)
-            df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').astype('Int64')
-            df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').astype('Int64')
-            st.session_state['df_torneo'] = df_torneo
-        return torneo_data
-    except Exception as e:
-        st.error(f"❌ Errore caricamento torneo: {e}")
-        return None
+
 
 def salva_torneo_su_db(tournaments_collection, df_torneo, nome_torneo):
     if tournaments_collection is None:
@@ -146,6 +132,28 @@ def salva_torneo_su_db(tournaments_collection, df_torneo, nome_torneo):
     except Exception as e:
         st.error(f"❌ Errore salvataggio torneo: {e}")
         return None
+
+def carica_torneo_da_db(tournaments_collection, tournament_id):
+    if tournaments_collection is None:
+        return None
+    try:
+        torneo_data = tournaments_collection.find_one({"_id": ObjectId(tournament_id)})
+        if torneo_data and 'calendario' in torneo_data:
+            df_torneo = pd.DataFrame(torneo_data['calendario'])
+            df_torneo['Valida'] = df_torneo['Valida'].astype(bool)
+            df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').astype('Int64')
+            df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').astype('Int64')
+            
+            # --- MODIFICA AGGIUNTA QUI ---
+            df_torneo = df_torneo.fillna('-')
+            # ---------------------------
+            
+            st.session_state['df_torneo'] = df_torneo
+        return torneo_data
+    except Exception as e:
+        st.error(f"❌ Errore caricamento torneo: {e}")
+        return None
+
 
 def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
     if tournaments_collection is None:
