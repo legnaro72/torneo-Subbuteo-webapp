@@ -508,8 +508,13 @@ def main():
                     st.rerun()
 
             mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
-            st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata, args=(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel']))
+            #st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata, args=(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel']))
+            if st.button("💾 Salva Risultati Giornata"):
+                salva_risultati_giornata(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel'])
+                # Qui puoi mostrare un messaggio discreto senza generare None
+                st.toast("Risultati salvati ✅")
 
+            
             st.markdown("---")
             st.subheader(f"Classifica {st.session_state['girone_sel']}")
             classifica = aggiorna_classifica(df)
