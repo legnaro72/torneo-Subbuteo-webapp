@@ -10,7 +10,7 @@ import json
 
 # -------------------------------------------------
 # CONFIG PAGINA (deve essere la prima chiamata st.*)
-# -------------------------------------------------
+# ---------------------------------
 st.set_page_config(page_title="⚽Campionato/Torneo PreliminariSubbuteo", layout="wide")
 
 # -------------------------
@@ -129,7 +129,6 @@ def salva_torneo_su_db(tournaments_collection, df_torneo, nome_torneo):
     if tournaments_collection is None:
         return None
     try:
-        # Sostituisci i NaN e i None con stringhe vuote per evitare problemi di visualizzazione
         df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
         data = {"nome_torneo": nome_torneo, "calendario": df_torneo_pulito.to_dict('records')}
         result = tournaments_collection.insert_one(data)
@@ -150,7 +149,6 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
             df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').astype('Int64')
             
             # --- MODIFICA AGGIUNTA QUI ---
-            # Riempi i NaN con stringhe vuote per evitare la visualizzazione di None
             df_torneo = df_torneo.fillna('')
             # ---------------------------
             df_torneo = normalizza_colonne_gol(df_torneo)
@@ -265,8 +263,15 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
 
 
         col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
+        
+        # --- MODIFICA AGGIUNTA QUI ---
+        # Formatta i nomi per non mostrare "None"
+        casa_display = row['Casa'].replace("None", "").strip()
+        ospite_display = row['Ospite'].replace("None", "").strip()
+        # ---------------------------
+
         with col1:
-            st.markdown(f"**{row['Casa']}** vs **{row['Ospite']}**")
+            st.markdown(f"**{casa_display}** vs **{ospite_display}**")
         with col2:
             st.number_input(
                 "", min_value=0, max_value=20, key=f"golcasa_{idx}", value=gol_casa,
@@ -519,14 +524,7 @@ def main():
         if st.session_state['filtro_attivo'] == 'Nessuno':
             st.subheader("Navigazione Calendario")
             gironi = sorted(df['Girone'].dropna().unique().tolist())
-            if not gironi:
-                st.error("Nessun girone trovato. Genera un nuovo torneo.")
-                return
-
             giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
-            if not giornate_correnti:
-                st.error("Nessuna giornata trovata per questo girone.")
-                return
 
             nuovo_girone = st.selectbox("Seleziona Girone", gironi, index=gironi.index(st.session_state['girone_sel']))
             if nuovo_girone != st.session_state['girone_sel']:
@@ -550,6 +548,7 @@ def main():
                     st.rerun()
 
             mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
+            #st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata, args=(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel']))
             if st.button("💾 Salva Risultati Giornata", key="save_giornata_btn"):
                 salva_risultati_giornata(
                     tournaments_collection,
