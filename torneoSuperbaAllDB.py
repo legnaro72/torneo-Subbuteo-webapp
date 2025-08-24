@@ -346,6 +346,33 @@ def main():
         st.error("❌ Impossibile avviare l'applicazione. La connessione a MongoDB non è disponibile.")
         return
 
+    # Sidebar
+    if st.session_state.get('calendario_generato', False):
+        st.sidebar.subheader("Opzioni Torneo")
+        df = st.session_state['df_torneo']
+        classifica = aggiorna_classifica(df)
+        if classifica is not None:
+            st.sidebar.download_button(
+                label="📄 Esporta in PDF",
+                data=esporta_pdf(df, classifica, st.session_state['nome_torneo']),
+                file_name=f"torneo_{st.session_state['nome_torneo']}.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+        st.sidebar.button("🔙 Torna alla schermata iniziale", key='back_to_start_sidebar', use_container_width=True)
+        if st.session_state.get('back_to_start_sidebar'):
+            st.session_state['calendario_generato'] = False
+            st.session_state['mostra_form_creazione'] = False
+            st.session_state['mostra_assegnazione_squadre'] = False
+            st.session_state['mostra_gironi'] = False
+            st.session_state['gironi_manuali_completi'] = False
+            st.session_state.pop('df_torneo', None)
+            st.session_state.pop('tournament_id', None)
+            st.session_state.pop('gioc_info', None)
+            st.session_state.pop('giocatori_selezionati_definitivi', None)
+            st.rerun()
+
+
     if not st.session_state.get('calendario_generato', False):
         st.subheader("📁 Carica un torneo o crea uno nuovo")
         col1, col2 = st.columns(2)
@@ -509,17 +536,6 @@ def main():
     else:
         if st.session_state['df_torneo'].empty:
             st.error("❌ Il DataFrame del torneo è vuoto. Ritorna alla schermata iniziale per caricare o creare un nuovo torneo.")
-            if st.button("🔙 Torna alla schermata iniziale"):
-                st.session_state['calendario_generato'] = False
-                st.session_state['mostra_form_creazione'] = False
-                st.session_state['mostra_assegnazione_squadre'] = False
-                st.session_state['mostra_gironi'] = False
-                st.session_state['gironi_manuali_completi'] = False
-                st.session_state.pop('df_torneo', None)
-                st.session_state.pop('tournament_id', None)
-                st.session_state.pop('gioc_info', None)
-                st.session_state.pop('giocatori_selezionati_definitivi', None)
-                st.rerun()
             return
 
         df = st.session_state['df_torneo']
@@ -528,23 +544,22 @@ def main():
 
         st.subheader("Navigazione Calendario")
         
-        col_girone, col_giornata = st.columns(2)
-        with col_girone:
-            nuovo_girone = st.selectbox("Seleziona Girone", gironi, index=gironi.index(st.session_state['girone_sel']))
-            if nuovo_girone != st.session_state['girone_sel']:
-                st.session_state['girone_sel'] = nuovo_girone
-                st.session_state['giornata_sel'] = 1
-                st.rerun()
+        # Selezione del girone sulla prima riga
+        nuovo_girone = st.selectbox("Seleziona Girone", gironi, index=gironi.index(st.session_state['girone_sel']))
+        if nuovo_girone != st.session_state['girone_sel']:
+            st.session_state['girone_sel'] = nuovo_girone
+            st.session_state['giornata_sel'] = 1
+            st.rerun()
 
-        with col_giornata:
-            st.session_state['usa_bottoni'] = st.checkbox("Usa bottoni", value=st.session_state.get('usa_bottoni', False), key='usa_bottoni_checkbox')
-            if st.session_state['usa_bottoni']:
-                navigation_buttons("Giornata", 'giornata_sel', 1, len(giornate_correnti))
-            else:
-                nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=giornate_correnti.index(st.session_state['giornata_sel']))
-                if nuova_giornata != st.session_state['giornata_sel']:
-                    st.session_state['giornata_sel'] = nuova_giornata
-                    st.rerun()
+        # Selezione della giornata sulla seconda riga
+        st.session_state['usa_bottoni'] = st.checkbox("Usa bottoni per la giornata", value=st.session_state.get('usa_bottoni', False), key='usa_bottoni_checkbox')
+        if st.session_state['usa_bottoni']:
+            navigation_buttons("Giornata", 'giornata_sel', 1, len(giornate_correnti))
+        else:
+            nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=giornate_correnti.index(st.session_state['giornata_sel']))
+            if nuova_giornata != st.session_state['giornata_sel']:
+                st.session_state['giornata_sel'] = nuova_giornata
+                st.rerun()
 
         mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
         st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata, args=(st.session_state['girone_sel'], st.session_state['giornata_sel']))
@@ -553,28 +568,3 @@ def main():
         st.subheader(f"Classifica {st.session_state['girone_sel']}")
         classifica = aggiorna_classifica(df)
         mostra_classifica_stilizzata(classifica, st.session_state['girone_sel'])
-
-        col_pdf, col_back = st.columns(2)
-        with col_pdf:
-            if classifica is not None:
-                st.download_button(
-                    label="📄 Esporta in PDF",
-                    data=esporta_pdf(df, classifica, st.session_state['nome_torneo']),
-                    file_name=f"torneo_{st.session_state['nome_torneo']}.pdf",
-                    mime="application/pdf"
-                )
-        with col_back:
-            if st.button("🔙 Torna alla schermata iniziale"):
-                st.session_state['calendario_generato'] = False
-                st.session_state['mostra_form_creazione'] = False
-                st.session_state['mostra_assegnazione_squadre'] = False
-                st.session_state['mostra_gironi'] = False
-                st.session_state['gironi_manuali_completi'] = False
-                st.session_state.pop('df_torneo', None)
-                st.session_state.pop('tournament_id', None)
-                st.session_state.pop('gioc_info', None)
-                st.session_state.pop('giocatori_selezionati_definitivi', None)
-                st.rerun()
-
-if __name__ == "__main__":
-    main()
