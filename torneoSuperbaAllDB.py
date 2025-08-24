@@ -145,7 +145,7 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
             df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').astype('Int64')
             
             # --- MODIFICA AGGIUNTA QUI ---
-            df_torneo = df_torneo.fillna('-')
+            #df_torneo = df_torneo.fillna('-')
             # ---------------------------
             
             st.session_state['df_torneo'] = df_torneo
@@ -235,12 +235,18 @@ def aggiorna_classifica(df):
 # FUNZIONI DI VISUALIZZAZIONE & EVENTI
 # -------------------------
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
+    def _to_int_safe(v):
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return 0
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         return
     for idx, row in df_giornata.iterrows():
-        gol_casa = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
-        gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
+        gol_casa = _to_int_safe(row['GolCasa'])
+        gol_ospite = _to_int_safe(row['GolOspite'])
+
 
         col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
         with col1:
@@ -286,9 +292,12 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
         st.info("⚽ Nessuna partita validata")
         return
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
-    df_girone_display = df_girone.copy()
-    df_girone_display = df_girone_display.fillna('-')
-    st.dataframe(combined_style(df_girone_display), use_container_width=True)
+    df_girone_display = df_girone.fillna('-')
+
+    # Usa lo Styler -> HTML, non st.dataframe
+    styled = combined_style(df_girone_display)
+    st.markdown(styled.to_html(), unsafe_allow_html=True)
+
 
 def esporta_pdf(df_torneo, df_classifica, nome_torneo):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
@@ -509,10 +518,12 @@ def main():
 
             mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
             #st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata, args=(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel']))
-            if st.button("💾 Salva Risultati Giornata"):
-                salva_risultati_giornata(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel'])
-                # Qui puoi mostrare un messaggio discreto senza generare None
-                st.toast("Risultati salvati ✅")
+            if st.button("💾 Salva Risultati Giornata", key="save_giornata_btn"):
+                salva_risultati_giornata(
+                    tournaments_collection,
+                    st.session_state['girone_sel'],
+                    st.session_state['giornata_sel']
+                )
 
             
             st.markdown("---")
