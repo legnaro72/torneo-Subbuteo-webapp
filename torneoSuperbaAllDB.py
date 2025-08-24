@@ -329,7 +329,10 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
     return pdf_bytes
 
 def main():
-    st.title("🏆 Torneo Superba - Gestione Gironi")
+    if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
+        st.title(f"🏆 {st.session_state['nome_torneo']}")
+    else:
+        st.title("🏆 Torneo Superba - Gestione Gironi")
     st.markdown("""
         <style>
         ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
@@ -466,7 +469,7 @@ def main():
                         )
                         gironi_manuali[f"Girone {i+1}"] = giocatori_selezionati
 
-                    if st.button("Assegna Gironi Manuali"):
+                    if st.button("Valida e Assegna Gironi Manuali"):
                         tutti_i_giocatori_assegnati = sum(gironi_manuali.values(), [])
                         if sorted(tutti_i_giocatori_assegnati) == sorted(st.session_state['giocatori_selezionati_definitivi']):
                             st.session_state['gironi_manuali'] = gironi_manuali
@@ -478,7 +481,7 @@ def main():
                 
                 if st.button("Genera Calendario"):
                     if modalita_gironi == "Popola Gironi Manualmente" and not st.session_state.get('gironi_manuali_completi', False):
-                        st.error("❌ Per generare il calendario manualmente, devi prima cliccare su 'Assegna Gironi Manuali'.")
+                        st.error("❌ Per generare il calendario manualmente, devi prima cliccare su 'Valida e Assegna Gironi Manuali'.")
                         return
 
                     giocatori_formattati = [
