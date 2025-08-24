@@ -4,73 +4,33 @@ import random
 from fpdf import FPDF
 from datetime import datetime
 from pymongo import MongoClient
-from pymongo.server_api import ServerApi
+from pymongo.server_api import ServerApi  # L'hai importata correttamente
 from bson.objectid import ObjectId
 import json
-
-# Questo garantisce che 'df_torneo' esista sempre in session_state
-if 'df_torneo' not in st.session_state:
-    st.session_state['df_torneo'] = pd.DataFrame()
-    
-# Variabili globali per le connessioni ai database
-players_client = None
-tournaments_client = None
-players_collection = None
-tournaments_collection = None
-players_db = None
-tournaments_db = None
-
-st.title("Test connessione MongoDB")
-
-# Debug: mostra chiavi disponibili nei secrets
-st.write("Chiavi disponibili nei secrets:", list(st.secrets.keys()))
 
 st.set_page_config(page_title="⚽Campionato/Torneo PreliminariSubbuteo", layout="wide")
 
 # -------------------------
-# Connessione a MongoDB Atlas - Giocatori
+# FUNZIONI CONNESSIONE MONGO
 # -------------------------
+# Con la decorazione @st.cache_resource, la connessione viene creata una sola volta
+@st.cache_resource
+def init_mongo_connection(uri, db_name, collection_name):
+    try:
+        # Qui viene creata l'istanza di ServerApi, come richiesto
+        client = MongoClient(uri, server_api=ServerApi('1'))
+        db = client.get_database(db_name)
+        col = db.get_collection(collection_name)
+        _ = col.find_one({})  # Test per la connessione
+        st.success(f"✅ Connessione a {db_name}.{collection_name} riuscita.")
+        return col
+    except Exception as e:
+        st.error(f"❌ Errore di connessione a {db_name}.{collection_name}: {e}")
+        return None
 
-# Variabili globali per le connessioni ai database
-players_client = None
-tournaments_client = None
-players_collection = None
-tournaments_collection = None
-players_db = None
-tournaments_db = None
-
-try:
-    # Connessione Giocatori
-    MONGO_URI = st.secrets["MONGO_URI"]
-    client_players = MongoClient(MONGO_URI, server_api=server_api)
-
-    db_players = client_players.get_database("giocatori_subbuteo")
-    players_collection = db_players.get_collection("superba_players")
-
-    _ = players_collection.find_one()
-    st.success("✅ Connessione a MongoDB Atlas (giocatori) riuscita.")
-
-except Exception as e:
-    st.error(f"❌ Errore di connessione a MongoDB (giocatori): {e}")
-
-
-# -------------------------
-# Connessione a MongoDB Atlas - Tournaments
-# -------------------------
-
-try:
-    # Connessione Tournaments
-    MONGO_URI_TOURNEMENTS = st.secrets["MONGO_URI_TOURNEMENTS"]
-    client_tournaments = MongoClient(MONGO_URI_TOURNEMENTS, server_api=server_api)
-
-    db_tournaments = client_tournaments.get_database("subbuteo_tournament")
-    tournaments_collection = db_tournaments.get_collection("tournament")
-
-    _ = tournaments_collection.find_one()
-    st.success("✅ Connessione a MongoDB Atlas (tournaments) riuscita.")
-
-except Exception as e:
-    st.error(f"❌ Errore di connessione a MongoDB (tournaments): {e}")
+# Connessioni
+players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players")
+tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "subbuteo_tournament", "tournament")
 
 # -------------------------
 # SESSION_STATE DEFAULT
@@ -166,7 +126,6 @@ def salva_torneo_su_db(df_torneo, nome_torneo):
     if tournaments_collection is None:
         return None
     try:
-        # Pulisce i dati prima di salvare
         df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
         data = {"nome_torneo": nome_torneo, "calendario": df_torneo_pulito.to_dict('records')}
         result = tournaments_collection.insert_one(data)
@@ -179,7 +138,6 @@ def aggiorna_torneo_su_db(tournament_id, df_torneo):
     if tournaments_collection is None:
         return False
     try:
-        # Pulisce i dati prima di aggiornare
         df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
         tournaments_collection.update_one(
             {"_id": ObjectId(tournament_id)},
@@ -288,7 +246,6 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
 
 def esporta_pdf(df_torneo, df_classifica, nome_torneo):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
-    # ... (Il resto della logica per la generazione del PDF rimane identica) ...
     pdf.set_auto_page_break(auto=False)
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
@@ -377,6 +334,9 @@ def main():
         .big-title { text-align: center; font-size: clamp(16px, 4vw, 36px); font-weight: bold; margin-top: 10px; margin-bottom: 20px; color: red; word-wrap: break-word; white-space: normal; }
         </style>
     """, unsafe_allow_html=True)
+    
+    # Non è necessario connettersi a MongoDB qui, la funzione `init_mongo_connection` lo fa
+    # e le collections sono già disponibili
     
     df_master = carica_giocatori_da_db()
     
