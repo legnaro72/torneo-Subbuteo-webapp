@@ -8,13 +8,9 @@ from pymongo.server_api import ServerApi
 from bson.objectid import ObjectId
 import json
 
-# Questo garantisce che 'df_torneo' esista sempre in session_state
 if 'df_torneo' not in st.session_state:
     st.session_state['df_torneo'] = pd.DataFrame()
 
-# -------------------------
-# FUNZIONI CONNESSIONE MONGO
-# -------------------------
 @st.cache_resource
 def init_mongo_connection(uri, db_name, collection_name):
     try:
@@ -28,13 +24,9 @@ def init_mongo_connection(uri, db_name, collection_name):
         st.error(f"❌ Errore di connessione a {db_name}.{collection_name}: {e}")
         return None
 
-# Connessioni (utilizzando st.cache_resource)
 players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players")
 tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "subbuteo_tournament", "tournament")
 
-# -------------------------
-# SESSION_STATE DEFAULT
-# -------------------------
 if 'calendario_generato' not in st.session_state:
     st.session_state['calendario_generato'] = False
 if 'mostra_form_creazione' not in st.session_state:
@@ -45,8 +37,11 @@ if 'giornata_sel' not in st.session_state:
     st.session_state['giornata_sel'] = 1
 if 'mostra_assegnazione' not in st.session_state:
     st.session_state['mostra_assegnazione'] = False
-if 'mostra_gironi_manuali' not in st.session_state:
-    st.session_state['mostra_gironi_manuali'] = False
+if 'mostra_generazione_calendario' not in st.session_state:
+    st.session_state['mostra_generazione_calendario'] = False
+if 'gironi_manuali_completi' not in st.session_state:
+    st.session_state['gironi_manuali_completi'] = False
+
 
 st.set_page_config(page_title="⚽Campionato/Torneo PreliminariSubbuteo", layout="wide")
 
@@ -250,7 +245,6 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 10, f"Calendario e Classifiche {nome_torneo}", ln=True, align='C')
-
     line_height = 6
     margin_bottom = 15
     page_height = 297
@@ -292,7 +286,6 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
                 pdf.cell(col_widths[3], 6, str(row['Ospite']), border=1)
                 pdf.ln()
             pdf.ln(3)
-
         if pdf.get_y() + 40 + margin_bottom > page_height:
             pdf.add_page()
         pdf.set_font("Arial", 'B', 13)
@@ -334,13 +327,13 @@ def main():
         .big-title { text-align: center; font-size: clamp(16px, 4vw, 36px); font-weight: bold; margin-top: 10px; margin-bottom: 20px; color: red; word-wrap: break-word; white-space: normal; }
         </style>
     """, unsafe_allow_html=True)
-    
+
     df_master = carica_giocatori_da_db()
-    
+
     if players_collection is None and tournaments_collection is None:
         st.error("❌ Impossibile avviare l'applicazione. La connessione a MongoDB non è disponibile.")
         return
-    
+
     if not st.session_state.get('calendario_generato', False):
         st.subheader("📁 Carica un torneo o crea uno nuovo")
         col1, col2 = st.columns(2)
@@ -353,7 +346,6 @@ def main():
                     st.session_state['tournament_id'] = tornei_map[nome_sel]
                     st.session_state['nome_torneo'] = nome_sel
                     torneo_data = carica_torneo_da_db(st.session_state['tournament_id'])
-                    # Aggiungi questa verifica per assicurare che il caricamento sia andato a buon fine
                     if torneo_data and 'calendario' in torneo_data:
                         st.session_state['calendario_generato'] = True
                         st.success("✅ Torneo caricato con successo.")
@@ -367,46 +359,55 @@ def main():
             st.markdown("---")
             if st.button("➕ Crea Nuovo Torneo"):
                 st.session_state['mostra_form_creazione'] = True
+                st.rerun()
 
         if st.session_state.get('mostra_form_creazione', False):
             st.markdown("---")
             st.header("Dettagli Nuovo Torneo")
             nome_default = f"TorneoSubbuteo_{datetime.now().strftime('%d%m%Y')}"
-            nome_torneo = st.text_input("📝 Nome del torneo:", value=nome_default)
+            nome_torneo = st.text_input("📝 Nome del torneo:", value=st.session_state.get("nome_torneo", nome_default), key="nome_torneo_input")
             st.session_state["nome_torneo"] = nome_torneo
-            num_gironi = st.number_input("🔢 Numero di gironi", 1, 8, value=2)
-            tipo_calendario = st.selectbox("📅 Tipo calendario", ["Solo andata", "Andata e ritorno"])
-            n_giocatori = st.number_input("👥 Numero giocatori", 4, 32, value=8)
+            num_gironi = st.number_input("🔢 Numero di gironi", 1, 8, value=st.session_state.get("num_gironi", 2), key="num_gironi_input")
+            st.session_state["num_gironi"] = num_gironi
+            tipo_calendario = st.selectbox("📅 Tipo calendario", ["Solo andata", "Andata e ritorno"], key="tipo_calendario_input")
+            st.session_state["tipo_calendario"] = tipo_calendario
+            n_giocatori = st.number_input("👥 Numero giocatori", 4, 32, value=st.session_state.get("n_giocatori", 8), key="n_giocatori_input")
+            st.session_state["n_giocatori"] = n_giocatori
 
             st.markdown("### 👥 Seleziona Giocatori")
             amici = df_master['Giocatore'].tolist()
-            amici_selezionati = st.multiselect("Seleziona giocatori dal database:", amici)
+            amici_selezionati = st.multiselect("Seleziona giocatori dal database:", amici, default=st.session_state.get("amici_selezionati", []), key="amici_multiselect")
+            st.session_state["amici_selezionati"] = amici_selezionati
             
-            num_supplementari = n_giocatori - len(amici_selezionati)
+            num_supplementari = st.session_state["n_giocatori"] - len(amici_selezionati)
             if num_supplementari < 0:
-                st.warning(f"⚠️ Hai selezionato più giocatori ({len(amici_selezionati)}) del numero partecipanti ({n_giocatori}). Riduci la selezione.")
+                st.warning(f"⚠️ Hai selezionato più giocatori ({len(amici_selezionati)}) del numero partecipanti ({st.session_state['n_giocatori']}). Riduci la selezione.")
                 return
 
             st.markdown(f"Giocatori ospiti da aggiungere: **{max(0, num_supplementari)}**")
             giocatori_supplementari = []
+            if 'giocatori_supplementari_list' not in st.session_state:
+                st.session_state['giocatori_supplementari_list'] = [''] * max(0, num_supplementari)
+            
             for i in range(max(0, num_supplementari)):
-                nome_ospite = st.text_input(f"Nome ospite {i+1}", key=f"ospite_{i}")
+                nome_ospite = st.text_input(f"Nome ospite {i+1}", value=st.session_state['giocatori_supplementari_list'][i], key=f"ospite_{i}")
+                st.session_state['giocatori_supplementari_list'][i] = nome_ospite
                 if nome_ospite:
                     giocatori_supplementari.append(nome_ospite.strip())
             
             giocatori_scelti = amici_selezionati + giocatori_supplementari
             
-            if st.button("Assegna Squadre"):
+            if st.button("Conferma Giocatori e Squadre"):
                 if len(set(giocatori_scelti)) < 4:
                     st.warning("⚠️ Inserisci almeno 4 giocatori diversi.")
                     return
-                st.session_state['giocatori_scelti'] = giocatori_scelti
-                st.session_state['num_gironi'] = num_gironi
-                st.session_state['tipo_calendario'] = tipo_calendario
+                st.session_state['giocatori_scelti'] = list(set(giocatori_scelti))
                 st.session_state['mostra_assegnazione'] = True
-                st.success("✅ Giocatori selezionati, passa alla fase successiva.")
+                st.session_state['mostra_generazione_calendario'] = False
+                st.session_state['gironi_manuali_completi'] = False
+                st.success("✅ Giocatori e squadre confermati. Passa alla fase successiva.")
                 st.rerun()
-                
+
             if st.session_state.get('mostra_assegnazione', False):
                 st.markdown("---")
                 st.markdown("### ⚽ Modifica Squadra e Potenziale")
@@ -428,47 +429,79 @@ def main():
                 st.markdown("### ➡️ Modalità di creazione dei gironi")
                 modalita_gironi = st.radio("Scegli come popolare i gironi", ["Popola Gironi Automaticamente", "Popola Gironi Manualmente"], key="modo_gironi_radio")
 
-                if st.button("Genera Calendario"):
-                    giocatori_formattati = [
-                        f"{st.session_state['gioc_info'][gioc]['Squadra']} ({gioc})"
-                        for gioc in st.session_state['giocatori_scelti']
-                    ]
-                    if modalita_gironi == "Popola Gironi Automaticamente":
-                        gironi_finali = [[] for _ in range(st.session_state['num_gironi'])]
-                        random.shuffle(giocatori_formattati)
-                        for i, g in enumerate(giocatori_formattati):
-                            gironi_finali[i % st.session_state['num_gironi']].append(g)
-                    else:
-                        gironi_manuali = {}
-                        for i in range(st.session_state['num_gironi']):
-                            girone_key = f"manual_girone_{i+1}"
-                            selezionati = st.session_state.get(girone_key, [])
-                            gironi_manuali[f"Girone {i+1}"] = selezionati
-                        gironi_finali = list(gironi_manuali.values())
+                if modalita_gironi == "Popola Gironi Manualmente":
+                    st.warning("⚠️ ATTENZIONE: Se hai modificato il numero di giocatori, assicurati che i gironi manuali siano coerenti prima di generare il calendario.")
+                    giocatori_non_assegnati = list(st.session_state['giocatori_scelti'])
+                    gironi_manuali = {}
+                    for i in range(st.session_state['num_gironi']):
+                        st.markdown(f"**Girone {i+1}**")
                         
-                    df_torneo = genera_calendario_from_list(gironi_finali, st.session_state['tipo_calendario'])
-                    tid = salva_torneo_su_db(df_torneo, st.session_state['nome_torneo'])
-                    if tid:
-                        st.session_state['df_torneo'] = df_torneo
-                        st.session_state['tournament_id'] = str(tid)
-                        st.session_state['calendario_generato'] = True
-                        st.success("✅ Calendario generato e salvato su MongoDB!")
-                        st.rerun()
+                        giocatori_assegnati_in_questo_girone = st.session_state.get(f"manual_girone_{i+1}", [])
+                        
+                        opzioni_disponibili = [g for g in giocatori_non_assegnati if g not in giocatori_assegnati_in_questo_girone]
+                        
+                        giocatori_assegnati_in_questo_girone = st.multiselect(
+                            f"Seleziona giocatori per Girone {i+1}",
+                            options=opzioni_disponibili + giocatori_assegnati_in_questo_girone,
+                            default=giocatori_assegnati_in_questo_girone,
+                            key=f"manual_girone_{i+1}"
+                        )
+                        gironi_manuali[f"Girone {i+1}"] = giocatori_assegnati_in_questo_girone
+                    
+                    if st.button("Assegna Gironi Manuali"):
+                        tutti_i_giocatori_assegnati = sum(gironi_manuali.values(), [])
+                        if sorted(tutti_i_giocatori_assegnati) == sorted(st.session_state['giocatori_scelti']):
+                            st.session_state['gironi_manuali'] = gironi_manuali
+                            st.session_state['gironi_manuali_completi'] = True
+                            st.success("✅ Gironi manuali assegnati con successo.")
+                            st.rerun()
+                        else:
+                            st.error("❌ Errore: Assicurati di assegnare tutti i giocatori e che ogni giocatore sia in un solo girone.")
+                            
+                if st.session_state['mostra_generazione_calendario'] or (modalita_gironi == "Popola Gironi Automaticamente" and st.session_state['mostra_assegnazione']):
+                    if st.button("Genera Calendario"):
+                        giocatori_formattati = [
+                            f"{st.session_state['gioc_info'][gioc]['Squadra']} ({gioc})"
+                            for gioc in st.session_state['giocatori_scelti']
+                        ]
+                        if modalita_gironi == "Popola Gironi Automaticamente":
+                            gironi_finali = [[] for _ in range(st.session_state['num_gironi'])]
+                            random.shuffle(giocatori_formattati)
+                            for i, g in enumerate(giocatori_formattati):
+                                gironi_finali[i % st.session_state['num_gironi']].append(g)
+                        else:
+                            gironi_finali = list(st.session_state['gironi_manuali'].values())
+                            giocatori_formattati = [
+                                f"{st.session_state['gioc_info'][gioc]['Squadra']} ({gioc})"
+                                for gioc in sum(st.session_state['gironi_manuali'].values(), [])
+                            ]
+
+                        df_torneo = genera_calendario_from_list(gironi_finali, st.session_state['tipo_calendario'])
+                        tid = salva_torneo_su_db(df_torneo, st.session_state['nome_torneo'])
+                        if tid:
+                            st.session_state['df_torneo'] = df_torneo
+                            st.session_state['tournament_id'] = str(tid)
+                            st.session_state['calendario_generato'] = True
+                            st.success("✅ Calendario generato e salvato su MongoDB!")
+                            st.rerun()
+
     else:
-        # Aggiungi questa verifica all'inizio del blocco
         if st.session_state['df_torneo'].empty:
             st.error("❌ Il DataFrame del torneo è vuoto. Ritorna alla schermata iniziale per caricare o creare un nuovo torneo.")
             if st.button("🔙 Torna alla schermata iniziale"):
                 st.session_state['calendario_generato'] = False
+                st.session_state['mostra_form_creazione'] = False
+                st.session_state['mostra_assegnazione'] = False
                 st.session_state.pop('df_torneo', None)
+                st.session_state.pop('tournament_id', None)
+                st.session_state.pop('gioc_info', None)
                 st.rerun()
             return
 
-        # Codice per il display del torneo in corso
         df = st.session_state['df_torneo']
         gironi = sorted(df['Girone'].dropna().unique().tolist())
         giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
-        
+
         st.subheader("Navigazione Giornate")
         col_giornata, col_girone = st.columns(2)
         with col_girone:
@@ -476,7 +509,7 @@ def main():
             if nuovo_girone != st.session_state['girone_sel']:
                 st.session_state['girone_sel'] = nuovo_girone
                 st.rerun()
-        
+
         with col_giornata:
             nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=giornate_correnti.index(st.session_state['giornata_sel']))
             if nuova_giornata != st.session_state['giornata_sel']:
@@ -485,12 +518,12 @@ def main():
 
         mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
         st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata, args=(st.session_state['girone_sel'], st.session_state['giornata_sel']))
-        
+
         st.markdown("---")
         st.subheader(f"Classifica {st.session_state['girone_sel']}")
         classifica = aggiorna_classifica(df)
         mostra_classifica_stilizzata(classifica, st.session_state['girone_sel'])
-        
+
         col_pdf, col_back = st.columns(2)
         with col_pdf:
             if classifica is not None:
