@@ -236,10 +236,10 @@ def aggiorna_classifica(df):
 # -------------------------
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
     def _to_int_safe(v):
-    try:
-        return int(v)
-    except (TypeError, ValueError):
-        return 0
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            return 0    
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         return
