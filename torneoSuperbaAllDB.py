@@ -8,9 +8,13 @@ from pymongo.server_api import ServerApi
 from bson.objectid import ObjectId
 import json
 
+# Questo garantisce che 'df_torneo' esista sempre in session_state
 if 'df_torneo' not in st.session_state:
     st.session_state['df_torneo'] = pd.DataFrame()
 
+# -------------------------
+# FUNZIONI CONNESSIONE MONGO
+# -------------------------
 @st.cache_resource
 def init_mongo_connection(uri, db_name, collection_name):
     try:
@@ -24,9 +28,13 @@ def init_mongo_connection(uri, db_name, collection_name):
         st.error(f"❌ Errore di connessione a {db_name}.{collection_name}: {e}")
         return None
 
+# Connessioni (utilizzando st.cache_resource)
 players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players")
 tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "subbuteo_tournament", "tournament")
 
+# -------------------------
+# SESSION_STATE DEFAULT
+# -------------------------
 if 'calendario_generato' not in st.session_state:
     st.session_state['calendario_generato'] = False
 if 'mostra_form_creazione' not in st.session_state:
