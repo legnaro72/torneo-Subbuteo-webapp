@@ -8,7 +8,38 @@ from pymongo.server_api import ServerApi
 from bson.objectid import ObjectId
 import json
 
+# -------------------------
+# GESTIONE DELLO STATO E FUNZIONI INIZIALI
+# -------------------------
+# Inizializza df_torneo in session_state se non esiste
 if 'df_torneo' not in st.session_state:
+    st.session_state['df_torneo'] = pd.DataFrame()
+
+# Definisci lo stato predefinito dell'applicazione
+DEFAULT_STATE = {
+    'calendario_generato': False,
+    'mostra_form_creazione': False,
+    'girone_sel': "Girone 1",
+    'giornata_sel': 1,
+    'mostra_assegnazione_squadre': False,
+    'mostra_gironi': False,
+    'gironi_manuali_completi': False,
+    'giocatori_selezionati_definitivi': [],
+    'gioc_info': {},
+    'usa_bottoni': False
+}
+
+# Inizializza lo stato se è la prima volta che l'app viene caricata o se viene resettata
+for key, value in DEFAULT_STATE.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
+
+# Funzione per resettare lo stato
+def reset_app_state():
+    for key in list(st.session_state.keys()):
+        if key not in ['df_torneo', 'sidebar_state_reset']:
+            st.session_state.pop(key)
+    st.session_state.update(DEFAULT_STATE)
     st.session_state['df_torneo'] = pd.DataFrame()
 
 # -------------------------
@@ -30,27 +61,6 @@ def init_mongo_connection(uri, db_name, collection_name):
 players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players")
 tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "subbuteo_tournament", "tournament")
 
-# -------------------------
-# SESSION_STATE DEFAULT
-# -------------------------
-if 'calendario_generato' not in st.session_state:
-    st.session_state['calendario_generato'] = False
-if 'mostra_form_creazione' not in st.session_state:
-    st.session_state['mostra_form_creazione'] = False
-if 'girone_sel' not in st.session_state:
-    st.session_state['girone_sel'] = "Girone 1"
-if 'giornata_sel' not in st.session_state:
-    st.session_state['giornata_sel'] = 1
-if 'mostra_assegnazione_squadre' not in st.session_state:
-    st.session_state['mostra_assegnazione_squadre'] = False
-if 'mostra_gironi' not in st.session_state:
-    st.session_state['mostra_gironi'] = False
-if 'gironi_manuali_completi' not in st.session_state:
-    st.session_state['gironi_manuali_completi'] = False
-if 'giocatori_selezionati_definitivi' not in st.session_state:
-    st.session_state['giocatori_selezionati_definitivi'] = []
-if 'gioc_info' not in st.session_state:
-    st.session_state['gioc_info'] = {}
 
 st.set_page_config(page_title="⚽Campionato/Torneo PreliminariSubbuteo", layout="wide")
 
@@ -329,6 +339,12 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
     return pdf_bytes
 
 def main():
+    # Logica di reset all'inizio dello script
+    if st.session_state.get('sidebar_state_reset', False):
+        reset_app_state()
+        st.session_state['sidebar_state_reset'] = False
+        st.rerun()
+
     if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
         st.title(f"🏆 {st.session_state['nome_torneo']}")
     else:
@@ -359,19 +375,9 @@ def main():
                 mime="application/pdf",
                 use_container_width=True
             )
-        st.sidebar.button("🔙 Torna alla schermata iniziale", key='back_to_start_sidebar', use_container_width=True)
-        if st.session_state.get('back_to_start_sidebar'):
-            st.session_state['calendario_generato'] = False
-            st.session_state['mostra_form_creazione'] = False
-            st.session_state['mostra_assegnazione_squadre'] = False
-            st.session_state['mostra_gironi'] = False
-            st.session_state['gironi_manuali_completi'] = False
-            st.session_state.pop('df_torneo', None)
-            st.session_state.pop('tournament_id', None)
-            st.session_state.pop('gioc_info', None)
-            st.session_state.pop('giocatori_selezionati_definitivi', None)
+        if st.sidebar.button("🔙 Torna alla schermata iniziale", key='back_to_start_sidebar', use_container_width=True):
+            st.session_state['sidebar_state_reset'] = True
             st.rerun()
-
 
     if not st.session_state.get('calendario_generato', False):
         st.subheader("📁 Carica un torneo o crea uno nuovo")
@@ -556,7 +562,13 @@ def main():
         if st.session_state['usa_bottoni']:
             navigation_buttons("Giornata", 'giornata_sel', 1, len(giornate_correnti))
         else:
-            nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=giornate_correnti.index(st.session_state['giornata_sel']))
+            try:
+                current_index = giornate_correnti.index(st.session_state['giornata_sel'])
+            except ValueError:
+                current_index = 0
+                st.session_state['giornata_sel'] = giornate_correnti[0]
+            
+            nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=current_index)
             if nuova_giornata != st.session_state['giornata_sel']:
                 st.session_state['giornata_sel'] = nuova_giornata
                 st.rerun()
@@ -568,3 +580,6 @@ def main():
         st.subheader(f"Classifica {st.session_state['girone_sel']}")
         classifica = aggiorna_classifica(df)
         mostra_classifica_stilizzata(classifica, st.session_state['girone_sel'])
+
+if __name__ == "__main__":
+    main()
