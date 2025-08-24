@@ -54,13 +54,6 @@ def init_mongo_connection(uri, db_name, collection_name):
         st.error(f"❌ Errore di connessione a {db_name}.{collection_name}: {e}")
         return None
 
-# Cattura esplicitamente il ritorno, senza stamparlo
-players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players")
-tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "subbuteo_tournament", "tournament")
-
-
-st.set_page_config(page_title="⚽Campionato/Torneo PreliminariSubbuteo", layout="wide")
-
 # -------------------------
 # UTILITY
 # -------------------------
@@ -98,7 +91,7 @@ def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
 # -------------------------
 # FUNZIONI DI GESTIONE DATI SU MONGO
 # -------------------------
-def carica_giocatori_da_db():
+def carica_giocatori_da_db(players_collection):
     if players_collection is None:
         return pd.DataFrame()
     try:
@@ -108,7 +101,7 @@ def carica_giocatori_da_db():
         st.error(f"❌ Errore durante la lettura dei giocatori: {e}")
         return pd.DataFrame()
 
-def carica_tornei_da_db():
+def carica_tornei_da_db(tournaments_collection):
     if tournaments_collection is None:
         return []
     try:
@@ -117,7 +110,7 @@ def carica_tornei_da_db():
         st.error(f"❌ Errore caricamento tornei: {e}")
         return []
 
-def carica_torneo_da_db(tournament_id):
+def carica_torneo_da_db(tournaments_collection, tournament_id):
     if tournaments_collection is None:
         return None
     try:
@@ -133,7 +126,7 @@ def carica_torneo_da_db(tournament_id):
         st.error(f"❌ Errore caricamento torneo: {e}")
         return None
 
-def salva_torneo_su_db(df_torneo, nome_torneo):
+def salva_torneo_su_db(tournaments_collection, df_torneo, nome_torneo):
     if tournaments_collection is None:
         return None
     try:
@@ -145,7 +138,7 @@ def salva_torneo_su_db(df_torneo, nome_torneo):
         st.error(f"❌ Errore salvataggio torneo: {e}")
         return None
 
-def aggiorna_torneo_su_db(tournament_id, df_torneo):
+def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
     if tournaments_collection is None:
         return False
     try:
@@ -218,7 +211,6 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
     df_giornata = df[(df['Girone']==girone_sel) & (df['Giornata']==giornata_sel)].copy()
     if df_giornata.empty: return
     for idx, row in df_giornata.iterrows():
-        # Soluzione al TypeError: controllo esplicito di notna
         gol_casa = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
         gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
 
@@ -237,7 +229,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         else:
             st.markdown('<div style="color:red; margin-bottom: 15px;">Partita non ancora validata ❌</div>', unsafe_allow_html=True)
 
-def salva_risultati_giornata(girone_sel, giornata_sel):
+def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     df = st.session_state['df_torneo']
     df_giornata = df[(df['Girone']==girone_sel) & (df['Giornata']==giornata_sel)].copy()
     for idx, row in df_giornata.iterrows():
@@ -246,7 +238,7 @@ def salva_risultati_giornata(girone_sel, giornata_sel):
         df.at[idx,'Valida'] = st.session_state.get(f"valida_{idx}", False)
     st.session_state['df_torneo'] = df
     if 'tournament_id' in st.session_state:
-        aggiorna_torneo_su_db(st.session_state['tournament_id'], df)
+        aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
         st.success("✅ Risultati salvati su MongoDB")
     else:
         st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
@@ -345,6 +337,12 @@ def main():
         st.session_state['sidebar_state_reset'] = False
         st.rerun()
 
+    # Inizializzazione delle connessioni a MongoDB all'interno di main()
+    players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players")
+    tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "subbuteo_tournament", "tournament")
+    st.set_page_config(page_title="⚽Campionato/Torneo PreliminariSubbuteo", layout="wide")
+
+
     if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
         st.title(f"🏆 {st.session_state['nome_torneo']}")
     else:
@@ -356,7 +354,7 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    df_master = carica_giocatori_da_db()
+    df_master = carica_giocatori_da_db(players_collection)
 
     if players_collection is None and tournaments_collection is None:
         st.error("❌ Impossibile avviare l'applicazione. La connessione a MongoDB non è disponibile.")
@@ -383,14 +381,14 @@ def main():
         st.subheader("📁 Carica un torneo o crea uno nuovo")
         col1, col2 = st.columns(2)
         with col1:
-            tornei_disponibili = carica_tornei_da_db()
+            tornei_disponibili = carica_tornei_da_db(tournaments_collection)
             if tornei_disponibili:
                 tornei_map = {t['nome_torneo']: str(t['_id']) for t in tornei_disponibili}
                 nome_sel = st.selectbox("Seleziona torneo esistente:", list(tornei_map.keys()))
                 if st.button("Carica Torneo Selezionato"):
                     st.session_state['tournament_id'] = tornei_map[nome_sel]
                     st.session_state['nome_torneo'] = nome_sel
-                    torneo_data = carica_torneo_da_db(st.session_state['tournament_id'])
+                    torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
                     if torneo_data and 'calendario' in torneo_data:
                         st.session_state['calendario_generato'] = True
                         st.success("✅ Torneo caricato con successo.")
@@ -530,7 +528,7 @@ def main():
                         gironi_finali = list(st.session_state['gironi_manuali'].values())
                         
                     df_torneo = genera_calendario_from_list(gironi_finali, st.session_state['tipo_calendario'])
-                    tid = salva_torneo_su_db(df_torneo, st.session_state['nome_torneo'])
+                    tid = salva_torneo_su_db(tournaments_collection, df_torneo, st.session_state['nome_torneo'])
                     if tid:
                         st.session_state['df_torneo'] = df_torneo
                         st.session_state['tournament_id'] = str(tid)
@@ -573,7 +571,7 @@ def main():
                 st.rerun()
 
         mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
-        st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata, args=(st.session_state['girone_sel'], st.session_state['giornata_sel']))
+        st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata, args=(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel']))
 
         st.markdown("---")
         st.subheader(f"Classifica {st.session_state['girone_sel']}")
@@ -581,4 +579,5 @@ def main():
         mostra_classifica_stilizzata(classifica, st.session_state['girone_sel'])
 
 if __name__ == "__main__":
+    st.set_page_config(page_title="⚽Campionato/Torneo PreliminariSubbuteo", layout="wide")
     main()
