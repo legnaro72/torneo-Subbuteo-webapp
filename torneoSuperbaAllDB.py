@@ -359,7 +359,7 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
                 pdf.cell(col_widths[i], 6, h, border=1, align='C')
             pdf.ln()
             pdf.set_font("Arial", '', 11)
-            partite = df_torneo[(df_torneo['Girone'] == girone) & (df_torneo['Giornata'] == g)]
+            partite = df_torneo[(df_torneo['Girone'] == girone) & (df['Giornata'] == g)]
             for _, row in partite.iterrows():
                 if pdf.get_y() + line_height + margin_bottom > page_height:
                     pdf.add_page()
