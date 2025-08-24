@@ -302,6 +302,9 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     st.rerun()
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
+    # DEBUG: mostra tipo e prime righe
+    st.write("DEBUG tipo classifica:", type(df_classifica))
+    st.write("DEBUG contenuto classifica:", df_classifica.head())
 
     if df_classifica is None:
         st.info("⚽ Nessuna classifica disponibile")
@@ -711,15 +714,6 @@ def main():
                         gironi_finali = list(st.session_state['gironi_manuali'].values())
 
                     df_torneo = genera_calendario_from_list(gironi_finali, st.session_state['tipo_calendario'])
-                    # --- NORMALIZZAZIONE PER EVITARE None ---
-                    for col in ['GolCasa', 'GolOspite']:
-                        df_torneo[col] = pd.to_numeric(df_torneo[col], errors='coerce').fillna(0).astype(int)
-                    
-                    if 'Valida' not in df_torneo.columns:
-                        df_torneo['Valida'] = False
-                    else:
-                        df_torneo['Valida'] = df_torneo['Valida'].fillna(False)
-                    # --- FINE NORMALIZZAZIONE ---
                     tid = salva_torneo_su_db(tournaments_collection, df_torneo, st.session_state['nome_torneo'])
                     if tid:
                         st.session_state['df_torneo'] = df_torneo
