@@ -146,20 +146,15 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
             df_torneo = pd.DataFrame(torneo_data['calendario'])
             df_torneo['Valida'] = df_torneo['Valida'].astype(bool)
             
-            # ----------------------------------------------------
-            # MODIFICA: Gestione robusta dei valori GolCasa e GolOspite
-            #
-            # 'errors=coerce' trasforma i valori non numerici (incluso None) in NaN.
-            # .fillna(0) sostituisce tutti i NaN con 0.
-            # .astype('Int64') converte correttamente in intero a 64 bit.
-            #
-            # ----------------------------------------------------
+            # Correzione del tipo di dato per i gol
             df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').fillna(0).astype('Int64')
             df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').fillna(0).astype('Int64')
             
-            # ---------------------------------------------------------------------------------------------------------------------------------------
-            # NOTA: La riga 'df_torneo = df_torneo.fillna('')' causava il problema e per questo è stata rimossa, in quanto non è necessaria.
-            # ---------------------------------------------------------------------------------------------------------------------------------------
+            # --- AGGIUNTA QUI ---
+            # Pulisci i nomi dei giocatori/squadre dalla stringa "None"
+            df_torneo['Casa'] = df_torneo['Casa'].astype(str).str.replace('None', '', regex=False)
+            df_torneo['Ospite'] = df_torneo['Ospite'].astype(str).str.replace('None', '', regex=False)
+            # ---------------------------
 
             df_torneo = normalizza_colonne_gol(df_torneo)
             st.session_state['df_torneo'] = df_torneo
@@ -274,8 +269,8 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
 
         col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
         
-        casa_display = str(row['Casa']).replace("None", "").strip()
-        ospite_display = str(row['Ospite']).replace("None", "").strip()
+        casa_display = str(row['Casa']).strip()
+        ospite_display = str(row['Ospite']).strip()
 
         with col1:
             st.markdown(f"**{casa_display}** vs **{ospite_display}**")
