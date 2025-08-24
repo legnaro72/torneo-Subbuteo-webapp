@@ -293,17 +293,23 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     st.rerun()
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
-    if df_classifica is None or df_classifica.empty:
-        st.info("⚽ Nessuna partita validata")
-        #return None
+    if df_classifica is None:
+        st.info("⚽ Nessuna classifica disponibile")
+        return
 
-    # ✅ Controllo che esista la colonna 'Girone'
+    if df_classifica.empty:
+        st.info("⚽ Nessuna partita validata")
+        return
+
     if 'Girone' not in df_classifica.columns:
         st.warning("⚠️ Classifica non valida: manca la colonna 'Girone'")
+        return
 
-    
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
-    #df_girone_display = df_girone.fillna('-')
+    df_girone_display = df_girone.fillna('-')
+
+    st.write("DEBUG classifica:", type(classifica))
+    st.write(classifica)
 
     # Usa lo Styler -> HTML, non st.dataframe
     styled = combined_style(df_girone_display)
