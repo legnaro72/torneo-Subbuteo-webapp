@@ -205,15 +205,18 @@ def genera_calendario_from_list(gironi, tipo="Solo andata"):
 
 def aggiorna_classifica(df):
     if 'Girone' not in df.columns:
-        return pd.DataFrame()
+        return pd.DataFrame(columns=['Girone','Squadra','Punti','V','P','S','GF','GS','DR'])
+
     gironi = df['Girone'].dropna().unique()
     classifiche = []
+
     for girone in gironi:
         partite = df[(df['Girone'] == girone) & (df['Valida'] == True)]
         if partite.empty:
             continue
         squadre = pd.unique(partite[['Casa', 'Ospite']].values.ravel())
         stats = {s: {'Punti': 0, 'V': 0, 'P': 0, 'S': 0, 'GF': 0, 'GS': 0, 'DR': 0} for s in squadre}
+
         for _, r in partite.iterrows():
             gc, go = int(r['GolCasa'] or 0), int(r['GolOspite'] or 0)
             casa, ospite = r['Casa'], r['Ospite']
@@ -224,14 +227,20 @@ def aggiorna_classifica(df):
             elif gc < go:
                 stats[ospite]['Punti'] += 2; stats[ospite]['V'] += 1; stats[casa]['S'] += 1
             else:
-                stats[casa]['Punti'] += 1; stats[ospite]['Punti'] += 1; stats[casa]['P'] += 1; stats[ospite]['P'] += 1
+                stats[casa]['Punti'] += 1; stats[ospite]['Punti'] += 1
+                stats[casa]['P'] += 1; stats[ospite]['P'] += 1
+
         for s in squadre:
             stats[s]['DR'] = stats[s]['GF'] - stats[s]['GS']
+
         df_stat = pd.DataFrame.from_dict(stats, orient='index').reset_index().rename(columns={'index': 'Squadra'})
         df_stat['Girone'] = girone
         classifiche.append(df_stat)
+
     if not classifiche:
-        return None
+        # ritorna un DataFrame vuoto con le stesse colonne
+        return pd.DataFrame(columns=['Girone','Squadra','Punti','V','P','S','GF','GS','DR'])
+
     df_classifica = pd.concat(classifiche, ignore_index=True)
     df_classifica = df_classifica.sort_values(by=['Girone', 'Punti', 'DR'], ascending=[True, False, False])
     return df_classifica
