@@ -581,7 +581,7 @@ def main():
                 st.session_state['mostra_assegnazione_squadre'] = True
                 st.session_state['mostra_gironi'] = False
                 st.session_state['gironi_manuali_completi'] = False
-                st.session_state['gioc_info'] = {gioc: st.session_state['gioc_info'].get(gioc, {}) for gioc in st.session_state['giocatori_selezionati_definitivi']}
+                # Non ricreare gioc_info qui per evitare il KeyError
                 st.toast("Giocatori confermati ✅")
                 st.rerun()
 
@@ -589,12 +589,18 @@ def main():
                 st.markdown("---")
                 st.markdown("### ⚽ Modifica Squadra e Potenziale")
 
-                for gioc in st.session_state['giocatori_selezionati_definitivi']:
-                    if gioc not in st.session_state['gioc_info']:
-                        row = df_master[df_master['Giocatore'] == gioc].iloc[0] if gioc in df_master['Giocatore'].values else None
-                        squadra_default = row['Squadra'] if row is not None else ""
-                        potenziale_default = int(row['Potenziale']) if row is not None else 4
-                        st.session_state['gioc_info'][gioc] = {"Squadra": squadra_default, "Potenziale": potenziale_default}
+                # Logica per gestire lo stato di gioc_info in modo persistente
+                if 'gioc_info' not in st.session_state or set(st.session_state['giocatori_selezionati_definitivi']) != set(st.session_state['gioc_info'].keys()):
+                    temp_gioc_info = {}
+                    for gioc in st.session_state['giocatori_selezionati_definitivi']:
+                        if gioc in st.session_state.get('gioc_info', {}):
+                            temp_gioc_info[gioc] = st.session_state['gioc_info'][gioc]
+                        else:
+                            row = df_master[df_master['Giocatore'] == gioc].iloc[0] if gioc in df_master['Giocatore'].values else None
+                            squadra_default = row['Squadra'] if row is not None else ""
+                            potenziale_default = int(row['Potenziale']) if row is not None else 4
+                            temp_gioc_info[gioc] = {"Squadra": squadra_default, "Potenziale": potenziale_default}
+                    st.session_state['gioc_info'] = temp_gioc_info
 
                 for gioc in st.session_state['giocatori_selezionati_definitivi']:
                     squadra_nuova = st.text_input(f"Squadra per {gioc}", value=st.session_state['gioc_info'][gioc]['Squadra'], key=f"squadra_{gioc}")
