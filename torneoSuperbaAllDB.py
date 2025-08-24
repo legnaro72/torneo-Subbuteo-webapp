@@ -11,11 +11,9 @@ import json
 # -------------------------
 # GESTIONE DELLO STATO E FUNZIONI INIZIALI
 # -------------------------
-# Inizializza df_torneo in session_state se non esiste
 if 'df_torneo' not in st.session_state:
     st.session_state['df_torneo'] = pd.DataFrame()
 
-# Definisci lo stato predefinito dell'applicazione
 DEFAULT_STATE = {
     'calendario_generato': False,
     'mostra_form_creazione': False,
@@ -29,12 +27,10 @@ DEFAULT_STATE = {
     'usa_bottoni': False
 }
 
-# Inizializza lo stato se è la prima volta che l'app viene caricata o se viene resettata
 for key, value in DEFAULT_STATE.items():
     if key not in st.session_state:
         st.session_state[key] = value
 
-# Funzione per resettare lo stato
 def reset_app_state():
     for key in list(st.session_state.keys()):
         if key not in ['df_torneo', 'sidebar_state_reset']:
@@ -221,14 +217,18 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
     df_giornata = df[(df['Girone']==girone_sel) & (df['Giornata']==giornata_sel)].copy()
     if df_giornata.empty: return
     for idx, row in df_giornata.iterrows():
+        # Soluzione al TypeError: controllo esplicito di notna
+        gol_casa = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
+        gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
+
         col1, col2, col3, col4, col5 = st.columns([5,1.5,1,1.5,1])
         with col1: st.markdown(f"**{row['Casa']}** vs **{row['Ospite']}**")
         with col2: st.number_input("", min_value=0, max_value=20,
-                                     key=f"golcasa_{idx}", value=int(row['GolCasa'] or 0),
+                                     key=f"golcasa_{idx}", value=gol_casa,
                                      disabled=row['Valida'], label_visibility="hidden")
         with col3: st.markdown("-")
         with col4: st.number_input("", min_value=0, max_value=20,
-                                     key=f"golospite_{idx}", value=int(row['GolOspite'] or 0),
+                                     key=f"golospite_{idx}", value=gol_ospite,
                                      disabled=row['Valida'], label_visibility="hidden")
         with col5: st.checkbox("Valida", key=f"valida_{idx}", value=row['Valida'])
         if st.session_state.get(f"valida_{idx}", False):
@@ -339,7 +339,6 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
     return pdf_bytes
 
 def main():
-    # Logica di reset all'inizio dello script
     if st.session_state.get('sidebar_state_reset', False):
         reset_app_state()
         st.session_state['sidebar_state_reset'] = False
@@ -456,7 +455,6 @@ def main():
                 st.markdown("---")
                 st.markdown("### ⚽ Modifica Squadra e Potenziale")
                 
-                # Inizializza i dati dei giocatori se non presenti
                 for gioc in st.session_state['giocatori_selezionati_definitivi']:
                     if gioc not in st.session_state['gioc_info']:
                         row = df_master[df_master['Giocatore'] == gioc].iloc[0] if gioc in df_master['Giocatore'].values else None
