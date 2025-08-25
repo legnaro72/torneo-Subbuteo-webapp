@@ -68,6 +68,10 @@ def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
 # -------------------------
 # UTILITY
 # -------------------------
+def df_hide_none(df: pd.DataFrame):
+        """Rimpiazza None/NaN con stringa vuota solo per la visualizzazione"""
+        return df.fillna("").replace("None", "")
+
 def combined_style(df: pd.DataFrame):
     # Evidenziazione classifiche + nascondi None/NaN nelle celle
     def apply_row_style(row):
@@ -84,10 +88,7 @@ def combined_style(df: pd.DataFrame):
             return 'color: transparent; text-shadow: none;'
         return ''
 
-    def df_hide_none(df: pd.DataFrame):
-        """Rimpiazza None/NaN con stringa vuota solo per la visualizzazione"""
-        return df.fillna("").replace("None", "")
-
+    
     styled_df = df.style.apply(apply_row_style, axis=1)
     styled_df = styled_df.map(hide_none)
     return styled_df
