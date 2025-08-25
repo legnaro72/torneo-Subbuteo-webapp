@@ -312,9 +312,9 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
         return
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
     df_girone_clean = df_girone.copy().fillna("").replace("None", "")
-
-    df_clean = combined_style(df_hide_none(df_girone).fillna("").replace("None", "")
-    st.dataframe(df_clean, use_container_width=True)
+    
+    df_girone_clean = df_hide_none(df_girone)
+    st.dataframe(combined_style(df_girone_clean), use_container_width=True)
 
     #st.dataframe(combined_style(df_hide_none(df_girone)), use_container_width=True)
 
