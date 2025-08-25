@@ -484,7 +484,7 @@ def main():
                     df_filtrato = df_filtrato[df_filtrato['Giornata'] > n_squadre_girone - 1]
 
                 if not df_filtrato.empty:
-                    df_filtrato_show = df_filtrato[['Girone', 'Giornata', 'Casa', 'Ospite']].rename(
+                    df_filtrato_show = df_filtrato[['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite']].fillna('-').rename(
                         columns={'Girone': 'Girone', 'Giornata': 'Giornata', 'Casa': 'Casa', 'Ospite': 'Ospite'}
                     )
                     st.dataframe(df_filtrato_show.reset_index(drop=True), use_container_width=True)
@@ -509,7 +509,7 @@ def main():
                 df_filtrato = df_filtrato[df_filtrato['Giornata'] > n_squadre_girone - 1]
 
             if not df_filtrato.empty:
-                df_filtrato_show = df_filtrato[['Giornata', 'Casa', 'Ospite']].rename(
+                df_filtrato_show = df_filtrato[['Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite']].fillna('-').rename(
                     columns={'Giornata': 'Giornata', 'Casa': 'Casa', 'Ospite': 'Ospite'}
                 )
                 st.dataframe(df_filtrato_show.reset_index(drop=True), use_container_width=True)
