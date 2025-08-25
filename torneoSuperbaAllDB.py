@@ -10,7 +10,7 @@ import json
 
 # -------------------------------------------------
 # CONFIG PAGINA (deve essere la prima chiamata st.*)
-# ---------------------------------
+# -------------------------------------------------
 st.set_page_config(page_title="⚽Campionato/Torneo PreliminariSubbuteo", layout="wide")
 
 # -------------------------
@@ -30,7 +30,7 @@ DEFAULT_STATE = {
     'giocatori_selezionati_definitivi': [],
     'gioc_info': {},
     'usa_bottoni': False,
-    'filtro_attivo': 'Nessuno'  # stato per i filtri
+    'filtro_attivo': 'Nessuno' # stato per i filtri
 }
 
 for key, value in DEFAULT_STATE.items():
@@ -145,15 +145,12 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
         if torneo_data and 'calendario' in torneo_data:
             df_torneo = pd.DataFrame(torneo_data['calendario'])
             df_torneo['Valida'] = df_torneo['Valida'].astype(bool)
+            df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').astype('Int64')
+            df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').astype('Int64')
             
-            # Correzione del tipo di dato per i gol
-            df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').fillna(0).astype('Int64')
-            df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').fillna(0).astype('Int64')
-            
-            # Pulisci i nomi dei giocatori/squadre dalla stringa "None"
-            df_torneo['Casa'] = df_torneo['Casa'].astype(str).str.replace('None', '', regex=False)
-            df_torneo['Ospite'] = df_torneo['Ospite'].astype(str).str.replace('None', '', regex=False)
-
+            # --- MODIFICA AGGIUNTA QUI ---
+            #df_torneo = df_torneo.fillna('-')
+            # ---------------------------
             df_torneo = normalizza_colonne_gol(df_torneo)
             st.session_state['df_torneo'] = df_torneo
             
@@ -196,12 +193,12 @@ def genera_calendario_from_list(gironi, tipo="Solo andata"):
                 if casa != "Riposo" and ospite != "Riposo":
                     partite.append({
                         "Girone": gname, "Giornata": giornata + 1,
-                        "Casa": casa, "Ospite": ospite, "GolCasa": 0, "GolOspite": 0, "Valida": False
+                        "Casa": casa, "Ospite": ospite, "GolCasa": None, "GolOspite": None, "Valida": False
                     })
                     if tipo == "Andata e ritorno":
                         partite.append({
                             "Girone": gname, "Giornata": giornata + 1 + n - 1,
-                            "Casa": ospite, "Ospite": casa, "GolCasa": 0, "GolOspite": 0, "Valida": False
+                            "Casa": ospite, "Ospite": casa, "GolCasa": None, "GolOspite": None, "Valida": False
                         })
             teams = [teams[0]] + [teams[-1]] + teams[1:-1]
     return pd.DataFrame(partite)
@@ -266,12 +263,8 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
 
 
         col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
-        
-        casa_display = str(row['Casa']).strip()
-        ospite_display = str(row['Ospite']).strip()
-
         with col1:
-            st.markdown(f"**{casa_display}** vs **{ospite_display}**")
+            st.markdown(f"**{row['Casa']}** vs **{row['Ospite']}**")
         with col2:
             st.number_input(
                 "", min_value=0, max_value=20, key=f"golcasa_{idx}", value=gol_casa,
@@ -303,7 +296,7 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     st.session_state['df_torneo'] = df
     if 'tournament_id' in st.session_state:
         aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
-        st.toast("Risultati salvati su MongoDB ✅")  # toast discreto
+        st.toast("Risultati salvati su MongoDB ✅") # toast discreto
     else:
         st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
     st.rerun()
@@ -359,7 +352,7 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
                 pdf.cell(col_widths[i], 6, h, border=1, align='C')
             pdf.ln()
             pdf.set_font("Arial", '', 11)
-            partite = df_torneo[(df_torneo['Girone'] == girone) & (df['Giornata'] == g)]
+            partite = df_torneo[(df_torneo['Girone'] == girone) & (df_torneo['Giornata'] == g)]
             for _, row in partite.iterrows():
                 if pdf.get_y() + line_height + margin_bottom > page_height:
                     pdf.add_page()
@@ -548,6 +541,7 @@ def main():
                     st.rerun()
 
             mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
+            #st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata, args=(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel']))
             if st.button("💾 Salva Risultati Giornata", key="save_giornata_btn"):
                 salva_risultati_giornata(
                     tournaments_collection,
@@ -704,14 +698,11 @@ def main():
                         st.toast("❌ Per generare il calendario manualmente, clicca prima su 'Valida e Assegna Gironi Manuali'.")
                         return
 
-                    # MODIFICA: Assicurati che i valori non siano None prima di formattare
-                    giocatori_formattati = []
-                    for gioc in st.session_state['giocatori_selezionati_definitivi']:
-                        squadra = st.session_state['gioc_info'][gioc].get('Squadra', '')
-                        if squadra is None:
-                            squadra = ""
-                        giocatori_formattati.append(f"{squadra} ({gioc})")
-                        
+                    giocatori_formattati = [
+                        f"{st.session_state['gioc_info'][gioc]['Squadra']} ({gioc})"
+                        for gioc in st.session_state['giocatori_selezionati_definitivi']
+                    ]
+
                     if modalita_gironi == "Popola Gironi Automaticamente":
                         gironi_finali = [[] for _ in range(st.session_state['num_gironi'])]
                         random.shuffle(giocatori_formattati)
@@ -719,18 +710,7 @@ def main():
                             gironi_finali[i % st.session_state['num_gironi']].append(g)
                     else:
                         gironi_finali = list(st.session_state['gironi_manuali'].values())
-                        # MODIFICA: Formatta anche i gironi manuali
-                        gironi_finali_formattati = []
-                        for girone in gironi_finali:
-                            girone_formattato = []
-                            for gioc in girone:
-                                squadra = st.session_state['gioc_info'][gioc].get('Squadra', '')
-                                if squadra is None:
-                                    squadra = ""
-                                girone_formattato.append(f"{squadra} ({gioc})")
-                            gironi_finali_formattati.append(girone_formattato)
-                        gironi_finali = gironi_finali_formattati
-                        
+
                     df_torneo = genera_calendario_from_list(gironi_finali, st.session_state['tipo_calendario'])
                     tid = salva_torneo_su_db(tournaments_collection, df_torneo, st.session_state['nome_torneo'])
                     if tid:
