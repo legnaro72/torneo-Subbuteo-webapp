@@ -219,6 +219,9 @@ def genera_calendario_from_list(gironi, tipo="Solo andata"):
             teams = [teams[0]] + [teams[-1]] + teams[1:-1]
     return pd.DataFrame(partite)
 
+# File: alldbsuperba.py
+# (Lines 232-257 in the original script)
+
 def aggiorna_classifica(df):
     if 'Girone' not in df.columns:
         return pd.DataFrame(columns=['Girone', 'Squadra', 'Punti', 'V', 'P', 'S', 'GF', 'GS', 'DR'])
@@ -227,24 +230,40 @@ def aggiorna_classifica(df):
     classifiche = []
 
     for girone in gironi:
-        partite = df[(df['Girone'] == girone) & (df['Valida'] == True)]
+        partite = df[(df['Girone'] == girone) & (df['Valida'] == True)].copy()
         if partite.empty:
             continue
+        
+        # --- FIX ---
+        # Converti le colonne dei gol in numerico, forzando gli errori a NaN,
+        # poi sostituisci i NaN con 0.
+        partite['GolCasa'] = pd.to_numeric(partite['GolCasa'], errors='coerce').fillna(0).astype(int)
+        partite['GolOspite'] = pd.to_numeric(partite['GolOspite'], errors='coerce').fillna(0).astype(int)
+        # --- END FIX ---
+
         squadre = pd.unique(partite[['Casa', 'Ospite']].values.ravel())
         stats = {s: {'Punti': 0, 'V': 0, 'P': 0, 'S': 0, 'GF': 0, 'GS': 0, 'DR': 0} for s in squadre}
 
         for _, r in partite.iterrows():
-            gc, go = int(r['GolCasa'] or 0), int(r['GolOspite'] or 0)
+            gc, go = r['GolCasa'], r['GolOspite']
             casa, ospite = r['Casa'], r['Ospite']
-            stats[casa]['GF'] += gc; stats[casa]['GS'] += go
-            stats[ospite]['GF'] += go; stats[ospite]['GS'] += gc
+            stats[casa]['GF'] += gc
+            stats[casa]['GS'] += go
+            stats[ospite]['GF'] += go
+            stats[ospite]['GS'] += gc
             if gc > go:
-                stats[casa]['Punti'] += 2; stats[casa]['V'] += 1; stats[ospite]['S'] += 1
+                stats[casa]['Punti'] += 2
+                stats[casa]['V'] += 1
+                stats[ospite]['S'] += 1
             elif gc < go:
-                stats[ospite]['Punti'] += 2; stats[ospite]['V'] += 1; stats[casa]['S'] += 1
+                stats[ospite]['Punti'] += 2
+                stats[ospite]['V'] += 1
+                stats[casa]['S'] += 1
             else:
-                stats[casa]['Punti'] += 1; stats[ospite]['Punti'] += 1
-                stats[casa]['P'] += 1; stats[ospite]['P'] += 1
+                stats[casa]['Punti'] += 1
+                stats[ospite]['Punti'] += 1
+                stats[casa]['P'] += 1
+                stats[ospite]['P'] += 1
 
         for s in squadre:
             stats[s]['DR'] = stats[s]['GF'] - stats[s]['GS']
@@ -254,7 +273,6 @@ def aggiorna_classifica(df):
         classifiche.append(df_stat)
 
     if not classifiche:
-        # ritorna un DataFrame vuoto con le stesse colonne
         return pd.DataFrame(columns=['Girone', 'Squadra', 'Punti', 'V', 'P', 'S', 'GF', 'GS', 'DR'])
 
     df_classifica = pd.concat(classifiche, ignore_index=True)
@@ -436,6 +454,13 @@ def main():
     if st.session_state.get('calendario_generato', False):
         st.sidebar.subheader("Opzioni Torneo ⚙️")
         df = st.session_state['df_torneo']
+        
+        # --- FIX ---
+        # Ensure the gol columns are in the correct format before processing
+        
+        df['GolCasa'] = pd.to_numeric(df['GolCasa'], errors='coerce').astype('Int64')
+        df['GolOspite'] = pd.to_numeric(df['GolOspite'], errors='coerce').astype('Int64')
+        
         classifica = aggiorna_classifica(df)
         if classifica is not None:
             st.sidebar.download_button(
