@@ -1,4 +1,4 @@
-import streamlit as st
+baimport streamlit as st
 import pandas as pd
 import random
 from fpdf import FPDF
@@ -73,8 +73,8 @@ def init_connection():
 
 client = init_connection()
 if client:
-    db = client.get_database("subbuteo_tournaments")
-    tournaments_collection = db.get_collection("tournaments")
+    db = client.get_database("subbuteo_tournements")
+    tournaments_collection = db.get_collection("superba_tournements")
 
 # -------------------------
 # FUNZIONI
