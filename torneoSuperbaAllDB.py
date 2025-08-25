@@ -569,12 +569,15 @@ def main():
             # Verifica che la classifica non sia None o vuota, e sostituisci i valori NaN
 
             if classifica is not None and not classifica.empty:
-                classifica_pulita = classifica.fillna('-')
+                # Se la classifica esiste e non è vuota, usala e sostituisci i NaN con '-'
+                classifica_per_visualizzazione = classifica.fillna('-')
             else:
-                # Se la classifica è vuota o None, crea un DataFrame vuoto per evitare errori
-                classifica_pulita = pd.DataFrame(columns=['Girone', 'Squadra', 'Punti', 'V', 'P', 'S', 'GF', 'GS', 'DR']).fillna('-')
+                # Se la classifica è vuota, crea un DataFrame vuoto con le colonne corrette
+                # per evitare errori di visualizzazione
+                cols = ['Girone', 'Squadra', 'Punti', 'V', 'P', 'S', 'GF', 'GS', 'DR']
+                classifica_per_visualizzazione = pd.DataFrame(columns=cols).fillna('-')
 
-            mostra_classifica_stilizzata(classifica_pulita, st.session_state['girone_sel'])
+            mostra_classifica_stilizzata(classifica_per_visualizzazione, st.session_state['girone_sel'])
             # --- FINE FIX --
             
     else:
