@@ -261,7 +261,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         with col1:
             st.markdown(f"**{row['Casa']}** vs **{row['Ospite']}**")
         with col2:
-            # Modifica qui per visualizzare una stringa vuota al posto di None
+            # Sostituisce i valori None con una stringa vuota
             gol_casa_value = "" if pd.isna(row['GolCasa']) else str(int(row['GolCasa']))
             st.text_input(
                 "", key=f"golcasa_{idx}", value=gol_casa_value,
@@ -270,7 +270,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         with col3:
             st.markdown("-")
         with col4:
-            # Modifica qui per visualizzare una stringa vuota al posto di None
+            # Sostituisce i valori None con una stringa vuota
             gol_ospite_value = "" if pd.isna(row['GolOspite']) else str(int(row['GolOspite']))
             st.text_input(
                 "", key=f"golospite_{idx}", value=gol_ospite_value,
@@ -278,6 +278,14 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             )
         with col5:
             st.checkbox("Valida", key=f"valida_{idx}", value=row['Valida'])
+
+        # Riga separatrice / stato partita
+        if st.session_state.get(f"valida_{idx}", False):
+            st.markdown("---")
+        else:
+            st.markdown('<div style="color:red; margin-bottom: 15px;">Partita non ancora validata ❌</div>', unsafe_allow_html=True)
+
+
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     df = st.session_state['df_torneo']
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
