@@ -157,18 +157,23 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
             df_torneo = pd.DataFrame(torneo_data['calendario'])
             df_torneo['Valida'] = df_torneo['Valida'].astype(bool)
             
+            # Conversione dei tipi
             df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').astype('Int64')
             df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').astype('Int64')
             
             df_torneo = normalizza_colonne_gol(df_torneo)
             
+            # **PASSAGGIO CHIAVE: PULIZIA DEL DATAFRAME**
+            # Sostituisce i valori None con stringhe vuote solo per le colonne dei gol
+            df_torneo['GolCasa'] = df_torneo['GolCasa'].apply(lambda x: '' if pd.isna(x) else str(x))
+            df_torneo['GolOspite'] = df_torneo['GolOspite'].apply(lambda x: '' if pd.isna(x) else str(x))
+
             st.session_state['df_torneo'] = df_torneo
             
         return torneo_data
     except Exception as e:
         st.toast(f"❌ Errore caricamento torneo: {e}")
         return None
-
 
 def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
     if tournaments_collection is None:
