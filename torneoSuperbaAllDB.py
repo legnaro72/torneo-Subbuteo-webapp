@@ -273,23 +273,27 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
 
 def salva_risultati_giornata(tournements_collection, girone_sel, giornata_sel):
     df = st.session_state['df_torneo']
-    df = df.fillna("")   # 👈 questo elimina i "None"
-    st.session_state['df_torneo'] = df
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     for idx, row in df_giornata.iterrows():
-        df.at[idx, 'GolCasa'] = st.session_state.get(f"golcasa_{idx}", 0)
-        df.at[idx, 'GolOspite'] = st.session_state.get(f"golospite_{idx}", 0)
-        df.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
+        gol_casa = st.session_state.get(f"golcasa_{idx}", 0)
+        gol_ospite = st.session_state.get(f"golospite_{idx}", 0)
+        valida = st.session_state.get(f"valida_{idx}", False)
+
+        # 👇 qui forzi sempre un numero, mai None
+        df.at[idx, 'GolCasa'] = int(gol_casa) if gol_casa is not None else 0
+        df.at[idx, 'GolOspite'] = int(gol_ospite) if gol_ospite is not None else 0
+        df.at[idx, 'Valida'] = bool(valida)
+
+    # 👇 ripulisci eventuali None testuali
+    df = df.fillna("").replace("None", "")
     st.session_state['df_torneo'] = df
-    if 'tournement_id' in st.session_state:
-        aggiorna_torneo_su_db(tournements_collection, st.session_state['tournement_id'], df)
-        st.toast("Risultati salvati su MongoDB ✅")  # toast discreto
+
+    if 'tournament_id' in st.session_state:
+        aggiorna_torneo_su_db(tournements_collection, st.session_state['tournament_id'], df)
+        st.toast("Risultati salvati su MongoDB ✅")
     else:
         st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
-        
-    st.session_state['df_torneo'] = st.session_state['df_torneo'].where(pd.notna(st.session_state['df_torneo']), "")
 
-    st.rerun()
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
     if df_classifica is None or df_classifica.empty:
