@@ -562,11 +562,17 @@ def main():
                 )
 
             
+            # File: alldbsuperba.py
+            # (A partire dalla riga 567)
+
             st.markdown("---")
             st.subheader(f"Classifica {st.session_state['girone_sel']} 📈")
+
+            # Assicurati che classifica sia definita, anche se il DataFrame è vuoto
             classifica = aggiorna_classifica(df)
-            # --- FIX ---
-            # Verifica che la classifica non sia None o vuota, e sostituisci i valori NaN
+
+            # Usa una variabile per gestire il DataFrame da visualizzare
+            classifica_per_visualizzazione = pd.DataFrame()
 
             if classifica is not None and not classifica.empty:
                 # Se la classifica esiste e non è vuota, usala e sostituisci i NaN con '-'
