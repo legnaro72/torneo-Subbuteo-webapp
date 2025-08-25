@@ -270,7 +270,6 @@ def main():
     if st.session_state['calendario_generato']:
         df = st.session_state['df_torneo']
         gironi = sorted(df['Girone'].unique().tolist())
-        giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].unique())
         
         # Sezione per la classifica nella sidebar
         with st.sidebar:
@@ -284,12 +283,18 @@ def main():
                 st.info("Nessun girone trovato.")
         
         # Contenuto principale
+        st.markdown(f"## 🏆 {st.session_state['nome_torneo']}")
+        
         g_sel = st.selectbox("Seleziona Girone", gironi, index=gironi.index(st.session_state['girone_sel']))
         if g_sel != st.session_state['girone_sel']:
             st.session_state['girone_sel'] = g_sel
+            # Imposta la giornata_sel al primo valore disponibile
+            giornate_correnti = sorted(df[df['Girone'] == g_sel]['Giornata'].unique())
             if giornate_correnti:
                 st.session_state['giornata_sel'] = giornate_correnti[0]
             st.rerun()
+
+        giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].unique())
 
         st.session_state['usa_bottoni'] = st.checkbox("Usa bottoni giornata", value=st.session_state['usa_bottoni'])
         if st.session_state['usa_bottoni']:
