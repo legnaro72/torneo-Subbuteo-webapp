@@ -442,18 +442,22 @@ def main():
         st.toast("❌ Impossibile avviare l'applicazione. La connessione a MongoDB non è disponibile.")
         return
 
-    # Sidebar / Pagina
+    # File: alldbsuperba.py
+# (Sostituisci l'intero blocco a partire dalla riga 542 con questo)
+
     if st.session_state.get('calendario_generato', False):
         st.sidebar.subheader("Opzioni Torneo ⚙️")
         df = st.session_state['df_torneo']
         
-        # --- FIX ---
-        # Ensure the gol columns are in the correct format before processing
-        
+        # --- FIX: Assicurati che le colonne dei gol siano numeriche ---
         df['GolCasa'] = pd.to_numeric(df['GolCasa'], errors='coerce').astype('Int64')
         df['GolOspite'] = pd.to_numeric(df['GolOspite'], errors='coerce').astype('Int64')
-        
+        st.session_state['df_torneo'] = df
+        # --- FINE FIX ---
+
+        # Questo blocco deve stare qui, fuori dai filtri
         classifica = aggiorna_classifica(df)
+
         if classifica is not None:
             st.sidebar.download_button(
                 label="📄 Esporta in PDF",
@@ -561,30 +565,18 @@ def main():
                     st.session_state['giornata_sel']
                 )
 
-            
-            # File: alldbsuperba.py
-            # (A partire dalla riga 567)
+        st.markdown("---")
+        st.subheader(f"Classifica {st.session_state['girone_sel']} 📈")
 
-            st.markdown("---")
-            st.subheader(f"Classifica {st.session_state['girone_sel']} 📈")
+        classifica_per_visualizzazione = pd.DataFrame()
 
-            # Assicurati che classifica sia definita, anche se il DataFrame è vuoto
-            classifica = aggiorna_classifica(df)
+        if classifica is not None and not classifica.empty:
+            classifica_per_visualizzazione = classifica.fillna('-')
+        else:
+            cols = ['Girone', 'Squadra', 'Punti', 'V', 'P', 'S', 'GF', 'GS', 'DR']
+            classifica_per_visualizzazione = pd.DataFrame(columns=cols).fillna('-')
 
-            # Usa una variabile per gestire il DataFrame da visualizzare
-            classifica_per_visualizzazione = pd.DataFrame()
-
-            if classifica is not None and not classifica.empty:
-                # Se la classifica esiste e non è vuota, usala e sostituisci i NaN con '-'
-                classifica_per_visualizzazione = classifica.fillna('-')
-            else:
-                # Se la classifica è vuota, crea un DataFrame vuoto con le colonne corrette
-                # per evitare errori di visualizzazione
-                cols = ['Girone', 'Squadra', 'Punti', 'V', 'P', 'S', 'GF', 'GS', 'DR']
-                classifica_per_visualizzazione = pd.DataFrame(columns=cols).fillna('-')
-
-            mostra_classifica_stilizzata(classifica_per_visualizzazione, st.session_state['girone_sel'])
-            # --- FINE FIX --
+        mostra_classifica_stilizzata(classifica_per_visualizzazione, st.session_state['girone_sel'])
             
     else:
         st.subheader("📁 Carica un torneo o crea uno nuovo")
