@@ -270,6 +270,60 @@ def salva_risultati_giornata(tournements_collection, girone_sel, giornata_sel):
     else:
         st.error("⚠️ Nessun ID torneo trovato. Impossibile salvare.")
 
+def esporta_pdf(df_torneo, df_classifica, nome_torneo):
+    pdf = FPDF(orientation='P', unit='mm', format='A4')
+    pdf.set_auto_page_break(auto=False)
+    pdf.add_page()
+
+    # Titolo principale
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(0, 10, f"📄 Calendario e Classifiche - {nome_torneo}", ln=True, align='C')
+
+    line_height = 6
+    margin_bottom = 15
+    page_height = 297
+
+    gironi = df_torneo['Girone'].dropna().unique()
+    for girone in gironi:
+        pdf.set_font("Arial", 'B', 14)
+        if pdf.get_y() + 8 + margin_bottom > page_height:
+            pdf.add_page()
+        pdf.cell(0, 8, f"⚽ {girone}", ln=True)
+
+        giornate = sorted(df_torneo[df_torneo['Girone'] == girone]['Giornata'].dropna().unique())
+        for g in giornate:
+            needed_space = 7 + line_height + line_height + margin_bottom
+            if pdf.get_y() + needed_space > page_height:
+                pdf.add_page()
+            pdf.set_font("Arial", 'B', 12)
+            pdf.cell(0, 7, f"📅 Giornata {g}", ln=True)
+
+            # intestazione tabella
+            pdf.set_font("Arial", 'B', 11)
+            headers = ["Casa", "Gol", "Gol", "Ospite"]
+            col_widths = [60, 20, 20, 60]
+            for i, h in enumerate(headers):
+                pdf.cell(col_widths[i], 6, h, border=1, align='C')
+            pdf.ln()
+
+            # partite
+            pdf.set_font("Arial", '', 11)
+            partite = df_torneo[(df_torneo['Girone'] == girone) & (df_torneo['Giornata'] == g)]
+            for _, row in partite.iterrows():
+                if pdf.get_y() + line_height + margin_bottom > page_height:
+                    pdf.add_page()
+                    pdf.set_font("Arial", 'B', 12)
+                    pdf.cell(0, 7, f"Giornata {g} (continua)", ln=True)
+                    pdf.set_font("Arial", 'B', 11)
+                    for i, h in enumerate(headers):
+                        pdf.cell(col_widths[i], 6, h, border=1, align='C')
+                    pdf.ln()
+                    pdf.set_font("Arial", '', 11)
+
+                # se partita non validata → testo rosso
+                if not row['Valida']:
+                    pdf.set_text_color(255, 0, 0)
+
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
     if df_classifica is None or df_classifica.empty:
