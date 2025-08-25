@@ -375,17 +375,14 @@ def main():
         st.session_state['sidebar_state_reset'] = False
         st.rerun()
 
-    # Connessioni (senza messaggi verdi)
     players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players", show_ok=False)
     tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "subbuteo_tournement", "superba_tournement", show_ok=False)
 
-    # Titolo
     if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
         st.title(f"🏆 {st.session_state['nome_torneo']}")
     else:
         st.title("🏆 Torneo Superba - Gestione Gironi")
 
-    # CSS
     st.markdown("""
         <style>
         ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
@@ -399,7 +396,6 @@ def main():
         st.error("❌ Impossibile avviare l'applicazione. La connessione a MongoDB non è disponibile.")
         return
 
-    # Sidebar / Pagina
     if st.session_state.get('calendario_generato', False):
         st.sidebar.subheader("Opzioni Torneo")
         df = st.session_state['df_torneo']
@@ -582,14 +578,6 @@ def main():
                 st.session_state['mostra_gironi'] = False
                 st.session_state['gironi_manuali_completi'] = False
                 
-                # Resetta e popola completamente il dizionario 'gioc_info' per tutti i giocatori selezionati
-                st.session_state['gioc_info'] = {}
-                for gioc in st.session_state['giocatori_selezionati_definitivi']:
-                    row = df_master[df_master['Giocatore'] == gioc].iloc[0] if gioc in df_master['Giocatore'].values else None
-                    squadra_default = row['Squadra'] if row is not None and not pd.isna(row['Squadra']) else ""
-                    potenziale_default = int(row['Potenziale']) if row is not None and not pd.isna(row['Potenziale']) else 4
-                    st.session_state['gioc_info'][gioc] = {"Squadra": squadra_default, "Potenziale": potenziale_default}
-
                 st.toast("Giocatori confermati ✅")
                 st.rerun()
 
@@ -597,8 +585,20 @@ def main():
                 st.markdown("---")
                 st.markdown("### ⚽ Modifica Squadra e Potenziale")
 
-                # Rimuovi il blocco di inizializzazione qui, poiché è già stato fatto in "Conferma Giocatori"
-                # Il ciclo ora si basa sul dizionario già corretto.
+                # Inizializza o aggiorna il dizionario gioc_info
+                # Questo è il blocco di codice cruciale che risolve l'errore
+                if 'gioc_info' not in st.session_state or set(st.session_state['giocatori_selezionati_definitivi']) != set(st.session_state['gioc_info'].keys()):
+                    temp_gioc_info = {}
+                    for gioc in st.session_state['giocatori_selezionati_definitivi']:
+                        if gioc in st.session_state.get('gioc_info', {}):
+                            temp_gioc_info[gioc] = st.session_state['gioc_info'][gioc]
+                        else:
+                            row = df_master[df_master['Giocatore'] == gioc].iloc[0] if gioc in df_master['Giocatore'].values else None
+                            squadra_default = row['Squadra'] if row is not None and not pd.isna(row['Squadra']) else ""
+                            potenziale_default = int(row['Potenziale']) if row is not None and not pd.isna(row['Potenziale']) else 4
+                            temp_gioc_info[gioc] = {"Squadra": squadra_default, "Potenziale": potenziale_default}
+                    st.session_state['gioc_info'] = temp_gioc_info
+
                 for gioc in st.session_state['giocatori_selezionati_definitivi']:
                     squadra_nuova = st.text_input(f"Squadra per {gioc}", value=st.session_state['gioc_info'][gioc]['Squadra'], key=f"squadra_{gioc}")
                     potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, int(st.session_state['gioc_info'][gioc]['Potenziale']), key=f"potenziale_{gioc}")
