@@ -538,6 +538,7 @@ def main():
                 # Aggiungi un pulsante per mostrare la classifica
                 if st.button("📊 Mostra Classifica Aggiornata"):
                     st.session_state['show_classifica'] = True
+                    # Non serve rerun qui, la classifica apparirà subito dopo il click
 
             # Mostra la classifica se il flag è impostato
             if st.session_state.get('show_classifica', False):
