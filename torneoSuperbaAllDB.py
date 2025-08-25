@@ -248,11 +248,6 @@ def aggiorna_classifica(df):
 # FUNZIONI DI VISUALIZZAZIONE & EVENTI
 # -------------------------
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
-    def _to_int_safe(v):
-        try:
-            return int(v)
-        except (TypeError, ValueError):
-            return 0    
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         return
@@ -261,19 +256,15 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         with col1:
             st.markdown(f"**{row['Casa']}** vs **{row['Ospite']}**")
         with col2:
-            # Sostituisce i valori None con una stringa vuota
-            gol_casa_value = "" if pd.isna(row['GolCasa']) else str(int(row['GolCasa']))
             st.text_input(
-                "", key=f"golcasa_{idx}", value=gol_casa_value,
+                "", key=f"golcasa_{idx}", value=row['GolCasa'],
                 disabled=row['Valida'], label_visibility="hidden"
             )
         with col3:
             st.markdown("-")
         with col4:
-            # Sostituisce i valori None con una stringa vuota
-            gol_ospite_value = "" if pd.isna(row['GolOspite']) else str(int(row['GolOspite']))
             st.text_input(
-                "", key=f"golospite_{idx}", value=gol_ospite_value,
+                "", key=f"golospite_{idx}", value=row['GolOspite'],
                 disabled=row['Valida'], label_visibility="hidden"
             )
         with col5:
@@ -285,17 +276,18 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         else:
             st.markdown('<div style="color:red; margin-bottom: 15px;">Partita non ancora validata ❌</div>', unsafe_allow_html=True)
 
-
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     df = st.session_state['df_torneo']
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     for idx, row in df_giornata.iterrows():
         try:
             if st.session_state.get(f"valida_{idx}", False):
-                gol_casa = int(st.session_state.get(f"golcasa_{idx}"))
-                gol_ospite = int(st.session_state.get(f"golospite_{idx}"))
-                df.at[idx, 'GolCasa'] = gol_casa
-                df.at[idx, 'GolOspite'] = gol_ospite
+                gol_casa = st.session_state.get(f"golcasa_{idx}")
+                gol_ospite = st.session_state.get(f"golospite_{idx}")
+
+                # Converte stringa vuota in None e poi in Int64
+                df.at[idx, 'GolCasa'] = int(gol_casa) if gol_casa else None
+                df.at[idx, 'GolOspite'] = int(gol_ospite) if gol_ospite else None
                 df.at[idx, 'Valida'] = True
             else:
                 df.at[idx, 'GolCasa'] = None
