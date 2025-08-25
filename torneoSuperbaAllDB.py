@@ -592,12 +592,13 @@ def main():
             if st.session_state.get('mostra_assegnazione_squadre', False):
                 st.markdown("---")
                 st.markdown("### ⚽ Modifica Squadra e Potenziale")
-
+                
                 for gioc in st.session_state['giocatori_selezionati_definitivi']:
-                    # L'inizializzazione è già avvenuta, quindi l'accesso è sicuro
-                    squadra_nuova = st.text_input(f"Squadra per {gioc}", value=st.session_state['gioc_info'][gioc]['Squadra'], key=f"squadra_{gioc}")
-                    potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, int(st.session_state['gioc_info'][gioc]['Potenziale']), key=f"potenziale_{gioc}")
+                    squadra_nuova = st.text_input(f"Squadra per {gioc}", value=st.session_state['gioc_info'].get(gioc, {}).get('Squadra', ""), key=f"squadra_{gioc}")
+                    potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, int(st.session_state['gioc_info'].get(gioc, {}).get('Potenziale', 4)), key=f"potenziale_{gioc}")
 
+                    if gioc not in st.session_state['gioc_info']:
+                        st.session_state['gioc_info'][gioc] = {}
                     st.session_state['gioc_info'][gioc]["Squadra"] = squadra_nuova
                     st.session_state['gioc_info'][gioc]["Potenziale"] = potenziale_nuovo
 
@@ -671,4 +672,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
