@@ -567,6 +567,7 @@ def main():
             classifica = aggiorna_classifica(df)
             # --- FIX ---
             # Verifica che la classifica non sia None o vuota, e sostituisci i valori NaN
+
             if classifica is not None and not classifica.empty:
                 classifica_pulita = classifica.fillna('-')
             else:
