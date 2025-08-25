@@ -152,7 +152,11 @@ def salva_torneo_su_db(tournements_collection, df_torneo, nome_torneo):
     if tournements_collection is None:
         return None
     try:
-        df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
+        df_torneo_pulito = df_torneo.fillna("").replace("None", "")
+        for col in ["GolCasa", "GolOspite"]:
+            if col in df_torneo_pulito.columns:
+                df_torneo_pulito[col] = pd.to_numeric(df_torneo_pulito[col], errors="coerce").fillna(0).astype(int)
+
         data = {"nome_torneo": nome_torneo, "calendario": df_torneo_pulito.to_dict('records')}
         result = tournements_collection.insert_one(data)
         return result.inserted_id
@@ -160,19 +164,26 @@ def salva_torneo_su_db(tournements_collection, df_torneo, nome_torneo):
         st.error(f"❌ Errore salvataggio torneo: {e}")
         return None
 
-def aggiorna_torneo_su_db(tournements_collection, tournement_id, df_torneo):
+def aggiorna_torneo_su_db(tournements_collection, tournament_id, df_torneo):
     if tournements_collection is None:
         return False
     try:
-        df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
+        # sostituisci NaN/None: numeri a 0, testo a ""
+        df_copy = df_torneo.copy()
+        for col in ["GolCasa", "GolOspite"]:
+            if col in df_copy.columns:
+                df_copy[col] = pd.to_numeric(df_copy[col], errors="coerce").fillna(0).astype(int)
+        df_copy = df_copy.fillna("")
+
         tournements_collection.update_one(
-            {"_id": ObjectId(tournement_id)},
-            {"$set": {"calendario": df_torneo_pulito.to_dict('records')}}
+            {"_id": ObjectId(tournament_id)},
+            {"$set": {"calendario": df_copy.to_dict('records')}}
         )
         return True
     except Exception as e:
         st.error(f"❌ Errore aggiornamento torneo: {e}")
         return False
+
 
 # -------------------------
 # CALENDARIO & CLASSIFICA LOGIC
