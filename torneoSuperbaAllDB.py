@@ -200,7 +200,6 @@ def genera_calendario_from_list(gironi, tipo="Solo andata"):
             teams = [teams[0]] + [teams[-1]] + teams[1:-1]
     return pd.DataFrame(partite)
 
-
 # -------------------------
 # VIEW
 # -------------------------
@@ -288,22 +287,29 @@ def main():
         g_sel = st.selectbox("Seleziona Girone", gironi, index=gironi.index(st.session_state['girone_sel']))
         if g_sel != st.session_state['girone_sel']:
             st.session_state['girone_sel'] = g_sel
-            st.session_state['giornata_sel'] = giornate_correnti[0]
+            if giornate_correnti:
+                st.session_state['giornata_sel'] = giornate_correnti[0]
             st.rerun()
 
         st.session_state['usa_bottoni'] = st.checkbox("Usa bottoni giornata", value=st.session_state['usa_bottoni'])
         if st.session_state['usa_bottoni']:
-            navigation_buttons("Giornata", "giornata_sel", min(giornate_correnti), max(giornate_correnti))
+            if giornate_correnti:
+                navigation_buttons("Giornata", "giornata_sel", min(giornate_correnti), max(giornate_correnti))
+            else:
+                st.info("Nessuna giornata disponibile per questo girone.")
         else:
-            try:
-                idx = giornate_correnti.index(st.session_state['giornata_sel'])
-            except ValueError:
-                idx = 0
-                st.session_state['giornata_sel'] = giornate_correnti[0]
-            nuova = st.selectbox("Seleziona Giornata", giornate_correnti, index=idx)
-            if nuova != st.session_state['giornata_sel']:
-                st.session_state['giornata_sel'] = nuova
-                st.rerun()
+            if giornate_correnti:
+                try:
+                    idx = giornate_correnti.index(st.session_state['giornata_sel'])
+                except ValueError:
+                    idx = 0
+                    st.session_state['giornata_sel'] = giornate_correnti[0]
+                nuova = st.selectbox("Seleziona Giornata", giornate_correnti, index=idx)
+                if nuova != st.session_state['giornata_sel']:
+                    st.session_state['giornata_sel'] = nuova
+                    st.rerun()
+            else:
+                st.info("Nessuna giornata disponibile per questo girone.")
 
         mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
         st.button("💾 Salva Risultati", on_click=salva_risultati_giornata, args=(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel']))
