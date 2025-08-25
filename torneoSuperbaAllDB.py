@@ -30,7 +30,8 @@ DEFAULT_STATE = {
     'giocatori_selezionati_definitivi': [],
     'gioc_info': {},
     'usa_bottoni': False,
-    'filtro_attivo': 'Nessuno'
+    'filtro_attivo': 'Nessuno',
+    'show_classifica': False # Aggiunto il flag per mostrare la classifica
 }
 
 for k, v in DEFAULT_STATE.items():
@@ -113,8 +114,11 @@ def carica_torneo_da_db(tournements_collection, tournement_id):
         if torneo_data and 'calendario' in torneo_data:
             df_torneo = pd.DataFrame(torneo_data['calendario'])
             df_torneo['Valida'] = df_torneo['Valida'].astype(bool)
-            df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').astype('Int64')
-            df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').astype('Int64')
+            
+            # Correzione per gestire i valori "None"
+            df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').fillna(0).astype(int)
+            df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').fillna(0).astype(int)
+            
             st.session_state['df_torneo'] = df_torneo
         return torneo_data
     except:
@@ -180,13 +184,18 @@ def aggiorna_classifica(df):
     gironi = df['Girone'].dropna().unique()
     classifiche = []
     for girone in gironi:
-        partite = df[(df['Girone'] == girone) & (df['Valida'] == True)]
+        partite = df[(df['Girone'] == girone) & (df['Valida'] == True)].copy()
         if partite.empty:
             continue
+        
+        # Correzione per gestire valori non numerici e stringhe "None"
+        partite['GolCasa'] = pd.to_numeric(partite['GolCasa'], errors='coerce').fillna(0).astype(int)
+        partite['GolOspite'] = pd.to_numeric(partite['GolOspite'], errors='coerce').fillna(0).astype(int)
+        
         squadre = pd.unique(partite[['Casa', 'Ospite']].values.ravel())
         stats = {s: {'Punti': 0, 'V': 0, 'P': 0, 'S': 0, 'GF': 0, 'GS': 0, 'DR': 0} for s in squadre}
         for _, r in partite.iterrows():
-            gc, go = int(r['GolCasa'] or 0), int(r['GolOspite'] or 0)
+            gc, go = int(r['GolCasa']), int(r['GolOspite'])
             casa, ospite = r['Casa'], r['Ospite']
             stats[casa]['GF'] += gc; stats[casa]['GS'] += go
             stats[ospite]['GF'] += go; stats[ospite]['GS'] += gc
@@ -217,19 +226,16 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         return
 
     for idx, row in df_giornata.iterrows():
-        gol_casa = 0
-        if pd.notna(row['GolCasa']) and str(row['GolCasa']).strip().lower() != 'none':
-            try:
-                gol_casa = int(row['GolCasa'])
-            except (ValueError, TypeError):
-                gol_casa = 0
-        gol_ospite = 0
-        if pd.notna(row['GolOspite']) and str(row['GolOspite']).strip().lower() != 'none':
-            try:
-                gol_ospite = int(row['GolOspite'])
-            except (ValueError, TypeError):
-                gol_ospite = 0
-    
+        # Gestione robusta della conversione dei gol
+        try:
+            gol_casa = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
+        except (ValueError, TypeError):
+            gol_casa = 0
+            
+        try:
+            gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
+        except (ValueError, TypeError):
+            gol_ospite = 0
 
         col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
         with col1:
@@ -410,9 +416,6 @@ def main():
     else:
         st.title("⚽ Torneo Superba - Gestione Gironi")
 
-    # Qui continuano tutte le logiche già presenti...
-    # (creazione torneo, caricamento, gestione giornate, salvataggi, PDF ecc.)
-
     st.markdown("""
         <style>
         ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
@@ -504,7 +507,6 @@ def main():
                 df_clean = df_hide_none(df_filtrato_show.reset_index(drop=True).fillna("").replace("None", ""))
                 st.dataframe(df_clean, use_container_width=True)
 
-                #st.dataframe(df_hide_none(df_filtrato_show.reset_index(drop=True)), use_container_width=True)
             else:
                 st.info("🎉 Tutte le partite di questo girone sono state giocate.")
 
@@ -518,6 +520,7 @@ def main():
             if nuovo_girone != st.session_state['girone_sel']:
                 st.session_state['girone_sel'] = nuovo_girone
                 st.session_state['giornata_sel'] = 1
+                st.session_state['show_classifica'] = False  # Reset classifica
                 st.rerun()
 
             st.session_state['usa_bottoni'] = st.checkbox("Usa bottoni per la giornata", value=st.session_state.get('usa_bottoni', False), key='usa_bottoni_checkbox')
@@ -533,35 +536,28 @@ def main():
                 nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=current_index)
                 if nuova_giornata != st.session_state['giornata_sel']:
                     st.session_state['giornata_sel'] = nuova_giornata
+                    st.session_state['show_classifica'] = False # Reset classifica
                     st.rerun()
 
             mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
             
-            # Utilizziamo le colonne per allineare i due pulsanti
             col1_salva, col2_classifica = st.columns([1, 1])
             with col1_salva:
                 if st.button("💾 Salva Risultati Giornata"):
                     salva_risultati_giornata(tournements_collection, st.session_state['girone_sel'], st.session_state['giornata_sel'])
-                    st.session_state['show_classifica'] = True # Imposta il flag per mostrare la classifica dopo il salvataggio
+                    st.session_state['show_classifica'] = True
                     st.rerun()
 
             with col2_classifica:
-                # Aggiungi un pulsante per mostrare la classifica
                 if st.button("📊 Mostra Classifica Aggiornata"):
                     st.session_state['show_classifica'] = True
-                    # Non serve rerun qui, la classifica apparirà subito dopo il click
 
-            # Mostra la classifica se il flag è impostato
             if st.session_state.get('show_classifica', False):
                 st.markdown("---")
                 st.subheader(f"Classifica {st.session_state['girone_sel']}")
                 classifica = aggiorna_classifica(df)
                 mostra_classifica_stilizzata(classifica, st.session_state['girone_sel'])
 
-            #st.markdown("---")
-            #st.subheader(f"Classifica {st.session_state['girone_sel']}")
-            #classifica = aggiorna_classifica(df)
-            #mostra_classifica_stilizzata(classifica, st.session_state['girone_sel'])
 
     else:
         st.subheader("📁 Carica un torneo o crea uno nuovo")
