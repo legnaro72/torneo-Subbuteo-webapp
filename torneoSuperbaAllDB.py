@@ -217,8 +217,19 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         return
 
     for idx, row in df_giornata.iterrows():
-        gol_casa = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
-        gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
+        gol_casa = 0
+        if pd.notna(row['GolCasa']) and str(row['GolCasa']).strip().lower() != 'none':
+            try:
+                gol_casa = int(row['GolCasa'])
+            except (ValueError, TypeError):
+                gol_casa = 0
+        gol_ospite = 0
+        if pd.notna(row['GolOspite']) and str(row['GolOspite']).strip().lower() != 'none':
+            try:
+                gol_ospite = int(row['GolOspite'])
+            except (ValueError, TypeError):
+                gol_ospite = 0
+    
 
         col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
         with col1:
