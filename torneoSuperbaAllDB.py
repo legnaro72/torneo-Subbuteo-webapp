@@ -219,37 +219,30 @@ def aggiorna_classifica(df):
 # VISUALIZZAZIONE
 # -------------------------
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
+    # Ensure columns are numeric before filtering
+    df['GolCasa'] = pd.to_numeric(df['GolCasa'], errors='coerce').fillna(0).astype(int)
+    df['GolOspite'] = pd.to_numeric(df['GolOspite'], errors='coerce').fillna(0).astype(int)
+
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         st.info("📭 Nessuna partita trovata per questa giornata")
         return
 
     for idx, row in df_giornata.iterrows():
-        # Gestione robusta della conversione dei gol
-        try:
-            gol_casa = int(row['GolCasa']) if pd.notna(row['GolCasa']) and str(row['GolCasa']).strip().lower() != 'none' else 0
-        except (ValueError, TypeError):
-            gol_casa = 0
-            
-        try:
-            gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) and str(row['GolOspite']).strip().lower() != 'none' else 0
-        except (ValueError, TypeError):
-            gol_ospite = 0
-
         col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
         with col1:
             st.markdown(f"**{row['Casa']}** 🆚 **{row['Ospite']}**")
         with col2:
             st.number_input(
                 "Gol Casa", min_value=0, max_value=20, key=f"golcasa_{idx}",
-                value=gol_casa, disabled=row['Valida']
+                value=int(row['GolCasa']), disabled=row['Valida']
             )
         with col3:
             st.markdown("-")
         with col4:
             st.number_input(
                 "Gol Ospite", min_value=0, max_value=20, key=f"golospite_{idx}",
-                value=gol_ospite, disabled=row['Valida']
+                value=int(row['GolOspite']), disabled=row['Valida']
             )
         with col5:
             st.checkbox("✅ Valida", key=f"valida_{idx}", value=row['Valida'])
