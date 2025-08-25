@@ -145,14 +145,17 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
         if torneo_data and 'calendario' in torneo_data:
             df_torneo = pd.DataFrame(torneo_data['calendario'])
             df_torneo['Valida'] = df_torneo['Valida'].astype(bool)
+            
+            # --- RIMOZIONE DELLA RIGA CHE CAUSAVA L'ERRORE ---
+            # df_torneo = df_torneo.fillna('')
+            # ------------------------------------------------
+            
             df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').astype('Int64')
             df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').astype('Int64')
             
-            # --- MODIFICA AGGIUNTA QUI PER GESTIRE I None e NaN ---
-            df_torneo = df_torneo.fillna('')
-            # -----------------------------------------------------
-            
+            # This line is missing and is required for correct normalization
             df_torneo = normalizza_colonne_gol(df_torneo)
+            
             st.session_state['df_torneo'] = df_torneo
             
         return torneo_data
@@ -353,7 +356,7 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
                 pdf.cell(col_widths[i], 6, h, border=1, align='C')
             pdf.ln()
             pdf.set_font("Arial", '', 11)
-            partite = df_torneo[(df_torneo['Girone'] == girone) & (df_torneo['Giornata'] == g)]
+            partite = df_torneo[(df_torneo['Girone'] == girone) & (df['Giornata'] == g)]
             for _, row in partite.iterrows():
                 if pdf.get_y() + line_height + margin_bottom > page_height:
                     pdf.add_page()
@@ -366,10 +369,8 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
                     pdf.set_font("Arial", '', 11)
                 pdf.set_text_color(255, 0, 0) if not row['Valida'] else pdf.set_text_color(0, 0, 0)
 
-                # --- MODIFICA QUI PER NASCONDERE NONE NEL PDF ---
-                gol_casa = str(row['GolCasa']) if pd.notna(row['GolCasa']) and row['GolCasa'] != '' else "-"
-                gol_ospite = str(row['GolOspite']) if pd.notna(row['GolOspite']) and row['GolOspite'] != '' else "-"
-                # -----------------------------------------------
+                gol_casa = str(row['GolCasa']) if pd.notna(row['GolCasa']) else "-"
+                gol_ospite = str(row['GolOspite']) if pd.notna(row['GolOspite']) else "-"
 
                 pdf.cell(col_widths[0], 6, str(row['Casa']), border=1)
                 pdf.cell(col_widths[1], 6, gol_casa, border=1, align='C')
