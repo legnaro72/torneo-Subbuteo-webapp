@@ -540,25 +540,15 @@ def main():
                     st.session_state['show_classifica'] = False # Reset classifica
                     st.rerun()
 
-            mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
+                            # --- SEZIONE AGGIORNATA SENZA PULSANTE ---
+            if st.button("💾 Salva Risultati Giornata"):
+                salva_risultati_giornata(tournements_collection, st.session_state['girone_sel'], st.session_state['giornata_sel'])
+                st.rerun()
             
-            col1_salva, col2_classifica = st.columns([1, 1])
-            with col1_salva:
-                if st.button("💾 Salva Risultati Giornata"):
-                    salva_risultati_giornata(tournements_collection, st.session_state['girone_sel'], st.session_state['giornata_sel'])
-                    st.session_state['show_classifica'] = True
-                    st.rerun()
-
-            with col2_classifica:
-                if st.button("📊 Mostra Classifica Aggiornata"):
-                    st.session_state['show_classifica'] = True
-
-            if st.session_state.get('show_classifica', False):
-                st.markdown("---")
-                st.subheader(f"Classifica {st.session_state['girone_sel']}")
-                classifica = aggiorna_classifica(df)
-                mostra_classifica_stilizzata(classifica, st.session_state['girone_sel'])
-
+            st.markdown("---")
+            st.subheader(f"Classifica {st.session_state['girone_sel']}")
+            classifica = aggiorna_classifica(df)
+            mostra_classifica_stilizzata(classifica, st.session_state['girone_sel'])
 
     else:
         st.subheader("📁 Carica un torneo o crea uno nuovo")
