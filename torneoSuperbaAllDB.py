@@ -243,6 +243,32 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             st.success("✔️ Partita validata")
         else:
             st.warning("⏳ In attesa di validazione")
+def salva_risultati_giornata(tournements_collection, girone_sel, giornata_sel):
+    df = st.session_state['df_torneo']
+    df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
+
+    for idx, row in df_giornata.iterrows():
+        gol_casa = st.session_state.get(f"golcasa_{idx}", 0)
+        gol_ospite = st.session_state.get(f"golospite_{idx}", 0)
+        valida = st.session_state.get(f"valida_{idx}", False)
+
+        # assegna sempre numeri, mai None
+        df.at[idx, 'GolCasa'] = int(gol_casa) if gol_casa is not None else 0
+        df.at[idx, 'GolOspite'] = int(gol_ospite) if gol_ospite is not None else 0
+        df.at[idx, 'Valida'] = bool(valida)
+
+    # ripulisci eventuali “None” testuali
+    df = df.fillna("").replace("None", "")
+    st.session_state['df_torneo'] = df
+
+    if 'tournement_id' in st.session_state:
+        ok = aggiorna_torneo_su_db(tournements_collection, st.session_state['tournement_id'], df)
+        if ok:
+            st.success("💾 Risultati salvati su MongoDB!")
+        else:
+            st.error("❌ Errore durante il salvataggio su MongoDB")
+    else:
+        st.error("⚠️ Nessun ID torneo trovato. Impossibile salvare.")
 
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
