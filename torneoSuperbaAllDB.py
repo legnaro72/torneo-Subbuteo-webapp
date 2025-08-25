@@ -501,7 +501,7 @@ def main():
                     columns={'Giornata': 'Giornata', 'Casa': 'Casa', 'Ospite': 'Ospite'}
                 )
 
-                df_clean = df_hide_none(df_filtrato_show.reset_index(drop=True).fillna("").replace("None", "")
+                df_clean = df_hide_none(df_filtrato_show.reset_index(drop=True).fillna("").replace("None", ""))
                 st.dataframe(df_clean, use_container_width=True)
 
                 #st.dataframe(df_hide_none(df_filtrato_show.reset_index(drop=True)), use_container_width=True)
