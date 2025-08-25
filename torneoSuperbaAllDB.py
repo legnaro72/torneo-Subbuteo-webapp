@@ -311,7 +311,12 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
         st.info("⚽ Nessuna partita validata")
         return
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
-    st.dataframe(combined_style(df_hide_none(df_girone)), use_container_width=True)
+    df_girone_clean = df_girone.copy().fillna("").replace("None", "")
+
+    df_clean = combined_style(df_hide_none(df_girone).fillna("").replace("None", "")
+    st.dataframe(df_clean, use_container_width=True)
+
+    #st.dataframe(combined_style(df_hide_none(df_girone)), use_container_width=True)
 
 
 def esporta_pdf(df_torneo, df_classifica, nome_torneo):
@@ -468,8 +473,9 @@ def main():
                     df_filtrato_show = df_filtrato[['Girone', 'Giornata', 'Casa', 'Ospite']].rename(
                         columns={'Girone': 'Girone', 'Giornata': 'Giornata', 'Casa': 'Casa', 'Ospite': 'Ospite'}
                     )
-                    st.dataframe(df_hide_none(df_filtrato_show.reset_index(drop=True)), use_container_width=True)
-
+                    df_clean = df_filtrato_show.reset_index(drop=True).fillna("").replace("None", "")
+                    st.dataframe(df_clean, use_container_width=True)
+                   
                 else:
                     st.info("🎉 Nessuna partita da giocare trovata per questo giocatore.")
 
@@ -494,7 +500,11 @@ def main():
                 df_filtrato_show = df_filtrato[['Giornata', 'Casa', 'Ospite']].rename(
                     columns={'Giornata': 'Giornata', 'Casa': 'Casa', 'Ospite': 'Ospite'}
                 )
-                st.dataframe(df_hide_none(df_filtrato_show.reset_index(drop=True)), use_container_width=True)
+
+                df_clean = df_hide_none(df_filtrato_show.reset_index(drop=True).fillna("").replace("None", "")
+                st.dataframe(df_clean, use_container_width=True)
+
+                #st.dataframe(df_hide_none(df_filtrato_show.reset_index(drop=True)), use_container_width=True)
             else:
                 st.info("🎉 Tutte le partite di questo girone sono state giocate.")
 
