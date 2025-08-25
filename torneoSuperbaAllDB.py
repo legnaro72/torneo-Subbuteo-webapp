@@ -148,9 +148,10 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
             df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').astype('Int64')
             df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').astype('Int64')
             
-            # --- MODIFICA AGGIUNTA QUI ---
-            #df_torneo = df_torneo.fillna('-')
-            # ---------------------------
+            # --- MODIFICA AGGIUNTA QUI PER GESTIRE I None e NaN ---
+            df_torneo = df_torneo.fillna('')
+            # -----------------------------------------------------
+            
             df_torneo = normalizza_colonne_gol(df_torneo)
             st.session_state['df_torneo'] = df_torneo
             
@@ -364,9 +365,15 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
                     pdf.ln()
                     pdf.set_font("Arial", '', 11)
                 pdf.set_text_color(255, 0, 0) if not row['Valida'] else pdf.set_text_color(0, 0, 0)
+
+                # --- MODIFICA QUI PER NASCONDERE NONE NEL PDF ---
+                gol_casa = str(row['GolCasa']) if pd.notna(row['GolCasa']) and row['GolCasa'] != '' else "-"
+                gol_ospite = str(row['GolOspite']) if pd.notna(row['GolOspite']) and row['GolOspite'] != '' else "-"
+                # -----------------------------------------------
+
                 pdf.cell(col_widths[0], 6, str(row['Casa']), border=1)
-                pdf.cell(col_widths[1], 6, str(row['GolCasa']) if pd.notna(row['GolCasa']) else "-", border=1, align='C')
-                pdf.cell(col_widths[2], 6, str(row['GolOspite']) if pd.notna(row['GolOspite']) else "-", border=1, align='C')
+                pdf.cell(col_widths[1], 6, gol_casa, border=1, align='C')
+                pdf.cell(col_widths[2], 6, gol_ospite, border=1, align='C')
                 pdf.cell(col_widths[3], 6, str(row['Ospite']), border=1)
                 pdf.ln()
             pdf.ln(3)
