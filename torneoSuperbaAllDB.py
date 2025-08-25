@@ -210,6 +210,41 @@ def aggiorna_classifica(df):
 # -------------------------
 # VISUALIZZAZIONE
 # -------------------------
+def mostra_calendario_giornata(df, girone_sel, giornata_sel):
+    df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
+    if df_giornata.empty:
+        st.info("📭 Nessuna partita trovata per questa giornata")
+        return
+
+    for idx, row in df_giornata.iterrows():
+        gol_casa = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
+        gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
+
+        col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
+        with col1:
+            st.markdown(f"**{row['Casa']}** 🆚 **{row['Ospite']}**")
+        with col2:
+            st.number_input(
+                "Gol Casa", min_value=0, max_value=20, key=f"golcasa_{idx}",
+                value=gol_casa, disabled=row['Valida']
+            )
+        with col3:
+            st.markdown("-")
+        with col4:
+            st.number_input(
+                "Gol Ospite", min_value=0, max_value=20, key=f"golospite_{idx}",
+                value=gol_ospite, disabled=row['Valida']
+            )
+        with col5:
+            st.checkbox("✅ Valida", key=f"valida_{idx}", value=row['Valida'])
+
+        # Stato partita
+        if st.session_state.get(f"valida_{idx}", False):
+            st.success("✔️ Partita validata")
+        else:
+            st.warning("⏳ In attesa di validazione")
+
+
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
     if df_classifica is None or df_classifica.empty:
         st.info("⚽ Nessuna partita validata")
