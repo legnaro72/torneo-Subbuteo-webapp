@@ -257,25 +257,33 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
     if df_giornata.empty:
         return
     for idx, row in df_giornata.iterrows():
-        gol_casa = _to_int_safe(row['GolCasa'])
-        gol_ospite = _to_int_safe(row['GolOspite'])
-
-
         col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
         with col1:
             st.markdown(f"**{row['Casa']}** vs **{row['Ospite']}**")
         with col2:
-            st.number_input(
-                "", min_value=0, max_value=20, key=f"golcasa_{idx}", value=gol_casa,
-                disabled=row['Valida'], label_visibility="hidden"
-            )
+            if not row['Valida']:
+                st.text_input(
+                    "", key=f"golcasa_{idx}", value="",
+                    disabled=row['Valida'], label_visibility="hidden"
+                )
+            else:
+                st.number_input(
+                    "", min_value=0, max_value=20, key=f"golcasa_{idx}", value=_to_int_safe(row['GolCasa']),
+                    disabled=row['Valida'], label_visibility="hidden"
+                )
         with col3:
             st.markdown("-")
         with col4:
-            st.number_input(
-                "", min_value=0, max_value=20, key=f"golospite_{idx}", value=gol_ospite,
-                disabled=row['Valida'], label_visibility="hidden"
-            )
+            if not row['Valida']:
+                st.text_input(
+                    "", key=f"golospite_{idx}", value="",
+                    disabled=row['Valida'], label_visibility="hidden"
+                )
+            else:
+                st.number_input(
+                    "", min_value=0, max_value=20, key=f"golospite_{idx}", value=_to_int_safe(row['GolOspite']),
+                    disabled=row['Valida'], label_visibility="hidden"
+                )
         with col5:
             st.checkbox("Valida", key=f"valida_{idx}", value=row['Valida'])
 
@@ -289,9 +297,22 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     df = st.session_state['df_torneo']
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     for idx, row in df_giornata.iterrows():
-        df.at[idx, 'GolCasa'] = st.session_state.get(f"golcasa_{idx}", 0)
-        df.at[idx, 'GolOspite'] = st.session_state.get(f"golospite_{idx}", 0)
-        df.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
+        try:
+            if st.session_state.get(f"valida_{idx}", False):
+                gol_casa = int(st.session_state.get(f"golcasa_{idx}"))
+                gol_ospite = int(st.session_state.get(f"golospite_{idx}"))
+                df.at[idx, 'GolCasa'] = gol_casa
+                df.at[idx, 'GolOspite'] = gol_ospite
+                df.at[idx, 'Valida'] = True
+            else:
+                df.at[idx, 'GolCasa'] = None
+                df.at[idx, 'GolOspite'] = None
+                df.at[idx, 'Valida'] = False
+        except (ValueError, TypeError):
+            st.toast("❌ Errore: Inserisci solo numeri interi per i gol.")
+            df.at[idx, 'Valida'] = False
+            continue
+
     st.session_state['df_torneo'] = df
     if 'tournament_id' in st.session_state:
         aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
