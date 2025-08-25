@@ -276,7 +276,7 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
     pdf.add_page()
 
     pdf.set_font("Arial", 'B', 16)
-    pdf.cell(0, 10, f"📄 Calendario e Classifiche - {nome_torneo}", ln=True, align='C')
+    pdf.cell(0, 10, f" Calendario e Classifiche - {nome_torneo}", ln=True, align='C')
 
     line_height = 6
     margin_bottom = 15
@@ -364,7 +364,7 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
             pdf.ln()
         pdf.ln(10)
 
-    # 👇 fix: sempre bytes
+    #  fix: sempre bytes
     pdf_output = pdf.output(dest="S")
     if isinstance(pdf_output, str):
         pdf_bytes = pdf_output.encode("latin1")
