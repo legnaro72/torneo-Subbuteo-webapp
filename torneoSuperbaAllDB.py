@@ -525,15 +525,24 @@ def main():
                     st.rerun()
 
             mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
-            if st.button("💾 Salva Risultati Giornata"):
-                salva_risultati_giornata(tournements_collection, st.session_state['girone_sel'], st.session_state['giornata_sel'])
-                st.rerun()   # 👈 qui funziona perché sei fuori dal callback
-
-            st.markdown("---")
-            if st.button("📊 Mostra Classifica Aggiornata"):
-                st.session_state['show_classifica'] = True
             
+            # Utilizziamo le colonne per allineare i due pulsanti
+            col1_salva, col2_classifica = st.columns([1, 1])
+            with col1_salva:
+                if st.button("💾 Salva Risultati Giornata"):
+                    salva_risultati_giornata(tournements_collection, st.session_state['girone_sel'], st.session_state['giornata_sel'])
+                    st.session_state['show_classifica'] = True # Imposta il flag per mostrare la classifica dopo il salvataggio
+                    st.rerun()
+
+            with col2_classifica:
+                # Aggiungi un pulsante per mostrare la classifica
+                if st.button("📊 Mostra Classifica Aggiornata"):
+                    st.session_state['show_classifica'] = True
+                    # Non serve rerun qui, la classifica apparirà subito dopo il click
+
+            # Mostra la classifica se il flag è impostato
             if st.session_state.get('show_classifica', False):
+                st.markdown("---")
                 st.subheader(f"Classifica {st.session_state['girone_sel']}")
                 classifica = aggiorna_classifica(df)
                 mostra_classifica_stilizzata(classifica, st.session_state['girone_sel'])
