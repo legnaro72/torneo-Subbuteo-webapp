@@ -565,8 +565,17 @@ def main():
             st.markdown("---")
             st.subheader(f"Classifica {st.session_state['girone_sel']} 📈")
             classifica = aggiorna_classifica(df)
-            mostra_classifica_stilizzata(classifica, st.session_state['girone_sel'])
+            # --- FIX ---
+            # Verifica che la classifica non sia None o vuota, e sostituisci i valori NaN
+            if classifica is not None and not classifica.empty:
+                classifica_pulita = classifica.fillna('-')
+            else:
+                # Se la classifica è vuota o None, crea un DataFrame vuoto per evitare errori
+                classifica_pulita = pd.DataFrame(columns=['Girone', 'Squadra', 'Punti', 'V', 'P', 'S', 'GF', 'GS', 'DR']).fillna('-')
 
+            mostra_classifica_stilizzata(classifica_pulita, st.session_state['girone_sel'])
+            # --- FINE FIX --
+            
     else:
         st.subheader("📁 Carica un torneo o crea uno nuovo")
         col1, col2 = st.columns(2)
