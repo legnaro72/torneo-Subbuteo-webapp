@@ -8,6 +8,17 @@ from pymongo.server_api import ServerApi
 from bson.objectid import ObjectId
 import json
 
+st.markdown("""
+<style>
+.stTextInput input[type="text"] {
+    text-align: center; /* Per centrare il testo, se vuoi */
+}
+.stTextInput input[type="text"][value="None"] {
+    color: transparent; /* Rende il testo "None" invisibile */
+}
+</style>
+""", unsafe_allow_html=True)
+
 # -------------------------------------------------
 # CONFIG PAGINA (deve essere la prima chiamata st.*)
 # -------------------------------------------------
