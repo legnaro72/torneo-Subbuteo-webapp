@@ -228,12 +228,12 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
     for idx, row in df_giornata.iterrows():
         # Gestione robusta della conversione dei gol
         try:
-            gol_casa = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
+            gol_casa = int(row['GolCasa']) if pd.notna(row['GolCasa']) and str(row['GolCasa']).strip().lower() != 'none' else 0
         except (ValueError, TypeError):
             gol_casa = 0
-            
+
         try:
-            gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
+            gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) and str(row['GolOspite']).strip().lower() != 'none' else 0
         except (ValueError, TypeError):
             gol_ospite = 0
 
@@ -260,6 +260,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             st.success("✔️ Partita validata")
         else:
             st.warning("⏳ In attesa di validazione")
+
 def salva_risultati_giornata(tournements_collection, girone_sel, giornata_sel):
     df = st.session_state['df_torneo']
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
