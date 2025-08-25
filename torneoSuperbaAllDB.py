@@ -478,7 +478,7 @@ def main():
                     )
                     df_clean = df_filtrato_show.reset_index(drop=True).fillna("").replace("None", "")
                     st.dataframe(df_clean, use_container_width=True)
-                   
+                    
                 else:
                     st.info("🎉 Nessuna partita da giocare trovata per questo giocatore.")
 
@@ -678,17 +678,26 @@ def main():
 
                     if st.button("Valida e Assegna Gironi Manuali"):
                         tutti_i_giocatori_assegnati = sum(gironi_manuali.values(), [])
-                        if sorted(tutti_i_giocatori_assegnati) == sorted(st.session_state['giocatori_selezionati_definitivi']):
-                            st.session_state['gironi_manuali'] = gironi_manuali
-                            st.session_state['gironi_manuali_completi'] = True
-                            st.toast("Gironi manuali assegnati ✅")
-                            st.rerun()
-                        else:
-                            st.error("❌ Assicurati di assegnare tutti i giocatori e che ogni giocatore sia in un solo girone.")
+                        if len(tutti_i_giocatori_assegnati) != len(st.session_state['giocatori_selezionati_definitivi']):
+                            st.error("❌ Non tutti i giocatori sono stati assegnati o ci sono duplicati. Rivedi la selezione.")
+                            return
+                        if len(set(tutti_i_giocatori_assegnati)) != len(st.session_state['giocatori_selezionati_definitivi']):
+                            st.error("❌ Alcuni giocatori sono stati assegnati a più di un girone. Rivedi la selezione.")
+                            return
+
+                        for girone_name, giocatori_list in gironi_manuali.items():
+                            if len(giocatori_list) < 2:
+                                st.error(f"❌ Il {girone_name} deve contenere almeno 2 giocatori.")
+                                return
+
+                        st.session_state['gironi_manuali_completi'] = True
+                        st.session_state['gironi_manuali'] = gironi_manuali
+                        st.toast("Gironi manuali convalidati e salvati ✅")
+                        st.rerun()
 
                 if st.button("Genera Calendario"):
-                    if modalita_gironi == "Popola Gironi Manualmente" and not st.session_state.get('gironi_manuali_completi', False):
-                        st.error("❌ Per generare il calendario manualmente, clicca prima su 'Valida e Assegna Gironi Manuali'.")
+                    if modalita_gironi == "Popola Gironi Manualmente" and not st.session_state['gironi_manuali_completi']:
+                        st.warning("⚠️ Per generare il calendario manualmente, clicca prima su 'Valida e Assegna Gironi Manuali'.")
                         return
 
                     giocatori_formattati = [
@@ -710,8 +719,26 @@ def main():
                         st.session_state['df_torneo'] = df_torneo
                         st.session_state['tournement_id'] = str(tid)
                         st.session_state['calendario_generato'] = True
-                        st.toast("Calendario generato e salvato su MongoDB ✅")
+                        st.toast("Calendario generato e salvato ✅")
                         st.rerun()
+                    else:
+                        st.error("❌ Errore durante la creazione del torneo.")
+                        st.rerun()
+
+def navigation_buttons(label, session_key, min_val, max_val):
+    col_prev, col_curr, col_next = st.columns([1, 4, 1])
+    with col_prev:
+        if st.button("⏪ Indietro"):
+            if st.session_state[session_key] > min_val:
+                st.session_state[session_key] -= 1
+                st.rerun()
+    with col_curr:
+        st.markdown(f"<h3 style='text-align: center;'>{label} {st.session_state[session_key]}</h3>", unsafe_allow_html=True)
+    with col_next:
+        if st.button("⏩ Avanti"):
+            if st.session_state[session_key] < max_val:
+                st.session_state[session_key] += 1
+                st.rerun()
 
 if __name__ == "__main__":
     main()
