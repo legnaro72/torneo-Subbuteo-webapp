@@ -578,7 +578,7 @@ def main():
                 st.session_state['mostra_gironi'] = False
                 st.session_state['gironi_manuali_completi'] = False
                 
-                # Inizializza o aggiorna il dizionario gioc_info
+                # Inizializzazione definitiva del dizionario gioc_info
                 st.session_state['gioc_info'] = {}
                 for gioc in st.session_state['giocatori_selezionati_definitivi']:
                     row = df_master[df_master['Giocatore'] == gioc].iloc[0] if gioc in df_master['Giocatore'].values else None
@@ -594,6 +594,7 @@ def main():
                 st.markdown("### ⚽ Modifica Squadra e Potenziale")
 
                 for gioc in st.session_state['giocatori_selezionati_definitivi']:
+                    # L'inizializzazione è già avvenuta, quindi l'accesso è sicuro
                     squadra_nuova = st.text_input(f"Squadra per {gioc}", value=st.session_state['gioc_info'][gioc]['Squadra'], key=f"squadra_{gioc}")
                     potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, int(st.session_state['gioc_info'][gioc]['Potenziale']), key=f"potenziale_{gioc}")
 
