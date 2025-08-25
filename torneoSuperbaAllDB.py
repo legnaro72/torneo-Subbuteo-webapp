@@ -1,4 +1,4 @@
-limport streamlit as st import pandas as pd import random from fpdf import FPDF from datetime import datetime from pymongo import MongoClient from pymongo.server_api import ServerApi from bson.objectid import ObjectId
+import streamlit as st import pandas as pd import random from fpdf import FPDF from datetime import datetime from pymongo import MongoClient from pymongo.server_api import ServerApi from bson.objectid import ObjectId
 
 -------------------------------------------------
 
@@ -19,6 +19,14 @@ if 'df_torneo' not in st.session_state: st.session_state['df_torneo'] = pd.DataF
 DEFAULT_STATE = { 'calendario_generato': False, 'mostra_form_creazione': False, 'girone_sel': "Girone 1", 'giornata_sel': 1, 'mostra_assegnazione_squadre': False, 'mostra_gironi': False, 'gironi_manuali_completi': False, 'giocatori_selezionati_definitivi': [], 'gioc_info': {}, 'usa_bottoni': False, 'filtro_attivo': 'Nessuno' } for k,v in DEFAULT_STATE.items(): if k not in st.session_state: st.session_state[k] = v
 
 def reset_app_state(): for k in list(st.session_state.keys()): if k not in ['df_torneo','sidebar_state_reset']: st.session_state.pop(k) st.session_state.update(DEFAULT_STATE) st.session_state['df_torneo'] = pd.DataFrame()
+
+-------------------------
+
+UTILS
+
+-------------------------
+
+def safe_int(val): try: return int(val) except (TypeError, ValueError): return 0
 
 -------------------------
 
@@ -44,7 +52,7 @@ CLASSIFICA
 
 -------------------------
 
-def aggiorna_classifica(df): if 'Girone' not in df.columns: return pd.DataFrame() gironi = df['Girone'].dropna().unique() classifiche = [] for girone in gironi: partite = df[(df['Girone']==girone)&(df['Valida']==True)] if partite.empty: continue squadre = pd.unique(partite[['Casa','Ospite']].values.ravel()) stats = {s:{'Punti':0,'V':0,'P':0,'S':0,'GF':0,'GS':0,'DR':0} for s in squadre} for _,r in partite.iterrows(): gc = int(r['GolCasa']) if pd.notna(r['GolCasa']) and r['GolCasa'] is not None else 0 go = int(r['GolOspite']) if pd.notna(r['GolOspite']) and r['GolOspite'] is not None else 0 casa,ospite = r['Casa'],r['Ospite'] stats[casa]['GF']+=gc; stats[casa]['GS']+=go stats[ospite]['GF']+=go; stats[ospite]['GS']+=gc if gc>go: stats[casa]['Punti']+=2; stats[casa]['V']+=1; stats[ospite]['S']+=1 elif gc<go: stats[ospite]['Punti']+=2; stats[ospite]['V']+=1; stats[casa]['S']+=1 else: stats[casa]['Punti']+=1; stats[ospite]['Punti']+=1 stats[casa]['P']+=1; stats[ospite]['P']+=1 for s in squadre: stats[s]['DR']=stats[s]['GF']-stats[s]['GS'] df_stat=pd.DataFrame.from_dict(stats,orient='index').reset_index().rename(columns={'index':'Squadra'}) df_stat['Girone']=girone classifiche.append(df_stat) if not classifiche: return pd.DataFrame() return pd.concat(classifiche).sort_values(by=['Girone','Punti','DR'],ascending=[True,False,False])
+def aggiorna_classifica(df): if 'Girone' not in df.columns: return pd.DataFrame() gironi = df['Girone'].dropna().unique() classifiche = [] for girone in gironi: partite = df[(df['Girone']==girone)&(df['Valida']==True)] if partite.empty: continue squadre = pd.unique(partite[['Casa','Ospite']].values.ravel()) stats = {s:{'Punti':0,'V':0,'P':0,'S':0,'GF':0,'GS':0,'DR':0} for s in squadre} for _,r in partite.iterrows(): gc = safe_int(r['GolCasa']) go = safe_int(r['GolOspite']) casa,ospite = r['Casa'],r['Ospite'] stats[casa]['GF']+=gc; stats[casa]['GS']+=go stats[ospite]['GF']+=go; stats[ospite]['GS']+=gc if gc>go: stats[casa]['Punti']+=2; stats[casa]['V']+=1; stats[ospite]['S']+=1 elif gc<go: stats[ospite]['Punti']+=2; stats[ospite]['V']+=1; stats[casa]['S']+=1 else: stats[casa]['Punti']+=1; stats[ospite]['Punti']+=1 stats[casa]['P']+=1; stats[ospite]['P']+=1 for s in squadre: stats[s]['DR']=stats[s]['GF']-stats[s]['GS'] df_stat=pd.DataFrame.from_dict(stats,orient='index').reset_index().rename(columns={'index':'Squadra'}) df_stat['Girone']=girone classifiche.append(df_stat) if not classifiche: return pd.DataFrame() return pd.concat(classifiche).sort_values(by=['Girone','Punti','DR'],ascending=[True,False,False])
 
 -------------------------
 
@@ -62,7 +70,7 @@ VIEW
 
 def navigation_buttons(label,key,min_val,max_val): c1,c2,c3=st.columns([1,3,1]) with c1: if st.button("◀️",key=f"{key}_prev"): st.session_state[key]=max(min_val,st.session_state[key]-1) st.rerun() with c2: st.markdown(f"<div style='text-align:center;font-weight:bold;'>{label} {st.session_state[key]}</div>",unsafe_allow_html=True) with c3: if st.button("▶️",key=f"{key}_next"): st.session_state[key]=min(max_val,st.session_state[key]+1) st.rerun()
 
-def mostra_calendario_giornata(df,girone_sel,giornata_sel): df_g=df[(df['Girone']==girone_sel)&(df['Giornata']==giornata_sel)] if df_g.empty: st.info("Nessuna partita trovata") return for idx,row in df_g.iterrows(): gc=int(row['GolCasa']) if pd.notna(row['GolCasa']) and row['GolCasa'] is not None else 0 go=int(row['GolOspite']) if pd.notna(row['GolOspite']) and row['GolOspite'] is not None else 0 c1,c2,c3,c4,c5=st.columns([5,1.5,1,1.5,1]) with c1: st.markdown(f"{row['Casa']} vs {row['Ospite']}") with c2: st.number_input("",0,20,gc,key=f"golcasa_{idx}",disabled=row['Valida'],label_visibility="hidden") with c3: st.markdown("-") with c4: st.number_input("",0,20,go,key=f"golospite_{idx}",disabled=row['Valida'],label_visibility="hidden") with c5: st.checkbox("Valida",key=f"valida_{idx}",value=row['Valida'])
+def mostra_calendario_giornata(df,girone_sel,giornata_sel): df_g=df[(df['Girone']==girone_sel)&(df['Giornata']==giornata_sel)] if df_g.empty: st.info("Nessuna partita trovata") return for idx,row in df_g.iterrows(): gc=safe_int(row['GolCasa']) go=safe_int(row['GolOspite']) c1,c2,c3,c4,c5=st.columns([5,1.5,1,1.5,1]) with c1: st.markdown(f"{row['Casa']} vs {row['Ospite']}") with c2: st.number_input("",0,20,gc,key=f"golcasa_{idx}",disabled=row['Valida'],label_visibility="hidden") with c3: st.markdown("-") with c4: st.number_input("",0,20,go,key=f"golospite_{idx}",disabled=row['Valida'],label_visibility="hidden") with c5: st.checkbox("Valida",key=f"valida_{idx}",value=row['Valida'])
 
 def salva_risultati_giornata(tournaments_collection,girone,giornata): df=st.session_state['df_torneo'] df_g=df[(df['Girone']==girone)&(df['Giornata']==giornata)] for idx,_ in df_g.iterrows(): df.at[idx,'GolCasa']=st.session_state.get(f"golcasa_{idx}",0) df.at[idx,'GolOspite']=st.session_state.get(f"golospite_{idx}",0) df.at[idx,'Valida']=st.session_state.get(f"valida_{idx}",False) st.session_state['df_torneo']=df if 'tournament_id' in st.session_state: aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df) st.toast("Risultati salvati su MongoDB ✅") else: st.error("❌ ID torneo non trovato") _ = aggiorna_classifica(df) st.rerun()
 
