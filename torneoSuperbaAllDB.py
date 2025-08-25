@@ -69,8 +69,9 @@ def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
 # UTILITY
 # -------------------------
 def df_hide_none(df: pd.DataFrame):
-        """Rimpiazza None/NaN con stringa vuota solo per la visualizzazione"""
-        return df.fillna("").replace("None", "")
+    """Rimpiazza None/NaN con stringa vuota solo per la visualizzazione"""
+    return df.fillna("").replace("None", "")
+
 
 def combined_style(df: pd.DataFrame):
     # Evidenziazione classifiche + nascondi None/NaN nelle celle
@@ -478,7 +479,7 @@ def main():
                 df_filtrato_show = df_filtrato[['Giornata', 'Casa', 'Ospite']].rename(
                     columns={'Giornata': 'Giornata', 'Casa': 'Casa', 'Ospite': 'Ospite'}
                 )
-                st.dataframe(df_filtrato_show.reset_index(drop=True), use_container_width=True)
+                st.dataframe(df_hide_none(df_filtrato_show.reset_index(drop=True)), use_container_width=True)
             else:
                 st.info("🎉 Tutte le partite di questo girone sono state giocate.")
 
