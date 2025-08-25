@@ -221,6 +221,9 @@ def genera_calendario_from_list(gironi, tipo="Solo andata"):
 # File: alldbsuperba.py
 # (Lines 232-257 in the original script)
 
+# File: alldbsuperba.py
+# (Lines 232-257 nel tuo file)
+
 def aggiorna_classifica(df):
     if 'Girone' not in df.columns:
         return pd.DataFrame(columns=['Girone', 'Squadra', 'Punti', 'V', 'P', 'S', 'GF', 'GS', 'DR'])
@@ -234,11 +237,11 @@ def aggiorna_classifica(df):
             continue
         
         # --- FIX ---
-        # Converti le colonne dei gol in numerico, forzando gli errori a NaN,
-        # poi sostituisci i NaN con 0.
+        # Converte le colonne dei gol in numeri interi, 
+        # sostituendo eventuali errori (come stringhe vuote) con 0
         partite['GolCasa'] = pd.to_numeric(partite['GolCasa'], errors='coerce').fillna(0).astype(int)
         partite['GolOspite'] = pd.to_numeric(partite['GolOspite'], errors='coerce').fillna(0).astype(int)
-        # --- END FIX ---
+        # --- FINE FIX ---
 
         squadre = pd.unique(partite[['Casa', 'Ospite']].values.ravel())
         stats = {s: {'Punti': 0, 'V': 0, 'P': 0, 'S': 0, 'GF': 0, 'GS': 0, 'DR': 0} for s in squadre}
