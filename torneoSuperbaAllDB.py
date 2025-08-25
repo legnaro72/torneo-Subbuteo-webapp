@@ -1,5 +1,3 @@
-
-
 import streamlit as st
 import pandas as pd
 import random
@@ -240,8 +238,8 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
     if df_giornata.empty:
         return
     for idx, row in df_giornata.iterrows():
-        gol_casa = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
-        gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
+        gol_casa = int(row['GolCasa']) if pd.notna(row['GolCasa']) else ""
+        gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) else ""
 
         col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
         with col1:
