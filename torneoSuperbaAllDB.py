@@ -369,9 +369,6 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
     pdf_bytes = pdf.output(dest='S').encode('latin1')
     return pdf_bytes
 
-# -------------------------
-# APP
-# -------------------------
 def main():
     if st.session_state.get('sidebar_state_reset', False):
         reset_app_state()
@@ -579,11 +576,20 @@ def main():
                 if len(set(giocatori_scelti)) < 4:
                     st.warning("⚠️ Inserisci almeno 4 giocatori diversi.")
                     return
+
                 st.session_state['giocatori_selezionati_definitivi'] = list(set(giocatori_scelti))
                 st.session_state['mostra_assegnazione_squadre'] = True
                 st.session_state['mostra_gironi'] = False
                 st.session_state['gironi_manuali_completi'] = False
-                st.session_state['gioc_info'] = {gioc: st.session_state['gioc_info'].get(gioc, {}) for gioc in st.session_state['giocatori_selezionati_definitivi']}
+                
+                # Resetta e popola completamente il dizionario 'gioc_info' per tutti i giocatori selezionati
+                st.session_state['gioc_info'] = {}
+                for gioc in st.session_state['giocatori_selezionati_definitivi']:
+                    row = df_master[df_master['Giocatore'] == gioc].iloc[0] if gioc in df_master['Giocatore'].values else None
+                    squadra_default = row['Squadra'] if row is not None and not pd.isna(row['Squadra']) else ""
+                    potenziale_default = int(row['Potenziale']) if row is not None and not pd.isna(row['Potenziale']) else 4
+                    st.session_state['gioc_info'][gioc] = {"Squadra": squadra_default, "Potenziale": potenziale_default}
+
                 st.toast("Giocatori confermati ✅")
                 st.rerun()
 
@@ -591,13 +597,8 @@ def main():
                 st.markdown("---")
                 st.markdown("### ⚽ Modifica Squadra e Potenziale")
 
-                for gioc in st.session_state['giocatori_selezionati_definitivi']:
-                    if gioc not in st.session_state['gioc_info']:
-                        row = df_master[df_master['Giocatore'] == gioc].iloc[0] if gioc in df_master['Giocatore'].values else None
-                        squadra_default = row['Squadra'] if row is not None else ""
-                        potenziale_default = int(row['Potenziale']) if row is not None else 4
-                        st.session_state['gioc_info'][gioc] = {"Squadra": squadra_default, "Potenziale": potenziale_default}
-
+                # Rimuovi il blocco di inizializzazione qui, poiché è già stato fatto in "Conferma Giocatori"
+                # Il ciclo ora si basa sul dizionario già corretto.
                 for gioc in st.session_state['giocatori_selezionati_definitivi']:
                     squadra_nuova = st.text_input(f"Squadra per {gioc}", value=st.session_state['gioc_info'][gioc]['Squadra'], key=f"squadra_{gioc}")
                     potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, int(st.session_state['gioc_info'][gioc]['Potenziale']), key=f"potenziale_{gioc}")
@@ -675,3 +676,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
