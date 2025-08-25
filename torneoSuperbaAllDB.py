@@ -287,7 +287,7 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
         pdf.set_font("Arial", 'B', 14)
         if pdf.get_y() + 8 + margin_bottom > page_height:
             pdf.add_page()
-        pdf.cell(0, 8, f"⚽ {girone}", ln=True)
+        pdf.cell(0, 8, f" {girone}", ln=True)
 
         giornate = sorted(df_torneo[df_torneo['Girone'] == girone]['Giornata'].dropna().unique())
         for g in giornate:
@@ -295,7 +295,7 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
             if pdf.get_y() + needed_space > page_height:
                 pdf.add_page()
             pdf.set_font("Arial", 'B', 12)
-            pdf.cell(0, 7, f"📅 Giornata {g}", ln=True)
+            pdf.cell(0, 7, f" Giornata {g}", ln=True)
 
             pdf.set_font("Arial", 'B', 11)
             headers = ["Casa", "Gol", "Gol", "Ospite"]
@@ -333,7 +333,7 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
         if pdf.get_y() + 40 + margin_bottom > page_height:
             pdf.add_page()
         pdf.set_font("Arial", 'B', 13)
-        pdf.cell(0, 8, f"📊 Classifica {girone}", ln=True)
+        pdf.cell(0, 8, f" Classifica {girone}", ln=True)
 
         df_c = df_classifica[df_classifica['Girone'] == girone]
         pdf.set_font("Arial", 'B', 11)
