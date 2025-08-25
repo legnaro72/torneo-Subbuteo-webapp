@@ -113,16 +113,16 @@ def carica_torneo_da_db(tournements_collection, tournement_id):
         if torneo_data and 'calendario' in torneo_data:
             df_torneo = pd.DataFrame(torneo_data['calendario'])
             df_torneo['Valida'] = df_torneo['Valida'].astype(bool)
-            
-            # Correzione per gestire i valori "None"
+
+            # Correzione per gestire i valori "None" o non numerici
             df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').fillna(0).astype(int)
             df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').fillna(0).astype(int)
-            
+
             st.session_state['df_torneo'] = df_torneo
         return torneo_data
     except:
         return None
-
+        
 def salva_torneo_su_db(tournements_collection, df_torneo, nome_torneo):
     try:
         df_torneo_pulito = df_torneo.fillna("").replace("None", "")
@@ -219,30 +219,29 @@ def aggiorna_classifica(df):
 # VISUALIZZAZIONE
 # -------------------------
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
-    # Ensure columns are numeric before filtering
-    df['GolCasa'] = pd.to_numeric(df['GolCasa'], errors='coerce').fillna(0).astype(int)
-    df['GolOspite'] = pd.to_numeric(df['GolOspite'], errors='coerce').fillna(0).astype(int)
-
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         st.info("📭 Nessuna partita trovata per questa giornata")
         return
 
     for idx, row in df_giornata.iterrows():
+        gol_casa = int(row['GolCasa'])
+        gol_ospite = int(row['GolOspite'])
+
         col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
         with col1:
             st.markdown(f"**{row['Casa']}** 🆚 **{row['Ospite']}**")
         with col2:
             st.number_input(
                 "Gol Casa", min_value=0, max_value=20, key=f"golcasa_{idx}",
-                value=int(row['GolCasa']), disabled=row['Valida']
+                value=gol_casa, disabled=row['Valida']
             )
         with col3:
             st.markdown("-")
         with col4:
             st.number_input(
                 "Gol Ospite", min_value=0, max_value=20, key=f"golospite_{idx}",
-                value=int(row['GolOspite']), disabled=row['Valida']
+                value=gol_ospite, disabled=row['Valida']
             )
         with col5:
             st.checkbox("✅ Valida", key=f"valida_{idx}", value=row['Valida'])
@@ -252,7 +251,6 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             st.success("✔️ Partita validata")
         else:
             st.warning("⏳ In attesa di validazione")
-
 def salva_risultati_giornata(tournements_collection, girone_sel, giornata_sel):
     df = st.session_state['df_torneo']
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
