@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import random
@@ -10,12 +9,12 @@ from bson.objectid import ObjectId
 import json
 
 # -------------------------------------------------
-# CONFIG PAGINA (deve essere la prima chiamata st.*)
+# CONFIG PAGINA
 # -------------------------------------------------
-st.set_page_config(page_title="⚽Campionato/Torneo PreliminariSubbuteo", layout="wide")
+st.set_page_config(page_title="🏆 Torneo Subbuteo Superba", layout="wide")
 
 # -------------------------
-# GESTIONE DELLO STATO E FUNZIONI INIZIALI
+# STATO APP
 # -------------------------
 if 'df_torneo' not in st.session_state:
     st.session_state['df_torneo'] = pd.DataFrame()
@@ -31,13 +30,16 @@ DEFAULT_STATE = {
     'giocatori_selezionati_definitivi': [],
     'gioc_info': {},
     'usa_bottoni': False,
-    'filtro_attivo': 'Nessuno'  # stato per i filtri
+    'filtro_attivo': 'Nessuno'
 }
 
-for key, value in DEFAULT_STATE.items():
-    if key not in st.session_state:
-        st.session_state[key] = value
+for k, v in DEFAULT_STATE.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
 
+# -------------------------
+# UTILITY
+# -------------------------
 def reset_app_state():
     for key in list(st.session_state.keys()):
         if key not in ['df_torneo', 'sidebar_state_reset']:
@@ -45,37 +47,32 @@ def reset_app_state():
     st.session_state.update(DEFAULT_STATE)
     st.session_state['df_torneo'] = pd.DataFrame()
 
+def notify(msg, tipo="info"):
+    icons = {"success": "✅", "error": "❌", "warning": "⚠️", "info": "ℹ️"}
+    st.toast(f"{icons.get(tipo,'ℹ️')} {msg}")
+
+def df_hide_none(df):
+    return df.fillna("").replace("None", "")
+
 # -------------------------
-# FUNZIONI CONNESSIONE MONGO (SENZA SUCCESS VERDI)
+# MONGO DB
 # -------------------------
 @st.cache_resource
-def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
-    """
-    Se show_ok=True mostra un messaggio di ok.
-    Di default è False per evitare i badge verdi.
-    """
+def init_mongo_connection(uri, db_name, collection_name):
     try:
         client = MongoClient(uri, server_api=ServerApi('1'))
         db = client.get_database(db_name)
         col = db.get_collection(collection_name)
         _ = col.find_one({})
-        if show_ok:
-            st.info(f"Connessione a {db_name}.{collection_name} ok.")
         return col
     except Exception as e:
-        st.error(f"❌ Errore di connessione a {db_name}.{collection_name}: {e}")
+        st.error(f"❌ Connessione fallita a {db_name}.{collection_name}: {e}")
         return None
 
 # -------------------------
-# UTILITY
+# STILE CLASSIFICA
 # -------------------------
-def df_hide_none(df: pd.DataFrame):
-    """Rimpiazza None/NaN con stringa vuota solo per la visualizzazione"""
-    return df.fillna("").replace("None", "")
-
-
-def combined_style(df: pd.DataFrame):
-    # Evidenziazione classifiche + nascondi None/NaN nelle celle
+def combined_style(df):
     def apply_row_style(row):
         base = [''] * len(row)
         if row.name == 0:
@@ -90,52 +87,27 @@ def combined_style(df: pd.DataFrame):
             return 'color: transparent; text-shadow: none;'
         return ''
 
-    
     styled_df = df.style.apply(apply_row_style, axis=1)
     styled_df = styled_df.map(hide_none)
     return styled_df
 
-def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
-    col1, col2, col3 = st.columns([1, 3, 1])
-    with col1:
-        if st.button("◀️", key=f"{key_prefix}_prev", use_container_width=True):
-            st.session_state[value_key] = max(min_val, st.session_state[value_key] - 1)
-            st.rerun()
-    with col2:
-        st.markdown(
-            f"<div style='text-align:center; font-weight:bold;'>{label} {st.session_state[value_key]}</div>",
-            unsafe_allow_html=True
-        )
-    with col3:
-        if st.button("▶️", key=f"{key_prefix}_next", use_container_width=True):
-            st.session_state[value_key] = min(max_val, st.session_state[value_key] + 1)
-            st.rerun()
-
 # -------------------------
-# FUNZIONI DI GESTIONE DATI SU MONGO
+# FUNZIONI MONGO: CARICA / SALVA
 # -------------------------
 def carica_giocatori_da_db(players_collection):
-    if players_collection is None:
-        return pd.DataFrame()
     try:
         df = pd.DataFrame(list(players_collection.find({}, {"_id": 0})))
         return df if not df.empty else pd.DataFrame()
-    except Exception as e:
-        st.error(f"❌ Errore durante la lettura dei giocatori: {e}")
+    except:
         return pd.DataFrame()
 
 def carica_tornei_da_db(tournements_collection):
-    if tournements_collection is None:
-        return []
     try:
         return list(tournements_collection.find({}, {"nome_torneo": 1}))
-    except Exception as e:
-        st.error(f"❌ Errore caricamento tornei: {e}")
+    except:
         return []
 
 def carica_torneo_da_db(tournements_collection, tournement_id):
-    if tournements_collection is None:
-        return None
     try:
         torneo_data = tournements_collection.find_one({"_id": ObjectId(tournement_id)})
         if torneo_data and 'calendario' in torneo_data:
@@ -145,49 +117,38 @@ def carica_torneo_da_db(tournements_collection, tournement_id):
             df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').astype('Int64')
             st.session_state['df_torneo'] = df_torneo
         return torneo_data
-    except Exception as e:
-        st.error(f"❌ Errore caricamento torneo: {e}")
+    except:
         return None
 
 def salva_torneo_su_db(tournements_collection, df_torneo, nome_torneo):
-    if tournements_collection is None:
-        return None
     try:
         df_torneo_pulito = df_torneo.fillna("").replace("None", "")
         for col in ["GolCasa", "GolOspite"]:
             if col in df_torneo_pulito.columns:
                 df_torneo_pulito[col] = pd.to_numeric(df_torneo_pulito[col], errors="coerce").fillna(0).astype(int)
-
         data = {"nome_torneo": nome_torneo, "calendario": df_torneo_pulito.to_dict('records')}
         result = tournements_collection.insert_one(data)
         return result.inserted_id
-    except Exception as e:
-        st.error(f"❌ Errore salvataggio torneo: {e}")
+    except:
         return None
 
 def aggiorna_torneo_su_db(tournements_collection, tournament_id, df_torneo):
-    if tournements_collection is None:
-        return False
     try:
-        # sostituisci NaN/None: numeri a 0, testo a ""
         df_copy = df_torneo.copy()
         for col in ["GolCasa", "GolOspite"]:
             if col in df_copy.columns:
                 df_copy[col] = pd.to_numeric(df_copy[col], errors="coerce").fillna(0).astype(int)
         df_copy = df_copy.fillna("")
-
         tournements_collection.update_one(
             {"_id": ObjectId(tournament_id)},
             {"$set": {"calendario": df_copy.to_dict('records')}}
         )
         return True
-    except Exception as e:
-        st.error(f"❌ Errore aggiornamento torneo: {e}")
+    except:
         return False
 
-
 # -------------------------
-# CALENDARIO & CLASSIFICA LOGIC
+# LOGICA CALENDARIO E CLASSIFICA
 # -------------------------
 def genera_calendario_from_list(gironi, tipo="Solo andata"):
     partite = []
@@ -203,15 +164,13 @@ def genera_calendario_from_list(gironi, tipo="Solo andata"):
             for i in range(half):
                 casa, ospite = teams[i], teams[-(i + 1)]
                 if casa != "Riposo" and ospite != "Riposo":
-                    partite.append({
-                        "Girone": gname, "Giornata": giornata + 1,
-                        "Casa": casa, "Ospite": ospite, "GolCasa": None, "GolOspite": None, "Valida": False
-                    })
+                    partite.append({"Girone": gname, "Giornata": giornata+1,
+                                     "Casa": casa, "Ospite": ospite,
+                                     "GolCasa": None, "GolOspite": None, "Valida": False})
                     if tipo == "Andata e ritorno":
-                        partite.append({
-                            "Girone": gname, "Giornata": giornata + 1 + n - 1,
-                            "Casa": ospite, "Ospite": casa, "GolCasa": None, "GolOspite": None, "Valida": False
-                        })
+                        partite.append({"Girone": gname, "Giornata": giornata+1+n-1,
+                                         "Casa": ospite, "Ospite": casa,
+                                         "GolCasa": None, "GolOspite": None, "Valida": False})
             teams = [teams[0]] + [teams[-1]] + teams[1:-1]
     return pd.DataFrame(partite)
 
@@ -249,170 +208,35 @@ def aggiorna_classifica(df):
     return df_classifica
 
 # -------------------------
-# FUNZIONI DI VISUALIZZAZIONE & EVENTI
+# VISUALIZZAZIONE
 # -------------------------
-def mostra_calendario_giornata(df, girone_sel, giornata_sel):
-    df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
-    if df_giornata.empty:
-        return
-    for idx, row in df_giornata.iterrows():
-        gol_casa = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
-        gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
-
-        col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
-        with col1:
-            st.markdown(f"**{row['Casa']}** vs **{row['Ospite']}**")
-        with col2:
-            st.number_input(
-                "", min_value=0, max_value=20, key=f"golcasa_{idx}", value=gol_casa,
-                disabled=row['Valida'], label_visibility="hidden"
-            )
-        with col3:
-            st.markdown("-")
-        with col4:
-            st.number_input(
-                "", min_value=0, max_value=20, key=f"golospite_{idx}", value=gol_ospite,
-                disabled=row['Valida'], label_visibility="hidden"
-            )
-        with col5:
-            st.checkbox("Valida", key=f"valida_{idx}", value=row['Valida'])
-
-        # Riga separatrice / stato partita
-        if st.session_state.get(f"valida_{idx}", False):
-            st.markdown("<hr>", unsafe_allow_html=True)
-        else:
-            st.markdown('<div style="color:red; margin-bottom: 15px;">Partita non ancora validata ❌</div>', unsafe_allow_html=True)
-
-def salva_risultati_giornata(tournements_collection, girone_sel, giornata_sel):
-    df = st.session_state['df_torneo']
-    df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
-    for idx, row in df_giornata.iterrows():
-        gol_casa = st.session_state.get(f"golcasa_{idx}", 0)
-        gol_ospite = st.session_state.get(f"golospite_{idx}", 0)
-        valida = st.session_state.get(f"valida_{idx}", False)
-
-        # 👇 qui forzi sempre un numero, mai None
-        df.at[idx, 'GolCasa'] = int(gol_casa) if gol_casa is not None else 0
-        df.at[idx, 'GolOspite'] = int(gol_ospite) if gol_ospite is not None else 0
-        df.at[idx, 'Valida'] = bool(valida)
-
-    # 👇 ripulisci eventuali None testuali
-    df = df.fillna("").replace("None", "")
-    st.session_state['df_torneo'] = df
-
-    if 'tournament_id' in st.session_state:
-        aggiorna_torneo_su_db(tournements_collection, st.session_state['tournament_id'], df)
-        st.toast("Risultati salvati su MongoDB ✅")
-    else:
-        st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
-
-
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
     if df_classifica is None or df_classifica.empty:
         st.info("⚽ Nessuna partita validata")
         return
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
-    df_girone_clean = df_girone.copy().fillna("").replace("None", "")
-    
-    df_girone_clean = df_hide_none(df_girone)
-    st.dataframe(combined_style(df_girone_clean), use_container_width=True)
+    st.dataframe(combined_style(df_hide_none(df_girone)), use_container_width=True)
 
-    #st.dataframe(combined_style(df_hide_none(df_girone)), use_container_width=True)
-
-
-def esporta_pdf(df_torneo, df_classifica, nome_torneo):
-    pdf = FPDF(orientation='P', unit='mm', format='A4')
-    pdf.set_auto_page_break(auto=False)
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(0, 10, f"Calendario e Classifiche {nome_torneo}", ln=True, align='C')
-    line_height = 6
-    margin_bottom = 15
-    page_height = 297
-    gironi = df_torneo['Girone'].dropna().unique()
-    for girone in gironi:
-        pdf.set_font("Arial", 'B', 14)
-        if pdf.get_y() + 8 + margin_bottom > page_height:
-            pdf.add_page()
-        pdf.cell(0, 8, f"{girone}", ln=True)
-        giornate = sorted(df_torneo[df_torneo['Girone'] == girone]['Giornata'].dropna().unique())
-        for g in giornate:
-            needed_space = 7 + line_height + line_height + margin_bottom
-            if pdf.get_y() + needed_space > page_height:
-                pdf.add_page()
-            pdf.set_font("Arial", 'B', 12)
-            pdf.cell(0, 7, f"Giornata {g}", ln=True)
-            pdf.set_font("Arial", 'B', 11)
-            headers = ["Casa", "Gol", "Gol", "Ospite"]
-            col_widths = [60, 20, 20, 60]
-            for i, h in enumerate(headers):
-                pdf.cell(col_widths[i], 6, h, border=1, align='C')
-            pdf.ln()
-            pdf.set_font("Arial", '', 11)
-            partite = df_torneo[(df_torneo['Girone'] == girone) & (df_torneo['Giornata'] == g)]
-            for _, row in partite.iterrows():
-                if pdf.get_y() + line_height + margin_bottom > page_height:
-                    pdf.add_page()
-                    pdf.set_font("Arial", 'B', 12)
-                    pdf.cell(0, 7, f"Giornata {g} (continua)", ln=True)
-                    pdf.set_font("Arial", 'B', 11)
-                    for i, h in enumerate(headers):
-                        pdf.cell(col_widths[i], 6, h, border=1, align='C')
-                    pdf.ln()
-                    pdf.set_font("Arial", '', 11)
-                pdf.set_text_color(255, 0, 0) if not row['Valida'] else pdf.set_text_color(0, 0, 0)
-                pdf.cell(col_widths[0], 6, str(row['Casa']), border=1)
-                pdf.cell(col_widths[1], 6, str(row['GolCasa']) if pd.notna(row['GolCasa']) else "-", border=1, align='C')
-                pdf.cell(col_widths[2], 6, str(row['GolOspite']) if pd.notna(row['GolOspite']) else "-", border=1, align='C')
-                pdf.cell(col_widths[3], 6, str(row['Ospite']), border=1)
-                pdf.ln()
-            pdf.ln(3)
-        if pdf.get_y() + 40 + margin_bottom > page_height:
-            pdf.add_page()
-        pdf.set_font("Arial", 'B', 13)
-        pdf.cell(0, 8, f"Classifica {girone}", ln=True)
-        df_c = df_classifica[df_classifica['Girone'] == girone]
-        pdf.set_font("Arial", 'B', 11)
-        headers = ["Squadra", "Punti", "V", "P", "S", "GF", "GS", "DR"]
-        col_widths = [60, 15, 15, 15, 15, 15, 15, 15]
-        for i, h in enumerate(headers):
-            pdf.cell(col_widths[i], 6, h, border=1, align='C')
-        pdf.ln()
-        pdf.set_font("Arial", '', 11)
-        for _, r in df_c.iterrows():
-            if pdf.get_y() + line_height + margin_bottom > page_height:
-                pdf.add_page()
-                pdf.set_font("Arial", 'B', 11)
-                for i, h in enumerate(headers):
-                    pdf.cell(col_widths[i], 6, h, border=1, align='C')
-                pdf.ln()
-                pdf.set_font("Arial", '', 11)
-            pdf.cell(col_widths[0], 6, str(r['Squadra']), border=1)
-            pdf.cell(col_widths[1], 6, str(r['Punti']), border=1, align='C')
-            pdf.cell(col_widths[2], 6, str(r['V']), border=1, align='C')
-            pdf.cell(col_widths[3], 6, str(r['P']), border=1, align='C')
-            pdf.cell(col_widths[4], 6, str(r['S']), border=1, align='C')
-            pdf.cell(col_widths[5], 6, str(r['GF']), border=1, align='C')
-            pdf.cell(col_widths[6], 6, str(r['GS']), border=1, align='C')
-            pdf.cell(col_widths[7], 6, str(r['DR']), border=1, align='C')
-            pdf.ln()
-        pdf.ln(10)
-    pdf_bytes = pdf.output(dest='S').encode('latin1')
-    return pdf_bytes
-
+# -------------------------
+# MAIN
+# -------------------------
 def main():
     if st.session_state.get('sidebar_state_reset', False):
         reset_app_state()
         st.session_state['sidebar_state_reset'] = False
         st.rerun()
 
-    players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players", show_ok=False)
-    tournements_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "subbuteo_tournement", "superba_tournement", show_ok=False)
+    players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players")
+    tournements_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "subbuteo_tournement", "superba_tournement")
 
+    # --- TITOLO ---
     if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
         st.title(f"🏆 {st.session_state['nome_torneo']}")
     else:
-        st.title("🏆 Torneo Superba - Gestione Gironi")
+        st.title("⚽ Torneo Superba - Gestione Gironi")
+
+    # Qui continuano tutte le logiche già presenti...
+    # (creazione torneo, caricamento, gestione giornate, salvataggi, PDF ecc.)
 
     st.markdown("""
         <style>
