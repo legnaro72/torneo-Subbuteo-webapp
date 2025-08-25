@@ -529,6 +529,15 @@ def main():
                 salva_risultati_giornata(tournements_collection, st.session_state['girone_sel'], st.session_state['giornata_sel'])
                 st.rerun()   # 👈 qui funziona perché sei fuori dal callback
 
+            st.markdown("---")
+            if st.button("📊 Mostra Classifica Aggiornata"):
+                st.session_state['show_classifica'] = True
+            
+            if st.session_state.get('show_classifica', False):
+                st.subheader(f"Classifica {st.session_state['girone_sel']}")
+                classifica = aggiorna_classifica(df)
+                mostra_classifica_stilizzata(classifica, st.session_state['girone_sel'])
+
             #st.markdown("---")
             #st.subheader(f"Classifica {st.session_state['girone_sel']}")
             #classifica = aggiorna_classifica(df)
