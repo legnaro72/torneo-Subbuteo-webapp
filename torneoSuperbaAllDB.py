@@ -84,6 +84,10 @@ def combined_style(df: pd.DataFrame):
             return 'color: transparent; text-shadow: none;'
         return ''
 
+    def df_hide_none(df: pd.DataFrame):
+        """Rimpiazza None/NaN con stringa vuota solo per la visualizzazione"""
+        return df.fillna("").replace("None", "")
+
     styled_df = df.style.apply(apply_row_style, axis=1)
     styled_df = styled_df.map(hide_none)
     return styled_df
@@ -290,7 +294,8 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
         st.info("⚽ Nessuna partita validata")
         return
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
-    st.dataframe(combined_style(df_girone), use_container_width=True)
+    st.dataframe(combined_style(df_hide_none(df_girone)), use_container_width=True)
+
 
 def esporta_pdf(df_torneo, df_classifica, nome_torneo):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
@@ -446,7 +451,8 @@ def main():
                     df_filtrato_show = df_filtrato[['Girone', 'Giornata', 'Casa', 'Ospite']].rename(
                         columns={'Girone': 'Girone', 'Giornata': 'Giornata', 'Casa': 'Casa', 'Ospite': 'Ospite'}
                     )
-                    st.dataframe(df_filtrato_show.reset_index(drop=True), use_container_width=True)
+                    st.dataframe(df_hide_none(df_filtrato_show.reset_index(drop=True)), use_container_width=True)
+
                 else:
                     st.info("🎉 Nessuna partita da giocare trovata per questo giocatore.")
 
