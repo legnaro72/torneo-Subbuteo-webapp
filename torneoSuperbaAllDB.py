@@ -30,8 +30,7 @@ DEFAULT_STATE = {
     'giocatori_selezionati_definitivi': [],
     'gioc_info': {},
     'usa_bottoni': False,
-    'filtro_attivo': 'Nessuno',
-    'show_classifica': False # Aggiunto il flag per mostrare la classifica
+    'filtro_attivo': 'Nessuno'
 }
 
 for k, v in DEFAULT_STATE.items():
@@ -231,7 +230,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             gol_casa = int(row['GolCasa']) if pd.notna(row['GolCasa']) and str(row['GolCasa']).strip().lower() != 'none' else 0
         except (ValueError, TypeError):
             gol_casa = 0
-
+            
         try:
             gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) and str(row['GolOspite']).strip().lower() != 'none' else 0
         except (ValueError, TypeError):
@@ -521,7 +520,6 @@ def main():
             if nuovo_girone != st.session_state['girone_sel']:
                 st.session_state['girone_sel'] = nuovo_girone
                 st.session_state['giornata_sel'] = 1
-                st.session_state['show_classifica'] = False  # Reset classifica
                 st.rerun()
 
             st.session_state['usa_bottoni'] = st.checkbox("Usa bottoni per la giornata", value=st.session_state.get('usa_bottoni', False), key='usa_bottoni_checkbox')
@@ -537,10 +535,11 @@ def main():
                 nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=current_index)
                 if nuova_giornata != st.session_state['giornata_sel']:
                     st.session_state['giornata_sel'] = nuova_giornata
-                    st.session_state['show_classifica'] = False # Reset classifica
                     st.rerun()
 
-                            # --- SEZIONE AGGIORNATA SENZA PULSANTE ---
+            mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
+            
+            # --- SEZIONE AGGIORNATA SENZA PULSANTE ---
             if st.button("💾 Salva Risultati Giornata"):
                 salva_risultati_giornata(tournements_collection, st.session_state['girone_sel'], st.session_state['giornata_sel'])
                 st.rerun()
@@ -549,6 +548,7 @@ def main():
             st.subheader(f"Classifica {st.session_state['girone_sel']}")
             classifica = aggiorna_classifica(df)
             mostra_classifica_stilizzata(classifica, st.session_state['girone_sel'])
+
 
     else:
         st.subheader("📁 Carica un torneo o crea uno nuovo")
