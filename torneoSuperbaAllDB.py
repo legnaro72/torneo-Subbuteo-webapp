@@ -267,6 +267,8 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
 
 def salva_risultati_giornata(tournements_collection, girone_sel, giornata_sel):
     df = st.session_state['df_torneo']
+    df = df.fillna("")   # 👈 questo elimina i "None"
+    st.session_state['df_torneo'] = df
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     for idx, row in df_giornata.iterrows():
         df.at[idx, 'GolCasa'] = st.session_state.get(f"golcasa_{idx}", 0)
