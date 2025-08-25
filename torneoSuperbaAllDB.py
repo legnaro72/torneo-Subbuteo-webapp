@@ -275,7 +275,6 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
     pdf.set_auto_page_break(auto=False)
     pdf.add_page()
 
-    # Titolo principale
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 10, f"📄 Calendario e Classifiche - {nome_torneo}", ln=True, align='C')
 
@@ -298,7 +297,6 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
             pdf.set_font("Arial", 'B', 12)
             pdf.cell(0, 7, f"📅 Giornata {g}", ln=True)
 
-            # intestazione tabella
             pdf.set_font("Arial", 'B', 11)
             headers = ["Casa", "Gol", "Gol", "Ospite"]
             col_widths = [60, 20, 20, 60]
@@ -306,7 +304,6 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
                 pdf.cell(col_widths[i], 6, h, border=1, align='C')
             pdf.ln()
 
-            # partite
             pdf.set_font("Arial", '', 11)
             partite = df_torneo[(df_torneo['Girone'] == girone) & (df_torneo['Giornata'] == g)]
             for _, row in partite.iterrows():
@@ -320,9 +317,61 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
                     pdf.ln()
                     pdf.set_font("Arial", '', 11)
 
-                # se partita non validata → testo rosso
                 if not row['Valida']:
                     pdf.set_text_color(255, 0, 0)
+                else:
+                    pdf.set_text_color(0, 0, 0)
+
+                pdf.cell(col_widths[0], 6, str(row['Casa']), border=1)
+                pdf.cell(col_widths[1], 6, str(row['GolCasa']) if pd.notna(row['GolCasa']) else "-", border=1, align='C')
+                pdf.cell(col_widths[2], 6, str(row['GolOspite']) if pd.notna(row['GolOspite']) else "-", border=1, align='C')
+                pdf.cell(col_widths[3], 6, str(row['Ospite']), border=1)
+                pdf.ln()
+            pdf.ln(3)
+
+        # Classifica
+        if pdf.get_y() + 40 + margin_bottom > page_height:
+            pdf.add_page()
+        pdf.set_font("Arial", 'B', 13)
+        pdf.cell(0, 8, f"📊 Classifica {girone}", ln=True)
+
+        df_c = df_classifica[df_classifica['Girone'] == girone]
+        pdf.set_font("Arial", 'B', 11)
+        headers = ["Squadra", "Punti", "V", "P", "S", "GF", "GS", "DR"]
+        col_widths = [60, 15, 15, 15, 15, 15, 15, 15]
+        for i, h in enumerate(headers):
+            pdf.cell(col_widths[i], 6, h, border=1, align='C')
+        pdf.ln()
+
+        pdf.set_font("Arial", '', 11)
+        for _, r in df_c.iterrows():
+            if pdf.get_y() + line_height + margin_bottom > page_height:
+                pdf.add_page()
+                pdf.set_font("Arial", 'B', 11)
+                for i, h in enumerate(headers):
+                    pdf.cell(col_widths[i], 6, h, border=1, align='C')
+                pdf.ln()
+                pdf.set_font("Arial", '', 11)
+
+            pdf.cell(col_widths[0], 6, str(r['Squadra']), border=1)
+            pdf.cell(col_widths[1], 6, str(r['Punti']), border=1, align='C')
+            pdf.cell(col_widths[2], 6, str(r['V']), border=1, align='C')
+            pdf.cell(col_widths[3], 6, str(r['P']), border=1, align='C')
+            pdf.cell(col_widths[4], 6, str(r['S']), border=1, align='C')
+            pdf.cell(col_widths[5], 6, str(r['GF']), border=1, align='C')
+            pdf.cell(col_widths[6], 6, str(r['GS']), border=1, align='C')
+            pdf.cell(col_widths[7], 6, str(r['DR']), border=1, align='C')
+            pdf.ln()
+        pdf.ln(10)
+
+    # 👇 fix: sempre bytes
+    pdf_output = pdf.output(dest="S")
+    if isinstance(pdf_output, str):
+        pdf_bytes = pdf_output.encode("latin1")
+    else:
+        pdf_bytes = pdf_output
+
+    return pdf_bytes
 
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
