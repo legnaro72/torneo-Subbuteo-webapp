@@ -284,56 +284,46 @@ def aggiorna_classifica(df):
 # -------------------------
 # FUNZIONI DI VISUALIZZAZIONE & EVENTI
 # -------------------------
-def mostra_calendario_giornata(df, girone_sel, giornata_sel):
-    df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
-    if df_giornata.empty:
-        return
-    for idx, row in df_giornata.iterrows():
-        col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
+# File: alldbsuperba.py
+# (Lines 293-306 nel tuo file)
+
+def mostra_calendario_giornata(df, girone, giornata):
+    partite_giornata = df[
+        (df['Girone'] == girone) &
+        (df['Giornata'] == giornata)
+    ]
+    
+    for idx, row in partite_giornata.iterrows():
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
         with col1:
-            st.markdown(f"**{row['Casa']}** vs **{row['Ospite']}**")
+            st.markdown(f"**{row['Casa']}**", help="Squadra in casa")
         with col2:
             st.text_input(
-                "", key=f"golcasa_{idx}", value=row['GolCasa'],
-                disabled=row['Valida'], label_visibility="hidden"
+                "Gol Casa",
+                key=f"golcasa_{idx}",
+                # --- FIX ---
+                # Controlla se il valore è NaN (None/vuoto) e in caso positivo usa una stringa vuota
+                value=str(row['GolCasa']) if not pd.isna(row['GolCasa']) else "",
+                # --- FINE FIX ---
+                disabled=row['Valida'],
+                label_visibility="hidden"
             )
         with col3:
-            st.markdown("-")
+            st.markdown(":blue[vs]", help="Matchday", unsafe_allow_html=True)
         with col4:
             st.text_input(
-                "", key=f"golospite_{idx}", value=row['GolOspite'],
-                disabled=row['Valida'], label_visibility="hidden"
+                "Gol Ospite",
+                key=f"golospite_{idx}",
+                # --- FIX ---
+                # Controlla se il valore è NaN (None/vuoto) e in caso positivo usa una stringa vuota
+                value=str(row['GolOspite']) if not pd.isna(row['GolOspite']) else "",
+                # --- FINE FIX ---
+                disabled=row['Valida'],
+                label_visibility="hidden"
             )
         with col5:
-            st.checkbox("Valida", key=f"valida_{idx}", value=row['Valida'])
-
-        # Riga separatrice / stato partita
-        if st.session_state.get(f"valida_{idx}", False):
-            st.markdown("---")
-        else:
-            st.markdown('<div style="color:red; margin-bottom: 15px;">Partita non ancora validata ❌</div>', unsafe_allow_html=True)
-
-def mostra_classifica_stilizzata(df_classifica, girone_sel):
-    
-
-    if df_classifica is None:
-        st.toast("⚽ Nessuna classifica disponibile")
-        return
-
-    if df_classifica.empty:
-        st.toast("⚽ Nessuna partita validata")
-        return
-
-    if 'Girone' not in df_classifica.columns:
-        st.toast("⚠️ Classifica non valida: manca la colonna 'Girone'")
-        return
-
-    df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
-    df_girone_display = df_girone.fillna('-')
-
-    styled = combined_style(df_girone_display)
-    st.markdown(styled.to_html(), unsafe_allow_html=True)
-
+            st.markdown(f"**{row['Ospite']}**", help="Squadra in trasferta")
 
 def esporta_pdf(df_torneo, df_classifica, nome_torneo):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
