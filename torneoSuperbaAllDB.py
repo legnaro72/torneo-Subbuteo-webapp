@@ -340,7 +340,7 @@ def main():
         st.rerun()
 
     players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players")
-    tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "subbuteo_tournament", "tournament")
+    tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "subbuteo_tournement", "superba_tournement")
     st.set_page_config(page_title="⚽Campionato/Torneo PreliminariSubbuteo", layout="wide")
 
     if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
