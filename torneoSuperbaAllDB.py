@@ -645,7 +645,7 @@ def main():
                 st.session_state['gioc_info'] = {gioc: st.session_state['gioc_info'].get(gioc, {}) for gioc in st.session_state['giocatori_selezionati_definitivi']}
                 st.toast("Giocatori confermati ✅")
                 st.rerun()
-
+                
             if st.session_state.get('mostra_assegnazione_squadre', False):
                 st.markdown("---")
                 st.markdown("### ⚽ Modifica Squadra e Potenziale")
