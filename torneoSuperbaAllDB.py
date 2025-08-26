@@ -273,11 +273,22 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
         df.at[idx, 'GolOspite'] = st.session_state.get(f"golospite_{idx}", 0)
         df.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
     st.session_state['df_torneo'] = df
+
     if 'tournament_id' in st.session_state:
         aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
-        st.toast("Risultati salvati su MongoDB ✅")  # toast discreto
+        st.toast("Risultati salvati su MongoDB ✅")
     else:
         st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
+
+    # ✅ Se tutte le partite sono validate → salva torneo completato
+    if df['Valida'].all():
+        nome_completato = f"completato_{st.session_state['nome_torneo']}"
+        classifica_finale = aggiorna_classifica(df)
+        salva_torneo_su_db(tournaments_collection, df, nome_completato)
+        st.session_state['torneo_completato'] = True
+        st.session_state['classifica_finale'] = classifica_finale
+        st.toast(f"Torneo completato e salvato come {nome_completato} ✅")
+
     st.rerun()
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
@@ -386,6 +397,15 @@ def main():
     else:
         st.title("🏆 Torneo Superba - Gestione Gironi")
 
+# --- Banner vincitori se torneo completato ---
+if st.session_state.get('torneo_completato', False) and st.session_state['classifica_finale'] is not None:
+    vincitori = []
+    df_classifica = st.session_state['classifica_finale']
+    for girone in df_classifica['Girone'].unique():
+        primo = df_classifica[df_classifica['Girone'] == girone].iloc[0]['Squadra']
+        vincitori.append(f"{girone}: {primo}")
+    st.success("🎉 Torneo Completato! Vincitori → " + ", ".join(vincitori))
+
     # CSS
     st.markdown("""
         <style>
@@ -413,6 +433,17 @@ def main():
                 mime="application/pdf",
                 use_container_width=True
             )
+
+# --- Blocco aggiunto: visualizzazione classifica dalla sidebar ---
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("📊 Visualizza Classifica")
+    gironi_sidebar = sorted(df['Girone'].dropna().unique().tolist())
+    girone_class_sel = st.sidebar.selectbox("Seleziona Girone", gironi_sidebar, key="sidebar_classifica_girone")
+    if st.sidebar.button("Visualizza Classifica", key="btn_classifica_sidebar"):
+        st.subheader(f"Classifica {girone_class_sel}")
+        classifica = aggiorna_classifica(df)
+        mostra_classifica_stilizzata(classifica, girone_class_sel)
+
         if st.sidebar.button("🔙 Torna alla schermata iniziale", key='back_to_start_sidebar', use_container_width=True):
             st.session_state['sidebar_state_reset'] = True
             st.rerun()
