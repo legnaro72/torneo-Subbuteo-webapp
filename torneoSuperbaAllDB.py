@@ -510,6 +510,7 @@ def main():
                     st.dataframe(df_filtrato_show.reset_index(drop=True), use_container_width=True)
                 else:
                     st.info("🎉 Nessuna partita da giocare trovata per questo giocatore.")
+                
 
         elif st.session_state['filtro_attivo'] == 'Girone':
             st.sidebar.markdown("#### Filtra per Girone")
