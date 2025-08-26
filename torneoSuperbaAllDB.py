@@ -87,7 +87,7 @@ def combined_style(df: pd.DataFrame):
     styled_df = df.style.apply(apply_row_style, axis=1)
     styled_df = styled_df.map(hide_none)
     return styled_df
-
+#navigation nutton
 def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
     col1, col2, col3 = st.columns([1, 3, 1])
     with col1:
