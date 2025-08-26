@@ -441,17 +441,27 @@ def main():
                 mime="application/pdf",
                 use_container_width=True
             )
+            
             # --- Blocco aggiunto: visualizzazione classifica dalla sidebar ---
             st.sidebar.markdown("---")
             st.sidebar.subheader("📊 Visualizza Classifica")
             gironi_sidebar = sorted(df['Girone'].dropna().unique().tolist())
+            
+            # Aggiungi 'Nessuno' all'inizio della lista dei gironi
+            gironi_sidebar.insert(0, 'Nessuno') 
+            
             girone_class_sel = st.sidebar.selectbox(
                 "Seleziona Girone", gironi_sidebar, key="sidebar_classifica_girone"
             )
+            
             if st.sidebar.button("Visualizza Classifica", key="btn_classifica_sidebar"):
-                st.subheader(f"Classifica {girone_class_sel}")
-                classifica = aggiorna_classifica(df)
-                mostra_classifica_stilizzata(classifica, girone_class_sel)
+                if girone_class_sel != 'Nessuno':
+                    st.subheader(f"Classifica {girone_class_sel}")
+                    classifica = aggiorna_classifica(df)
+                    mostra_classifica_stilizzata(classifica, girone_class_sel)
+                else:
+                    # Puoi aggiungere un messaggio o semplicemente non mostrare nulla
+                    st.info("Seleziona un girone per visualizzare la classifica.")
     
         if st.sidebar.button("🔙 Torna alla schermata iniziale", key='back_to_start_sidebar', use_container_width=True):
             st.session_state['sidebar_state_reset'] = True
