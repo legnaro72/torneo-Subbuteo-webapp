@@ -642,7 +642,19 @@ def main():
                 st.session_state['mostra_assegnazione_squadre'] = True
                 st.session_state['mostra_gironi'] = False
                 st.session_state['gironi_manuali_completi'] = False
-                st.session_state['gioc_info'] = {gioc: st.session_state['gioc_info'].get(gioc, {}) for gioc in st.session_state['giocatori_selezionati_definitivi']}
+
+                # 🔹 Punto chiave per la correzione: inizializza 'gioc_info' qui
+                # Questo assicura che il dizionario sia pronto prima del rerun della pagina.
+                st.session_state['gioc_info'] = {}
+                for gioc in st.session_state['giocatori_selezionati_definitivi']:
+                    row = df_master[df_master['Giocatore'] == gioc].iloc[0] if gioc in df_master['Giocatore'].values else None
+                    squadra_default = row['Squadra'] if row is not None else ""
+                    potenziale_default = int(row['Potenziale']) if row is not None else 4
+                    st.session_state['gioc_info'][gioc] = {
+                        "Squadra": squadra_default,
+                        "Potenziale": potenziale_default
+                    }
+                
                 st.toast("Giocatori confermati ✅")
                 st.rerun()
                 
