@@ -11,7 +11,8 @@ import json
 # -------------------------------------------------
 # CONFIG PAGINA (deve essere la prima chiamata st.*)
 # -------------------------------------------------
-st.set_page_config(page_title="⚽Campionato/Torneo PreliminariSubbuteo", layout="wide")
+st.set_page_config(page_title="⚽Campionato/Torneo Preliminare Subbuteo", layout="wide")
+
 
 # -------------------------
 # GESTIONE DELLO STATO E FUNZIONI INIZIALI
@@ -398,27 +399,34 @@ def main():
     players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players", show_ok=False)
     tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "TorneiSubbuteo", "Superba", show_ok=False)
 
-    # Titolo
+    # Titolo con stile personalizzato
     if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
-        st.title(f"🏆 {st.session_state['nome_torneo']}")
+        st.markdown(f"<div class='big-title'>🏆 {st.session_state['nome_torneo']}</div>", unsafe_allow_html=True)
     else:
-        st.title("🏆 Torneo Superba - Gestione Gironi")
+        st.markdown("<div class='big-title'>🏆 Torneo Superba - Gestione Gironi</div>", unsafe_allow_html=True)
 
-    # --- Banner vincitori se torneo completato ---
+    # Banner vincitori
     if st.session_state.get('torneo_completato', False) and st.session_state.get('classifica_finale') is not None:
         vincitori = []
         df_classifica = st.session_state['classifica_finale']
         for girone in df_classifica['Girone'].unique():
             primo = df_classifica[df_classifica['Girone'] == girone].iloc[0]['Squadra']
-            vincitori.append(f"{girone}: {primo}")
+            vincitori.append(f"🏅 {girone}: {primo}")
         st.success("🎉 Torneo Completato! Vincitori → " + ", ".join(vincitori))
 
 
-    # CSS
+
+    # CSS PERSONALIZZATO
+    # -------------------------
     st.markdown("""
         <style>
-        ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
-        .big-title { text-align: center; font-size: clamp(16px, 4vw, 36px); font-weight: bold; margin-top: 10px; margin-bottom: 20px; color: red; word-wrap: break-word; white-space: normal; }
+        .big-title { text-align: center; font-size: clamp(18px, 4vw, 38px); font-weight: bold; margin: 15px 0; color: #e63946; }
+        .sub-title { font-size: 20px; font-weight: 600; margin-top: 15px; color: #1d3557; }
+        .stButton>button { background-color: #457b9d; color: white; border-radius: 8px; padding: 0.5em 1em; font-weight: bold; }
+        .stButton>button:hover { background-color: #1d3557; color: white; }
+        .stDownloadButton>button { background-color: #2a9d8f; color: white; border-radius: 8px; font-weight: bold; }
+        .stDownloadButton>button:hover { background-color: #21867a; }
+        .stDataFrame { border: 2px solid #f4a261; border-radius: 10px; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -430,7 +438,7 @@ def main():
 
     # Sidebar / Pagina
     if st.session_state.get('calendario_generato', False):
-        st.sidebar.subheader("Opzioni Torneo")
+        st.sidebar.header("⚙️ Opzioni Torneo")
         df = st.session_state['df_torneo']
         classifica = aggiorna_classifica(df)
         if classifica is not None:
