@@ -296,7 +296,8 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
 
         st.toast(f"Torneo completato e salvato come {nome_completato} ✅")
 
-    #st.rerun()
+    # 🔹 Forza ricarica della pagina per evitare None stampati
+    st.rerun()
 
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
