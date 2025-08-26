@@ -87,7 +87,7 @@ def combined_style(df: pd.DataFrame):
     styled_df = df.style.apply(apply_row_style, axis=1)
     styled_df = styled_df.map(hide_none)
     return styled_df
-#navigation nutton
+
 def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
     col1, col2, col3 = st.columns([1, 3, 1])
     with col1:
@@ -273,22 +273,11 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
         df.at[idx, 'GolOspite'] = st.session_state.get(f"golospite_{idx}", 0)
         df.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
     st.session_state['df_torneo'] = df
-
     if 'tournament_id' in st.session_state:
         aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
-        st.toast("Risultati salvati su MongoDB ✅")
+        st.toast("Risultati salvati su MongoDB ✅")  # toast discreto
     else:
         st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
-
-    # ✅ Se tutte le partite sono validate → salva torneo completato
-    if df['Valida'].all():
-        nome_completato = f"completato_{st.session_state['nome_torneo']}"
-        classifica_finale = aggiorna_classifica(df)
-        salva_torneo_su_db(tournaments_collection, df, nome_completato)
-        st.session_state['torneo_completato'] = True
-        st.session_state['classifica_finale'] = classifica_finale
-        st.toast(f"Torneo completato e salvato come {nome_completato} ✅")
-
     st.rerun()
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
@@ -378,9 +367,6 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
     pdf_bytes = pdf.output(dest='S').encode('latin1')
     return pdf_bytes
 
-# -------------------------
-# APP
-# -------------------------
 # -------------------------
 # APP
 # -------------------------
