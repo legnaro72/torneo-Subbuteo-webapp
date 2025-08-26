@@ -396,15 +396,15 @@ def main():
         st.title(f"🏆 {st.session_state['nome_torneo']}")
     else:
         st.title("🏆 Torneo Superba - Gestione Gironi")
-
-# --- Banner vincitori se torneo completato ---
-if st.session_state.get('torneo_completato', False) and st.session_state['classifica_finale'] is not None:
-    vincitori = []
-    df_classifica = st.session_state['classifica_finale']
-    for girone in df_classifica['Girone'].unique():
-        primo = df_classifica[df_classifica['Girone'] == girone].iloc[0]['Squadra']
-        vincitori.append(f"{girone}: {primo}")
-    st.success("🎉 Torneo Completato! Vincitori → " + ", ".join(vincitori))
+    st.warning("DEBUG: versione aggiornata con radio button attiva ✅")
+    # --- Banner vincitori se torneo completato ---
+    if st.session_state.get('torneo_completato', False) and st.session_state['classifica_finale'] is not None:
+        vincitori = []
+        df_classifica = st.session_state['classifica_finale']
+        for girone in df_classifica['Girone'].unique():
+            primo = df_classifica[df_classifica['Girone'] == girone].iloc[0]['Squadra']
+            vincitori.append(f"{girone}: {primo}")
+        st.success("🎉 Torneo Completato! Vincitori → " + ", ".join(vincitori))
 
     # CSS
     st.markdown("""
@@ -511,36 +511,36 @@ if st.session_state.get('torneo_completato', False) and st.session_state['classi
         st.markdown("---")
         if st.session_state['filtro_attivo'] == 'Nessuno':
             st.subheader("Navigazione Calendario")
-gironi = sorted(df['Girone'].dropna().unique().tolist())
-giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
-
-nuovo_girone = st.selectbox("Seleziona Girone", gironi, index=gironi.index(st.session_state['girone_sel']))
-if nuovo_girone != st.session_state['girone_sel']:
-    st.session_state['girone_sel'] = nuovo_girone
-    st.session_state['giornata_sel'] = 1
-    st.rerun()
-
-# 🔘 radio per scelta modalità
-modalita_nav = st.radio(
-    "Modalità navigazione giornata",
-    ["Menu a tendina", "Bottoni"],
-    index=0,
-    key="modalita_navigazione"
-)
-
-if modalita_nav == "Bottoni":
-    navigation_buttons("Giornata", 'giornata_sel', 1, len(giornate_correnti))
-else:
-    try:
-        current_index = giornate_correnti.index(st.session_state['giornata_sel'])
-    except ValueError:
-        current_index = 0
-        st.session_state['giornata_sel'] = giornate_correnti[0]
-
-    nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=current_index)
-    if nuova_giornata != st.session_state['giornata_sel']:
-        st.session_state['giornata_sel'] = nuova_giornata
-        st.rerun()
+            gironi = sorted(df['Girone'].dropna().unique().tolist())
+            giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
+            
+            nuovo_girone = st.selectbox("Seleziona Girone", gironi, index=gironi.index(st.session_state['girone_sel']))
+            if nuovo_girone != st.session_state['girone_sel']:
+                st.session_state['girone_sel'] = nuovo_girone
+                st.session_state['giornata_sel'] = 1
+                st.rerun()
+            
+            # 🔘 radio per scelta modalità
+            modalita_nav = st.radio(
+                "Modalità navigazione giornata",
+                ["Menu a tendina", "Bottoni"],
+                index=0,
+                key="modalita_navigazione"
+            )
+            
+            if modalita_nav == "Bottoni":
+                navigation_buttons("Giornata", 'giornata_sel', 1, len(giornate_correnti))
+            else:
+                try:
+                    current_index = giornate_correnti.index(st.session_state['giornata_sel'])
+                except ValueError:
+                    current_index = 0
+                    st.session_state['giornata_sel'] = giornate_correnti[0]
+            
+                nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=current_index)
+                if nuova_giornata != st.session_state['giornata_sel']:
+                    st.session_state['giornata_sel'] = nuova_giornata
+                    st.rerun()
 
             mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
             st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata, args=(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel']))
