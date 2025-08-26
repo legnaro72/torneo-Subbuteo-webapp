@@ -11,9 +11,6 @@ import json
 # -------------------------------------------------
 # CONFIG PAGINA (deve essere la prima chiamata st.*)
 # -------------------------------------------------
-st.warning("DEBUG: versione aggiornata con radio button attiva ✅")
-
-
 st.set_page_config(page_title="⚽Campionato/Torneo PreliminariSubbuteo", layout="wide")
 
 # -------------------------
