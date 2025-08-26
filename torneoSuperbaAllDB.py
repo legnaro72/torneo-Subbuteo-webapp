@@ -678,13 +678,7 @@ def main():
                     st.session_state['gioc_info'][gioc]["Squadra"] = squadra_nuova
                     st.session_state['gioc_info'][gioc]["Potenziale"] = potenziale_nuovo
 
-    if st.button("Conferma Squadre e Potenziali"):
-        st.session_state['mostra_gironi'] = True
-        st.toast("Squadre e potenziali confermati ✅")
-        st.rerun()
-
-
-                if st.button("Conferma Squadre e Potenziali"):
+            if st.button("Conferma Squadre e Potenziali"):
                     st.session_state['mostra_gironi'] = True
                     st.toast("Squadre e potenziali confermati ✅")
                     st.rerun()
