@@ -510,11 +510,16 @@ def main():
                     st.session_state['giornata_sel'] = nuova_giornata
                     st.rerun()
 
-            mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
-            st.button("💾 Salva Risultati Giornata", 
-                      on_click=salva_risultati_giornata, 
-                      args=(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel']))
-
+            # 👇 queste righe devono stare qui, senza uno spazio in più
+            mostra_calendario_giornata(
+                df, st.session_state['girone_sel'], st.session_state['giornata_sel']
+            )
+            st.button(
+                "💾 Salva Risultati Giornata",
+                on_click=salva_risultati_giornata,
+                args=(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel'])
+            )
+        
             st.markdown("---")
             st.subheader(f"Classifica {st.session_state['girone_sel']}")
             classifica = aggiorna_classifica(df)
