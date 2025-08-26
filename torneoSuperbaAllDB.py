@@ -268,17 +268,35 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     df = st.session_state['df_torneo']
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
+
     for idx, row in df_giornata.iterrows():
         df.at[idx, 'GolCasa'] = st.session_state.get(f"golcasa_{idx}", 0)
         df.at[idx, 'GolOspite'] = st.session_state.get(f"golospite_{idx}", 0)
         df.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
+
     st.session_state['df_torneo'] = df
+
+    # 🔹 aggiorna torneo corrente
     if 'tournament_id' in st.session_state:
         aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
-        st.toast("Risultati salvati su MongoDB ✅")  # toast discreto
+        st.toast("Risultati salvati su MongoDB ✅")
     else:
         st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
+
+    # 🔹 se tutte le partite sono validate → salva come “completato_nomeTorneo”
+    if df['Valida'].all():
+        nome_completato = f"completato_{st.session_state['nome_torneo']}"
+        classifica_finale = aggiorna_classifica(df)
+
+        salva_torneo_su_db(tournaments_collection, df, nome_completato)
+
+        st.session_state['torneo_completato'] = True
+        st.session_state['classifica_finale'] = classifica_finale
+
+        st.toast(f"Torneo completato e salvato come {nome_completato} ✅")
+
     st.rerun()
+
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
     if df_classifica is None or df_classifica.empty:
@@ -386,6 +404,16 @@ def main():
     else:
         st.title("🏆 Torneo Superba - Gestione Gironi")
 
+    # --- Banner vincitori se torneo completato ---
+    if st.session_state.get('torneo_completato', False) and st.session_state.get('classifica_finale') is not None:
+        vincitori = []
+        df_classifica = st.session_state['classifica_finale']
+        for girone in df_classifica['Girone'].unique():
+            primo = df_classifica[df_classifica['Girone'] == girone].iloc[0]['Squadra']
+            vincitori.append(f"{girone}: {primo}")
+        st.success("🎉 Torneo Completato! Vincitori → " + ", ".join(vincitori))
+
+
     # CSS
     st.markdown("""
         <style>
@@ -413,6 +441,18 @@ def main():
                 mime="application/pdf",
                 use_container_width=True
             )
+            # --- Blocco aggiunto: visualizzazione classifica dalla sidebar ---
+            st.sidebar.markdown("---")
+            st.sidebar.subheader("📊 Visualizza Classifica")
+            gironi_sidebar = sorted(df['Girone'].dropna().unique().tolist())
+            girone_class_sel = st.sidebar.selectbox(
+                "Seleziona Girone", gironi_sidebar, key="sidebar_classifica_girone"
+            )
+            if st.sidebar.button("Visualizza Classifica", key="btn_classifica_sidebar"):
+                st.subheader(f"Classifica {girone_class_sel}")
+                classifica = aggiorna_classifica(df)
+                mostra_classifica_stilizzata(classifica, girone_class_sel)
+    
         if st.sidebar.button("🔙 Torna alla schermata iniziale", key='back_to_start_sidebar', use_container_width=True):
             st.session_state['sidebar_state_reset'] = True
             st.rerun()
@@ -481,16 +521,25 @@ def main():
         if st.session_state['filtro_attivo'] == 'Nessuno':
             st.subheader("Navigazione Calendario")
             gironi = sorted(df['Girone'].dropna().unique().tolist())
-            giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
-
+            giornate_correnti = sorted(
+                df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist()
+            )
+        
             nuovo_girone = st.selectbox("Seleziona Girone", gironi, index=gironi.index(st.session_state['girone_sel']))
             if nuovo_girone != st.session_state['girone_sel']:
                 st.session_state['girone_sel'] = nuovo_girone
                 st.session_state['giornata_sel'] = 1
                 st.rerun()
-
-            st.session_state['usa_bottoni'] = st.checkbox("Usa bottoni per la giornata", value=st.session_state.get('usa_bottoni', False), key='usa_bottoni_checkbox')
-            if st.session_state['usa_bottoni']:
+        
+            # 🔹 Radio per scegliere la modalità di navigazione
+            modalita_nav = st.radio(
+                "Modalità navigazione giornata",
+                ["Menu a tendina", "Bottoni"],
+                index=0,
+                key="modalita_navigazione"
+            )
+        
+            if modalita_nav == "Bottoni":
                 navigation_buttons("Giornata", 'giornata_sel', 1, len(giornate_correnti))
             else:
                 try:
@@ -498,11 +547,23 @@ def main():
                 except ValueError:
                     current_index = 0
                     st.session_state['giornata_sel'] = giornate_correnti[0]
-
+        
                 nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=current_index)
                 if nuova_giornata != st.session_state['giornata_sel']:
                     st.session_state['giornata_sel'] = nuova_giornata
                     st.rerun()
+        
+            mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
+            st.button(
+                "💾 Salva Risultati Giornata",
+                on_click=salva_risultati_giornata,
+                args=(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel'])
+            )
+        
+            st.markdown("---")
+            st.subheader(f"Classifica {st.session_state['girone_sel']}")
+            classifica = aggiorna_classifica(df)
+            mostra_classifica_stilizzata(classifica, st.session_state['girone_sel'])
 
             mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
             st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata, args=(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel']))
