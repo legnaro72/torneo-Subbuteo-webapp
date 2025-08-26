@@ -649,20 +649,40 @@ def main():
             if st.session_state.get('mostra_assegnazione_squadre', False):
                 st.markdown("---")
                 st.markdown("### ⚽ Modifica Squadra e Potenziale")
-
+            
                 for gioc in st.session_state['giocatori_selezionati_definitivi']:
+                    # inizializza il dizionario se non esiste
+                    if 'gioc_info' not in st.session_state:
+                        st.session_state['gioc_info'] = {}
                     if gioc not in st.session_state['gioc_info']:
                         row = df_master[df_master['Giocatore'] == gioc].iloc[0] if gioc in df_master['Giocatore'].values else None
                         squadra_default = row['Squadra'] if row is not None else ""
                         potenziale_default = int(row['Potenziale']) if row is not None else 4
-                        st.session_state['gioc_info'][gioc] = {"Squadra": squadra_default, "Potenziale": potenziale_default}
-
-                for gioc in st.session_state['giocatori_selezionati_definitivi']:
-                    squadra_nuova = st.text_input(f"Squadra per {gioc}", value=st.session_state['gioc_info'][gioc]['Squadra'], key=f"squadra_{gioc}")
-                    potenziale_nuovo = st.slider(f"Potenziale per {gioc}", 1, 10, int(st.session_state['gioc_info'][gioc]['Potenziale']), key=f"potenziale_{gioc}")
-
+                        st.session_state['gioc_info'][gioc] = {
+                            "Squadra": squadra_default,
+                            "Potenziale": potenziale_default
+                        }
+            
+                    squadra_nuova = st.text_input(
+                        f"Squadra per {gioc}",
+                        value=st.session_state['gioc_info'][gioc]["Squadra"],
+                        key=f"squadra_{gioc}"
+                    )
+                    potenziale_nuovo = st.slider(
+                        f"Potenziale per {gioc}",
+                        1, 10,
+                        int(st.session_state['gioc_info'][gioc]["Potenziale"]),
+                        key=f"potenziale_{gioc}"
+                    )
+            
                     st.session_state['gioc_info'][gioc]["Squadra"] = squadra_nuova
                     st.session_state['gioc_info'][gioc]["Potenziale"] = potenziale_nuovo
+
+    if st.button("Conferma Squadre e Potenziali"):
+        st.session_state['mostra_gironi'] = True
+        st.toast("Squadre e potenziali confermati ✅")
+        st.rerun()
+
 
                 if st.button("Conferma Squadre e Potenziali"):
                     st.session_state['mostra_gironi'] = True
