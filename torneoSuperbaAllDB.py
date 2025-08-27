@@ -240,11 +240,16 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         return
     for idx, row in df_giornata.iterrows():
         # QUESTE SONO LE RIGHE DA MODIFICARE
-        # --- Modifica QUI ---
-        # Questa logica garantisce che il valore passato a Streamlit sia sempre un intero
-        gol_casa = 0 if pd.isna(row['GolCasa']) or row['GolCasa'] is None else int(row['GolCasa'])
-        gol_ospite = 0 if pd.isna(row['GolOspite']) or row['GolOspite'] is None else int(row['GolOspite'])
-        # --------------------
+        # Logica robusta per la gestione dei valori mancanti
+        try:
+            gol_casa = int(row['GolCasa'])
+        except (ValueError, TypeError):
+            gol_casa = 0
+            
+        try:
+            gol_ospite = int(row['GolOspite'])
+        except (ValueError, TypeError):
+            gol_ospite = 0
 
         col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
         with col1:
