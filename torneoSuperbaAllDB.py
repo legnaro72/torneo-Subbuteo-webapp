@@ -94,18 +94,24 @@ def init_mongo_connection(uri, db_name, collection_name):
         return None
 
 def carica_giocatori_da_db(col):
-    if not col: return pd.DataFrame()
+    if col is None:
+        return pd.DataFrame()
     try:
         return pd.DataFrame(list(col.find({}, {"_id":0})))
-    except: return pd.DataFrame()
+    except:
+        return pd.DataFrame()
 
 def carica_tornei_da_db(col):
-    if not col: return []
+    if col is None:
+        return []
     try:
         return list(col.find({}, {"nome_torneo":1}))
-    except: return []
+    except:
+        return []
 
 def carica_torneo_da_db(col, tid):
+    if col is None:
+        return None
     try:
         t = col.find_one({"_id": ObjectId(tid)})
         if t and 'calendario' in t:
@@ -113,20 +119,27 @@ def carica_torneo_da_db(col, tid):
             df['Valida'] = df['Valida'].astype(bool)
             st.session_state['df_torneo'] = df
         return t
-    except: return None
+    except:
+        return None
 
 def salva_torneo_su_db(col, df, nome):
+    if col is None:
+        return None
     try:
         clean = df.where(pd.notna(df), None)
         return col.insert_one({"nome_torneo": nome, "calendario": clean.to_dict('records')}).inserted_id
-    except: return None
+    except:
+        return None
 
 def aggiorna_torneo_su_db(col, tid, df):
+    if col is None:
+        return False
     try:
         clean = df.where(pd.notna(df), None)
         col.update_one({"_id":ObjectId(tid)}, {"$set":{"calendario": clean.to_dict('records')}})
         return True
-    except: return False
+    except:
+        return False
 
 # =================================================
 # LOGICA TORNEO
