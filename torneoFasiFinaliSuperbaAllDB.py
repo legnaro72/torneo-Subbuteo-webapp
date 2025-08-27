@@ -312,7 +312,7 @@ def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
         pdf.set_font("Helvetica", "", 10)
 
         partite_girone = girone_blocco.sort_values(by='GiornataFinale').reset_index(drop=True)
-        for _, partita in partite_girone.iterrows():
+        for idx, partita in partite_girone.iterrows():
             if not is_complete and not partita['Valida']:
                 pdf.set_text_color(255, 0, 0)
             else:
@@ -589,14 +589,14 @@ else:
                 st.session_state['n_finalisti'] = st.number_input("Quante squadre partecipano alla fase finale?", min_value=1, max_value=len(df_classifica), value=min(len(df_classifica), 8))
                 st.session_state['gironi_num'] = st.number_input("In quanti gironi finali?", min_value=1, max_value=math.ceil(st.session_state['n_finalisti']/2), value=1)
                 st.session_state['gironi_ar'] = st.checkbox("Turno andata e ritorno?")
-                st.session_state['gironi_seed'] = st.radio("Metodo di distribuzione", ["Serpentino", "Casuale"])
+                st.session_state['gironi_seed'] = st.radio("Metodo di distribuzione", ["Fasce (bilanciata)", "Casuale"])
                 
                 if st.button("Genera gironi e calendario"):
                     qualificati = list(df_classifica.head(st.session_state['n_finalisti'])['Squadra'])
                     if len(qualificati) < st.session_state['n_finalisti']:
                         st.warning("Non ci sono abbastanza squadre qualificate.")
                     else:
-                        gironi = serpentino_seed(qualificati, st.session_state['gironi_num']) if st.session_state['gironi_seed'] == "Serpentino" else [qualificati]
+                        gironi = serpentino_seed(qualificati, st.session_state['gironi_num']) if st.session_state['gironi_seed'] == "Fasce (bilanciata)" else [qualificati]
                         df_finale_gironi = pd.DataFrame()
                         for i, teams in enumerate(gironi, 1):
                             if len(teams) > 1:
@@ -622,7 +622,7 @@ else:
                     st.stop()
                 st.session_state['n_inizio_ko'] = n_squadre_ko
                 
-                ko_seed = st.radio("Metodo di accoppiamento", ["Serpentino", "Casuale"])
+                ko_seed = st.radio("Metodo di accoppiamento", ["Fasce (bilanciata)", "Casuale"])
                 
                 if st.button("Genera tabellone"):
                     qualificati = list(df_classifica.head(n_squadre_ko)['Squadra'])
@@ -653,13 +653,13 @@ else:
             
             # Funzione per salvare i risultati dei gironi su DB
             def salva_risultati_gironi():
-                df_finale = st.session_state['df_finale_gironi']
+                df_finale = st.session_state['df_finale_gironi'].copy()
                 
                 for idx, row in df_finale.iterrows():
-                    valida_val = st.session_state.get(f"gironi_valida_{idx}", False)
+                    valida_val = st.session_state.get(f"gironi_valida_{row['GironeFinale']}_{idx}", False)
                     if valida_val:
-                        gol_casa_val = st.session_state.get(f"gironi_golcasa_{idx}")
-                        gol_ospite_val = st.session_state.get(f"gironi_golospite_{idx}")
+                        gol_casa_val = st.session_state.get(f"gironi_golcasa_{row['GironeFinale']}_{idx}")
+                        gol_ospite_val = st.session_state.get(f"gironi_golospite_{row['GironeFinale']}_{idx}")
                         
                         df_finale.at[idx, 'GolCasa'] = int(gol_casa_val) if pd.notna(gol_casa_val) else None
                         df_finale.at[idx, 'GolOspite'] = int(gol_ospite_val) if pd.notna(gol_ospite_val) else None
