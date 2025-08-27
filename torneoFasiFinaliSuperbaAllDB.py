@@ -304,7 +304,8 @@ def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
         pdf.cell(0, 10, "Calendario partite:", 0, 1, 'L')
         pdf.set_font("Helvetica", "", 10)
 
-        partite_girone = girone_blocco.sort_values(by=['Giornata']).reset_index(drop=True)
+        # Riga corretta: usa 'GiornataFinale' al posto di 'Giornata'
+        partite_girone = girone_blocco.sort_values(by=['GiornataFinale']).reset_index(drop=True)
         for _, partita in partite_girone.iterrows():
             if not is_complete and not partita['Valida']:
                 pdf.set_text_color(255, 0, 0)
@@ -312,12 +313,45 @@ def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
                 pdf.set_text_color(0, 0, 0)
             
             res = f"{int(partita['GolCasa'])} - {int(partita['GolOspite'])}" if partita['Valida'] and pd.notna(partita['GolCasa']) and pd.notna(partita['GolOspite']) else " - "
-            pdf.cell(0, 7, f"Giornata {int(partita['Giornata'])}: {partita['Casa']} vs {partita['Ospite']} ({res})", 0, 1)
+            pdf.cell(0, 7, f"Giornata {int(partita['GiornataFinale'])}: {partita['CasaFinale']} vs {partita['OspiteFinale']} ({res})", 0, 1)
 
         pdf.set_text_color(0, 0, 0)
         pdf.ln(5)
 
     return pdf.output(dest='S').encode('latin1')
+
+def salva_risultati_gironi():
+    df_finale = st.session_state['df_finale_gironi']
+    
+    for idx, row in df_finale.iterrows():
+        valida_val = st.session_state.get(f"gironi_valida_{idx}", False)
+        if valida_val:
+            gol_casa_val = st.session_state.get(f"gironi_golcasa_{idx}")
+            gol_ospite_val = st.session_state.get(f"gironi_golospite_{idx}")
+            
+            df_finale.at[idx, 'GolCasa'] = int(gol_casa_val) if pd.notna(gol_casa_val) else None
+            df_finale.at[idx, 'GolOspite'] = int(gol_ospite_val) if pd.notna(gol_ospite_val) else None
+        df_finale.at[idx, 'Valida'] = valida_val
+    
+    st.session_state['df_finale_gironi'] = df_finale
+    st.session_state['df_torneo_preliminare'] = pd.concat([
+        st.session_state['df_torneo_preliminare'],
+        # Riga corretta: usa 'GiornataFinale', 'CasaFinale', 'OspiteFinale' per la mappatura
+        df_finale.rename(columns={
+            'GironeFinale': 'Girone',
+            'GiornataFinale': 'Giornata',
+            'CasaFinale': 'Casa',
+            'OspiteFinale': 'Ospite'
+        })
+    ], ignore_index=True)
+    
+    tournaments_collection = init_mongo_connection(os.environ.get("MONGO_URI_TOURNEMENTS"), db_name, col_name)
+    # FIX: Check esplicito se la connessione ha avuto successo
+    if tournaments_collection is not None and aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo_preliminare']):
+        st.success("✅ Risultati dei gironi finali salvati su DB!")
+        st.rerun()
+    else:
+        st.error("❌ Errore nel salvataggio su DB.")
 
 def generate_pdf_ko(rounds_ko: list[pd.DataFrame]) -> bytes:
     """Genera un PDF con il tabellone a eliminazione diretta."""
