@@ -173,64 +173,41 @@ def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
 # -------------------------
 # CALENDARIO & CLASSIFICA LOGIC
 # -------------------------
-def genera_calendario_from_list(gironi, tipo_calendario):
-    partite = []
-    giornata = 1
-    
-    # Crea un DataFrame vuoto con le colonne corrette
-    df_torneo = pd.DataFrame(columns=[
-        'Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida'
-    ])
+def mostra_calendario_giornata(df, girone, giornata):
+    df_giornata = df[(df['Girone'] == girone) & (df['Giornata'] == giornata)].copy()
+    if df_giornata.empty:
+        st.info("Nessuna partita trovata per questa giornata.")
+        return
 
-    for girone_idx, giocatori_girone in enumerate(gironi):
-        girone_nome = f"Girone {girone_idx + 1}"
-        if len(giocatori_girone) == 1:
-            continue
-        
-        giornata_partita = 1
-        num_giocatori = len(giocatori_girone)
-        
-        if tipo_calendario == "Girone all'italiana (A/R)":
-            # Per il Girone all'italiana A/R, il numero di giornate è (N-1)*2
-            num_giornate = (num_giocatori - 1) * 2
-            
-            # Genera le partite di andata
-            for i in range(num_giocatori - 1):
-                for j in range(i + 1, num_giocatori):
-                    partite.append({
-                        'Girone': girone_nome,
-                        'Giornata': giornata_partita,
-                        'Casa': giocatori_girone[i],
-                        'Ospite': giocatori_girone[j],
-                    })
-                    giornata_partita += 1
-            
-            # Genera le partite di ritorno (scambiando casa e ospite)
-            for i in range(num_giocatori - 1):
-                for j in range(i + 1, num_giocatori):
-                    partite.append({
-                        'Girone': girone_nome,
-                        'Giornata': giornata_partita,
-                        'Casa': giocatori_girone[j],
-                        'Ospite': giocatori_girone[i],
-                    })
-                    giornata_partita += 1
-        
-        elif tipo_calendario == "Eliminazione Diretta":
-            # Questo è solo un esempio, la logica per l'eliminazione diretta è più complessa
-            st.error("Modalità 'Eliminazione Diretta' non ancora supportata.")
-            return pd.DataFrame() # Ritorna un DataFrame vuoto
-            
-    # Crea il DataFrame completo da tutte le partite
-    df_torneo = pd.DataFrame(partite)
-    
-    # 🔹 CORREZIONE: Inizializza le colonne con i tipi di dati corretti
-    df_torneo['GolCasa'] = 0
-    df_torneo['GolOspite'] = 0
-    df_torneo['Valida'] = False
-    
-    return df_torneo
+    st.markdown("### Risultati della Giornata")
 
+    for idx, row in df_giornata.iterrows():
+        col1, col2, col3, col4, col5 = st.columns([0.1, 0.4, 0.1, 0.4, 0.1])
+        with col1:
+            valida_precedente = row['Valida']
+            valida = st.checkbox("✅", value=valida_precedente, key=f"valida_{idx}", help="Seleziona se la partita è stata giocata e il risultato è definitivo.")
+            st.session_state[f"valida_{idx}"] = valida
+
+        with col2:
+            st.markdown(f"**{row['Casa']}**")
+        
+        with col3:
+            golcasa = st.number_input(
+                "Gol", value=int(row['GolCasa']), key=f"golcasa_{idx}", min_value=0, max_value=20, disabled=valida
+            )
+            st.session_state[f"golcasa_{idx}"] = golcasa
+            
+        with col4:
+            golospite = st.number_input(
+                "Gol", value=int(row['GolOspite']), key=f"golospite_{idx}", min_value=0, max_value=20, disabled=valida
+            )
+            st.session_state[f"golospite_{idx}"] = golospite
+        
+        with col5:
+            st.markdown(f"**{row['Ospite']}**")
+        
+        if valida and not valida_precedente:
+            st.toast("✅ Partita validata!")
 def aggiorna_classifica(df):
     if 'Girone' not in df.columns:
         return pd.DataFrame()
