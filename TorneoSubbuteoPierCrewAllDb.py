@@ -235,37 +235,49 @@ def aggiorna_classifica(df):
 # -------------------------
 # FUNZIONI DI VISUALIZZAZIONE & EVENTI
 # -------------------------
-def mostra_calendario_giornata(df, girone_sel, giornata_sel):
-    df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
+def mostra_calendario_giornata(df, girone, giornata):
+    df_giornata = df[(df['Girone'] == girone) & (df['Giornata'] == giornata)].copy()
     if df_giornata.empty:
+        st.info("Nessuna partita trovata per questa giornata.")
         return
+
+    st.markdown("### Risultati della Giornata")
+
     for idx, row in df_giornata.iterrows():
-        gol_casa = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
-        gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
-
-        col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
+        col1, col2, col3, col4, col5 = st.columns([0.1, 0.4, 0.1, 0.4, 0.1])
         with col1:
-            st.markdown(f"**{row['Casa']}** vs **{row['Ospite']}**")
-        with col2:
-            st.number_input(
-                "", min_value=0, max_value=20, key=f"golcasa_{idx}", value=gol_casa,
-                disabled=row['Valida'], label_visibility="hidden"
-            )
-        with col3:
-            st.markdown("-")
-        with col4:
-            st.number_input(
-                "", min_value=0, max_value=20, key=f"golospite_{idx}", value=gol_ospite,
-                disabled=row['Valida'], label_visibility="hidden"
-            )
-        with col5:
-            st.checkbox("Valida", key=f"valida_{idx}", value=row['Valida'])
+            valida_precedente = row['Valida']
+            valida = st.checkbox("✅", value=valida_precedente, key=f"valida_{idx}", help="Seleziona se la partita è stata giocata e il risultato è definitivo.")
+            st.session_state[f"valida_{idx}"] = valida
 
-        # Riga separatrice / stato partita
-        if st.session_state.get(f"valida_{idx}", False):
-            st.markdown("<hr>", unsafe_allow_html=True)
-        else:
-            st.markdown('<div style="color:red; margin-bottom: 15px;">Partita non ancora validata ❌</div>', unsafe_allow_html=True)
+        with col2:
+            st.markdown(f"**{row['Casa']}**")
+        
+        with col3:
+            # 🔹 CORREZIONE: Inizializza i campi con 0 invece di None.
+            # Questo evita la visualizzazione di "None"
+            golcasa = st.number_input(
+                "Gol", value=int(row['GolCasa']) if not pd.isna(row['GolCasa']) else 0,
+                key=f"golcasa_{idx}", min_value=0, max_value=20, disabled=valida
+            )
+            # 🔹 Aggiunto un controllo per prevenire errori nel caso in cui il valore non sia un numero.
+            if golcasa is not None:
+                st.session_state[f"golcasa_{idx}"] = golcasa
+            
+        with col4:
+            # 🔹 CORREZIONE: Inizializza i campi con 0 invece di None.
+            golospite = st.number_input(
+                "Gol", value=int(row['GolOspite']) if not pd.isna(row['GolOspite']) else 0,
+                key=f"golospite_{idx}", min_value=0, max_value=20, disabled=valida
+            )
+            if golospite is not None:
+                st.session_state[f"golospite_{idx}"] = golospite
+        
+        with col5:
+            st.markdown(f"**{row['Ospite']}**")
+        
+        if valida and not valida_precedente:
+            st.toast("✅ Partita validata!")
 
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     df = st.session_state['df_torneo']
