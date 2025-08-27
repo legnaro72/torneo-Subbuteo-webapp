@@ -398,7 +398,7 @@ def main():
         st.rerun()
 
     # Connessioni (senza messaggi verdi)
-    players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "PierCrew_players", show_ok=False)
+    players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "piercrew_players", show_ok=False)
     tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "TorneiSubbuteo", "PierCrew", show_ok=False)
 
     # Titolo con stile personalizzato
