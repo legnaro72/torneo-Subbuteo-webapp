@@ -173,31 +173,63 @@ def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
 # -------------------------
 # CALENDARIO & CLASSIFICA LOGIC
 # -------------------------
-def genera_calendario_from_list(gironi, tipo="Solo andata"):
+def genera_calendario_from_list(gironi, tipo_calendario):
     partite = []
-    for idx, girone in enumerate(gironi, 1):
-        gname = f"Girone {idx}"
-        gr = girone[:]
-        if len(gr) % 2 == 1:
-            gr.append("Riposo")
-        n = len(gr)
-        half = n // 2
-        teams = gr[:]
-        for giornata in range(n - 1):
-            for i in range(half):
-                casa, ospite = teams[i], teams[-(i + 1)]
-                if casa != "Riposo" and ospite != "Riposo":
+    giornata = 1
+    
+    # Crea un DataFrame vuoto con le colonne corrette
+    df_torneo = pd.DataFrame(columns=[
+        'Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida'
+    ])
+
+    for girone_idx, giocatori_girone in enumerate(gironi):
+        girone_nome = f"Girone {girone_idx + 1}"
+        if len(giocatori_girone) == 1:
+            continue
+        
+        giornata_partita = 1
+        num_giocatori = len(giocatori_girone)
+        
+        if tipo_calendario == "Girone all'italiana (A/R)":
+            # Per il Girone all'italiana A/R, il numero di giornate è (N-1)*2
+            num_giornate = (num_giocatori - 1) * 2
+            
+            # Genera le partite di andata
+            for i in range(num_giocatori - 1):
+                for j in range(i + 1, num_giocatori):
                     partite.append({
-                        "Girone": gname, "Giornata": giornata + 1,
-                        "Casa": casa, "Ospite": ospite, "GolCasa": None, "GolOspite": None, "Valida": False
+                        'Girone': girone_nome,
+                        'Giornata': giornata_partita,
+                        'Casa': giocatori_girone[i],
+                        'Ospite': giocatori_girone[j],
                     })
-                    if tipo == "Andata e ritorno":
-                        partite.append({
-                            "Girone": gname, "Giornata": giornata + 1 + n - 1,
-                            "Casa": ospite, "Ospite": casa, "GolCasa": None, "GolOspite": None, "Valida": False
-                        })
-            teams = [teams[0]] + [teams[-1]] + teams[1:-1]
-    return pd.DataFrame(partite)
+                    giornata_partita += 1
+            
+            # Genera le partite di ritorno (scambiando casa e ospite)
+            for i in range(num_giocatori - 1):
+                for j in range(i + 1, num_giocatori):
+                    partite.append({
+                        'Girone': girone_nome,
+                        'Giornata': giornata_partita,
+                        'Casa': giocatori_girone[j],
+                        'Ospite': giocatori_girone[i],
+                    })
+                    giornata_partita += 1
+        
+        elif tipo_calendario == "Eliminazione Diretta":
+            # Questo è solo un esempio, la logica per l'eliminazione diretta è più complessa
+            st.error("Modalità 'Eliminazione Diretta' non ancora supportata.")
+            return pd.DataFrame() # Ritorna un DataFrame vuoto
+            
+    # Crea il DataFrame completo da tutte le partite
+    df_torneo = pd.DataFrame(partite)
+    
+    # 🔹 CORREZIONE: Inizializza le colonne con i tipi di dati corretti
+    df_torneo['GolCasa'] = 0
+    df_torneo['GolOspite'] = 0
+    df_torneo['Valida'] = False
+    
+    return df_torneo
 
 def aggiorna_classifica(df):
     if 'Girone' not in df.columns:
