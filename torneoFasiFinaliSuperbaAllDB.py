@@ -695,10 +695,6 @@ else:
 
         st.header("2. Scegli la fase finale")
         
-        # Rinomina il torneo se è completato
-        if st.session_state.get('giornate_mode') == 'gironi' and 'df_finale_gironi' in st.session_state and st.session_state['df_finale_gironi']['Valida'].all() and not st.session_state['tournament_name'].startswith('finito_'):
-            salva_risultati_gironi() # Chiamata per mostrare il banner e salvare
-
         if st.session_state.get('giornate_mode') is None:
             fase_finale_scelta = st.radio(
                 "Seleziona la modalità della fase finale:",
