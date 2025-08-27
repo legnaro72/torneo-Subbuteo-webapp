@@ -510,9 +510,9 @@ if st.session_state['ui_show_pre']:
     st.header("1. Scegli il torneo preliminare da cui partire")
     
     # Connessione e caricamento tornei dal DB
-    uri = os.environ.get("MONGODB_URI") # Assumi che la URI sia in una variabile d'ambiente
+    uri = os.environ.get("MONGO_URI_TOURNEMENTS") # Assumi che la URI sia in una variabile d'ambiente
     if not uri:
-        st.error("Variabile d'ambiente MONGODB_URI non impostata.")
+        st.error("Variabile d'ambiente MONGO_URI_TOURNEMENTS non impostata.")
     
     db_name = "TorneiSubbuteo"
     col_name = "Superba"
@@ -664,7 +664,7 @@ else:
                     })
                 ], ignore_index=True)
                 
-                tournaments_collection = init_mongo_connection(os.environ.get("MONGODB_URI"), db_name, col_name)
+                tournaments_collection = init_mongo_connection(os.environ.get("MONGO_URI_TOURNEMENTS"), db_name, col_name)
                 if tournaments_collection and aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo_preliminare']):
                     st.success("✅ Risultati dei gironi finali salvati su DB!")
                     st.rerun()
@@ -711,7 +711,7 @@ else:
                 
                 st.session_state['df_torneo_preliminare'] = pd.concat([st.session_state['df_torneo_preliminare'], df_ko_da_salvare], ignore_index=True)
                 
-                tournaments_collection = init_mongo_connection(os.environ.get("MONGODB_URI"), db_name, col_name)
+                tournaments_collection = init_mongo_connection(os.environ.get("MONGO_URI_TOURNEMENTS"), db_name, col_name)
                 if tournaments_collection and aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo_preliminare']):
                     st.success("✅ Risultati salvati su DB!")
                 else:
