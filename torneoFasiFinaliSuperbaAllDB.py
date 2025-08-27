@@ -752,6 +752,33 @@ else:
                 if aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_final_torneo):
                     st.success("✅ Risultati dei gironi finali salvati su DB!")
                     st.session_state['df_torneo_preliminare'] = df_final_torneo
+                    
+                    # --- LOGICA AGGIUNTA PER BANNER VINCITORI ---
+                    if df_finale_gironi['Valida'].all():
+                        st.balloons()
+                        st.markdown("<h2 style='text-align: center; color: #4CAF50;'>🏆 Il torneo è completato!</h2>", unsafe_allow_html=True)
+                        vincitori = {}
+                        gironi = sorted(df_finale_gironi['GironeFinale'].unique())
+                        
+                        for girone in gironi:
+                            df_girone_blocco = df_finale_gironi[df_finale_gironi['GironeFinale'] == girone].copy()
+                            classifica = standings_from_matches(
+                                df_girone_blocco.rename(columns={
+                                    'GironeFinale': 'Gruppo',
+                                    'CasaFinale': 'Casa',
+                                    'OspiteFinale': 'Ospite'
+                                }),
+                                key_group='Gruppo'
+                            )
+                            if not classifica.empty:
+                                vincitore_girone = classifica.iloc[0]['Squadra']
+                                vincitori[girone] = vincitore_girone
+                        
+                        st.markdown("<h3 style='text-align: center;'>Vincitori dei Gironi:</h3>", unsafe_allow_html=True)
+                        for girone, vincitore in vincitori.items():
+                            st.markdown(f"**{girone}**: **{vincitore}**")
+                    # --- FINE LOGICA AGGIUNTA ---
+
                     st.rerun()
                 else:
                     st.error("❌ Errore nel salvataggio su DB.")
@@ -878,46 +905,66 @@ else:
                     
                     df_finale_gironi = st.session_state['df_finale_gironi']
                     
-                    # Usa la colonna 'GironeFinale' per raggruppare i dati
-                    gironi = sorted(df_finale_gironi['GironeFinale'].unique())
+                    # Genera le liste di opzioni per i menu a tendina
+                    gironi_unici = sorted(df_finale_gironi['GironeFinale'].unique())
                     
-                    for girone in gironi:
-                        st.subheader(f"Girone: {girone}")
-                        df_girone_attivo = df_finale_gironi[df_finale_gironi['GironeFinale'] == girone].copy()
-                        
+                    # Seleziona Girone
+                    girone_selezionato = st.selectbox(
+                        "Seleziona il girone da visualizzare:",
+                        options=gironi_unici,
+                        key='girone_sel'
+                    )
+
+                    if girone_selezionato:
+                        # Filtra il DataFrame in base al girone selezionato
+                        df_girone_attivo = df_finale_gironi[df_finale_gironi['GironeFinale'] == girone_selezionato].copy()
+
+                        # Calcola e mostra la classifica del girone
                         df_classifica_girone = standings_from_matches(df_girone_attivo.rename(columns={'GironeFinale': 'Gruppo', 'CasaFinale': 'Casa', 'OspiteFinale': 'Ospite'}), key_group='Gruppo')
                         if not df_classifica_girone.empty:
                             st.markdown("#### Classifica")
                             st.dataframe(df_classifica_girone)
                         
-                        st.markdown("#### Calendario partite")
-                        
-                        partite_ordinate = df_girone_attivo.sort_values(by='GiornataFinale')
-                        
-                        for idx, row in partite_ordinate.iterrows():
-                            # Usa l'indice del DataFrame originale come chiave univoca
-                            original_idx = row.name
-                            col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
-                            with col1:
-                                st.markdown(f"**{row['CasaFinale']}** vs **{row['OspiteFinale']}** (Giornata {int(row['GiornataFinale'])})")
-                            with col2:
-                                st.number_input(
-                                    "", min_value=0, max_value=20, key=f"gironi_golcasa_{original_idx}",
-                                    value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
-                                    disabled=row['Valida'], label_visibility="hidden"
-                                )
-                            with col3:
-                                st.markdown("-")
-                            with col4:
-                                st.number_input(
-                                    "", min_value=0, max_value=20, key=f"gironi_golospite_{original_idx}",
-                                    value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
-                                    disabled=row['Valida'], label_visibility="hidden"
-                                )
-                            with col5:
-                                st.checkbox("Valida", key=f"gironi_valida_{original_idx}", value=row['Valida'])
+                        st.markdown("---")
 
-                        st.button(f"💾 Salva risultati Girone {girone}", key=f"save_gironi_{girone}", on_click=salva_risultati_gironi)
+                        # Seleziona la giornata
+                        giornate_unici = sorted(df_girone_attivo['GiornataFinale'].unique())
+                        giornata_selezionata = st.selectbox(
+                            "Seleziona la giornata da visualizzare:",
+                            options=giornate_unici,
+                            key='giornata_sel'
+                        )
+                        
+                        if giornata_selezionata:
+                            st.markdown(f"#### Giornata {int(giornata_selezionata)}")
+                            
+                            # Filtra le partite della giornata selezionata
+                            partite_ordinate = df_girone_attivo[df_girone_attivo['GiornataFinale'] == giornata_selezionata].sort_values(by='GiornataFinale')
+
+                            for idx, row in partite_ordinate.iterrows():
+                                # Usa l'indice del DataFrame originale come chiave univoca
+                                original_idx = row.name
+                                col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
+                                with col1:
+                                    st.markdown(f"**{row['CasaFinale']}** vs **{row['OspiteFinale']}**")
+                                with col2:
+                                    st.number_input(
+                                        "", min_value=0, max_value=20, key=f"gironi_golcasa_{original_idx}",
+                                        value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
+                                        disabled=row['Valida'], label_visibility="hidden"
+                                    )
+                                with col3:
+                                    st.markdown("-")
+                                with col4:
+                                    st.number_input(
+                                        "", min_value=0, max_value=20, key=f"gironi_golospite_{original_idx}",
+                                        value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
+                                        disabled=row['Valida'], label_visibility="hidden"
+                                    )
+                                with col5:
+                                    st.checkbox("Valida", key=f"gironi_valida_{original_idx}", value=row['Valida'])
+
+                            st.button(f"💾 Salva risultati", key=f"save_gironi", on_click=salva_risultati_gironi)
 
 
             elif st.session_state['giornate_mode'] == 'ko':
