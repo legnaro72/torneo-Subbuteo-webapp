@@ -723,23 +723,33 @@ else:
                 # Prepara il dataframe dei risultati finali
                 df_finale_gironi = st.session_state['df_finale_gironi'].copy()
                 
-                # Aggiorna i dati con i valori della session state
-                for idx, row in df_finale_gironi.iterrows():
-                    # Usa l'indice del DataFrame originale come chiave
-                    original_idx = row.name
-                    valida_key = f"gironi_valida_{original_idx}"
-                    golcasa_key = f"gironi_golcasa_{original_idx}"
-                    golospite_key = f"gironi_golospite_{original_idx}"
+                # FIX: Recupera le partite della giornata e del girone attualmente visualizzati
+                girone_selezionato = st.session_state.get('girone_sel')
+                giornata_selezionata = st.session_state.get('giornata_sel_select')
+                if giornata_selezionata is None and 'giornata_selezionata_buttons' in st.session_state:
+                    giornata_selezionata = st.session_state['giornata_selezionata_buttons']
                     
-                    valida_val = st.session_state.get(valida_key, False)
-                    if valida_val:
+                if girone_selezionato and giornata_selezionata:
+                    partite_attuali = df_finale_gironi[
+                        (df_finale_gironi['GironeFinale'] == girone_selezionato) &
+                        (df_finale_gironi['GiornataFinale'] == giornata_selezionata)
+                    ]
+                    
+                    # Aggiorna solo le righe attualmente visualizzate
+                    for idx, row in partite_attuali.iterrows():
+                        valida_key = f"gironi_valida_{idx}"
+                        golcasa_key = f"gironi_golcasa_{idx}"
+                        golospite_key = f"gironi_golospite_{idx}"
+
+                        valida_val = st.session_state.get(valida_key, False)
+                        
                         gol_casa_val = st.session_state.get(golcasa_key)
                         gol_ospite_val = st.session_state.get(golospite_key)
                         
-                        df_finale_gironi.at[idx, 'GolCasa'] = int(gol_casa_val) if pd.notna(gol_casa_val) else None
-                        df_finale_gironi.at[idx, 'GolOspite'] = int(gol_ospite_val) if pd.notna(gol_ospite_val) else None
-                    df_finale_gironi.at[idx, 'Valida'] = valida_val
-                
+                        df_finale_gironi.loc[idx, 'GolCasa'] = int(gol_casa_val) if pd.notna(gol_casa_val) else None
+                        df_finale_gironi.loc[idx, 'GolOspite'] = int(gol_ospite_val) if pd.notna(gol_ospite_val) else None
+                        df_finale_gironi.loc[idx, 'Valida'] = valida_val
+
                 st.session_state['df_finale_gironi'] = df_finale_gironi
 
                 # Concatena i nuovi risultati al dataframe preliminare
