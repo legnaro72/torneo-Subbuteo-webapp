@@ -228,7 +228,7 @@ def mostra_calendario_giornata(df, girone, giornata):
                 key=f"valida_{idx}",
                 help="Seleziona se la partita è stata giocata e il risultato è definitivo."
             )
-            # ❌ RIGA RIMOSSA: st.session_state[f"valida_{idx}"] = valida
+            # RIGA RIMOSSA: st.session_state[f"valida_{idx}"] = valida
 
         with col2:
             st.markdown(f"**{row['Casa']}**")
@@ -242,7 +242,7 @@ def mostra_calendario_giornata(df, girone, giornata):
                 max_value=20,
                 disabled=valida
             )
-            # ❌ RIGA RIMOSSA: st.session_state[f"golcasa_{idx}"] = golcasa
+            # RIGA RIMOSSA: st.session_state[f"golcasa_{idx}"] = golcasa
             
         with col4:
             golospite = st.number_input(
@@ -253,7 +253,7 @@ def mostra_calendario_giornata(df, girone, giornata):
                 max_value=20,
                 disabled=valida
             )
-            # ❌ RIGA RIMOSSA: st.session_state[f"golospite_{idx}"] = golospite
+            # RIGA RIMOSSA: st.session_state[f"golospite_{idx}"] = golospite
         
         with col5:
             st.markdown(f"**{row['Ospite']}**")
