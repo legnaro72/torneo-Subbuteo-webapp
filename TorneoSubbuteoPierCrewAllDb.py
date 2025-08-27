@@ -404,7 +404,7 @@ def main():
     if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
         st.markdown(f"<div class='big-title'>🏆 {st.session_state['nome_torneo']}</div>", unsafe_allow_html=True)
     else:
-        st.markdown("<div class='big-title'>🏆 Torneo PierCrew - Gestione Gironi</div>", unsafe_allow_html=True)
+        st.markdown("<div class='big-title'>🏆 Torneo PierCrew- Gestione Gironi</div>", unsafe_allow_html=True)
 
     # Banner vincitori
     if st.session_state.get('torneo_completato', False) and st.session_state.get('classifica_finale') is not None:
