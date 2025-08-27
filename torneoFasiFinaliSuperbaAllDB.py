@@ -581,25 +581,33 @@ def salva_risultati_ko():
     # Aggiorna il DataFrame completo con i risultati del round corrente
     ko_df_to_save = st.session_state['rounds_ko'][-1]
     
-    for _, row in ko_df_to_save.iterrows():
+    # Trova il round corrente nel DataFrame completo
+    df_round_ko = df_torneo_completo[
+        (df_torneo_completo['Girone'] == 'Eliminazione Diretta') &
+        (df_torneo_completo['Giornata'] == ko_df_to_save['Giornata'].iloc[0])
+    ].copy()
+
+    # Usa un loop per aggiornare i valori basandosi sulle chiavi univoche dei widget
+    for idx, row in ko_df_to_save.iterrows():
         match_id = f"ko_match_{row['Match']}_round_{row['Giornata']}"
         valida = st.session_state.get(f'ko_valida_{match_id}', False)
+        
+        # Aggiorna solo se la partita è stata validata
         if valida:
             gol_casa = st.session_state.get(f'ko_golcasa_{match_id}', 0)
             gol_ospite = st.session_state.get(f'ko_golospite_{match_id}', 0)
             
-            # Trova la riga corrispondente nel DataFrame completo e aggiornala
-            idx = df_torneo_completo[
-                (df_torneo_completo['Casa'] == row['SquadraA']) &
-                (df_torneo_completo['Ospite'] == row['SquadraB']) &
-                (df_torneo_completo['Girone'] == 'Eliminazione Diretta') &
-                (df_torneo_completo['Giornata'] == row['Giornata'])
+            # Trova la riga corrispondente nel DataFrame temporaneo e aggiornala
+            # Usiamo Casa e Ospite per una corrispondenza sicura
+            match_idx = df_round_ko[
+                (df_round_ko['Casa'] == row['SquadraA']) &
+                (df_round_ko['Ospite'] == row['SquadraB'])
             ].index
             
-            if not idx.empty:
-                df_torneo_completo.loc[idx, 'GolCasa'] = gol_casa
-                df_torneo_completo.loc[idx, 'GolOspite'] = gol_ospite
-                df_torneo_completo.loc[idx, 'Valida'] = True
+            if not match_idx.empty:
+                df_torneo_completo.loc[match_idx, 'GolCasa'] = gol_casa
+                df_torneo_completo.loc[match_idx, 'GolOspite'] = gol_ospite
+                df_torneo_completo.loc[match_idx, 'Valida'] = True
 
     # Salva il DataFrame aggiornato sul DB
     if aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_torneo_completo):
@@ -661,6 +669,9 @@ def salva_risultati_gironi():
 
     df_finale_gironi = st.session_state['df_finale_gironi'].copy()
     
+    # Crea una copia del DataFrame principale per gli aggiornamenti
+    df_torneo_completo = st.session_state['df_torneo_preliminare'].copy()
+
     for idx, row in df_finale_gironi.iterrows():
         # Usa un identificatore unico per i widget di input
         unique_key = f"gironi_match_{row['GironeFinale']}_{row['GiornataFinale']}_{row['CasaFinale']}_{row['OspiteFinale']}"
@@ -669,29 +680,30 @@ def salva_risultati_gironi():
         gol_ospite = st.session_state.get(f'gironi_golospite_{unique_key}', row['GolOspite'])
         valida = st.session_state.get(f'gironi_valida_{unique_key}', row['Valida'])
 
+        # Aggiorna la riga nel DataFrame della sessione
         df_finale_gironi.loc[idx, 'GolCasa'] = gol_casa
         df_finale_gironi.loc[idx, 'GolOspite'] = gol_ospite
         df_finale_gironi.loc[idx, 'Valida'] = valida
 
-    # Aggiorna il DataFrame principale del torneo con i risultati della fase finale
-    df_torneo_completo = st.session_state['df_torneo_preliminare'].copy()
-    
-    # Rimuovi le vecchie righe del girone finale
-    df_torneo_completo = df_torneo_completo[~df_torneo_completo['Girone'].str.contains('Girone Finale', na=False)]
-    
-    # Aggiungi le nuove righe aggiornate del girone finale
-    df_finale_gironi_da_salvare = df_finale_gironi.rename(columns={
-        'GironeFinale': 'Girone',
-        'GiornataFinale': 'Giornata',
-        'CasaFinale': 'Casa',
-        'OspiteFinale': 'Ospite'
-    })
-    df_torneo_completo = pd.concat([df_torneo_completo, df_finale_gironi_da_salvare], ignore_index=True)
-    
+        # Trova la riga corrispondente nel DataFrame completo e aggiornala
+        match_idx = df_torneo_completo[
+            (df_torneo_completo['Girone'] == row['GironeFinale']) &
+            (df_torneo_completo['Giornata'] == row['GiornataFinale']) &
+            (df_torneo_completo['Casa'] == row['CasaFinale']) &
+            (df_torneo_completo['Ospite'] == row['OspiteFinale'])
+        ].index
+
+        if not match_idx.empty:
+            df_torneo_completo.loc[match_idx, 'GolCasa'] = gol_casa
+            df_torneo_completo.loc[match_idx, 'GolOspite'] = gol_ospite
+            df_torneo_completo.loc[match_idx, 'Valida'] = valida
+
+    # Salva il DataFrame aggiornato sul DB
     if aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_torneo_completo):
         st.session_state['df_finale_gironi'] = df_finale_gironi
         st.session_state['df_torneo_preliminare'] = df_torneo_completo
         st.success("✅ Risultati dei gironi salvati con successo!")
+        st.rerun()
     else:
         st.error("❌ Errore nel salvataggio dei risultati dei gironi.")
 
@@ -705,6 +717,7 @@ def render_round(df_round: pd.DataFrame, round_index: int):
     is_current_round = (round_index == len(st.session_state['rounds_ko']) - 1)
 
     for idx, row in df_round.iterrows():
+        # Usa un identificatore unico che non cambia
         match_id = f"ko_match_{row['Match']}_round_{row['Giornata']}"
         
         with col1:
@@ -998,6 +1011,7 @@ else: # Logica per la visualizzazione dei tornei
                     col1, col2, col3, col4, col5 = st.columns([0.4, 0.1, 0.4, 0.1, 0.05])
                     
                     for idx, row in partite_girone.iterrows():
+                        # Usa un identificatore unico che non cambia
                         unique_key = f"gironi_match_{row['GironeFinale']}_{row['GiornataFinale']}_{row['CasaFinale']}_{row['OspiteFinale']}"
                         
                         is_disabled = row['Valida']
