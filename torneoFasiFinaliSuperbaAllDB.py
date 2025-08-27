@@ -387,6 +387,9 @@ if 'tournament_id' not in st.session_state:
     st.session_state['tournament_id'] = None
 if 'tournament_name' not in st.session_state:
     st.session_state['tournament_name'] = None
+if 'giornate_mode' not in st.session_state:
+    st.session_state['giornate_mode'] = None
+
 
 # ==============================================================================
 # ⚙️ FUNZIONI DI GESTIONE DATI SU MONGO (COPIATE DA alldbsuperbanew.py)
@@ -474,7 +477,7 @@ with st.sidebar:
             st.rerun()
         st.divider()
         st.subheader("📤 Esportazione")
-        if st.session_state.get('fase_modalita') == "Gironi" and 'df_finale_gironi' in st.session_state:
+        if st.session_state.get('giornate_mode') == "gironi" and 'df_finale_gironi' in st.session_state:
             st.download_button(
                 "📥 Esporta calendario gironi (CSV)",
                 data=st.session_state['df_finale_gironi'].to_csv(index=False).encode('utf-8'),
@@ -487,7 +490,7 @@ with st.sidebar:
                 file_name="fase_finale_gironi.pdf",
                 mime="application/pdf",
             )
-        if st.session_state.get('fase_modalita') == "Eliminazione diretta" and 'rounds_ko' in st.session_state:
+        if st.session_state.get('giornate_mode') == "ko" and 'rounds_ko' in st.session_state:
             all_rounds_df = pd.concat(st.session_state['rounds_ko'], ignore_index=True)
             st.download_button(
                 "📥 Esporta tabellone (CSV)",
@@ -519,7 +522,7 @@ if st.session_state['ui_show_pre']:
     tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "TorneiSubbuteo", "Superba", show_ok=False)
     
     if tournaments_collection is not None:
-        tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix="completato_")
+        tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix="COMPLETATO UNDERSCORE")
         
         if not tornei_trovati:
             st.info("⚠️ Nessun torneo 'COMPLETATO UNDERSCORE' trovato nel database.")
@@ -563,7 +566,8 @@ else:
         st.divider()
 
         st.header("2. Scegli la fase finale")
-        if st.session_state['fase_modalita'] is None:
+
+        if st.session_state['giornate_mode'] is None:
             # Opzioni fase finale
             fase_finale_scelta = st.radio(
                 "Seleziona la modalità della fase finale:",
@@ -634,7 +638,7 @@ else:
                     st.session_state['rounds_ko'] = [pd.DataFrame(matches)]
                     st.session_state['giornate_mode'] = 'ko'
                     st.rerun()
-
+        
         # Renderizza il calendario/tabellone se già generato
         if st.session_state.get('giornate_mode'):
             st.divider()
@@ -665,7 +669,8 @@ else:
                 ], ignore_index=True)
                 
                 tournaments_collection = init_mongo_connection(os.environ.get("MONGO_URI_TOURNEMENTS"), db_name, col_name)
-                if tournaments_collection and aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo_preliminare']):
+                # FIX: Check esplicito se la connessione ha avuto successo
+                if tournaments_collection is not None and aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo_preliminare']):
                     st.success("✅ Risultati dei gironi finali salvati su DB!")
                     st.rerun()
                 else:
@@ -712,7 +717,8 @@ else:
                 st.session_state['df_torneo_preliminare'] = pd.concat([st.session_state['df_torneo_preliminare'], df_ko_da_salvare], ignore_index=True)
                 
                 tournaments_collection = init_mongo_connection(os.environ.get("MONGO_URI_TOURNEMENTS"), db_name, col_name)
-                if tournaments_collection and aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo_preliminare']):
+                # FIX: Check esplicito se la connessione ha avuto successo
+                if tournaments_collection is not None and aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo_preliminare']):
                     st.success("✅ Risultati salvati su DB!")
                 else:
                     st.error("❌ Errore nel salvataggio su DB.")
