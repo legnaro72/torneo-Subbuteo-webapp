@@ -113,7 +113,8 @@ def tournament_is_complete(df: pd.DataFrame) -> tuple[bool, str]:
     """Verifica se tutte le partite sono validate e i gol sono numerici."""
     v = to_bool_series(df['Valida'])
     if not v.all():
-        return False, "Sono presenti partite non validate."
+        problematic_rows = df[~v].index.tolist()
+        return False, f"Sono presenti partite non validate. Righe problematiche: {problematic_rows}"
     try:
         gc_ok = pd.to_numeric(df['GolCasa'], errors='coerce').notna().all()
         go_ok = pd.to_numeric(df['GolOspite'], errors='coerce').notna().all()
@@ -553,6 +554,12 @@ if st.session_state['ui_show_pre']:
                         is_complete, msg = tournament_is_complete(st.session_state['df_torneo_preliminare'])
                         if not is_complete:
                             st.error(f"❌ Il torneo preliminare selezionato non è completo: {msg}")
+                            # Mostra le righe problematiche
+                            problematic_rows = st.session_state['df_torneo_preliminare'][
+                                ~to_bool_series(st.session_state['df_torneo_preliminare']['Valida'])
+                            ]
+                            st.warning("Di seguito le partite non validate:")
+                            st.dataframe(problematic_rows[['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']])
                         else:
                             st.session_state['ui_show_pre'] = False
                             st.rerun()
