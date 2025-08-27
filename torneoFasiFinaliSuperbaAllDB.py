@@ -311,7 +311,7 @@ def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
         pdf.cell(0, 10, "Calendario partite:", 0, 1, 'L')
         pdf.set_font("Helvetica", "", 10)
 
-        partite_girone = girone_blocco.sort_values(by=['GiornataFinale']).reset_index(drop=True)
+        partite_girone = girone_blocco.sort_values(by='GiornataFinale').reset_index(drop=True)
         for _, partita in partite_girone.iterrows():
             if not is_complete and not partita['Valida']:
                 pdf.set_text_color(255, 0, 0)
@@ -412,10 +412,10 @@ def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
         col = db.get_collection(collection_name)
         _ = col.find_one({})
         if show_ok:
-            st.info(f"Connessione a {db_name}.{collection_name} ok.")
+            st.info(f"Connessione a {db_name}.{col_name} ok.")
         return col
     except Exception as e:
-        st.error(f"❌ Errore di connessione a {db_name}.{collection_name}: {e}")
+        st.error(f"❌ Errore di connessione a {db_name}.{col_name}: {e}")
         return None
 
 def carica_tornei_da_db(tournaments_collection, prefix: str):
@@ -689,6 +689,18 @@ else:
                 current_round_df = st.session_state['rounds_ko'][-1]
                 winners = []
                 all_valid = True
+                
+                # Primo loop per controllare i pareggi
+                for idx, row in current_round_df.iterrows():
+                    valid_key = f"ko_valida_{len(st.session_state['rounds_ko']) - 1}_{idx}"
+                    if st.session_state.get(valid_key, False):
+                        gol_a = st.session_state.get(f"ko_gola_{len(st.session_state['rounds_ko']) - 1}_{idx}")
+                        gol_b = st.session_state.get(f"ko_golb_{len(st.session_state['rounds_ko']) - 1}_{idx}")
+                        if int(gol_a) == int(gol_b):
+                            st.warning("❌ Un pareggio non è consentito. Inserisci un vincitore per la partita in KO.")
+                            st.stop() # FERMA l'esecuzione qui
+
+                # Secondo loop per elaborare i risultati se non ci sono pareggi
                 for idx, row in current_round_df.iterrows():
                     valid_key = f"ko_valida_{len(st.session_state['rounds_ko']) - 1}_{idx}"
                     
@@ -706,9 +718,6 @@ else:
                         elif int(gol_b) > int(gol_a):
                             current_round_df.at[idx, 'Vincitore'] = row['SquadraB']
                             winners.append(row['SquadraB'])
-                        else:
-                            st.error("❌ I pareggi non sono consentiti in un tabellone a eliminazione diretta!")
-                            return
                     else:
                         all_valid = False
 
