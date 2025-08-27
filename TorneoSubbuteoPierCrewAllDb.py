@@ -173,6 +173,44 @@ def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
 # -------------------------
 # CALENDARIO & CLASSIFICA LOGIC
 # -------------------------
+def genera_calendario_from_list(gironi, tipo_calendario):
+    partite = []
+    
+    for girone_idx, giocatori_girone in enumerate(gironi):
+        girone_nome = f"Girone {girone_idx + 1}"
+        if len(giocatori_girone) < 2:
+            continue
+        
+        # Genera le partite
+        for i in range(len(giocatori_girone)):
+            for j in range(i + 1, len(giocatori_girone)):
+                # Andata
+                partite.append({
+                    'Girone': girone_nome,
+                    'Casa': giocatori_girone[i],
+                    'Ospite': giocatori_girone[j],
+                })
+                # Ritorno
+                partite.append({
+                    'Girone': girone_nome,
+                    'Casa': giocatori_girone[j],
+                    'Ospite': giocatori_girone[i],
+                })
+                
+    df_torneo = pd.DataFrame(partite)
+    
+    # Aggiungi le colonne necessarie con valori predefiniti
+    df_torneo['GolCasa'] = 0
+    df_torneo['GolOspite'] = 0
+    df_torneo['Valida'] = False
+    
+    # Aggiungi la colonna Giornata e rimescola
+    df_torneo = df_torneo.sample(frac=1).reset_index(drop=True)
+    df_torneo['Giornata'] = 1 + df_torneo.index // (len(gironi[0]) * (len(gironi[0]) - 1))
+    
+    return df_torneo
+
+
 def mostra_calendario_giornata(df, girone, giornata):
     df_giornata = df[(df['Girone'] == girone) & (df['Giornata'] == giornata)].copy()
     if df_giornata.empty:
@@ -208,6 +246,7 @@ def mostra_calendario_giornata(df, girone, giornata):
         
         if valida and not valida_precedente:
             st.toast("✅ Partita validata!")
+
 def aggiorna_classifica(df):
     if 'Girone' not in df.columns:
         return pd.DataFrame()
