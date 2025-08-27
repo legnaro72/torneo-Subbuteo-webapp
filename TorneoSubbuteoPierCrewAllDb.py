@@ -222,30 +222,38 @@ def mostra_calendario_giornata(df, girone, giornata):
     for idx, row in df_giornata.iterrows():
         col1, col2, col3, col4, col5 = st.columns([0.1, 0.4, 0.1, 0.4, 0.1])
         with col1:
-            valida_precedente = row['Valida']
-            valida = st.checkbox("✅", value=valida_precedente, key=f"valida_{idx}", help="Seleziona se la partita è stata giocata e il risultato è definitivo.")
-            st.session_state[f"valida_{idx}"] = valida
+            valida = st.checkbox(
+                "✅",
+                value=st.session_state.get(f"valida_{idx}", row['Valida']),
+                key=f"valida_{idx}",
+                help="Seleziona se la partita è stata giocata e il risultato è definitivo."
+            )
 
         with col2:
             st.markdown(f"**{row['Casa']}**")
         
         with col3:
             golcasa = st.number_input(
-                "Gol", value=int(row['GolCasa']), key=f"golcasa_{idx}", min_value=0, max_value=20, disabled=valida
+                "Gol",
+                value=st.session_state.get(f"golcasa_{idx}", int(row['GolCasa'])),
+                key=f"golcasa_{idx}",
+                min_value=0,
+                max_value=20,
+                disabled=valida
             )
-            st.session_state[f"golcasa_{idx}"] = golcasa
             
         with col4:
             golospite = st.number_input(
-                "Gol", value=int(row['GolOspite']), key=f"golospite_{idx}", min_value=0, max_value=20, disabled=valida
+                "Gol",
+                value=st.session_state.get(f"golospite_{idx}", int(row['GolOspite'])),
+                key=f"golospite_{idx}",
+                min_value=0,
+                max_value=20,
+                disabled=valida
             )
-            st.session_state[f"golospite_{idx}"] = golospite
         
         with col5:
             st.markdown(f"**{row['Ospite']}**")
-        
-        if valida and not valida_precedente:
-            st.toast("✅ Partita validata!")
 
 def aggiorna_classifica(df):
     if 'Girone' not in df.columns:
