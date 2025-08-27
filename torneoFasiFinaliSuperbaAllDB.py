@@ -319,20 +319,17 @@ def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
         pdf.set_font("Helvetica", "B", 12)
         pdf.cell(0, 10, "Calendario partite:", 0, 1, 'L')
         pdf.set_font("Helvetica", "", 10)
-
+        
         partite_girone = girone_blocco.sort_values(by='GiornataFinale').reset_index(drop=True)
         for idx, partita in partite_girone.iterrows():
             if not is_complete and not partita['Valida']:
                 pdf.set_text_color(255, 0, 0)
             else:
                 pdf.set_text_color(0, 0, 0)
-            
             res = f"{int(partita['GolCasa'])} - {int(partita['GolOspite'])}" if partita['Valida'] and pd.notna(partita['GolCasa']) and pd.notna(partita['GolOspite']) else " - "
             pdf.cell(0, 7, f"Giornata {int(partita['GiornataFinale'])}: {partita['CasaFinale']} vs {partita['OspiteFinale']} ({res})", 0, 1)
-
-        pdf.set_text_color(0, 0, 0)
+            pdf.set_text_color(0, 0, 0)
         pdf.ln(5)
-
     return pdf.output(dest='S').encode('latin1')
 
 def generate_pdf_ko(rounds_ko: list[pd.DataFrame]) -> bytes:
@@ -341,775 +338,517 @@ def generate_pdf_ko(rounds_ko: list[pd.DataFrame]) -> bytes:
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
     pdf.set_font("Helvetica", "B", 16)
-    
     pdf.cell(0, 10, "Tabellone Eliminazione Diretta", 0, 1, 'C')
-    
+
     for df_round in rounds_ko:
         pdf.ln(5)
         pdf.set_font("Helvetica", "B", 14)
         pdf.cell(0, 10, df_round['Round'].iloc[0], 0, 1, 'L')
-        
         pdf.set_font("Helvetica", "", 12)
+
         for _, match in df_round.iterrows():
             if not match['Valida']:
                 pdf.set_text_color(255, 0, 0)
             else:
                 pdf.set_text_color(0, 0, 0)
-                
             res = f"{int(match['GolA'])} - {int(match['GolB'])}" if match['Valida'] and pd.notna(match['GolA']) and pd.notna(match['GolB']) else " - "
-            pdf.cell(0, 7, f"Partita {int(match['Match'])}: {match['SquadraA']} vs {match['SquadraB']} ({res})", 0, 1)
-
-    pdf.set_text_color(0, 0, 0)
+            pdf.cell(0, 7, f"{match['SquadraA']} vs {match['SquadraB']} ({res})", 0, 1)
+        pdf.set_text_color(0, 0, 0)
+    
     return pdf.output(dest='S').encode('latin1')
 
-# ==============================================================================
-# 🧠 Gestione stato applicazione
-# ==============================================================================
-
-def reset_fase_finale():
-    """Reset dello stato della sessione per la fase finale."""
-    keys = [
-        'fase_scelta','gironi_num','gironi_ar','gironi_seed',
-        'df_finale_gironi','girone_sel','giornata_sel',
-        'round_corrente','rounds_ko','seeds_ko','n_inizio_ko',
-        'giornate_mode', 'tournament_name_raw', 'filter_player', 'filter_girone',
-        'df_torneo_preliminare'
-    ]
-    for k in keys:
-        if k in st.session_state:
-            del st.session_state[k]
-
-def reset_to_setup():
-    """Reset completo per tornare alla schermata iniziale."""
-    reset_fase_finale()
-    st.session_state['ui_show_pre'] = True
-    st.session_state['fase_modalita'] = None
-    st.session_state['df_torneo_preliminare'] = None
-    st.session_state['tournament_id'] = None
-    st.session_state['tournament_name'] = None
-
-# Inizializzazione stato
-if 'ui_show_pre' not in st.session_state:
-    st.session_state['ui_show_pre'] = True
-if 'fase_modalita' not in st.session_state:
-    st.session_state['fase_modalita'] = None
-if 'filter_player' not in st.session_state:
-    st.session_state['filter_player'] = None
-if 'filter_girone' not in st.session_state:
-    st.session_state['filter_girone'] = None
-if 'df_torneo_preliminare' not in st.session_state:
-    st.session_state['df_torneo_preliminare'] = None
-if 'tournament_id' not in st.session_state:
-    st.session_state['tournament_id'] = None
-if 'tournament_name' not in st.session_state:
-    st.session_state['tournament_name'] = None
-if 'giornate_mode' not in st.session_state:
-    st.session_state['giornate_mode'] = None
-# Nuovo stato per la modalità di navigazione
-if 'giornata_nav_mode' not in st.session_state:
-    st.session_state['giornata_nav_mode'] = 'Menu a tendina'
-
-# ==============================================================================
-# ⚙️ FUNZIONI DI GESTIONE DATI SU MONGO (COPIATE DA alldbsuperbanew.py)
-# ==============================================================================
-@st.cache_resource
-def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
-    """
-    Inizializza la connessione a MongoDB.
-    """
+def get_mongo_collection():
+    """Connessione a MongoDB e recupero collezione."""
     try:
+        # Aggiungi st.secrets per le credenziali
+        user = st.secrets["mongodb"]["user"]
+        pwd = st.secrets["mongodb"]["password"]
+        cluster_name = st.secrets["mongodb"]["cluster_name"]
+        uri = f"mongodb+srv://{user}:{pwd}@{cluster_name}.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+        
         client = MongoClient(uri, server_api=ServerApi('1'))
-        db = client.get_database(db_name)
-        col = db.get_collection(collection_name)
-        _ = col.find_one({})
-        if show_ok:
-            st.info(f"Connessione a {db_name}.{col_name} ok.")
-        return col
+        db = client['TorneiDB']
+        collection = db['fasiFinali']
+        return collection
     except Exception as e:
-        st.error(f"❌ Errore di connessione a {db_name}.{col_name}: {e}")
+        st.error(f"Errore di connessione a MongoDB: {e}")
         return None
 
-def carica_tornei_da_db(tournaments_collection, prefix: list[str]):
-    """Carica l'elenco dei tornei dal DB filtrando per prefisso."""
-    if tournaments_collection is None:
+# ==============================================================================
+# 🎯 Funzioni principali dell'app
+# ==============================================================================
+
+def salva_torneo_mongodb(torneo_df, nome_torneo):
+    """Salva il DataFrame del torneo su MongoDB."""
+    collection = get_mongo_collection()
+    if collection is None:
+        return
+    try:
+        # Pulisce i dati esistenti per evitare duplicati
+        collection.delete_many({'NomeTorneo': nome_torneo})
+        
+        # Converte il DataFrame in un formato che può essere salvato in MongoDB
+        records = torneo_df.to_dict('records')
+        
+        # Salva i record nella collezione
+        document = {
+            'NomeTorneo': nome_torneo,
+            'DataCaricamento': pd.Timestamp.now().isoformat(),
+            'Partite': records,
+            'TipoFase': 'gironi' if 'GironeFinale' in torneo_df.columns else 'ko'
+        }
+        collection.insert_one(document)
+        st.success(f"Torneo '{nome_torneo}' salvato con successo su MongoDB! ✅")
+    except Exception as e:
+        st.error(f"Errore durante il salvataggio del torneo su MongoDB: {e}")
+
+def carica_tornei_disponibili():
+    """Carica la lista dei tornei disponibili da MongoDB."""
+    collection = get_mongo_collection()
+    if collection is None:
         return []
     try:
-        regex_prefix = '|'.join(prefix)
-        tornei = tournaments_collection.find({"nome_torneo": {"$regex": f"^{regex_prefix}"}}, {"nome_torneo": 1})
+        tornei = collection.find({}, {'NomeTorneo': 1, 'DataCaricamento': 1, 'TipoFase': 1})
         return list(tornei)
     except Exception as e:
-        st.error(f"❌ Errore caricamento tornei: {e}")
+        st.error(f"Errore durante il caricamento dei tornei: {e}")
         return []
 
-def carica_torneo_da_db(tournaments_collection, tournament_id):
-    """Carica un singolo torneo dal DB e lo converte in DataFrame."""
-    if tournaments_collection is None:
-        return None
+def carica_torneo_selezionato(nome_torneo):
+    """Carica un torneo specifico da MongoDB in st.session_state."""
+    collection = get_mongo_collection()
+    if collection is None:
+        return
+    
     try:
-        torneo_data = tournaments_collection.find_one({"_id": ObjectId(tournament_id)})
-        if torneo_data and 'calendario' in torneo_data:
-            df_torneo = pd.DataFrame(torneo_data['calendario'])
-            df_torneo['Valida'] = to_bool_series(df_torneo['Valida'])
-            df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').astype('Int64')
-            df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').astype('Int64')
-            return torneo_data
-    except Exception as e:
-        st.error(f"❌ Errore caricamento torneo: {e}")
-        return None
-    return None
+        document = collection.find_one({'NomeTorneo': nome_torneo})
+        if document:
+            st.session_state['nome_torneo'] = nome_torneo
+            st.session_state['Partite'] = pd.DataFrame(document['Partite'])
+            st.session_state['giornate_mode'] = document['TipoFase']
+            st.session_state['fase_corrente_caricata'] = True
+            
+            if st.session_state['giornate_mode'] == 'gironi':
+                st.session_state['df_finale_gironi'] = st.session_state['Partite']
+            elif st.session_state['giornate_mode'] == 'ko':
+                st.session_state['rounds_ko'] = parse_ko_rounds(st.session_state['Partite'])
 
-def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
-    """Aggiorna il calendario di un torneo esistente su MongoDB."""
-    if tournaments_collection is None:
-        return False
-    try:
-        # Pulisci il DataFrame per il salvataggio
-        df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
-        tournaments_collection.update_one(
-            {"_id": ObjectId(tournament_id)},
-            {"$set": {"calendario": df_torneo_pulito.to_dict('records')}}
-        )
-        return True
-    except Exception as e:
-        st.error(f"❌ Errore aggiornamento torneo: {e}")
-        return False
-
-def clona_torneo_su_db(tournaments_collection, source_id, new_name):
-    """
-    Clona un torneo esistente su MongoDB e gli assegna un nuovo nome.
-    Ritorna il nuovo ObjectId e il nuovo nome.
-    """
-    if tournaments_collection is None:
-        return None, None
-    try:
-        source_data = tournaments_collection.find_one({"_id": ObjectId(source_id)})
-        if not source_data:
-            st.error(f"❌ Torneo sorgente con ID {source_id} non trovato.")
-            return None, None
-        
-        # Rimuovi l'ID e il nome per creare un nuovo documento
-        source_data.pop('_id')
-        source_data['nome_torneo'] = new_name
-        
-        # Inserisci il nuovo documento e ottieni il nuovo ID
-        result = tournaments_collection.insert_one(source_data)
-        st.success(f"✅ Torneo clonato con successo! Nuovo nome: **{new_name}**")
-        return result.inserted_id, new_name
-        
-    except Exception as e:
-        st.error(f"❌ Errore nella clonazione del torneo: {e}")
-        return None, None
-
-def rinomina_torneo_su_db(tournaments_collection, tournament_id, new_name):
-    """
-    Rinomina un torneo esistente su MongoDB.
-    """
-    if tournaments_collection is None:
-        return False
-    try:
-        tournaments_collection.update_one(
-            {"_id": ObjectId(tournament_id)},
-            {"$set": {"nome_torneo": new_name}}
-        )
-        return True
-    except Exception as e:
-        st.error(f"❌ Errore nella ridenominazione del torneo: {e}")
-        return False
-
-# ==============================================================================
-# ⚽ Header dinamico
-# ==============================================================================
-if 'tournament_name' in st.session_state and not st.session_state['ui_show_pre']:
-    cleaned_name = re.sub(r'\(.*\)', '', st.session_state["tournament_name"]).strip()
-    st.markdown(f'<h1 class="main-title">🏆 FASE FINALE {cleaned_name}</h1>', unsafe_allow_html=True)
-else:
-    st.title("⚽ Fasi Finali")
-    if 'tournament_name' in st.session_state and st.session_state['ui_show_pre']:
-        st.markdown(f"### 🏷️ {st.session_state['tournament_name']}")
-
-# ==============================================================================
-# ⚙️ Sidebar (tutti i pulsanti qui)
-# ==============================================================================
-with st.sidebar:
-    st.header("Opzioni 🚀")
-    if not st.session_state['ui_show_pre']:
-        if st.button("⬅️ Torna a classifica e scelta fase finale"):
-            reset_to_setup()
             st.rerun()
-        st.divider()
-        st.subheader("📤 Esportazione")
-        if st.session_state.get('giornate_mode') == "gironi" and 'df_finale_gironi' in st.session_state:
-            st.download_button(
-                "📥 Esporta calendario gironi (CSV)",
-                data=st.session_state['df_finale_gironi'].to_csv(index=False).encode('utf-8'),
-                file_name="fase_finale_gironi_calendario.csv",
-                mime="text/csv",
-            )
-            st.download_button(
-                "📄 Esporta PDF calendario e classifica",
-                data=generate_pdf_gironi(st.session_state['df_finale_gironi']),
-                file_name="fase_finale_gironi.pdf",
-                mime="application/pdf",
-            )
-        if st.session_state.get('giornate_mode') == "ko" and 'rounds_ko' in st.session_state:
-            all_rounds_df = pd.concat(st.session_state['rounds_ko'], ignore_index=True)
-            st.download_button(
-                "📥 Esporta tabellone (CSV)",
-                data=all_rounds_df.to_csv(index=False).encode('utf-8'),
-                file_name="fase_finale_tabellone.csv",
-                mime="text/csv",
-            )
-            st.download_button(
-                "📄 Esporta PDF tabellone KO",
-                data=generate_pdf_ko(st.session_state['rounds_ko']),
-                file_name="fase_finale_tabellone_ko.pdf",
-                mime="application/pdf",
-            )
 
-# Definisci db_name e col_name a livello globale
-db_name = "TorneiSubbuteo"
-col_name = "Superba"
+        else:
+            st.error(f"Torneo '{nome_torneo}' non trovato.")
+    except Exception as e:
+        st.error(f"Errore durante il caricamento del torneo: {e}")
+        
+def parse_ko_rounds(df: pd.DataFrame) -> list[pd.DataFrame]:
+    """Trasforma un DataFrame KO salvato in una lista di DataFrame per ogni round."""
+    rounds = sorted(df['RoundNumber'].unique())
+    rounds_ko_list = []
+    for r in rounds:
+        round_df = df[df['RoundNumber'] == r].copy()
+        rounds_ko_list.append(round_df)
+    return rounds_ko_list
 
-# ==============================================================================
-# 🚀 LOGICA APPLICAZIONE PRINCIPALE
-# ==============================================================================
-if st.session_state['ui_show_pre']:
-    st.header("1. Scegli il torneo")
+def create_ko_table(rounds_ko: list[pd.DataFrame]) -> pd.DataFrame:
+    """Combina la lista di DataFrame dei round KO in un unico DataFrame per il salvataggio."""
+    return pd.concat(rounds_ko, ignore_index=True)
+
+def home_page():
+    """Pagina iniziale per caricare o creare un torneo."""
+    st.title("⚽ Fasi Finali Torneo ⚽")
+    st.markdown("""
+        Questa applicazione ti aiuta a gestire le fasi finali di un torneo, sia a gironi che a eliminazione diretta.
+        Carica un file CSV con l'elenco delle squadre o riprendi un torneo salvato.
+    """)
+    st.divider()
+
+    col1, col2 = st.columns(2)
     
-    # Connessione e caricamento tornei dal DB
-    uri = os.environ.get("MONGO_URI_TOURNEMENTS") # Assumi che la URI sia in una variabile d'ambiente
-    if not uri:
-        st.error("Variabile d'ambiente MONGO_URI_TOURNEMENTS non impostata.")
-    
-    tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name, show_ok=False)
-    
-    if tournaments_collection is not None:
-        
-        opzione_selezione = st.radio("Cosa vuoi fare?", ["Creare una nuova fase finale", "Continuare una fase finale esistente"])
-        
-        if opzione_selezione == "Creare una nuova fase finale":
-            tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix=["completato_"])
-            st.subheader("Seleziona un torneo preliminare completato")
-            if not tornei_trovati:
-                st.info("⚠️ Nessun torneo 'COMPLETATO' trovato nel database.")
-            else:
-                tornei_opzioni = {t['nome_torneo']: str(t['_id']) for t in tornei_trovati}
-                scelta_torneo = st.selectbox(
-                    "Seleziona il torneo da cui iniziare le fasi finali:",
-                    options=list(tornei_opzioni.keys())
-                )
-                if scelta_torneo:
-                    st.session_state['tournament_name'] = scelta_torneo
-                    st.session_state['tournament_id'] = tornei_opzioni[scelta_torneo]
-                    if st.button("Continua con questo torneo (Nuova Fase Finale)"):
-                        torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
-                        if torneo_data:
-                            df_torneo = pd.DataFrame(torneo_data['calendario'])
-                            is_complete, msg = tournament_is_complete(df_torneo)
-                            if not is_complete:
-                                st.error(f"❌ Il torneo preliminare selezionato non è completo: {msg}")
-                                problematic_rows = df_torneo[
-                                    ~to_bool_series(df_torneo['Valida'])
-                                ]
-                                st.warning("Di seguito le partite non validate:")
-                                st.dataframe(problematic_rows[['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']])
-                            else:
-                                new_name = f"fasefinale_{torneo_data['nome_torneo']}"
-                                new_id, new_name = clona_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], new_name)
-                                
-                                if new_id:
-                                    cloned_torneo_data = carica_torneo_da_db(tournaments_collection, str(new_id))
-                                    if cloned_torneo_data:
-                                        st.session_state['df_torneo_preliminare'] = pd.DataFrame(cloned_torneo_data['calendario'])
-                                        st.session_state['tournament_id'] = str(new_id)
-                                        st.session_state['tournament_name'] = new_name
-                                        st.session_state['ui_show_pre'] = False
-                                        st.rerun()
-                                    else:
-                                        st.error("❌ Errore nel caricamento del torneo clonato. Riprova.")
-                                else:
-                                    st.error("❌ Errore nella clonazione del torneo. Riprova.")
-                        else:
-                            st.error("❌ Errore nel caricamento del torneo. Riprova.")
-
-        #elif opzione_selezione == "Continuare una fase finale esistente":
-        elif opzione_selezione == "Continuare una fase finale esistente":
-            tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
-            tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix=["fasefinale_"])
-            st.subheader("Seleziona una fase finale esistente")
-            if not tornei_trovati:
-                st.info("⚠️ Nessuna fase finale esistente trovata nel database.")
-            else:
-                tornei_opzioni = {t['nome_torneo']: str(t['_id']) for t in tornei_trovati}
-                scelta_torneo = st.selectbox(
-                    "Seleziona la fase finale da continuare:",
-                    options=list(tornei_opzioni.keys())
-                )
-                if scelta_torneo:
-                    st.session_state['tournament_name'] = scelta_torneo
-                    st.session_state['tournament_id'] = tornei_opzioni[scelta_torneo]
-                    if st.button("Continua con questo torneo"):
-                        torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
-                        if torneo_data:
-                            df_torneo_completo = pd.DataFrame(torneo_data['calendario'])
-                            st.session_state['df_torneo_preliminare'] = df_torneo_completo
-                            
-                            # Logica modificata
-                            is_ko_tournament = (df_torneo_completo['Girone'] == 'Eliminazione Diretta').any()
-                            is_gironi_finale = (df_torneo_completo['Girone'].str.contains('Girone Finale')).any()
-        
-                            if is_ko_tournament:
-                                # È un torneo a eliminazione diretta
-                                df_ko_esistente = df_torneo_completo[df_torneo_completo['Girone'] == 'Eliminazione Diretta'].copy()
-                                rounds_list = []
-                                for r in sorted(df_ko_esistente['Giornata'].unique()):
-                                    df_round = df_ko_esistente[df_ko_esistente['Giornata'] == r].copy()
-                                    df_round.rename(columns={'Casa': 'SquadraA', 'Ospite': 'SquadraB', 'GolCasa': 'GolA', 'GolOspite': 'GolB'}, inplace=True)
-                                    df_round['Round'] = df_round['Girone'].iloc[0]
-                                    df_round['Match'] = df_round.index + 1
-                                    df_round['Vincitore'] = df_round.apply(lambda row: row['SquadraA'] if pd.notna(row['GolA']) and row['GolA'] > row['GolB'] else row['SquadraB'] if pd.notna(row['GolB']) and row['GolB'] > row['GolA'] else None, axis=1)
-                                    rounds_list.append(df_round)
-                                st.session_state['rounds_ko'] = rounds_list
-                                st.session_state['giornate_mode'] = 'ko'
-                                st.session_state['fase_modalita'] = "Eliminazione diretta"
-                                st.session_state['ui_show_pre'] = False
-                                st.rerun()
-                            
-                            elif is_gironi_finale:
-                                # È un torneo a gironi
-                                df_gironi_esistente = df_torneo_completo[df_torneo_completo['Girone'].str.contains('Girone Finale')].copy()
-                                df_gironi_esistente.rename(columns={'Girone': 'GironeFinale', 'Giornata': 'GiornataFinale', 'Casa': 'CasaFinale', 'Ospite': 'OspiteFinale'}, inplace=True)
-                                st.session_state['df_finale_gironi'] = df_gironi_esistente
-                                st.session_state['giornate_mode'] = 'gironi'
-                                st.session_state['fase_modalita'] = "Gironi"
-                                st.session_state['ui_show_pre'] = False
-                                st.rerun()
-        
-                            else:
-                                # Non è stata ancora generata una fase finale, torna al menu di selezione
-                                st.session_state['ui_show_pre'] = False
-                                st.rerun()
-                        else:
-                            st.error("❌ Errore nel caricamento del torneo. Riprova.")
-
-else:
-    if 'df_torneo_preliminare' not in st.session_state or st.session_state['df_torneo_preliminare'] is None:
-        st.error("Dati del torneo non caricati. Riprova a selezionare un torneo.")
-        st.button("Torna indietro", on_click=reset_to_setup)
-    else:
-        df_torneo = st.session_state['df_torneo_preliminare']
-        df_classifica = classifica_complessiva(df_torneo)
-        
-        st.markdown("<h3 style='text-align: center;'>Classifica Fase Preliminare</h3>", unsafe_allow_html=True)
-        st.dataframe(df_classifica, use_container_width=True)
-        st.divider()
-
-        st.header("2. Scegli la fase finale")
-        
-        if st.session_state.get('giornate_mode') is None:
-            fase_finale_scelta = st.radio(
-                "Seleziona la modalità della fase finale:",
-                ["Gironi finali", "Eliminazione diretta"]
+    with col1:
+        st.header("1️⃣ Carica un torneo esistente")
+        tornei_disponibili = carica_tornei_disponibili()
+        if tornei_disponibili:
+            nomi_tornei = [t['NomeTorneo'] for t in tornei_disponibili]
+            selected_torneo = st.selectbox(
+                "Seleziona un torneo da caricare:",
+                nomi_tornei,
+                index=None,
+                placeholder="Scegli un torneo salvato..."
             )
-            
-            if fase_finale_scelta == "Gironi finali":
-                st.session_state['fase_scelta'] = "gironi"
-                st.session_state['fase_modalita'] = "Gironi"
-                st.session_state['n_finalisti'] = st.number_input("Quante squadre partecipano alla fase finale?", min_value=1, max_value=len(df_classifica), value=min(len(df_classifica), 8))
-                st.session_state['gironi_num'] = st.number_input("In quanti gironi finali?", min_value=1, max_value=math.ceil(st.session_state['n_finalisti']/2), value=1)
-                st.session_state['gironi_ar'] = st.checkbox("Turno andata e ritorno?")
-                st.session_state['gironi_seed'] = st.radio("Metodo di distribuzione", ["Fasce (bilanciata)", "Casuale"])
-                
-                if st.button("Genera gironi e calendario"):
-                    qualificati = list(df_classifica.head(st.session_state['n_finalisti'])['Squadra'])
-                    if len(qualificati) < st.session_state['n_finalisti']:
-                        st.warning("Non ci sono abbastanza squadre qualificate.")
-                    else:
-                        gironi = serpentino_seed(qualificati, st.session_state['gironi_num']) if st.session_state['gironi_seed'] == "Fasce (bilanciata)" else [qualificati]
-                        df_finale_gironi = pd.DataFrame()
-                        for i, teams in enumerate(gironi, 1):
-                            if len(teams) > 1:
-                                df_girone = round_robin(teams, st.session_state['gironi_ar'])
-                                df_girone.rename(columns={'Giornata': 'GiornataFinale', 'Casa': 'CasaFinale', 'Ospite': 'OspiteFinale'}, inplace=True)
-                                df_girone['GironeFinale'] = f"Girone {i}"
-                                df_finale_gironi = pd.concat([df_finale_gironi, df_girone], ignore_index=True)
-                        
-                        df_finale_gironi['GolCasa'] = None; df_finale_gironi['GolOspite'] = None; df_finale_gironi['Valida'] = False
-                        df_finale_gironi.insert(0, 'GironeFinale', df_finale_gironi.pop('GironeFinale'))
-                        df_finale_gironi.insert(1, 'GiornataFinale', df_finale_gironi.pop('GiornataFinale'))
-                        st.session_state['df_finale_gironi'] = df_finale_gironi
-                        st.session_state['giornate_mode'] = 'gironi'
-                        
-                        # Salva i dati iniziali su DB
-                        df_to_save_initial = df_finale_gironi.rename(columns={
-                            'GironeFinale': 'Girone',
-                            'GiornataFinale': 'Giornata',
-                            'CasaFinale': 'Casa',
-                            'OspiteFinale': 'Ospite'
-                        })
-                        df_final_torneo = pd.concat([st.session_state['df_torneo_preliminare'], df_to_save_initial], ignore_index=True)
-                        tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
-                        aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_final_torneo)
-                        st.session_state['df_torneo_preliminare'] = df_final_torneo
+            if selected_torneo and st.button("▶️ Riprendi il torneo"):
+                carica_torneo_selezionato(selected_torneo)
+        else:
+            st.info("Nessun torneo salvato su MongoDB. Crea un nuovo torneo.")
+
+    with col2:
+        st.header("2️⃣ Inizia un nuovo torneo")
+        uploaded_file = st.file_uploader("Carica un file CSV (solo squadre)", type="csv")
+        if uploaded_file is not None:
+            try:
+                df_squadre = pd.read_csv(uploaded_file)
+                if 'Squadre' in df_squadre.columns:
+                    st.session_state['squadre_iniziali'] = df_squadre['Squadre'].dropna().tolist()
+                    st.success(f"{len(st.session_state['squadre_iniziali'])} squadre caricate con successo! Clicca 'Procedi' per configurare il torneo.")
+                    if st.button("Procedi con la configurazione"):
+                        st.session_state['fase_corrente'] = 'setup'
                         st.rerun()
+                else:
+                    st.error("Il file CSV deve contenere una colonna chiamata 'Squadre'.")
+            except Exception as e:
+                st.error(f"Errore nel leggere il file CSV. Assicurati che sia formattato correttamente. Errore: {e}")
 
-            elif fase_finale_scelta == "Eliminazione diretta":
-                st.session_state['fase_scelta'] = "ko"
-                st.session_state['fase_modalita'] = "Eliminazione diretta"
-                n_squadre_ko = st.number_input("Quante squadre partecipano all'eliminazione diretta?", min_value=2, value=min(16, len(df_classifica)), step=1)
-                if not n_squadre_ko or (n_squadre_ko & (n_squadre_ko - 1) != 0):
-                    st.warning("Il numero di squadre deve essere una potenza di 2 (es. 2, 4, 8, 16...).")
-                    st.stop()
-                st.session_state['n_inizio_ko'] = n_squadre_ko
-                
-                st.info("L'accoppiamento seguirà il criterio 'più forte contro più debole' (1ª vs ultima, 2ª vs penultima, ecc.).")
-                
-                if st.button("Genera tabellone"):
-                    qualificati = list(df_classifica.head(n_squadre_ko)['Squadra'])
-                    
-                    matches = []
-                    
-                    if len(qualificati) > 1:
-                        accoppiamenti = bilanciato_ko_seed(qualificati)
-                        for i, (sq_a, sq_b) in enumerate(accoppiamenti, 1):
-                             matches.append({
-                                 'Round': f"Ottavi di finale (di {n_squadre_ko})" if n_squadre_ko == 16 else f"Quarti di finale (di {n_squadre_ko})" if n_squadre_ko == 8 else f"Semifinali (di {n_squadre_ko})" if n_squadre_ko == 4 else f"Finale (di {n_squadre_ko})",
-                                 'Match': i,
-                                 'SquadraA': sq_a,
-                                 'SquadraB': sq_b,
-                                 'GolA': None, 'GolB': None, 'Valida': False, 'Vincitore': None
-                             })
-                    else:
-                        st.warning("Non ci sono abbastanza squadre per generare un tabellone.")
-                        st.stop()
+    if 'fase_corrente' in st.session_state and st.session_state['fase_corrente'] == 'home' and not ('fase_corrente_caricata' in st.session_state and st.session_state['fase_corrente_caricata']):
+        st.info("Se hai caricato un file CSV, usa il pulsante 'Procedi' per continuare.")
 
-                    df_initial_round = pd.DataFrame(matches)
-                    st.session_state['rounds_ko'] = [df_initial_round]
-                    st.session_state['giornate_mode'] = 'ko'
 
-                    # Salva i dati iniziali su DB
-                    df_to_save_initial = df_initial_round.rename(columns={'SquadraA': 'Casa', 'SquadraB': 'Ospite', 'GolA': 'GolCasa', 'GolB': 'GolOspite'})
-                    df_to_save_initial['Girone'] = 'Eliminazione Diretta'
-                    df_to_save_initial['Giornata'] = 1
-                    df_final_torneo = pd.concat([st.session_state['df_torneo_preliminare'], df_to_save_initial], ignore_index=True)
-                    tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
-                    aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_final_torneo)
-                    st.session_state['df_torneo_preliminare'] = df_final_torneo
-                    st.rerun()
-        
-        # Renderizza il calendario/tabellone se già generato
-        if st.session_state.get('giornate_mode'):
-            st.divider()
+def setup_page():
+    """Pagina di configurazione del torneo (numero gironi o KO)."""
+    st.title("⚙️ Configurazione Fasi Finali")
+    st.markdown(f"**Squadre caricate:** {len(st.session_state['squadre_iniziali'])} in totale.")
+    
+    st.session_state['nome_torneo'] = st.text_input(
+        "Dai un nome al tuo torneo:",
+        value=st.session_state.get('nome_torneo', 'Nuovo Torneo Finale')
+    )
+
+    tipo_fase = st.radio(
+        "Scegli il tipo di fase finale:",
+        ['Fase a Gironi', 'Eliminazione Diretta (KO)'],
+        index=0 if st.session_state.get('giornate_mode') == 'gironi' else 1,
+        key='tipo_fase'
+    )
+    
+    st.session_state['giornate_mode'] = 'gironi' if tipo_fase == 'Fase a Gironi' else 'ko'
+
+    if st.session_state['giornate_mode'] == 'gironi':
+        max_gironi = len(st.session_state['squadre_iniziali']) // 2
+        st.session_state['num_gironi'] = st.slider(
+            "Numero di gironi:",
+            min_value=2,
+            max_value=max_gironi if max_gironi > 1 else 2,
+            value=st.session_state.get('num_gironi', 2)
+        )
+        if len(st.session_state['squadre_iniziali']) % st.session_state['num_gironi'] != 0:
+            st.warning("Il numero di squadre non è divisibile per il numero di gironi. Le squadre verranno distribuite in modo diseguale.")
             
-            # Funzione per salvare i risultati dei gironi su DB
-            def salva_risultati_gironi():
-                tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
-                if tournaments_collection is None:
-                    st.error("❌ Errore di connessione al DB.")
-                    return
-                
-                torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
-                if torneo_data is None:
-                    st.error("❌ Errore nel caricamento del torneo corrente.")
-                    return
-                
-                df_torneo_preliminare = pd.DataFrame(torneo_data['calendario'])
-                
-                df_finale_gironi = st.session_state['df_finale_gironi'].copy()
-                
-                girone_selezionato = st.session_state.get('girone_sel')
-                giornata_selezionata = st.session_state.get('giornata_sel_select')
-                if giornata_selezionata is None and 'giornata_selezionata_buttons' in st.session_state:
-                    giornata_selezionata = st.session_state['giornata_selezionata_buttons']
-                    
-                if girone_selezionato and giornata_selezionata:
-                    partite_attuali = df_finale_gironi[
-                        (df_finale_gironi['GironeFinale'] == girone_selezionato) &
-                        (df_finale_gironi['GiornataFinale'] == giornata_selezionata)
-                    ]
-                    
-                    for idx, row in partite_attuali.iterrows():
-                        valida_key = f"gironi_valida_{idx}"
-                        golcasa_key = f"gironi_golcasa_{idx}"
-                        golospite_key = f"gironi_golospite_{idx}"
+    if st.button("Genera Calendario"):
+        st.session_state['fase_corrente'] = 'play'
+        st.session_state['fase_corrente_caricata'] = False # Per distinguere tra generazione e caricamento
+        st.rerun()
 
-                        valida_val = st.session_state.get(valida_key, False)
-                        
-                        gol_casa_val = st.session_state.get(golcasa_key)
-                        gol_ospite_val = st.session_state.get(golospite_key)
-                        
-                        df_finale_gironi.loc[idx, 'GolCasa'] = int(gol_casa_val) if pd.notna(gol_casa_val) else None
-                        df_finale_gironi.loc[idx, 'GolOspite'] = int(gol_ospite_val) if pd.notna(gol_ospite_val) else None
-                        df_finale_gironi.loc[idx, 'Valida'] = valida_val
+    st.button("Torna indietro", on_click=reset_to_home)
 
-                st.session_state['df_finale_gironi'] = df_finale_gironi
+def reset_to_home():
+    """Resetta lo stato per tornare alla pagina iniziale."""
+    for key in ['fase_corrente', 'squadre_iniziali', 'df_finale_gironi', 'rounds_ko', 'giornate_mode', 'fase_corrente_caricata', 'nome_torneo']:
+        if key in st.session_state:
+            del st.session_state[key]
+    st.session_state['fase_corrente'] = 'home'
+    st.rerun()
 
-                df_to_save = df_finale_gironi.rename(columns={
-                    'GironeFinale': 'Girone',
-                    'GiornataFinale': 'Giornata',
-                    'CasaFinale': 'Casa',
-                    'OspiteFinale': 'Ospite'
-                })
+def reset_to_setup():
+    """Resetta lo stato per tornare alla pagina di configurazione."""
+    for key in ['df_finale_gironi', 'rounds_ko', 'fase_corrente_caricata', 'nome_torneo']:
+        if key in st.session_state:
+            del st.session_state[key]
+    st.session_state['fase_corrente'] = 'setup'
+    st.rerun()
+
+def salva_risultati_gironi():
+    """Salva i risultati delle partite a gironi."""
+    if 'df_finale_gironi' not in st.session_state:
+        st.error("Nessun torneo a gironi trovato nello stato della sessione.")
+        return
+    
+    df = st.session_state['df_finale_gironi'].copy()
+    
+    for idx, row in df.iterrows():
+        try:
+            valida_key = f"gironi_valida_{idx}"
+            gol_casa_key = f"gironi_golcasa_{idx}"
+            gol_ospite_key = f"gironi_golospite_{idx}"
+            
+            if st.session_state[valida_key]:
+                df.at[idx, 'Valida'] = True
+                df.at[idx, 'GolCasa'] = int(st.session_state[gol_casa_key])
+                df.at[idx, 'GolOspite'] = int(st.session_state[gol_ospite_key])
+            else:
+                df.at[idx, 'Valida'] = False
+        except (KeyError, ValueError):
+            # In caso di errore (es. campi vuoti), continua ignorando
+            continue
+            
+    st.session_state['df_finale_gironi'] = df
+    salva_torneo_mongodb(df, st.session_state['nome_torneo'])
+    st.rerun()
+
+def salva_risultati_ko():
+    """Salva i risultati del round KO e genera il prossimo round."""
+    if 'rounds_ko' not in st.session_state or not st.session_state['rounds_ko']:
+        st.error("Nessun torneo KO trovato nello stato della sessione.")
+        return
+        
+    current_round_df = st.session_state['rounds_ko'][-1].copy()
+    
+    vincitori_round = []
+    
+    for idx, row in current_round_df.iterrows():
+        try:
+            valida_key = f"ko_valida_{idx}"
+            gol_a_key = f"ko_gola_{idx}"
+            gol_b_key = f"ko_golb_{idx}"
+            
+            valida = st.session_state[valida_key]
+            current_round_df.at[idx, 'Valida'] = valida
+            
+            if valida:
+                gola = int(st.session_state[gol_a_key])
+                golb = int(st.session_state[gol_b_key])
+                current_round_df.at[idx, 'GolA'] = gola
+                current_round_df.at[idx, 'GolB'] = golb
                 
-                df_final_torneo = pd.concat([df_torneo_preliminare[~df_torneo_preliminare['Girone'].isin(df_to_save['Girone'].unique())], df_to_save], ignore_index=True)
-                
-                if aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_final_torneo):
-                    st.success("✅ Risultati dei gironi finali salvati su DB!")
-                    st.session_state['df_torneo_preliminare'] = df_final_torneo
-                    
-                    if df_finale_gironi['Valida'].all():
-                        st.balloons()
-                        st.markdown("<h2 style='text-align: center; color: #4CAF50;'>🏆 Il torneo è completato!</h2>", unsafe_allow_html=True)
-                        
-                        if not st.session_state['tournament_name'].startswith('finito_'):
-                            nuovo_nome = st.session_state['tournament_name'].replace("fasefinale_", "finito_")
-                            rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
-                            st.session_state['tournament_name'] = nuovo_nome
-                            
-                        vincitori = {}
-                        gironi = sorted(df_finale_gironi['GironeFinale'].unique())
-                        
-                        for girone in gironi:
-                            df_girone_blocco = df_finale_gironi[df_finale_gironi['GironeFinale'] == girone].copy()
-                            classifica = standings_from_matches(
-                                df_girone_blocco.rename(columns={
-                                    'GironeFinale': 'Gruppo',
-                                    'CasaFinale': 'Casa',
-                                    'OspiteFinale': 'Ospite'
-                                }),
-                                key_group='Gruppo'
-                            )
-                            if not classifica.empty:
-                                vincitore_girone = classifica.iloc[0]['Squadra']
-                                vincitori[girone] = vincitore_girone
-                        
-                        st.markdown("<h3 style='text-align: center;'>Vincitori dei Gironi:</h3>", unsafe_allow_html=True)
-                        for girone, vincitore in vincitori.items():
-                            st.markdown(f"**{girone}**: **{vincitore}**")
-
-                    st.rerun()
+                # Determina il vincitore
+                if gola > golb:
+                    vincitori_round.append(row['SquadraA'])
+                elif golb > gola:
+                    vincitori_round.append(row['SquadraB'])
                 else:
-                    st.error("❌ Errore nel salvataggio su DB.")
-
-            # Funzione per salvare i risultati KO su DB
-            def salva_risultati_ko():
-                current_round_df = st.session_state['rounds_ko'][-1].copy()
-                winners = []
-                all_valid = True
-                
-                for idx, row in current_round_df.iterrows():
-                    valid_key = f"ko_valida_{len(st.session_state['rounds_ko']) - 1}_{idx}"
-                    
-                    if st.session_state.get(valid_key, False):
-                        gol_a = st.session_state.get(f"ko_gola_{len(st.session_state['rounds_ko']) - 1}_{idx}")
-                        gol_b = st.session_state.get(f"ko_golb_{len(st.session_state['rounds_ko']) - 1}_{idx}")
-                        
-                        if int(gol_a) == int(gol_b):
-                            st.warning("❌ I pareggi non sono consentiti in un tabellone a eliminazione diretta!")
-                            return 
-
-                for idx, row in current_round_df.iterrows():
-                    valid_key = f"ko_valida_{len(st.session_state['rounds_ko']) - 1}_{idx}"
-                    
-                    if st.session_state.get(valid_key, False):
-                        gol_a = st.session_state.get(f"ko_gola_{len(st.session_state['rounds_ko']) - 1}_{idx}")
-                        gol_b = st.session_state.get(f"ko_golb_{len(st.session_state['rounds_ko']) - 1}_{idx}")
-                        
-                        current_round_df.at[idx, 'GolA'] = int(gol_a)
-                        current_round_df.at[idx, 'GolB'] = int(gol_b)
-                        current_round_df.at[idx, 'Valida'] = True
-                        
-                        if int(gol_a) > int(gol_b):
-                            current_round_df.at[idx, 'Vincitore'] = row['SquadraA']
-                            winners.append(row['SquadraA'])
-                        elif int(gol_b) > int(gol_a):
-                            current_round_df.at[idx, 'Vincitore'] = row['SquadraB']
-                            winners.append(row['SquadraB'])
-                    else:
-                        all_valid = False
-
-                if not all_valid:
-                    st.error("❌ Per generare il prossimo round, tutte le partite devono essere validate.")
+                    st.warning(f"Partita tra {row['SquadraA']} e {row['SquadraB']} è un pareggio. Le partite KO devono avere un vincitore. Considera i calci di rigore.")
                     return
-                
-                df_ko_da_salvare = current_round_df.copy()
-                df_ko_da_salvare.rename(columns={'SquadraA': 'Casa', 'SquadraB': 'Ospite', 'GolA': 'GolCasa', 'GolB': 'GolOspite'}, inplace=True)
-                df_ko_da_salvare['Girone'] = 'Eliminazione Diretta'
-                df_ko_da_salvare['Giornata'] = len(st.session_state['rounds_ko'])
+        except (KeyError, ValueError):
+            st.error("Assicurati di inserire i gol per tutte le partite del round corrente.")
+            return
 
-                tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
-                
-                if tournaments_collection is not None:
-                    # Ricarica il DF per la concatenazione
-                    torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
-                    df_preliminare_aggiornato = pd.DataFrame(torneo_data['calendario'])
-                    df_final_torneo = pd.concat([df_preliminare_aggiornato, df_ko_da_salvare], ignore_index=True)
+    # Se tutte le partite del round corrente sono validate
+    if len(vincitori_round) == len(current_round_df):
+        st.session_state['rounds_ko'][-1] = current_round_df
+        
+        # Genera il prossimo round se ci sono più di 1 vincitore
+        if len(vincitori_round) > 1:
+            prossimo_round_df = generate_ko_round(vincitori_round, len(st.session_state['rounds_ko']) + 1)
+            st.session_state['rounds_ko'].append(prossimo_round_df)
+        else:
+            st.success(f"🏆 Torneo concluso! Il vincitore è: **{vincitori_round[0]}**")
 
-                    if aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_final_torneo):
-                        st.success("✅ Risultati salvati su DB!")
-                    else:
-                        st.error("❌ Errore nel salvataggio su DB.")
-                
-                if len(winners) > 1:
-                    next_round_name = ""
-                    if len(winners) == 8:
-                        next_round_name = "Quarti di finale"
-                    elif len(winners) == 4:
-                        next_round_name = "Semifinali"
-                    elif len(winners) == 2:
-                        next_round_name = "Finale"
-                    else:
-                        next_round_name = "Fine torneo"
+    # Salva il tabellone completo su MongoDB
+    full_ko_df = create_ko_table(st.session_state['rounds_ko'])
+    salva_torneo_mongodb(full_ko_df, st.session_state['nome_torneo'])
+    st.rerun()
+    
+def generate_gironi_calendar():
+    """Genera il calendario per la fase a gironi."""
+    squadre = st.session_state['squadre_iniziali']
+    num_gironi = st.session_state['num_gironi']
+    
+    classifica_iniziale = classifica_complessiva(pd.DataFrame(columns=REQUIRED_COLS)) # Classifica vuota
+    if not classifica_iniziale.empty:
+        squadre.sort(key=lambda s: classifica_iniziale[classifica_iniziale['Squadra'] == s]['Punti'].iloc[0], reverse=True)
+    
+    gironi_teams = serpentino_seed(squadre, num_gironi)
+    
+    final_df_list = []
+    for i, teams in enumerate(gironi_teams):
+        girone_name = f"Girone {chr(65+i)}"
+        girone_df = round_robin(teams)
+        girone_df['GironeFinale'] = girone_name
+        girone_df['CasaFinale'] = girone_df['Casa']
+        girone_df['OspiteFinale'] = girone_df['Ospite']
+        girone_df['GiornataFinale'] = girone_df['Giornata']
+        girone_df['GolCasa'] = pd.NA
+        girone_df['GolOspite'] = pd.NA
+        girone_df['Valida'] = False
+        final_df_list.append(girone_df)
+        
+    df_finale_gironi = pd.concat(final_df_list, ignore_index=True)
+    st.session_state['df_finale_gironi'] = df_finale_gironi
+    
+def generate_ko_round(squadre: list[str], round_num: int) -> pd.DataFrame:
+    """Genera un singolo round KO a partire da una lista di squadre."""
+    if len(squadre) % 2 != 0:
+        st.error("Il numero di squadre per il round KO deve essere pari.")
+        st.stop()
+    
+    ko_matches = bilanciato_ko_seed(squadre)
+    rows = []
+    round_name = ""
+    if len(squadre) == 16:
+        round_name = "Ottavi di Finale"
+    elif len(squadre) == 8:
+        round_name = "Quarti di Finale"
+    elif len(squadre) == 4:
+        round_name = "Semifinali"
+    elif len(squadre) == 2:
+        round_name = "Finale"
+    else:
+        round_name = f"Round {round_num}"
 
-                    if next_round_name != "Fine torneo":
-                        next_matches = []
-                        for i in range(0, len(winners), 2):
-                            next_matches.append({
-                                'Round': next_round_name,
-                                'Match': (i//2) + 1,
-                                'SquadraA': winners[i],
-                                'SquadraB': winners[i+1],
-                                'GolA': None, 'GolB': None, 'Valida': False, 'Vincitore': None
-                            })
-                        st.session_state['rounds_ko'].append(pd.DataFrame(next_matches))
-                        st.session_state['round_corrente'] = next_round_name
-                        st.success(f"Prossimo turno: {next_round_name} generato!")
-                    else:
-                        st.balloons()
-                        st.success(f"🏆 Il torneo è finito! Il vincitore è: **{winners[0]}**")
-                        if not st.session_state['tournament_name'].startswith('finito_'):
-                            nuovo_nome = st.session_state['tournament_name'].replace("fasefinale_", "finito_")
-                            rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
-                            st.session_state['tournament_name'] = nuovo_nome
+    for i, (sq_a, sq_b) in enumerate(ko_matches):
+        rows.append({
+            'RoundNumber': round_num,
+            'Round': round_name,
+            'MatchID': f"R{round_num}M{i+1}",
+            'SquadraA': sq_a,
+            'SquadraB': sq_b,
+            'GolA': pd.NA,
+            'GolB': pd.NA,
+            'Valida': False
+        })
+    return pd.DataFrame(rows)
+    
+def render_round(df_round: pd.DataFrame, round_idx: int):
+    """Renderizza un singolo round di partite, con campi modificabili o meno."""
+    st.markdown(f"**{df_round['Round'].iloc[0]}**")
+    for idx, row in df_round.iterrows():
+        col1, col2, col3, col4, col5 = st.columns([0.4, 0.1, 0.1, 0.3, 0.1])
+        
+        is_valida = to_bool_series(pd.Series([row['Valida']])).iloc[0]
+
+        with col1:
+            st.markdown(f"**{row['SquadraA']}**")
+        with col2:
+            st.number_input(
+                "Gol A",
+                min_value=0,
+                step=1,
+                key=f"ko_gola_{idx}",
+                value=int(row['GolA']) if pd.notna(row['GolA']) else 0,
+                disabled=is_valida,
+                label_visibility="hidden"
+            )
+        with col3:
+            st.number_input(
+                "Gol B",
+                min_value=0,
+                step=1,
+                key=f"ko_golb_{idx}",
+                value=int(row['GolB']) if pd.notna(row['GolB']) else 0,
+                disabled=is_valida,
+                label_visibility="hidden"
+            )
+        with col4:
+            st.markdown(f"**{row['SquadraB']}**")
+        with col5:
+            st.checkbox(
+                "Valida",
+                key=f"ko_valida_{idx}",
+                value=is_valida,
+                disabled=is_valida
+            )
+    st.divider()
+
+def play_page():
+    """Pagina di gestione del torneo in corso."""
+    st.title(f"▶️ Torneo in Corso: {st.session_state.get('nome_torneo', 'N/A')}")
+    st.markdown(f"<p class='small-muted'>Ultimo salvataggio: {pd.Timestamp.now().strftime('%d/%m/%Y %H:%M')}</p>", unsafe_allow_html=True)
+
+    if st.session_state['giornate_mode'] == 'gironi':
+        if 'df_finale_gironi' not in st.session_state or ('fase_corrente_caricata' in st.session_state and not st.session_state['fase_corrente_caricata']):
+            generate_gironi_calendar()
+        
+        df_finale_gironi = st.session_state['df_finale_gironi']
+        gironi = sorted(df_finale_gironi['GironeFinale'].unique())
+
+        st.markdown("<h3 style='text-align: center;'>Calendario e Classifiche Gironi</h3>", unsafe_allow_html=True)
+        st.divider()
+        
+        for girone in gironi:
+            with st.expander(f"**Girone {girone}**", expanded=True):
+                # Classifica
+                st.subheader("Classifica")
+                classifica = standings_from_matches(df_finale_gironi[df_finale_gironi['GironeFinale'] == girone].rename(columns={'GironeFinale':'Gruppo', 'CasaFinale':'Casa', 'OspiteFinale':'Ospite'}), key_group='Gruppo')
+                if not classifica.empty:
+                    classifica.index = classifica.index + 1
+                    classifica.insert(0, 'Pos', classifica.index)
+                    st.dataframe(classifica[['Pos','Squadra','Punti','V','P','S','GF','GS','DR']], hide_index=True)
                 else:
-                    st.balloons()
-                    st.success(f"🏆 Il torneo è finito! Il vincitore è: **{winners[0]}**")
-                    if not st.session_state['tournament_name'].startswith('finito_'):
-                        nuovo_nome = st.session_state['tournament_name'].replace("fasefinale_", "finito_")
-                        rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
-                        st.session_state['tournament_name'] = nuovo_nome
+                    st.info("Nessuna partita validata in questo girone.")
                 
-                st.rerun()
-
-            def render_round(df_round, round_idx):
-                st.markdown(f"### {df_round['Round'].iloc[0]}")
-                for idx, match in df_round.iterrows():
-                    col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
+                st.subheader("Calendario")
+                partite_girone = df_finale_gironi[df_finale_gironi['GironeFinale'] == girone]
+                for original_idx, row in partite_girone.iterrows():
+                    col1, col2, col3, col4, col5 = st.columns([0.4, 0.1, 0.1, 0.3, 0.1])
+                    
                     with col1:
-                        st.markdown(f"**{match['SquadraA']}** vs **{match['SquadraB']}**")
+                        st.markdown(f"**{row['CasaFinale']}**")
                     with col2:
                         st.number_input(
-                            "", min_value=0, max_value=20, key=f"ko_gola_{round_idx}_{idx}",
-                            value=int(match['GolA']) if pd.notna(match['GolA']) else 0,
-                            disabled=match['Valida'], label_visibility="hidden"
+                            f"Gol Casa {original_idx}",
+                            min_value=0,
+                            step=1,
+                            key=f"gironi_golcasa_{original_idx}",
+                            value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
+                            disabled=row['Valida'], label_visibility="hidden"
                         )
                     with col3:
-                        st.markdown("-")
-                    with col4:
                         st.number_input(
-                            "", min_value=0, max_value=20, key=f"ko_golb_{round_idx}_{idx}",
-                            value=int(match['GolB']) if pd.notna(match['GolB']) else 0,
-                            disabled=match['Valida'], label_visibility="hidden"
+                            f"Gol Ospite {original_idx}",
+                            min_value=0,
+                            step=1,
+                            key=f"gironi_golospite_{original_idx}",
+                            value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
+                            disabled=row['Valida'], label_visibility="hidden"
                         )
+                    with col4:
+                        st.markdown(f"**{row['OspiteFinale']}**")
                     with col5:
-                        st.checkbox("Valida", key=f"ko_valida_{round_idx}_{idx}", value=match['Valida'])
+                        st.checkbox("Valida", key=f"gironi_valida_{original_idx}", value=row['Valida'])
+
+                st.button(f"💾 Salva risultati Girone {girone}", key=f"save_gironi_{girone}", on_click=salva_risultati_gironi)
+
+    elif st.session_state['giornate_mode'] == 'ko':
+        st.markdown("<h3 style='text-align: center;'>Tabellone Eliminazione Diretta</h3>", unsafe_allow_html=True)
+        st.divider()
+
+        if 'rounds_ko' not in st.session_state or ('fase_corrente_caricata' in st.session_state and not st.session_state['fase_corrente_caricata']):
+            # Genera il primo round se non esiste
+            st.session_state['rounds_ko'] = [generate_ko_round(st.session_state['squadre_iniziali'], 1)]
             
-            def update_giornata_sel(giornata):
-                st.session_state['giornata_selezionata'] = giornata
-                
-            if st.session_state['giornate_mode'] == 'gironi':
-                if 'df_finale_gironi' in st.session_state:
-                    st.markdown("<h3 style='text-align: center;'>Calendario e Classifica Gironi Finali</h3>", unsafe_allow_html=True)
-                    st.divider()
-                    
-                    df_finale_gironi = st.session_state['df_finale_gironi']
-                    
-                    gironi_unici = sorted(df_finale_gironi['GironeFinale'].unique())
-                    
-                    girone_selezionato = st.selectbox(
-                        "Seleziona il girone da visualizzare:",
-                        options=gironi_unici,
-                        key='girone_sel'
-                    )
-
-                    if girone_selezionato:
-                        df_girone_attivo = df_finale_gironi[df_finale_gironi['GironeFinale'] == girone_selezionato].copy()
-
-                        df_classifica_girone = standings_from_matches(df_girone_attivo.rename(columns={'GironeFinale': 'Gruppo', 'CasaFinale': 'Casa', 'OspiteFinale': 'Ospite'}), key_group='Gruppo')
-                        if not df_classifica_girone.empty:
-                            st.markdown("#### Classifica")
-                            st.dataframe(df_classifica_girone)
-                        
-                        st.markdown("---")
-                        
-                        st.session_state['giornata_nav_mode'] = st.radio(
-                            "Scegli la modalità di navigazione per le giornate:",
-                            ["Menu a tendina", "Bottoni"],
-                            key='nav_mode_radio'
-                        )
-
-                        giornate_unici = sorted(df_girone_attivo['GiornataFinale'].unique())
-
-                        if st.session_state['giornata_nav_mode'] == 'Menu a tendina':
-                            giornata_selezionata = st.selectbox(
-                                "Seleziona la giornata da visualizzare:",
-                                options=giornate_unici,
-                                key='giornata_sel_select'
-                            )
-                        else:
-                            cols = st.columns(len(giornate_unici))
-                            if 'giornata_selezionata_buttons' not in st.session_state:
-                                st.session_state['giornata_selezionata_buttons'] = giornate_unici[0] if giornate_unici else None
-                            
-                            for i, giornata in enumerate(giornate_unici):
-                                with cols[i]:
-                                    if st.button(f"Giornata {int(giornata)}", key=f"btn_giornata_{giornata}"):
-                                        st.session_state['giornata_selezionata_buttons'] = giornata
-                            giornata_selezionata = st.session_state['giornata_selezionata_buttons']
-                        
-                        if giornata_selezionata:
-                            st.markdown(f"#### Giornata {int(giornata_selezionata)}")
-                            
-                            partite_ordinate = df_girone_attivo[df_girone_attivo['GiornataFinale'] == giornata_selezionata].sort_values(by='GiornataFinale')
-
-                            for idx, row in partite_ordinate.iterrows():
-                                original_idx = row.name
-                                col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
-                                with col1:
-                                    st.markdown(f"**{row['CasaFinale']}** vs **{row['OspiteFinale']}**")
-                                with col2:
-                                    st.number_input(
-                                        "", min_value=0, max_value=20, key=f"gironi_golcasa_{original_idx}",
-                                        value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
-                                        disabled=row['Valida'], label_visibility="hidden"
-                                    )
-                                with col3:
-                                    st.markdown("-")
-                                with col4:
-                                    st.number_input(
-                                        "", min_value=0, max_value=20, key=f"gironi_golospite_{original_idx}",
-                                        value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
-                                        disabled=row['Valida'], label_visibility="hidden"
-                                    )
-                                with col5:
-                                    st.checkbox("Valida", key=f"gironi_valida_{original_idx}", value=row['Valida'])
-
-                            st.button(f"💾 Salva risultati", key=f"save_gironi", on_click=salva_risultati_gironi)
-
-            elif st.session_state['giornate_mode'] == 'ko':
-                st.markdown("<h3 style='text-align: center;'>Tabellone Eliminazione Diretta</h3>", unsafe_allow_html=True)
+        if st.session_state['rounds_ko']:
+            # Renderizza i round completati
+            for i, df_round in enumerate(st.session_state['rounds_ko'][:-1]):
+                st.markdown(f"**{df_round['Round'].iloc[0]}** (completato)")
+                for _, row in df_round.iterrows():
+                    vincitore = row['SquadraA'] if row['GolA'] > row['GolB'] else row['SquadraB']
+                    st.markdown(f"**{row['SquadraA']}** {int(row['GolA'])} - {int(row['GolB'])} **{row['SquadraB']}** - Vincitore: **{vincitore}**")
                 st.divider()
 
-                if 'rounds_ko' not in st.session_state:
-                    st.error("Dati del tabellone KO non trovati. Riprova.")
-                    st.button("Torna indietro", on_click=reset_to_setup)
-                    st.stop()
-                
-                for i, df_round in enumerate(st.session_state['rounds_ko'][:-1]):
-                    render_round(df_round, i)
-                
-                if st.session_state['rounds_ko']:
-                    current_round_df = st.session_state['rounds_ko'][-1]
-                    render_round(current_round_df, len(st.session_state['rounds_ko']) - 1)
-                    
-                    st.button("💾 Salva risultati e genera prossimo round", on_click=salva_risultati_ko)
+            # Renderizza il round corrente con i campi editabili
+            current_round_df = st.session_state['rounds_ko'][-1]
+            render_round(current_round_df, len(st.session_state['rounds_ko']) - 1)
+            
+            st.button("💾 Salva risultati e genera prossimo round", on_click=salva_risultati_ko)
+    
+    st.button("Torna al menu principale", on_click=reset_to_home)
+    
+    # Download dei PDF
+    if st.session_state['giornate_mode'] == 'gironi' and 'df_finale_gironi' in st.session_state and not st.session_state['df_finale_gironi'].empty:
+        pdf_data = generate_pdf_gironi(st.session_state['df_finale_gironi'])
+        st.download_button(
+            label="Scarica PDF Gironi",
+            data=pdf_data,
+            file_name="fase_a_gironi.pdf",
+            mime="application/pdf"
+        )
+
+    if st.session_state['giornate_mode'] == 'ko' and 'rounds_ko' in st.session_state:
+        pdf_data = generate_pdf_ko(st.session_state['rounds_ko'])
+        st.download_button(
+            label="Scarica PDF Tabellone KO",
+            data=pdf_data,
+            file_name="tabellone_ko.pdf",
+            mime="application/pdf"
+        )
+# ==============================================================================
+# 🚀 Punto di ingresso dell'app
+# ==============================================================================
+
+if 'fase_corrente' not in st.session_state:
+    st.session_state['fase_corrente'] = 'home'
+    st.session_state['fase_corrente_caricata'] = False
+
+if st.session_state['fase_corrente'] == 'home':
+    home_page()
+elif st.session_state['fase_corrente'] == 'setup':
+    setup_page()
+elif st.session_state['fase_corrente'] == 'play':
+    play_page()
