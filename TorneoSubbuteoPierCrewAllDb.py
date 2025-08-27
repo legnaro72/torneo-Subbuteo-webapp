@@ -228,6 +228,7 @@ def mostra_calendario_giornata(df, girone, giornata):
                 key=f"valida_{idx}",
                 help="Seleziona se la partita è stata giocata e il risultato è definitivo."
             )
+            # ❌ RIGA RIMOSSA: st.session_state[f"valida_{idx}"] = valida
 
         with col2:
             st.markdown(f"**{row['Casa']}**")
@@ -241,6 +242,7 @@ def mostra_calendario_giornata(df, girone, giornata):
                 max_value=20,
                 disabled=valida
             )
+            # ❌ RIGA RIMOSSA: st.session_state[f"golcasa_{idx}"] = golcasa
             
         with col4:
             golospite = st.number_input(
@@ -251,9 +253,13 @@ def mostra_calendario_giornata(df, girone, giornata):
                 max_value=20,
                 disabled=valida
             )
+            # ❌ RIGA RIMOSSA: st.session_state[f"golospite_{idx}"] = golospite
         
         with col5:
             st.markdown(f"**{row['Ospite']}**")
+        
+        if valida and not st.session_state.get(f"valida_{idx}", False):
+            st.toast("✅ Partita validata!")
 
 def aggiorna_classifica(df):
     if 'Girone' not in df.columns:
