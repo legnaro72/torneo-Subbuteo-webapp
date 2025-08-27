@@ -518,7 +518,7 @@ if st.session_state['ui_show_pre']:
     col_name = "Superba"
     tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "TorneiSubbuteo", "Superba", show_ok=False)
     
-    if tournaments_collection:
+    if tournaments_collection is not None:
         tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix="COMPLETATO UNDERSCORE")
         
         if not tornei_trovati:
