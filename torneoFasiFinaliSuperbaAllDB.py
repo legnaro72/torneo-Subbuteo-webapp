@@ -256,7 +256,7 @@ def standings_from_matches(df: pd.DataFrame, key_group: str) -> pd.DataFrame:
     return dfc.reset_index(drop=True)
 
 # ==============================================================================
-# 📄 FUNZIONI PER EXPORT PDF
+# 📄 FUNZIONI PER EXPORT PDF (Nessuna modifica, come richiesto)
 # ==============================================================================
 
 def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
