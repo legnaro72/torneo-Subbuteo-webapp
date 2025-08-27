@@ -276,7 +276,15 @@ def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
         pdf.cell(0, 10, "Classifica:", 0, 1, 'L')
         pdf.set_font("Helvetica", "", 10)
         
-        classifica = standings_from_matches(girone_blocco.rename(columns={'GironeFinale': 'Gruppo'}), key_group='Gruppo')
+        # FIX: Renaming delle colonne 'CasaFinale' e 'OspiteFinale' per la funzione di classifica
+        classifica = standings_from_matches(
+            girone_blocco.rename(columns={
+                'GironeFinale': 'Gruppo',
+                'CasaFinale': 'Casa',
+                'OspiteFinale': 'Ospite'
+            }), 
+            key_group='Gruppo'
+        )
         
         if not classifica.empty:
             classifica = classifica.sort_values(by=['Punti', 'DR', 'GF', 'V', 'Squadra'], ascending=[False, False, False, False, True]).reset_index(drop=True)
@@ -791,7 +799,7 @@ else:
                         st.subheader(f"Girone: {girone}")
                         df_girone_attivo = df_finale_gironi[df_finale_gironi['GironeFinale'] == girone].copy()
                         
-                        df_classifica_girone = standings_from_matches(df_girone_attivo.rename(columns={'GironeFinale': 'Gruppo'}), key_group='Gruppo')
+                        df_classifica_girone = standings_from_matches(df_girone_attivo.rename(columns={'GironeFinale': 'Gruppo', 'CasaFinale': 'Casa', 'OspiteFinale': 'Ospite'}), key_group='Gruppo')
                         if not df_classifica_girone.empty:
                             st.markdown("#### Classifica")
                             st.dataframe(df_classifica_girone)
