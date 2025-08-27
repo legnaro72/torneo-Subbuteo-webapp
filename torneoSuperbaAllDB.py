@@ -266,31 +266,27 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             st.markdown('<div style="color:red; margin-bottom: 15px;">Partita non ancora validata ❌</div>', unsafe_allow_html=True)
 
 def salva_risultati_giornata():
-        df = st.session_state['df_torneo']
-        df_giornata_copia = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
-        for idx, _ in df_giornata_copia.iterrows():
-            gol_casa_val = st.session_state.get(f"golcasa_{idx}")
-            gol_ospite_val = st.session_state.get(f"golospite_{idx}")
-            valida_val = st.session_state.get(f"valida_{idx}", False)
+    df = st.session_state['df_torneo']
+    df_giornata_copia = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
+    for idx, _ in df_giornata_copia.iterrows():
+        gol_casa_val = st.session_state.get(f"golcasa_{idx}")
+        gol_ospite_val = st.session_state.get(f"golospite_{idx}")
+        valida_val = st.session_state.get(f"valida_{idx}", False)
         
-            # Se l'utente non ha inserito un valore (0), salviamo None
-            # Questo mantiene il campo vuoto nel database per le partite non giocate.
-            if gol_casa_val == 0:
-                df.at[idx, 'GolCasa'] = None
-            else:
-                df.at[idx, 'GolCasa'] = int(gol_casa_val)
+        # Se l'utente non ha inserito un valore (0), salviamo None
+        # Questo mantiene il campo vuoto nel database per le partite non giocate.
+        if gol_casa_val == 0:
+            df.at[idx, 'GolCasa'] = None
+        else:
+            df.at[idx, 'GolCasa'] = int(gol_casa_val)
         
-            if gol_ospite_val == 0:
-                df.at[idx, 'GolOspite'] = None
-            else:
-                df.at[idx, 'GolOspite'] = int(gol_ospite_val)
+        if gol_ospite_val == 0:
+            df.at[idx, 'GolOspite'] = None
+        else:
+            df.at[idx, 'GolOspite'] = int(gol_ospite_val)
         
-            df.at[idx, 'Valida'] = valida_val  
-
-
-
-        
-
+        df.at[idx, 'Valida'] = valida_val  
+       
         st.session_state['df_torneo'] = df
         st.session_state['last_autosave_time'] = time.time()
         st.info("✅ Risultati salvati!")
