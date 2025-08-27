@@ -693,12 +693,14 @@ else:
                 # Primo loop per controllare i pareggi
                 for idx, row in current_round_df.iterrows():
                     valid_key = f"ko_valida_{len(st.session_state['rounds_ko']) - 1}_{idx}"
+                    
                     if st.session_state.get(valid_key, False):
                         gol_a = st.session_state.get(f"ko_gola_{len(st.session_state['rounds_ko']) - 1}_{idx}")
                         gol_b = st.session_state.get(f"ko_golb_{len(st.session_state['rounds_ko']) - 1}_{idx}")
+                        
                         if int(gol_a) == int(gol_b):
-                            st.warning("❌ Un pareggio non è consentito. Inserisci un vincitore per la partita in KO.")
-                            st.stop() # FERMA l'esecuzione qui
+                            st.warning("❌ I pareggi non sono consentiti in un tabellone a eliminazione diretta!")
+                            return # Ritorna dalla funzione senza fare altro
 
                 # Secondo loop per elaborare i risultati se non ci sono pareggi
                 for idx, row in current_round_df.iterrows():
