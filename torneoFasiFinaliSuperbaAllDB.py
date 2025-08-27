@@ -829,7 +829,7 @@ else:
                                 st.markdown(f"**{row['CasaFinale']}** vs **{row['OspiteFinale']}** (Giornata {int(row['GiornataFinale'])})")
                             with col2:
                                 st.number_input(
-                                    "", min_value=0, max_value=20, key=f"gironi_golcasa_{original_idx}",
+                                    "", min_value=0, max_value=20, key=f"gironi_golcasa_{girone}_{idx}",
                                     value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
                                     disabled=row['Valida'], label_visibility="hidden"
                                 )
@@ -837,12 +837,12 @@ else:
                                 st.markdown("-")
                             with col4:
                                 st.number_input(
-                                    "", min_value=0, max_value=20, key=f"gironi_golospite_{original_idx}",
+                                    "", min_value=0, max_value=20, key=f"gironi_golospite_{girone}_{idx}",
                                     value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
                                     disabled=row['Valida'], label_visibility="hidden"
                                 )
                             with col5:
-                                st.checkbox("Valida", key=f"gironi_valida_{original_idx}", value=row['Valida'])
+                                st.checkbox("Valida", key=f"gironi_valida_{girone}_{idx}", value=row['Valida'])
 
                         if st.button(f"💾 Salva risultati Girone {girone}", key=f"save_gironi_{girone}", on_click=salva_risultati_gironi):
                             pass
