@@ -397,6 +397,9 @@ if 'tournament_name' not in st.session_state:
     st.session_state['tournament_name'] = None
 if 'giornate_mode' not in st.session_state:
     st.session_state['giornate_mode'] = None
+# Nuovo stato per la modalità di navigazione
+if 'giornata_nav_mode' not in st.session_state:
+    st.session_state['giornata_nav_mode'] = 'Menu a tendina'
 
 
 # ==============================================================================
@@ -897,7 +900,11 @@ else:
                         )
                     with col5:
                         st.checkbox("Valida", key=f"ko_valida_{round_idx}_{idx}", value=match['Valida'])
-
+            
+            # Funzione per aggiornare la giornata selezionata tramite i bottoni
+            def update_giornata_sel(giornata):
+                st.session_state['giornata_selezionata'] = giornata
+                
             if st.session_state['giornate_mode'] == 'gironi':
                 if 'df_finale_gironi' in st.session_state:
                     st.markdown("<h3 style='text-align: center;'>Calendario e Classifica Gironi Finali</h3>", unsafe_allow_html=True)
@@ -926,14 +933,33 @@ else:
                             st.dataframe(df_classifica_girone)
                         
                         st.markdown("---")
+                        
+                        # Aggiungi il radio button per la navigazione
+                        st.session_state['giornata_nav_mode'] = st.radio(
+                            "Scegli la modalità di navigazione per le giornate:",
+                            ["Menu a tendina", "Bottoni"],
+                            key='nav_mode_radio'
+                        )
 
                         # Seleziona la giornata
                         giornate_unici = sorted(df_girone_attivo['GiornataFinale'].unique())
-                        giornata_selezionata = st.selectbox(
-                            "Seleziona la giornata da visualizzare:",
-                            options=giornate_unici,
-                            key='giornata_sel'
-                        )
+
+                        if st.session_state['giornata_nav_mode'] == 'Menu a tendina':
+                            giornata_selezionata = st.selectbox(
+                                "Seleziona la giornata da visualizzare:",
+                                options=giornate_unici,
+                                key='giornata_sel_select'
+                            )
+                        else:
+                            cols = st.columns(len(giornate_unici))
+                            if 'giornata_selezionata_buttons' not in st.session_state:
+                                st.session_state['giornata_selezionata_buttons'] = giornate_unici[0] if giornate_unici else None
+                            
+                            for i, giornata in enumerate(giornate_unici):
+                                with cols[i]:
+                                    if st.button(f"Giornata {int(giornata)}", key=f"btn_giornata_{giornata}"):
+                                        st.session_state['giornata_selezionata_buttons'] = giornata
+                            giornata_selezionata = st.session_state['giornata_selezionata_buttons']
                         
                         if giornata_selezionata:
                             st.markdown(f"#### Giornata {int(giornata_selezionata)}")
