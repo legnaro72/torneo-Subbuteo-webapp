@@ -175,6 +175,14 @@ def serpentino_seed(squadre_ordinate: list[str], num_gironi: int) -> list[list[s
             g += direction
     return gironi
 
+def bilanciato_ko_seed(squadre_ordinate: list[str]) -> list[tuple[str, str]]:
+    """Genera accoppiamenti bilanciati per KO: 1ª vs ultima, 2ª vs penultima, ecc."""
+    n = len(squadre_ordinate)
+    matches = []
+    for i in range(n // 2):
+        matches.append((squadre_ordinate[i], squadre_ordinate[n - 1 - i]))
+    return matches
+
 def round_robin(teams: list[str], andata_ritorno: bool=False) -> pd.DataFrame:
     """Genera calendario round-robin (metodo circle). Ritorna DF con Giornata/Casa/Ospite."""
     teams = teams[:]
@@ -503,7 +511,6 @@ def rinomina_torneo_su_db(tournaments_collection, tournament_id, new_name):
             {"_id": ObjectId(tournament_id)},
             {"$set": {"nome_torneo": new_name}}
         )
-        st.success(f"✅ Torneo rinominato in: **{new_name}**")
         return True
     except Exception as e:
         st.error(f"❌ Errore nella ridenominazione del torneo: {e}")
@@ -751,27 +758,27 @@ else:
                     st.stop()
                 st.session_state['n_inizio_ko'] = n_squadre_ko
                 
-                ko_seed = st.radio("Metodo di accoppiamento", ["Fasce (bilanciata)", "Casuale"])
+                st.info("L'accoppiamento seguirà il criterio 'più forte contro più debole' (1ª vs ultima, 2ª vs penultima, ecc.).")
                 
                 if st.button("Genera tabellone"):
                     qualificati = list(df_classifica.head(n_squadre_ko)['Squadra'])
-                    if ko_seed == "Casuale":
-                        import random
-                        random.shuffle(qualificati)
-                    
-                    st.session_state['seeds_ko'] = qualificati
-                    st.session_state['round_corrente'] = f"Ottavi di finale (di {n_squadre_ko})" if n_squadre_ko == 16 else f"Quarti di finale (di {n_squadre_ko})" if n_squadre_ko == 8 else f"Semifinali (di {n_squadre_ko})" if n_squadre_ko == 4 else f"Finale (di {n_squadre_ko})"
                     
                     matches = []
-                    for i in range(0, n_squadre_ko, 2):
-                        matches.append({
-                            'Round': st.session_state['round_corrente'],
-                            'Match': (i//2) + 1,
-                            'SquadraA': qualificati[i],
-                            'SquadraB': qualificati[i+1],
-                            'GolA': None, 'GolB': None, 'Valida': False, 'Vincitore': None
-                        })
                     
+                    if len(qualificati) > 1:
+                        accoppiamenti = bilanciato_ko_seed(qualificati)
+                        for i, (sq_a, sq_b) in enumerate(accoppiamenti, 1):
+                             matches.append({
+                                 'Round': f"Ottavi di finale (di {n_squadre_ko})" if n_squadre_ko == 16 else f"Quarti di finale (di {n_squadre_ko})" if n_squadre_ko == 8 else f"Semifinali (di {n_squadre_ko})" if n_squadre_ko == 4 else f"Finale (di {n_squadre_ko})",
+                                 'Match': i,
+                                 'SquadraA': sq_a,
+                                 'SquadraB': sq_b,
+                                 'GolA': None, 'GolB': None, 'Valida': False, 'Vincitore': None
+                             })
+                    else:
+                        st.warning("Non ci sono abbastanza squadre per generare un tabellone.")
+                        st.stop()
+
                     df_initial_round = pd.DataFrame(matches)
                     st.session_state['rounds_ko'] = [df_initial_round]
                     st.session_state['giornate_mode'] = 'ko'
@@ -851,7 +858,7 @@ else:
                         st.markdown("<h2 style='text-align: center; color: #4CAF50;'>🏆 Il torneo è completato!</h2>", unsafe_allow_html=True)
                         
                         if not st.session_state['tournament_name'].startswith('finito_'):
-                            nuovo_nome = f"finito_{st.session_state['tournament_name']}"
+                            nuovo_nome = st.session_state['tournament_name'].replace("fasefinale_", "finito_")
                             rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
                             st.session_state['tournament_name'] = nuovo_nome
                             
@@ -967,14 +974,14 @@ else:
                         st.balloons()
                         st.success(f"🏆 Il torneo è finito! Il vincitore è: **{winners[0]}**")
                         if not st.session_state['tournament_name'].startswith('finito_'):
-                            nuovo_nome = f"finito_{st.session_state['tournament_name']}"
+                            nuovo_nome = st.session_state['tournament_name'].replace("fasefinale_", "finito_")
                             rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
                             st.session_state['tournament_name'] = nuovo_nome
                 else:
                     st.balloons()
                     st.success(f"🏆 Il torneo è finito! Il vincitore è: **{winners[0]}**")
                     if not st.session_state['tournament_name'].startswith('finito_'):
-                        nuovo_nome = f"finito_{st.session_state['tournament_name']}"
+                        nuovo_nome = st.session_state['tournament_name'].replace("fasefinale_", "finito_")
                         rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
                         st.session_state['tournament_name'] = nuovo_nome
                 
