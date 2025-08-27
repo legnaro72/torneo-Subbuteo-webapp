@@ -379,6 +379,7 @@ def reset_to_setup():
     st.session_state['df_torneo_preliminare'] = None
     st.session_state['tournament_id'] = None
     st.session_state['tournament_name'] = None
+    st.session_state['start_mode'] = None # Aggiunto per resettare la scelta iniziale
 
 # Inizializzazione stato
 if 'ui_show_pre' not in st.session_state:
@@ -400,6 +401,9 @@ if 'giornate_mode' not in st.session_state:
 # Nuovo stato per la modalità di navigazione
 if 'giornata_nav_mode' not in st.session_state:
     st.session_state['giornata_nav_mode'] = 'Menu a tendina'
+# Nuovo stato per la scelta di avvio
+if 'start_mode' not in st.session_state:
+    st.session_state['start_mode'] = None
 
 
 # ==============================================================================
@@ -550,8 +554,18 @@ col_name = "Superba"
 # 🚀 LOGICA APPLICAZIONE PRINCIPALE
 # ==============================================================================
 if st.session_state['ui_show_pre']:
-    st.header("1. Scegli il torneo preliminare da cui partire")
+    st.header("1. Scegli il torneo da cui partire")
     
+    # Aggiungi la scelta tra i due flussi
+    start_mode = st.radio(
+        "Seleziona la modalità di avvio:",
+        ["Inizia nuova fase finale", "Continua fase finale in corso"],
+        key='start_mode'
+    )
+
+    prefix = "completato_" if start_mode == "Inizia nuova fase finale" else "fasefinale_"
+    mode_text = "torneo preliminare completo" if start_mode == "Inizia nuova fase finale" else "fase finale in corso"
+
     # Connessione e caricamento tornei dal DB
     uri = os.environ.get("MONGO_URI_TOURNEMENTS") # Assumi che la URI sia in una variabile d'ambiente
     if not uri:
@@ -560,15 +574,15 @@ if st.session_state['ui_show_pre']:
     tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name, show_ok=False)
     
     if tournaments_collection is not None:
-        tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix="completato_")
+        tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix=prefix)
         
         if not tornei_trovati:
-            st.info("⚠️ Nessun torneo 'COMPLETATO UNDERSCORE' trovato nel database.")
+            st.info(f"⚠️ Nessun {mode_text} trovato nel database.")
         else:
             tornei_opzioni = {t['nome_torneo']: str(t['_id']) for t in tornei_trovati}
             
             scelta_torneo = st.selectbox(
-                "Seleziona il torneo da cui iniziare le fasi finali:",
+                f"Seleziona il {mode_text} da cui iniziare:",
                 options=list(tornei_opzioni.keys())
             )
             
@@ -580,36 +594,38 @@ if st.session_state['ui_show_pre']:
                     torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
                     if torneo_data:
                         df_torneo = pd.DataFrame(torneo_data['calendario'])
-                        is_complete, msg = tournament_is_complete(df_torneo)
-                        if not is_complete:
-                            st.error(f"❌ Il torneo preliminare selezionato non è completo: {msg}")
-                            # Mostra le righe problematiche
-                            problematic_rows = df_torneo[
-                                ~to_bool_series(df_torneo['Valida'])
-                            ]
-                            st.warning("Di seguito le partite non validate:")
-                            st.dataframe(problematic_rows[['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']])
-                        else:
-                            # Clona il torneo per la fase finale
-                            new_name = f"fasefinale_{torneo_data['nome_torneo']}"
-                            new_id, new_name = clona_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], new_name)
-                            
-                            if new_id:
-                                # Carica il nuovo torneo clonato per lavorare su quello
-                                cloned_torneo_data = carica_torneo_da_db(tournaments_collection, str(new_id))
-                                if cloned_torneo_data:
-                                    st.session_state['df_torneo_preliminare'] = pd.DataFrame(cloned_torneo_data['calendario'])
-                                    st.session_state['tournament_id'] = str(new_id)
-                                    st.session_state['tournament_name'] = new_name
-                                    st.session_state['ui_show_pre'] = False
-                                    st.rerun()
-                                else:
-                                    st.error("❌ Errore nel caricamento del torneo clonato. Riprova.")
+                        
+                        if start_mode == "Inizia nuova fase finale":
+                            # Logica per iniziare una nuova fase finale
+                            is_complete, msg = tournament_is_complete(df_torneo)
+                            if not is_complete:
+                                st.error(f"❌ Il torneo preliminare selezionato non è completo: {msg}")
+                                problematic_rows = df_torneo[~to_bool_series(df_torneo['Valida'])]
+                                st.warning("Di seguito le partite non validate:")
+                                st.dataframe(problematic_rows[['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']])
                             else:
-                                st.error("❌ Errore nella clonazione del torneo. Riprova.")
+                                new_name = f"fasefinale_{torneo_data['nome_torneo']}"
+                                new_id, new_name = clona_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], new_name)
+                                
+                                if new_id:
+                                    cloned_torneo_data = carica_torneo_da_db(tournaments_collection, str(new_id))
+                                    if cloned_torneo_data:
+                                        st.session_state['df_torneo_preliminare'] = pd.DataFrame(cloned_torneo_data['calendario'])
+                                        st.session_state['tournament_id'] = str(new_id)
+                                        st.session_state['tournament_name'] = new_name
+                                        st.session_state['ui_show_pre'] = False
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ Errore nel caricamento del torneo clonato. Riprova.")
+                                else:
+                                    st.error("❌ Errore nella clonazione del torneo. Riprova.")
+                        else:
+                            # Logica per continuare una fase finale esistente
+                            st.session_state['df_torneo_preliminare'] = df_torneo
+                            st.session_state['ui_show_pre'] = False
+                            st.rerun()
                     else:
                         st.error("❌ Errore nel caricamento del torneo. Riprova.")
-
 else:
     if 'df_torneo_preliminare' not in st.session_state or st.session_state['df_torneo_preliminare'] is None:
         st.error("Dati del torneo non caricati. Riprova a selezionare un torneo.")
