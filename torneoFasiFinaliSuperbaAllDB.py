@@ -720,8 +720,9 @@ else:
                 df_ko_da_salvare = current_round_df.copy()
                 df_ko_da_salvare.rename(columns={'SquadraA': 'Casa', 'SquadraB': 'Ospite', 'GolA': 'GolCasa', 'GolB': 'GolOspite'}, inplace=True)
                 df_ko_da_salvare['Girone'] = 'Eliminazione Diretta'
-                df_ko_da_salvare['Giornata'] = st.session_state['rounds_ko'].index(current_round_df) + 1
-                
+                # FIX: L'indice del round è la lunghezza della lista di round KO
+                df_ko_da_salvare['Giornata'] = len(st.session_state['rounds_ko'])
+
                 st.session_state['df_torneo_preliminare'] = pd.concat([st.session_state['df_torneo_preliminare'], df_ko_da_salvare], ignore_index=True)
                 
                 tournaments_collection = init_mongo_connection(os.environ.get("MONGO_URI_TOURNEMENTS"), db_name, col_name)
