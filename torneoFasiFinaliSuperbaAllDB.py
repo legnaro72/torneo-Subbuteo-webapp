@@ -652,37 +652,52 @@ if st.session_state['ui_show_pre']:
                             df_torneo_completo = pd.DataFrame(torneo_data['calendario'])
                             st.session_state['df_torneo_preliminare'] = df_torneo_completo
                             
-                            # Cerca partite della fase finale
-                            df_ko_esistente = df_torneo_completo[df_torneo_completo['Girone'] == 'Eliminazione Diretta'].copy()
-                            df_gironi_esistente = df_torneo_completo[df_torneo_completo['Girone'].str.contains('Girone')].copy()
+                            df_fase_finale = df_torneo_completo[df_torneo_completo['Girone'].isin(['Eliminazione Diretta']) | df_torneo_completo['Girone'].str.contains('Girone')]
 
-                            if not df_gironi_esistente.empty:
-                                # È un torneo a gironi
-                                df_gironi_esistente.rename(columns={'Girone': 'GironeFinale', 'Giornata': 'GiornataFinale', 'Casa': 'CasaFinale', 'Ospite': 'OspiteFinale'}, inplace=True)
-                                st.session_state['df_finale_gironi'] = df_gironi_esistente
-                                st.session_state['giornate_mode'] = 'gironi'
-                                st.session_state['fase_modalita'] = "Gironi"
-                                st.session_state['ui_show_pre'] = False
-                                st.rerun()
+                            if not df_fase_finale.empty:
+                                if df_fase_finale['Girone'].iloc[0].startswith('Girone'):
+                                    # Ricarica gironi finali
+                                    df_finale_gironi = df_fase_finale.rename(columns={
+                                        'Girone': 'GironeFinale',
+                                        'Giornata': 'GiornataFinale',
+                                        'Casa': 'CasaFinale',
+                                        'Ospite': 'OspiteFinale'
+                                    })
+                                    st.session_state['df_finale_gironi'] = df_finale_gironi
+                                    st.session_state['giornate_mode'] = 'gironi'
+                                    st.session_state['fase_modalita'] = "Gironi"
+                                    st.session_state['ui_show_pre'] = False
+                                    st.rerun()
 
-                            elif not df_ko_esistente.empty:
-                                # È un torneo a eliminazione diretta
-                                rounds_list = []
-                                for r in sorted(df_ko_esistente['Giornata'].unique()):
-                                    df_round = df_ko_esistente[df_ko_esistente['Giornata'] == r].copy()
-                                    df_round.rename(columns={'Casa': 'SquadraA', 'Ospite': 'SquadraB', 'GolCasa': 'GolA', 'GolOspite': 'GolB'}, inplace=True)
-                                    df_round['Round'] = df_round['Girone'].iloc[0]
-                                    df_round['Match'] = df_round.index + 1
-                                    df_round['Vincitore'] = df_round.apply(lambda row: row['SquadraA'] if pd.notna(row['GolA']) and row['GolA'] > row['GolB'] else row['SquadraB'] if pd.notna(row['GolB']) and row['GolB'] > row['GolA'] else None, axis=1)
-                                    rounds_list.append(df_round)
-                                st.session_state['rounds_ko'] = rounds_list
-                                st.session_state['giornate_mode'] = 'ko'
-                                st.session_state['fase_modalita'] = "Eliminazione diretta"
-                                st.session_state['ui_show_pre'] = False
-                                st.rerun()
+                                elif df_fase_finale['Girone'].iloc[0] == 'Eliminazione Diretta':
+                                    # Ricarica tabellone KO
+                                    rounds_list = []
+                                    for r in sorted(df_fase_finale['Giornata'].unique()):
+                                        df_round = df_fase_finale[df_fase_finale['Giornata'] == r].copy()
+                                        df_round.rename(columns={'Casa': 'SquadraA', 'Ospite': 'SquadraB', 'GolCasa': 'GolA', 'GolOspite': 'GolB'}, inplace=True)
+                                        
+                                        # Calcola il nome del round e il match number
+                                        if len(df_round) == 8:
+                                            round_name = "Quarti di finale"
+                                        elif len(df_round) == 4:
+                                            round_name = "Semifinali"
+                                        elif len(df_round) == 2:
+                                            round_name = "Finale"
+                                        else:
+                                            round_name = f"Round di {len(df_round) * 2}"
 
+                                        df_round['Round'] = round_name
+                                        df_round['Match'] = range(1, len(df_round) + 1)
+                                        df_round['Vincitore'] = df_round.apply(lambda row: row['SquadraA'] if pd.notna(row['GolA']) and row['GolA'] > row['GolB'] else row['SquadraB'] if pd.notna(row['GolB']) and row['GolB'] > row['GolA'] else None, axis=1)
+                                        rounds_list.append(df_round)
+                                    
+                                    st.session_state['rounds_ko'] = rounds_list
+                                    st.session_state['giornate_mode'] = 'ko'
+                                    st.session_state['fase_modalita'] = "Eliminazione diretta"
+                                    st.session_state['ui_show_pre'] = False
+                                    st.rerun()
                             else:
-                                # Non è stata ancora generata una fase finale, torna al menu di selezione
+                                # Non è stata ancora generata una fase finale
                                 st.session_state['ui_show_pre'] = False
                                 st.rerun()
                         else:
