@@ -91,7 +91,6 @@ h3 {
 </style>
 """, unsafe_allow_html=True)
 
-
 # ==============================================================================
 # 🛠️ Utilità comuni
 # ==============================================================================
@@ -304,7 +303,6 @@ def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
         pdf.cell(0, 10, "Calendario partite:", 0, 1, 'L')
         pdf.set_font("Helvetica", "", 10)
 
-        # Riga corretta: usa 'GiornataFinale' al posto di 'Giornata'
         partite_girone = girone_blocco.sort_values(by=['GiornataFinale']).reset_index(drop=True)
         for _, partita in partite_girone.iterrows():
             if not is_complete and not partita['Valida']:
@@ -319,39 +317,6 @@ def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
         pdf.ln(5)
 
     return pdf.output(dest='S').encode('latin1')
-
-def salva_risultati_gironi():
-    df_finale = st.session_state['df_finale_gironi']
-    
-    for idx, row in df_finale.iterrows():
-        valida_val = st.session_state.get(f"gironi_valida_{idx}", False)
-        if valida_val:
-            gol_casa_val = st.session_state.get(f"gironi_golcasa_{idx}")
-            gol_ospite_val = st.session_state.get(f"gironi_golospite_{idx}")
-            
-            df_finale.at[idx, 'GolCasa'] = int(gol_casa_val) if pd.notna(gol_casa_val) else None
-            df_finale.at[idx, 'GolOspite'] = int(gol_ospite_val) if pd.notna(gol_ospite_val) else None
-        df_finale.at[idx, 'Valida'] = valida_val
-    
-    st.session_state['df_finale_gironi'] = df_finale
-    st.session_state['df_torneo_preliminare'] = pd.concat([
-        st.session_state['df_torneo_preliminare'],
-        # Riga corretta: usa 'GiornataFinale', 'CasaFinale', 'OspiteFinale' per la mappatura
-        df_finale.rename(columns={
-            'GironeFinale': 'Girone',
-            'GiornataFinale': 'Giornata',
-            'CasaFinale': 'Casa',
-            'OspiteFinale': 'Ospite'
-        })
-    ], ignore_index=True)
-    
-    tournaments_collection = init_mongo_connection(os.environ.get("MONGO_URI_TOURNEMENTS"), db_name, col_name)
-    # FIX: Check esplicito se la connessione ha avuto successo
-    if tournaments_collection is not None and aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo_preliminare']):
-        st.success("✅ Risultati dei gironi finali salvati su DB!")
-        st.rerun()
-    else:
-        st.error("❌ Errore nel salvataggio su DB.")
 
 def generate_pdf_ko(rounds_ko: list[pd.DataFrame]) -> bytes:
     """Genera un PDF con il tabellone a eliminazione diretta."""
@@ -539,10 +504,13 @@ with st.sidebar:
                 mime="application/pdf",
             )
 
+# Definisci db_name e col_name a livello globale
+db_name = "TorneiSubbuteo"
+col_name = "Superba"
+
 # ==============================================================================
 # 🚀 LOGICA APPLICAZIONE PRINCIPALE
 # ==============================================================================
-
 if st.session_state['ui_show_pre']:
     st.header("1. Scegli il torneo preliminare da cui partire")
     
@@ -551,9 +519,7 @@ if st.session_state['ui_show_pre']:
     if not uri:
         st.error("Variabile d'ambiente MONGO_URI_TOURNEMENTS non impostata.")
     
-    db_name = "TorneiSubbuteo"
-    col_name = "Superba"
-    tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "TorneiSubbuteo", "Superba", show_ok=False)
+    tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name, show_ok=False)
     
     if tournaments_collection is not None:
         tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix="completato_")
@@ -831,13 +797,19 @@ else:
                             st.dataframe(df_classifica_girone)
                         
                         st.markdown("#### Calendario partite")
-                        for idx, row in df_girone_attivo.iterrows():
+                        
+                        # Ordina le partite per giornata
+                        partite_ordinate = df_girone_attivo.sort_values(by='GiornataFinale').reset_index(drop=True)
+                        
+                        for idx, row in partite_ordinate.iterrows():
+                            # Se la riga originale ha un indice diverso, usa quello per i widget
+                            original_idx = row.name
                             col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
                             with col1:
-                                st.markdown(f"**{row['CasaFinale']}** vs **{row['OspiteFinale']}**")
+                                st.markdown(f"**{row['CasaFinale']}** vs **{row['OspiteFinale']}** (Giornata {int(row['GiornataFinale'])})")
                             with col2:
                                 st.number_input(
-                                    "", min_value=0, max_value=20, key=f"gironi_golcasa_{idx}",
+                                    "", min_value=0, max_value=20, key=f"gironi_golcasa_{original_idx}",
                                     value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
                                     disabled=row['Valida'], label_visibility="hidden"
                                 )
@@ -845,12 +817,12 @@ else:
                                 st.markdown("-")
                             with col4:
                                 st.number_input(
-                                    "", min_value=0, max_value=20, key=f"gironi_golospite_{idx}",
+                                    "", min_value=0, max_value=20, key=f"gironi_golospite_{original_idx}",
                                     value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
                                     disabled=row['Valida'], label_visibility="hidden"
                                 )
                             with col5:
-                                st.checkbox("Valida", key=f"gironi_valida_{idx}", value=row['Valida'])
+                                st.checkbox("Valida", key=f"gironi_valida_{original_idx}", value=row['Valida'])
 
                         if st.button(f"💾 Salva risultati Girone {girone}", key=f"save_gironi_{girone}", on_click=salva_risultati_gironi):
                             pass
