@@ -948,6 +948,7 @@ else:
             
             #def salva_risultati_gironi():
             def salva_risultati_gironi():
+                """Salva i risultati dei gironi finali nel DB, aggiornando solo la fase corrente."""
                 tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
                 if tournaments_collection is None:
                     st.error("❌ Errore di connessione al DB.")
@@ -963,7 +964,6 @@ else:
                     return
             
                 # 2. Aggiorna il DataFrame completo con i valori della sessione
-                # Trova gli indici delle righe della fase finale a gironi
                 mask = (df_torneo_completo['PhaseID'] == phase_id)
                 gironi_indices = df_torneo_completo[mask].index
                 
@@ -974,19 +974,14 @@ else:
                         gol_ospite = st.session_state.get(f"gironi_golospite_{original_idx}")
                         valida = st.session_state.get(f"gironi_valida_{original_idx}")
                         
-                        # Converte i valori in numeri o None
-                        gol_casa_val = int(gol_casa) if pd.notna(gol_casa) and gol_casa != "" else None
-                        gol_ospite_val = int(gol_ospite) if pd.notna(gol_ospite) and gol_ospite != "" else None
-            
-                        # Aggiorna le righe nel DataFrame
-                        df_torneo_completo.loc[original_idx, 'GolCasa'] = gol_casa_val
-                        df_torneo_completo.loc[original_idx, 'GolOspite'] = gol_ospite_val
+                        # Aggiorna le righe nel DataFrame principale
+                        df_torneo_completo.loc[original_idx, 'GolCasa'] = int(gol_casa) if pd.notna(gol_casa) and gol_casa != "" else None
+                        df_torneo_completo.loc[original_idx, 'GolOspite'] = int(gol_ospite) if pd.notna(gol_ospite) and gol_ospite != "" else None
                         df_torneo_completo.loc[original_idx, 'Valida'] = valida
                         
                         if not valida:
                             tutti_validi = False
                     except (KeyError, ValueError):
-                        # Ignora le righe che non hanno valori nella sessione
                         continue
                         
                 st.session_state['df_torneo_preliminare'] = df_torneo_completo
@@ -995,7 +990,6 @@ else:
                 if aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_torneo_completo):
                     st.success("✅ Risultati dei gironi finali salvati su DB!")
                     
-                    # Gestione del completamento del torneo
                     if tutti_validi:
                         st.balloons()
                         st.markdown("<h2 style='text-align: center; color: #4CAF50;'>🏆 Il torneo è completato!</h2>", unsafe_allow_html=True)
@@ -1010,6 +1004,7 @@ else:
                 
             #def salva_risultati_ko():
             def salva_risultati_ko():
+                """Salva i risultati KO, aggiorna lo stato della sessione e genera il prossimo round."""
                 tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
                 if tournaments_collection is None:
                     st.error("❌ Errore di connessione al DB.")
@@ -1062,10 +1057,13 @@ else:
                 df_ko_aggiornato = pd.concat(st.session_state['rounds_ko'], ignore_index=True)
                 
                 df_ko_aggiornato.rename(columns={'SquadraA': 'Casa', 'SquadraB': 'Ospite', 'GolA': 'GolCasa', 'GolB': 'GolOspite', 'Round': 'Girone'}, inplace=True)
-                df_ko_aggiornato['Giornata'] = df_ko_aggiornato.groupby('Girone').cumcount() + 1
-                df_ko_aggiornato['PhaseID'] = phase_id
-                df_ko_aggiornato['PhaseMode'] = 'Eliminazione diretta'
                 
+                # Assicurati che le colonne PhaseID e PhaseMode siano presenti
+                if 'PhaseID' not in df_ko_aggiornato.columns:
+                    df_ko_aggiornato['PhaseID'] = phase_id
+                if 'PhaseMode' not in df_ko_aggiornato.columns:
+                    df_ko_aggiornato['PhaseMode'] = 'Eliminazione diretta'
+            
                 # Rimuovi le vecchie righe KO e aggiungi quelle aggiornate
                 df_torneo_aggiornato = df_torneo_completo[df_torneo_completo['PhaseID'] != phase_id].copy()
                 df_torneo_aggiornato = pd.concat([df_torneo_aggiornato, df_ko_aggiornato], ignore_index=True)
