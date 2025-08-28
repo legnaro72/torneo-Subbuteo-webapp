@@ -406,10 +406,15 @@ if 'giornata_nav_mode' not in st.session_state:
 def get_base_name(name):
     """Rimuove i prefissi noti dal nome del torneo per avere un nome base pulito."""
     prefixes = ['completato_', 'fasefinaleAGironi_', 'fasefinaleEliminazionediretta_', 'finito_']
-    base_name = name
-    for p in prefixes:
-        base_name = base_name.replace(p, '')
-    return base_name.strip('_')
+    
+    # Crea un pattern regex che corrisponde a uno dei prefissi all'inizio della stringa
+    # e gestisce le ripetizioni
+    pattern = r'^(?:' + '|'.join(re.escape(p) for p in prefixes) + r')+'
+    
+    # Sostituisce i prefissi con una stringa vuota
+    cleaned_name = re.sub(pattern, '', name)
+    
+    return cleaned_name.strip('_')
 
 # ==============================================================================
 # ⚙️ FUNZIONI DI GESTIONE DATI SU MONGO (COPIATE DA alldbsuperbanew.py)
@@ -436,7 +441,7 @@ def carica_tornei_da_db(tournaments_collection, prefix: list[str]):
     if tournaments_collection is None:
         return []
     try:
-        regex_prefix = '|'.join(prefix)
+        regex_prefix = '|'.join(re.escape(p) for p in prefix)
         tornei = tournaments_collection.find({"nome_torneo": {"$regex": f"^{regex_prefix}"}}, {"nome_torneo": 1})
         return list(tornei)
     except Exception as e:
@@ -636,7 +641,6 @@ if st.session_state['ui_show_pre']:
                         else:
                             st.error("❌ Errore nel caricamento del torneo. Riprova.")
 
-        
         elif opzione_selezione == "Continuare una fase finale esistente":
             tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
             # Modifica: filtra solo i tornei a eliminazione diretta
@@ -651,7 +655,6 @@ if st.session_state['ui_show_pre']:
                     "Seleziona la fase finale da continuare:",
                     options=list(tornei_opzioni.keys())
                 )
-            
                 if scelta_torneo:
                     st.session_state['tournament_name'] = scelta_torneo
                     st.session_state['tournament_id'] = tornei_opzioni[scelta_torneo]
@@ -957,8 +960,8 @@ else:
                     st.success(f"🏆 Il torneo è finito! Il vincitore è: **{winners[0]}**")
                     
                     if not st.session_state['tournament_name'].startswith('finito_'):
-                        # Modifica: usa la funzione get_base_name
-                        nuovo_nome = f"finito_Eliminazionediretta_{get_base_name(st.session_state['tournament_name'])}"
+                        # MODIFICA: Come richiesto, non usare get_base_name per questo caso
+                        nuovo_nome = f"finito_Eliminazionediretta_{st.session_state['tournament_name']}"
                         rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
                         st.session_state['tournament_name'] = nuovo_nome
             
