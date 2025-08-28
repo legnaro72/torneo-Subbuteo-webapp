@@ -775,7 +775,7 @@ else:
                             df_final_gironi = pd.concat([df_final_gironi, df_girone_calendar], ignore_index=True)
                     
                     df_to_save = df_final_gironi.copy()
-                    df_to_save.rename(columns={'Girone': 'GironeFinale', 'Giornata': 'GiornataFinale', 'Casa': 'CasaFinale', 'Ospite': 'OspiteFinale'}, inplace=True)
+                    #df_to_save.rename(columns={'Girone': 'GironeFinale', 'Giornata': 'GiornataFinale', 'Casa': 'CasaFinale', 'Ospite': 'OspiteFinale'}, inplace=True)
                     df_to_save['GolCasa'] = None
                     df_to_save['GolOspite'] = None
                     df_to_save['Valida'] = False
