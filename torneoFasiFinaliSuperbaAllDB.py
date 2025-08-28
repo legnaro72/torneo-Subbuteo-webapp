@@ -669,7 +669,36 @@ if st.session_state['ui_show_pre']:
                                     df_round['Match'] = df_round.index + 1
                                     df_round['Vincitore'] = df_round.apply(lambda row: row['SquadraA'] if pd.notna(row['GolA']) and row['GolA'] > row['GolB'] else row['SquadraB'] if pd.notna(row['GolB']) and row['GolB'] > row['GolA'] else None, axis=1)
                                     rounds_list.append(df_round)
-                                st.session_state['rounds_ko'] = rounds_list
+                                                                # --- FIX RELOAD KO: ignora round già conclusi e genera il turno successivo ---
+                                rounds_filtrati = []
+                                for _df_round in rounds_list:
+                                    rounds_filtrati.append(_df_round)
+                                    if 'Valida' in _df_round.columns and not _df_round['Valida'].fillna(False).all():
+                                        break
+
+                                if rounds_filtrati and ('Valida' in rounds_filtrati[-1].columns) and rounds_filtrati[-1]['Valida'].fillna(False).all():
+                                    winners = rounds_filtrati[-1].get('Vincitore')
+                                    if winners is None or winners.isna().all():
+                                        last_round = rounds_filtrati[-1]
+                                        winners = last_round.apply(lambda row: row['SquadraA'] if pd.notna(row.get('GolA')) and pd.notna(row.get('GolB')) and row.get('GolA') > row.get('GolB') else (row['SquadraB'] if pd.notna(row.get('GolA')) and pd.notna(row.get('GolB')) and row.get('GolB') > row.get('GolA') else None), axis=1)
+                                    winners = [w for w in winners.tolist() if pd.notna(w)]
+                                    if len(winners) > 1:
+                                        next_round_name = 'Semifinali' if len(winners) == 4 else ('Finale' if len(winners) == 2 else 'Quarti di finale')
+                                        next_matches = []
+                                        for i in range(0, len(winners), 2):
+                                            if i+1 < len(winners):
+                                                next_matches.append({
+                                                    'Round': next_round_name,
+                                                    'Match': (i//2) + 1,
+                                                    'SquadraA': winners[i],
+                                                    'SquadraB': winners[i+1],
+                                                    'GolA': None, 'GolB': None, 'Valida': False, 'Vincitore': None
+                                                })
+                                        if next_matches:
+                                            rounds_filtrati.append(pd.DataFrame(next_matches))
+
+                                st.session_state['rounds_ko'] = rounds_filtrati
+                                # --- FINE FIX RELOAD KO ---
                                 st.session_state['giornate_mode'] = 'ko'
                                 st.session_state['fase_modalita'] = "Eliminazione diretta"
                                 st.session_state['ui_show_pre'] = False
@@ -851,123 +880,27 @@ else:
                     'OspiteFinale': 'Ospite'
                 })
                 
-                
-
-                # --- FIX MERGE GIRONI: mantieni partite già salvate, aggiorna solo modificate ---
+                                # --- FIX MERGE GIRONI: mantieni partite già salvate, aggiorna solo modificate ---
                 try:
                     _gironi_correnti = df_to_save['Girone'].unique()
                     df_precedente = df_torneo_preliminare[df_torneo_preliminare['Girone'].isin(_gironi_correnti)].copy()
-                    # Rimuovi eventuali duplicati stessi campi chiave (Girone, Giornata, Casa, Ospite)
                     if not df_precedente.empty:
                         df_precedente = df_precedente.drop_duplicates(subset=['Girone','Giornata','Casa','Ospite'], keep='last')
                     df_nuovi = df_to_save.drop_duplicates(subset=['Girone','Giornata','Casa','Ospite'], keep='last')
-                    # Unione: i record di df_nuovi sovrascrivono quelli di df_precedente per stessa chiave
-                    df_aggiornato = pd.concat([
-                        df_precedente[~df_precedente.set_index(['Girone','Giornata','Casa','Ospite']).index.isin(
-                            df_nuovi.set_index(['Girone','Giornata','Casa','Ospite']).index
-                        )],
-                        df_nuovi
-                    ], ignore_index=True)
-
+                    mask_index = df_nuovi.set_index(['Girone','Giornata','Casa','Ospite']).index
+                    df_pre_non_sovrascritti = df_precedente[~df_precedente.set_index(['Girone','Giornata','Casa','Ospite']).index.isin(mask_index)]
+                    df_aggiornato = pd.concat([df_pre_non_sovrascritti, df_nuovi], ignore_index=True)
                     df_final_torneo = pd.concat([
                         df_torneo_preliminare[~df_torneo_preliminare['Girone'].isin(_gironi_correnti)],
                         df_aggiornato
                     ], ignore_index=True)
                 except Exception as _e:
-                    # fallback: mantieni il comportamento originale se qualcosa va storto
-                    df_final_torneo = pd.concat([df_torneo_preliminare[~df_torneo_preliminare['Girone'].isin(df_to_save['Girone'].unique())], df_to_save], ignore_index=True)
+                    df_final_torneo = pd.concat([
+                        df_torneo_preliminare[~df_torneo_preliminare['Girone'].isin(df_to_save['Girone'].unique())],
+                        df_to_save
+                    ], ignore_index=True)
                 # --- FINE FIX MERGE GIRONI ---
-df_final_torneo = pd.concat([df_torneo_preliminare[~df_torneo_preliminare['Girone'].isin(df_to_save['Girone'].unique())], df_to_save], ignore_index=True)
-                
-                if aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_final_torneo):
-                    st.success("✅ Risultati dei gironi finali salvati su DB!")
-                    st.session_state['df_torneo_preliminare'] = df_final_torneo
-                    
-                    if df_finale_gironi['Valida'].all():
-                        st.balloons()
-                        st.markdown("<h2 style='text-align: center; color: #4CAF50;'>🏆 Il torneo è completato!</h2>", unsafe_allow_html=True)
-                        
-                        if not st.session_state['tournament_name'].startswith('finito_'):
-                            nuovo_nome = st.session_state['tournament_name'].replace("fasefinale_", "finito_")
-                            rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
-                            st.session_state['tournament_name'] = nuovo_nome
-                            
-                        vincitori = {}
-                        gironi = sorted(df_finale_gironi['GironeFinale'].unique())
-                        
-                        for girone in gironi:
-                            df_girone_blocco = df_finale_gironi[df_finale_gironi['GironeFinale'] == girone].copy()
-                            classifica = standings_from_matches(
-                                df_girone_blocco.rename(columns={
-                                    'GironeFinale': 'Gruppo',
-                                    'CasaFinale': 'Casa',
-                                    'OspiteFinale': 'Ospite'
-                                }),
-                                key_group='Gruppo'
-                            )
-                            if not classifica.empty:
-                                vincitore_girone = classifica.iloc[0]['Squadra']
-                                vincitori[girone] = vincitore_girone
-                        
-                        st.markdown("<h3 style='text-align: center;'>Vincitori dei Gironi:</h3>", unsafe_allow_html=True)
-                        for girone, vincitore in vincitori.items():
-                            st.markdown(f"**{girone}**: **{vincitore}**")
 
-                    st.rerun()
-                else:
-                    st.error("❌ Errore nel salvataggio su DB.")
-
-            # Funzione per salvare i risultati KO su DB
-            def salva_risultati_gironi():
-                tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
-                if tournaments_collection is None:
-                    st.error("❌ Errore di connessione al DB.")
-                    return
-                
-                torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
-                if torneo_data is None:
-                    st.error("❌ Errore nel caricamento del torneo corrente.")
-                    return
-                
-                df_torneo_preliminare = pd.DataFrame(torneo_data['calendario'])
-                
-                df_finale_gironi = st.session_state['df_finale_gironi'].copy()
-                
-                girone_selezionato = st.session_state.get('girone_sel')
-                giornata_selezionata = st.session_state.get('giornata_sel_select')
-                if giornata_selezionata is None and 'giornata_selezionata_buttons' in st.session_state:
-                    giornata_selezionata = st.session_state['giornata_selezionata_buttons']
-                    
-                if girone_selezionato and giornata_selezionata:
-                    partite_attuali = df_finale_gironi[
-                        (df_finale_gironi['GironeFinale'] == girone_selezionato) &
-                        (df_finale_gironi['GiornataFinale'] == giornata_selezionata)
-                    ]
-                    
-                    for idx, row in partite_attuali.iterrows():
-                        valida_key = f"gironi_valida_{idx}"
-                        golcasa_key = f"gironi_golcasa_{idx}"
-                        golospite_key = f"gironi_golospite_{idx}"
-
-                        valida_val = st.session_state.get(valida_key, False)
-                        
-                        gol_casa_val = st.session_state.get(golcasa_key)
-                        gol_ospite_val = st.session_state.get(golospite_key)
-                        
-                        df_finale_gironi.loc[idx, 'GolCasa'] = int(gol_casa_val) if pd.notna(gol_casa_val) else None
-                        df_finale_gironi.loc[idx, 'GolOspite'] = int(gol_ospite_val) if pd.notna(gol_ospite_val) else None
-                        df_finale_gironi.loc[idx, 'Valida'] = valida_val
-
-                st.session_state['df_finale_gironi'] = df_finale_gironi
-
-                df_to_save = df_finale_gironi.rename(columns={
-                    'GironeFinale': 'Girone',
-                    'GiornataFinale': 'Giornata',
-                    'CasaFinale': 'Casa',
-                    'OspiteFinale': 'Ospite'
-                })
-                
-                df_final_torneo = pd.concat([df_torneo_preliminare[~df_torneo_preliminare['Girone'].isin(df_to_save['Girone'].unique())], df_to_save], ignore_index=True)
                 
                 if aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_final_torneo):
                     st.success("✅ Risultati dei gironi finali salvati su DB!")
