@@ -647,7 +647,7 @@ if st.session_state['ui_show_pre']:
                     options=list(tornei_opzioni.keys())
                 )
                 if scelta_torneo:
-            st.session_state['tournament_name'] = scelta_torneo
+                    st.session_state['tournament_name'] = scelta_torneo
                     st.session_state['tournament_id'] = tornei_opzioni[scelta_torneo]
                     if st.button("Continua con questo torneo"):
                         torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
