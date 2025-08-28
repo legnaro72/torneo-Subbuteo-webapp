@@ -659,22 +659,73 @@ if opzione_selezione == "Creare una nuova fase finale":
                     st.error("❌ Errore nel caricamento del torneo. Riprova.")
         
         #elif opzione_selezione == "Continuare una fase finale esistente":
+        # Modifica al blocco di codice "Creare una nuova fase finale"
+if opzione_selezione == "Creare una nuova fase finale":
+    tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name, show_ok=False)
+    tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix=["completato_"])
+    st.subheader("Seleziona un torneo preliminare completato")
+    if not tornei_trovati:
+        st.info("⚠️ Nessun torneo 'COMPLETATO' trovato nel database.")
+    else:
+        tornei_opzioni = {t['nome_torneo']: str(t['_id']) for t in tornei_trovati}
+        scelta_torneo = st.selectbox(
+            "Seleziona il torneo da cui iniziare le fasi finali:",
+            options=list(tornei_opzioni.keys())
+        )
+        if scelta_torneo:
+            st.session_state['tournament_name_raw'] = scelta_torneo
+            st.session_state['tournament_id'] = tornei_opzioni[scelta_torneo]
+            if st.button("Continua con questo torneo (Nuova Fase Finale)"):
+                torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
+                if torneo_data:
+                    df_torneo = pd.DataFrame(torneo_data['calendario'])
+                    is_complete, msg = tournament_is_complete(df_torneo)
+                    if not is_complete:
+                        st.error(f"❌ Il torneo preliminare selezionato non è completo: {msg}")
+                        problematic_rows = df_torneo[
+                            ~to_bool_series(df_torneo['Valida'])
+                        ]
+                        st.warning("Di seguito le partite non validate:")
+                        st.dataframe(problematic_rows[['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']])
+                    else:
+                        # Rinominazione del torneo e pulizia del calendario
+                        base_name = re.sub(r'completato_', '', st.session_state['tournament_name_raw']).strip()
+                        new_name = f"fasefinale_{base_name}"
+                        
+                        # 🔄 Rinominazione del torneo
+                        if rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], new_name):
+                            st.session_state['tournament_name'] = new_name
+                            
+                            # ✨ PULIZIA DEL CALENDARIO: Cancella tutte le partite
+                            if pulisci_torneo_su_db(tournaments_collection, st.session_state['tournament_id']):
+                                st.session_state['df_torneo_preliminare'] = df_torneo
+                                st.session_state['ui_show_pre'] = False
+                                st.success("✅ Torneo rinominato e calendario precedente cancellato con successo!")
+                                st.rerun()
+                            else:
+                                st.error("❌ Errore nella pulizia del calendario. Riprova.")
+                        else:
+                            st.error("❌ Errore nella ridenominazione del torneo. Riprova.")
+                else:
+                    st.error("❌ Errore nel caricamento del torneo. Riprova.")
+        
+        #elif opzione_selezione == "Continuare una fase finale esistente":
         elif opzione_selezione == "Continuare una fase finale esistente":
-            tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
-            tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix=["fasefinale", "finito_"])
+            tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name, show_ok=False)
+            tornei_finali_trovati = carica_tornei_da_db(tournaments_collection, prefix=["fasefinale_", "finito_"])
             st.subheader("Seleziona una fase finale esistente")
-            if not tornei_trovati:
+            if not tornei_finali_trovati:
                 st.info("⚠️ Nessuna fase finale esistente trovata nel database.")
             else:
-                tornei_opzioni = {t['nome_torneo']: str(t['_id']) for t in tornei_trovati}
+                tornei_opzioni = {t['nome_torneo']: str(t['_id']) for t in tornei_finali_trovati}
                 scelta_torneo = st.selectbox(
                     "Seleziona la fase finale da continuare:",
                     options=list(tornei_opzioni.keys())
                 )
                 if scelta_torneo:
-                    st.session_state['tournament_name'] = scelta_torneo
-                    st.session_state['tournament_id'] = tornei_opzioni[scelta_torneo]
                     if st.button("Continua con questo torneo"):
+                        st.session_state['tournament_name'] = scelta_torneo
+                        st.session_state['tournament_id'] = tornei_opzioni[scelta_torneo]
                         torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
                         if torneo_data:
                             df_torneo_completo = pd.DataFrame(torneo_data['calendario'])
@@ -682,7 +733,7 @@ if opzione_selezione == "Creare una nuova fase finale":
                             
                             is_ko_tournament = (df_torneo_completo['Girone'].astype(str) == 'Eliminazione Diretta').any()
                             is_gironi_finale = df_torneo_completo['Girone'].astype(str).str.startswith('GironeFF_').any()
-        
+            
                             if is_ko_tournament:
                                 # È un torneo a eliminazione diretta, carica i dati KO
                                 df_ko_esistente = df_torneo_completo[df_torneo_completo['Girone'] == 'Eliminazione Diretta'].copy()
@@ -716,7 +767,7 @@ if opzione_selezione == "Creare una nuova fase finale":
                                 st.session_state['fase_modalita'] = "Gironi"
                                 st.session_state['ui_show_pre'] = False
                                 st.rerun()
-        
+            
                             else:
                                 # Non è stata ancora generata una fase finale, torna al menu di selezione
                                 st.session_state['ui_show_pre'] = False
