@@ -70,7 +70,7 @@ with col1:
                 Da usare per disputare un campionato o la <b>prima parte</b> di un torneo 
                 articolato che prevede una successiva fase finale.
             </div>
-            <a class="card-link" href="https://https://torneo-subbuteo-superba-ita-all-db.streamlit.app/" target="_blank">Apri App</a>
+            <a class="card-link" href="https://torneo-subbuteo-superba-ita-all-db.streamlit.app/" target="_blank">Apri App</a>
         </div>
     ''', unsafe_allow_html=True)
 
