@@ -982,6 +982,7 @@ else:
 
             # Funzione per salvare i risultati KO su DB
 
+            
             def salva_risultati_ko(tournaments_collection, df_round_original, round_idx):
                 """Aggiorna il DataFrame e lo stato della sessione con i risultati del round corrente KO."""
                 
@@ -1018,7 +1019,7 @@ else:
                 # 2. Gestione del prossimo round (se quello corrente è completo)
                 if not df_round_original['Valida'].all():
                     st.warning("Ci sono ancora partite da validare in questo round.")
-                    st.rerun()
+                    return
             
                 winners = [w for w in df_round_original['Vincitore'].tolist() if pd.notna(w)]
                 
@@ -1068,8 +1069,6 @@ else:
                             st.session_state['tournament_name'] = nuovo_nome
                         else:
                             st.error("Errore nella ridenominazione finale del torneo.")
-                            
-                st.rerun()
             
             
             def render_round(df_round, round_idx):
