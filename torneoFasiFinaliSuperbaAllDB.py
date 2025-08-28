@@ -615,7 +615,7 @@ if st.session_state['ui_show_pre']:
                                 st.warning("Di seguito le partite non validate:")
                                 st.dataframe(problematic_rows[['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']])
                             else:
-                                new_name = f"fasefinale_{torneo_data['nome_torneo']}"
+                                new_name = f"fasefinale{torneo_data['nome_torneo']}"
                                 new_id, new_name = clona_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], new_name)
                                 
                                 if new_id:
@@ -636,7 +636,7 @@ if st.session_state['ui_show_pre']:
         #elif opzione_selezione == "Continuare una fase finale esistente":
         elif opzione_selezione == "Continuare una fase finale esistente":
             tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
-            tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix=["fasefinale_"])
+            tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix=["fasefinale"])
             st.subheader("Seleziona una fase finale esistente")
             if not tornei_trovati:
                 st.info("⚠️ Nessuna fase finale esistente trovata nel database.")
@@ -795,7 +795,7 @@ else:
                         )
                 
                         # 🔄 Rinominazione torneo
-                        nuovo_nome = f"FasiFinaliAGironi_{st.session_state['tournament_name']}"
+                        nuovo_nome = f"fasefinaleAGironi_{st.session_state['tournament_name']}"
                         rinomina_torneo_su_db(tournaments_collection, st.session_state["tournament_id"], nuovo_nome)
                         st.session_state["tournament_name"] = nuovo_nome
                 
@@ -857,7 +857,7 @@ else:
                     )
                 
                     # 🔄 Rinominazione torneo
-                    nuovo_nome = f"fasifinaleEliminazionediretta_{st.session_state['tournament_name']}"
+                    nuovo_nome = f"fasefinaleEliminazionediretta_{st.session_state['tournament_name']}"
                     rinomina_torneo_su_db(tournaments_collection, st.session_state["tournament_id"], nuovo_nome)
                     st.session_state["tournament_name"] = nuovo_nome
                 
@@ -951,7 +951,7 @@ else:
                         st.markdown("<h2 style='text-align: center; color: #4CAF50;'>🏆 Il torneo è completato!</h2>", unsafe_allow_html=True)
                         
                         if not st.session_state['tournament_name'].startswith('finito_'):
-                            nuovo_nome = st.session_state['tournament_name'].replace("fasefinale_", "finito_")
+                            nuovo_nome = st.session_state['tournament_name'].replace("fasefinale", "finito_")
                             rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
                             st.session_state['tournament_name'] = nuovo_nome
                             
@@ -1075,7 +1075,7 @@ else:
                     st.success(f"🏆 Il torneo è finito! Il vincitore è: **{winners[0]}**")
                     
                     if not st.session_state['tournament_name'].startswith('finito_'):
-                        nuovo_nome = st.session_state['tournament_name'].replace("fasefinale_", "finito_")
+                        nuovo_nome = st.session_state['tournament_name'].replace("fasefinale", "finito_")
                         rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
                         st.session_state['tournament_name'] = nuovo_nome
             
