@@ -659,6 +659,7 @@ if st.session_state['ui_show_pre']:
                             is_gironi_finale = df_torneo_completo['Girone'].astype(str).str.startswith('GironeFF_').any()
         
                             if is_ko_tournament:
+                                # È un torneo a eliminazione diretta, carica i dati KO
                                 df_ko_esistente = df_torneo_completo[df_torneo_completo['Girone'] == 'Eliminazione Diretta'].copy()
                                 rounds_list = []
                                 for r in sorted(df_ko_esistente['Giornata'].unique()):
@@ -675,27 +676,6 @@ if st.session_state['ui_show_pre']:
                                     if 'Valida' in _df_round.columns and not _df_round['Valida'].fillna(False).all():
                                         break
                                 
-                                if rounds_filtrati and ('Valida' in rounds_filtrati[-1].columns) and rounds_filtrati[-1]['Valida'].fillna(False).all():
-                                    winners = rounds_filtrati[-1].get('Vincitore')
-                                    if winners is None or winners.isna().all():
-                                        last_round = rounds_filtrati[-1]
-                                        winners = last_round.apply(lambda row: row['SquadraA'] if pd.notna(row.get('GolA')) and pd.notna(row.get('GolB')) and row.get('GolA') > row.get('GolB') else (row['SquadraB'] if pd.notna(row.get('GolA')) and pd.notna(row.get('GolB')) and row.get('GolB') > row.get('GolA') else None), axis=1)
-                                    winners = [w for w in winners.tolist() if pd.notna(w)]
-                                    if len(winners) > 1:
-                                        next_round_name = 'Semifinali' if len(winners) == 4 else ('Finale' if len(winners) == 2 else 'Quarti di finale')
-                                        next_matches = []
-                                        for i in range(0, len(winners), 2):
-                                            if i+1 < len(winners):
-                                                next_matches.append({
-                                                    'Round': next_round_name,
-                                                    'Match': (i//2) + 1,
-                                                    'SquadraA': winners[i],
-                                                    'SquadraB': winners[i+1],
-                                                    'GolA': None, 'GolB': None, 'Valida': False, 'Vincitore': None
-                                                })
-                                        if next_matches:
-                                            rounds_filtrati.append(pd.DataFrame(next_matches))
-        
                                 st.session_state['rounds_ko'] = rounds_filtrati
                                 st.session_state['giornate_mode'] = 'ko'
                                 st.session_state['fase_modalita'] = "Eliminazione diretta"
