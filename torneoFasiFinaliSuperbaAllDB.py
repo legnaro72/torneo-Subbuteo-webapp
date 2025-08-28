@@ -589,7 +589,11 @@ if st.session_state['ui_show_pre']:
         
         opzione_selezione = st.radio("Cosa vuoi fare?", ["Creare una nuova fase finale", "Continuare una fase finale esistente"])
         
+       
+        # Modifica al blocco di codice "Creare una nuova fase finale"
+        
         if opzione_selezione == "Creare una nuova fase finale":
+            tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name, show_ok=False)
             tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix=["completato_"])
             st.subheader("Seleziona un torneo preliminare completato")
             if not tornei_trovati:
@@ -616,21 +620,33 @@ if st.session_state['ui_show_pre']:
                                 st.warning("Di seguito le partite non validate:")
                                 st.dataframe(problematic_rows[['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']])
                             else:
-                                new_name = f"fasefinale{torneo_data['nome_torneo']}"
-                                new_id, new_name = clona_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], new_name)
+                                # --- INIZIO BLOCCO MODIFICATO ---
+                                # Creazione del nuovo nome per il torneo finale
+                                base_name = re.sub(r'completato_', '', st.session_state['tournament_name']).strip()
+                                new_name = f"fasefinale_{base_name}"
+                                
+                                # Inserimento di un nuovo documento nel DB con il nuovo nome e un calendario vuoto
+                                new_tournament_data = {
+                                    "nome_torneo": new_name,
+                                    "calendario": [], # Inizializza con un calendario vuoto
+                                    "phase_metadata": {}
+                                }
+                                
+                                result = tournaments_collection.insert_one(new_tournament_data)
+                                new_id = result.inserted_id
                                 
                                 if new_id:
-                                    cloned_torneo_data = carica_torneo_da_db(tournaments_collection, str(new_id))
-                                    if cloned_torneo_data:
-                                        st.session_state['df_torneo_preliminare'] = pd.DataFrame(cloned_torneo_data['calendario'])
-                                        st.session_state['tournament_id'] = str(new_id)
-                                        st.session_state['tournament_name'] = new_name
-                                        st.session_state['ui_show_pre'] = False
-                                        st.rerun()
-                                    else:
-                                        st.error("❌ Errore nel caricamento del torneo clonato. Riprova.")
+                                    st.success(f"✅ Nuova fase finale creata. Nome: **{new_name}**")
+                                    
+                                    # Carica i dati dal torneo preliminare ORIGINALE per la classifica iniziale
+                                    df_torneo_preliminare_originale = pd.DataFrame(carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])['calendario'])
+                                    st.session_state['df_torneo_preliminare'] = df_torneo_preliminare_originale
+                                    st.session_state['tournament_id'] = str(new_id)
+                                    st.session_state['tournament_name'] = new_name
+                                    st.session_state['ui_show_pre'] = False
+                                    st.rerun()
                                 else:
-                                    st.error("❌ Errore nella clonazione del torneo. Riprova.")
+                                    st.error("❌ Errore nella creazione del nuovo torneo. Riprova.")
                         else:
                             st.error("❌ Errore nel caricamento del torneo. Riprova.")
 
