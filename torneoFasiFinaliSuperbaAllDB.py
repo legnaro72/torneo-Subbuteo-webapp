@@ -656,7 +656,7 @@ if st.session_state['ui_show_pre']:
                             
                             # Logica modificata
                             is_ko_tournament = (df_torneo_completo['Girone'] == 'Eliminazione Diretta').any()
-                            is_gironi_finale = (df_torneo_completo['Girone'].str.contains('Girone Finale')).any()
+                            is_gironi_finale = df_torneo_completo['Girone'].astype(str).str.startswith('GironeFF_').any()
         
                             if is_ko_tournament:
                                 # È un torneo a eliminazione diretta
@@ -706,7 +706,7 @@ if st.session_state['ui_show_pre']:
                             
                             elif is_gironi_finale:
                                 # È un torneo a gironi
-                                df_gironi_esistente = df_torneo_completo[df_torneo_completo['Girone'].astype(str).str.contains(r'Girone', case=False, na=False)].copy()
+                                df_gironi_esistente = df_torneo_completo[df_torneo_completo['Girone'].astype(str).str.startswith('GironeFF_')].copy()
                                 df_gironi_esistente.rename(columns={'Girone': 'GironeFinale', 'Giornata': 'GiornataFinale', 'Casa': 'CasaFinale', 'Ospite': 'OspiteFinale'}, inplace=True)
                                 st.session_state['df_finale_gironi'] = df_gironi_esistente
                                 st.session_state['giornate_mode'] = 'gironi'
