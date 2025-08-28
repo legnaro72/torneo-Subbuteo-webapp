@@ -3,6 +3,7 @@ import pandas as pd
 import math
 import os
 import re
+import uuid
 from fpdf import FPDF
 import base64
 from io import BytesIO
@@ -776,7 +777,17 @@ else:
                             'CasaFinale': 'Casa',
                             'OspiteFinale': 'Ospite'
                         })
-                        df_final_torneo = pd.concat([st.session_state['df_torneo_preliminare'], df_to_save_initial], ignore_index=True)
+                        phase_id = str(uuid.uuid4())
+df_to_save_initial['PhaseID'] = phase_id
+df_to_save_initial['PhaseMode'] = 'Gironi'
+df_final_torneo = pd.concat([st.session_state['df_torneo_preliminare'], df_to_save_initial], ignore_index=True)
+tournaments_collection.update_one(
+    {"_id": ObjectId(st.session_state['tournament_id'])},
+    {"$set": {"phase_metadata": {"phase_id": phase_id, "phase_mode": 'Gironi'}}}
+)
+nuovo_nome = f'FasiFinaliAGironi_{st.session_state["tournament_name"]}'
+rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
+st.session_state['tournament_name'] = nuovo_nome
                         tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
                         aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_final_torneo)
                         st.session_state['df_torneo_preliminare'] = df_final_torneo
@@ -820,7 +831,17 @@ else:
                     df_to_save_initial = df_initial_round.rename(columns={'SquadraA': 'Casa', 'SquadraB': 'Ospite', 'GolA': 'GolCasa', 'GolB': 'GolOspite'})
                     df_to_save_initial['Girone'] = 'Eliminazione Diretta'
                     df_to_save_initial['Giornata'] = 1
-                    df_final_torneo = pd.concat([st.session_state['df_torneo_preliminare'], df_to_save_initial], ignore_index=True)
+                    phase_id = str(uuid.uuid4())
+df_to_save_initial['PhaseID'] = phase_id
+df_to_save_initial['PhaseMode'] = 'Gironi'
+df_final_torneo = pd.concat([st.session_state['df_torneo_preliminare'], df_to_save_initial], ignore_index=True)
+tournaments_collection.update_one(
+    {"_id": ObjectId(st.session_state['tournament_id'])},
+    {"$set": {"phase_metadata": {"phase_id": phase_id, "phase_mode": 'Gironi'}}}
+)
+nuovo_nome = f'FasiFinaliAGironi_{st.session_state["tournament_name"]}'
+rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
+st.session_state['tournament_name'] = nuovo_nome
                     tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
                     aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_final_torneo)
                     st.session_state['df_torneo_preliminare'] = df_final_torneo
