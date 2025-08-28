@@ -953,76 +953,58 @@ else:
                     st.error("❌ Errore di connessione al DB.")
                     return
             
-                # Sostituisce il df in sessione con i valori correnti dell'UI
-                df_finale_gironi = st.session_state['df_finale_gironi'].copy()
-                
-                # Prende il girone e la giornata correntemente visualizzati
-                girone_sel = st.session_state.get('girone_sel')
-                if st.session_state.get('giornata_nav_mode') == 'Menu a tendina':
-                    giornata_sel = st.session_state.get('giornata_sel_select')
-                else:
-                    giornata_sel = st.session_state.get('giornata_selezionata_buttons')
-                
-                if girone_sel and giornata_sel:
-                    # Trova gli indici delle partite da aggiornare nel df originale
-                    mask = (df_finale_gironi['GironeFinale'] == girone_sel) & (df_finale_gironi['GiornataFinale'] == giornata_sel)
-                    
-                    # Itera solo sulle righe interessate e aggiorna i valori dalla sessione
-                    for idx in df_finale_gironi[mask].index:
-                        try:
-                            gol_casa = st.session_state.get(f"gironi_golcasa_{idx}")
-                            gol_ospite = st.session_state.get(f"gironi_golospite_{idx}")
-                            valida = st.session_state.get(f"gironi_valida_{idx}")
-                            
-                            df_finale_gironi.loc[idx, 'GolCasa'] = int(gol_casa) if pd.notna(gol_casa) and gol_casa != "" else None
-                            df_finale_gironi.loc[idx, 'GolOspite'] = int(gol_ospite) if pd.notna(gol_ospite) and gol_ospite != "" else None
-                            df_finale_gironi.loc[idx, 'Valida'] = valida
-                        except (KeyError, ValueError):
-                            continue
-                
-                st.session_state['df_finale_gironi'] = df_finale_gironi
-                
-                # Ora salva l'intero DataFrame aggiornato su DB
-                df_to_save = df_finale_gironi.rename(columns={
-                    'GironeFinale': 'Girone',
-                    'GiornataFinale': 'Giornata',
-                    'CasaFinale': 'Casa',
-                    'OspiteFinale': 'Ospite'
-                })
-                
-                # Carica l'intero torneo dal DB
+                # 1. Carica l'intero DataFrame del torneo dal DB
                 torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
                 df_torneo_completo = pd.DataFrame(torneo_data['calendario'])
                 
                 phase_id = st.session_state.get('phase_metadata', {}).get('phase_id')
-                
-                if phase_id:
-                    # Crea un DataFrame pulito senza le vecchie partite della fase finale
-                    df_pulito = df_torneo_completo[df_torneo_completo['PhaseID'] != phase_id].copy()
-                    
-                    # Concatena le partite aggiornate
-                    df_finale_gironi['PhaseID'] = phase_id
-                    df_finale_gironi['PhaseMode'] = "Gironi"
-                    df_finale_gironi.rename(columns={'GironeFinale': 'Girone', 'GiornataFinale': 'Giornata', 'CasaFinale': 'Casa', 'OspiteFinale': 'Ospite'}, inplace=True)
-                    
-                    df_finale_gironi_aggiornato = pd.concat([df_pulito, df_finale_gironi], ignore_index=True)
-                    
-                    if aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_finale_gironi_aggiornato):
-                        st.success("✅ Risultati dei gironi finali salvati su DB!")
-                        st.session_state['df_torneo_preliminare'] = df_finale_gironi_aggiornato
-                        
-                        if df_finale_gironi['Valida'].all():
-                            st.balloons()
-                            st.markdown("<h2 style='text-align: center; color: #4CAF50;'>🏆 Il torneo è completato!</h2>", unsafe_allow_html=True)
-                            
-                            if not st.session_state['tournament_name'].startswith('finito_'):
-                                nuovo_nome = st.session_state['tournament_name'].replace("fasefinale", "finito_")
-                                rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
-                                st.session_state['tournament_name'] = nuovo_nome
-                    else:
-                        st.error("❌ Errore nel salvataggio su DB.")
-                else:
+                if not phase_id:
                     st.error("❌ Errore: PhaseID non trovato. Impossibile salvare.")
+                    return
+            
+                # 2. Aggiorna il DataFrame completo con i valori della sessione
+                # Trova gli indici delle righe della fase finale a gironi
+                mask = (df_torneo_completo['PhaseID'] == phase_id)
+                gironi_indices = df_torneo_completo[mask].index
+                
+                tutti_validi = True
+                for original_idx in gironi_indices:
+                    try:
+                        gol_casa = st.session_state.get(f"gironi_golcasa_{original_idx}")
+                        gol_ospite = st.session_state.get(f"gironi_golospite_{original_idx}")
+                        valida = st.session_state.get(f"gironi_valida_{original_idx}")
+                        
+                        # Converte i valori in numeri o None
+                        gol_casa_val = int(gol_casa) if pd.notna(gol_casa) and gol_casa != "" else None
+                        gol_ospite_val = int(gol_ospite) if pd.notna(gol_ospite) and gol_ospite != "" else None
+            
+                        # Aggiorna le righe nel DataFrame
+                        df_torneo_completo.loc[original_idx, 'GolCasa'] = gol_casa_val
+                        df_torneo_completo.loc[original_idx, 'GolOspite'] = gol_ospite_val
+                        df_torneo_completo.loc[original_idx, 'Valida'] = valida
+                        
+                        if not valida:
+                            tutti_validi = False
+                    except (KeyError, ValueError):
+                        # Ignora le righe che non hanno valori nella sessione
+                        continue
+                        
+                st.session_state['df_torneo_preliminare'] = df_torneo_completo
+                
+                # 3. Salva l'intero DataFrame aggiornato su DB
+                if aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_torneo_completo):
+                    st.success("✅ Risultati dei gironi finali salvati su DB!")
+                    
+                    # Gestione del completamento del torneo
+                    if tutti_validi:
+                        st.balloons()
+                        st.markdown("<h2 style='text-align: center; color: #4CAF50;'>🏆 Il torneo è completato!</h2>", unsafe_allow_html=True)
+                        if not st.session_state['tournament_name'].startswith('finito_'):
+                            nuovo_nome = st.session_state['tournament_name'].replace("fasefinale", "finito_")
+                            rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
+                            st.session_state['tournament_name'] = nuovo_nome
+                else:
+                    st.error("❌ Errore nel salvataggio su DB.")
                     
                 st.rerun()
                 
@@ -1067,45 +1049,32 @@ else:
                 
                 st.session_state['rounds_ko'][-1] = current_round_df.copy()
             
-                df_ko_da_salvare = current_round_df.copy()
-                df_ko_da_salvare.rename(columns={'SquadraA': 'Casa', 'SquadraB': 'Ospite', 'GolA': 'GolCasa', 'GolB': 'GolOspite'}, inplace=True)
-                df_ko_da_salvare['Girone'] = 'Eliminazione Diretta'
-                df_ko_da_salvare['Giornata'] = len(st.session_state['rounds_ko'])
-                
+                # 1. Carica l'intero DataFrame del torneo dal DB
                 torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
                 df_torneo_completo = pd.DataFrame(torneo_data['calendario'])
                 
                 phase_id = torneo_data.get('phase_metadata', {}).get('phase_id')
-                
-                if phase_id:
-                    # Filtra il DataFrame per le partite della fase finale e aggiornale
-                    df_ko_to_update = df_torneo_completo[df_torneo_completo['PhaseID'] == phase_id].copy()
-                    df_ko_rest = df_torneo_completo[df_torneo_completo['PhaseID'] != phase_id].copy()
-                    
-                    # Aggiorna le righe esistenti con i nuovi dati
-                    df_ko_updated = pd.concat(st.session_state['rounds_ko']).rename(
-                        columns={'SquadraA': 'Casa', 'SquadraB': 'Ospite', 'GolA': 'GolCasa', 'GolB': 'GolOspite', 'Round': 'Girone'}
-                    )
-                    
-                    # Assicurati che le colonne PhaseID e PhaseMode siano presenti
-                    if 'PhaseID' not in df_ko_updated.columns:
-                        df_ko_updated['PhaseID'] = phase_id
-                    if 'PhaseMode' not in df_ko_updated.columns:
-                        df_ko_updated['PhaseMode'] = 'Eliminazione diretta'
-            
-                    df_ko_to_update = df_ko_updated.copy()
-            
-                    # Ri-assembla il DataFrame completo
-                    df_aggiornato = pd.concat([df_ko_rest, df_ko_to_update], ignore_index=True)
-                    
-                    if aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_aggiornato):
-                        st.success("✅ Risultati salvati su DB!")
-                        st.session_state['df_torneo_preliminare'] = df_aggiornato
-                    else:
-                        st.error("❌ Errore nel salvataggio su DB.")
-                else:
+                if not phase_id:
                     st.error("❌ Errore: PhaseID non trovato. Impossibile salvare.")
+                    return
+            
+                # 2. Aggiorna il DataFrame completo con i nuovi risultati KO
+                df_ko_aggiornato = pd.concat(st.session_state['rounds_ko'], ignore_index=True)
                 
+                df_ko_aggiornato.rename(columns={'SquadraA': 'Casa', 'SquadraB': 'Ospite', 'GolA': 'GolCasa', 'GolB': 'GolOspite', 'Round': 'Girone'}, inplace=True)
+                df_ko_aggiornato['Giornata'] = df_ko_aggiornato.groupby('Girone').cumcount() + 1
+                df_ko_aggiornato['PhaseID'] = phase_id
+                df_ko_aggiornato['PhaseMode'] = 'Eliminazione diretta'
+                
+                # Rimuovi le vecchie righe KO e aggiungi quelle aggiornate
+                df_torneo_aggiornato = df_torneo_completo[df_torneo_completo['PhaseID'] != phase_id].copy()
+                df_torneo_aggiornato = pd.concat([df_torneo_aggiornato, df_ko_aggiornato], ignore_index=True)
+            
+                if aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_torneo_aggiornato):
+                    st.success("✅ Risultati salvati su DB!")
+                    st.session_state['df_torneo_preliminare'] = df_torneo_aggiornato
+                else:
+                    st.error("❌ Errore nel salvataggio su DB.")
             
                 if len(winners) > 1:
                     next_round_name = ""
