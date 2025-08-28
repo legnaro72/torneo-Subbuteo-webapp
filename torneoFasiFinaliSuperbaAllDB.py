@@ -793,7 +793,8 @@ else:
                     if rinomina_torneo_su_db(tournaments_collection, st.session_state["tournament_id"], nuovo_nome):
                          st.success("✅ Torneo rinominato e gironi generati con successo!")
                          st.session_state["tournament_name"] = nuovo_nome
-                         st.session_state['df_finale_gironi'] = df_final_gironi
+                         #st.session_state['df_finale_gironi'] = df_final_gironi
+                         st.session_state['df_finale_gironi'] = df_to_save
                          st.rerun()
                     else:
                         st.error("❌ Errore nella ridenominazione. Riprova.")
