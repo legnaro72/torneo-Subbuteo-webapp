@@ -961,7 +961,7 @@ else:
                     
                     if not st.session_state['tournament_name'].startswith('finito_'):
                         # MODIFICA: Come richiesto, non usare get_base_name per questo caso
-                        nuovo_nome = f"finito_Eliminazionediretta_{st.session_state['tournament_name']}"
+                        nuovo_nome = f"finito_{st.session_state['tournament_name']}"
                         rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
                         st.session_state['tournament_name'] = nuovo_nome
             
