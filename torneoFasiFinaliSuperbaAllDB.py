@@ -763,7 +763,7 @@ else:
                     for i, girone in enumerate(gironi_assegnati, 1):
                         df_girone_calendar = round_robin(girone, andata_ritorno)
                         if not df_girone_calendar.empty:
-                            df_girone_calendar.insert(0, 'Girone', f"Girone {chr(64 + i)}")
+                            df_girone_calendar.insert(0, 'Girone', f"Girone {i}")
                             df_final_gironi = pd.concat([df_final_gironi, df_girone_calendar], ignore_index=True)
                     
                     df_to_save = df_final_gironi.copy()
