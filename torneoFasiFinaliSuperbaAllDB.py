@@ -706,7 +706,7 @@ if st.session_state['ui_show_pre']:
                             
                             elif is_gironi_finale:
                                 # È un torneo a gironi
-                                df_gironi_esistente = df_torneo_completo[df_torneo_completo['Girone'].str.contains('Girone Finale')].copy()
+                                df_gironi_esistente = df_torneo_completo[df_torneo_completo['Girone'].astype(str).str.contains(r'Girone', case=False, na=False)].copy()
                                 df_gironi_esistente.rename(columns={'Girone': 'GironeFinale', 'Giornata': 'GiornataFinale', 'Casa': 'CasaFinale', 'Ospite': 'OspiteFinale'}, inplace=True)
                                 st.session_state['df_finale_gironi'] = df_gironi_esistente
                                 st.session_state['giornate_mode'] = 'gironi'
@@ -992,7 +992,17 @@ else:
                     # Ricarica il DF per la concatenazione
                     torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
                     df_preliminare_aggiornato = pd.DataFrame(torneo_data['calendario'])
-                    df_final_torneo = pd.concat([df_preliminare_aggiornato, df_ko_da_salvare], ignore_index=True)
+                                        # Evita duplicati: rimuovi eventuali righe già esistenti per la stessa Girone/Giornata
+                    try:
+                        giornata_ko = int(df_ko_da_salvare['Giornata'].iloc[0]) if not df_ko_da_salvare.empty else None
+                        if giornata_ko is not None:
+                            mask_keep = ~((df_preliminare_aggiornato['Girone'] == 'Eliminazione Diretta') & (df_preliminare_aggiornato['Giornata'] == giornata_ko))
+                            df_final_torneo = pd.concat([df_preliminare_aggiornato[mask_keep], df_ko_da_salvare], ignore_index=True)
+                        else:
+                            df_final_torneo = pd.concat([df_preliminare_aggiornato, df_ko_da_salvare], ignore_index=True)
+                    except Exception:
+                        df_final_torneo = pd.concat([df_preliminare_aggiornato, df_ko_da_salvare], ignore_index=True)
+
 
                     if aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_final_torneo):
                         st.success("✅ Risultati salvati su DB!")
