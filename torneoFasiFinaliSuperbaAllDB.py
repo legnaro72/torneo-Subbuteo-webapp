@@ -734,24 +734,67 @@ else:
             if fase_finale_scelta == "Gironi finali":
                 st.session_state['fase_scelta'] = "gironi"
                 st.session_state['fase_modalita'] = "Gironi"
+
+                st.subheader("Configura i gironi")
+                num_partecipanti_gironi = st.number_input(
+                    "Quante squadre partecipano a questa fase finale?",
+                    min_value=4,
+                    value=min(16, len(df_classifica)),
+                    max_value=len(df_classifica),
+                    step=1
+                )
                 
-                if st.button("Vai alla gestione dei gironi"):
+                num_gironi = st.number_input(
+                    "In quanti gironi vuoi suddividere le squadre?",
+                    min_value=1,
+                    value=1,
+                    max_value=max(1, num_partecipanti_gironi // 4),
+                    step=1
+                )
+                
+                if num_partecipanti_gironi % num_gironi != 0:
+                    st.warning("⚠️ Il numero di partecipanti deve essere divisibile per il numero di gironi per una distribuzione equa.")
+                    st.stop()
+                
+                andata_ritorno = st.checkbox("Partite di andata e ritorno?", value=False)
+                
+                if st.button("Genera gironi e continua"):
+                    st.session_state['giornate_mode'] = 'gironi'
+                    st.session_state['gironi_num'] = num_gironi
+                    st.session_state['gironi_ar'] = andata_ritorno
+                    
+                    qualificati = list(df_classifica.head(num_partecipanti_gironi)['Squadra'])
+                    
+                    gironi_assegnati = serpentino_seed(qualificati, num_gironi)
+                    
+                    df_final_gironi = pd.DataFrame()
+                    for i, girone in enumerate(gironi_assegnati, 1):
+                        df_girone_calendar = round_robin(girone, andata_ritorno)
+                        if not df_girone_calendar.empty:
+                            df_girone_calendar.insert(0, 'Girone', f"Girone {chr(64 + i)}")
+                            df_final_gironi = pd.concat([df_final_gironi, df_girone_calendar], ignore_index=True)
+                    
+                    df_to_save = df_final_gironi.copy()
+                    df_to_save.rename(columns={'Girone': 'GironeFinale', 'Giornata': 'GiornataFinale', 'Casa': 'CasaFinale', 'Ospite': 'OspiteFinale'}, inplace=True)
+                    df_to_save['GolCasa'] = None
+                    df_to_save['GolOspite'] = None
+                    df_to_save['Valida'] = False
+                    
+                    # Salva i dati iniziali su DB
+                    tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
+                    
+                    tournaments_collection.update_one(
+                        {"_id": ObjectId(st.session_state["tournament_id"])},
+                        {"$set": {"calendario": df_to_save.to_dict('records')}}
+                    )
+
                     # Rinominazione del torneo per renderlo gestibile dall'altra web app
                     nuovo_nome = f"fasefinaleAGironi_{st.session_state['tournament_name'].replace('completato_', '')}"
-                    tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
                     if rinomina_torneo_su_db(tournaments_collection, st.session_state["tournament_id"], nuovo_nome):
-                         st.success("✅ Torneo rinominato con successo!")
+                         st.success("✅ Torneo rinominato e gironi generati con successo!")
                          st.session_state["tournament_name"] = nuovo_nome
-                         st.session_state['giornate_mode'] = 'gironi'
-                         st.info(f"Ora puoi usare l'altra web app per gestire il torneo **{nuovo_nome}**.")
-                         st.markdown("""
-                            <div style="text-align: center; padding: 20px; border: 2px solid #008080; border-radius: 10px; margin-top: 20px;">
-                                <h3>Gestisci il tuo torneo a gironi!</h3>
-                                <p>Ora che la fase finale a gironi è stata creata, utilizza l'altra web app per proseguire.</p>
-                                <a href="LINK_ALLA_TUA_ALTRA_WEB_APP" target="_blank" style="background-color: #008080; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: bold;">Vai alla Web App dei Tornei</a>
-                                <p style="font-size: 0.8rem; margin-top: 10px;">(Sostituisci "LINK_ALLA_TUA_ALTRA_WEB_APP" con l'URL corretto.)</p>
-                            </div>
-                         """, unsafe_allow_html=True)
+                         st.session_state['df_finale_gironi'] = df_final_gironi
+                         st.rerun()
                     else:
                         st.error("❌ Errore nella ridenominazione. Riprova.")
 
@@ -818,12 +861,6 @@ else:
         # Renderizza il calendario/tabellone se già generato
         if st.session_state.get('giornate_mode'):
             st.divider()
-            
-            # Funzione per salvare i risultati dei gironi su DB
-            
-            def salva_risultati_gironi():
-                 st.error("❌ La gestione dei gironi finali non è più supportata in questa web app.")
-                 st.info(f"Utilizza l'altra web app per la gestione del torneo '{st.session_state['tournament_name']}'.")
             
             def salva_risultati_ko():
                 """Aggiorna il DataFrame e lo stato della sessione con i risultati del round corrente KO."""
@@ -943,14 +980,22 @@ else:
                 st.session_state['giornata_selezionata'] = giornata
                 
             if st.session_state['giornate_mode'] == 'gironi':
-                 st.info("La gestione della fase a gironi finali è stata spostata su un'altra web app.")
+                 if 'df_finale_gironi' not in st.session_state:
+                     st.error("Errore nel caricamento dei dati dei gironi. Riprova.")
+                     st.button("Torna indietro", on_click=reset_to_setup)
+                     st.stop()
+                 
+                 st.info("✅ Gironi creati con successo!")
+                 
                  st.markdown(f"""
                  <div style="text-align: center; padding: 20px; border: 2px solid #008080; border-radius: 10px; margin-top: 20px;">
                     <h3>Gestisci il tuo torneo a gironi!</h3>
-                    <p>Utilizza l'altra web app per proseguire con il torneo <strong>{st.session_state['tournament_name']}</strong>.</p>
-                    <a href="LINK_ALLA_TUA_ALTRA_WEB_APP" target="_blank" style="background-color: #008080; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: bold;">Vai alla Web App dei Tornei</a>
+                    <p>Ora che la fase finale a gironi è stata creata, puoi utilizzare l'altra web app per proseguire.</p>
+                    <a href="https://tornospalldb.streamlit.app/" target="_blank" style="background-color: #008080; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: bold;">Vai alla Web App dei Tornei</a>
+                    <p style="font-size: 0.8rem; margin-top: 10px;">(Il nome del torneo da cercare è **{st.session_state['tournament_name']}**)</p>
                  </div>
                  """, unsafe_allow_html=True)
+
 
             elif st.session_state['giornate_mode'] == 'ko':
                 st.markdown("<h3 style='text-align: center;'>Tabellone Eliminazione Diretta</h3>", unsafe_allow_html=True)
