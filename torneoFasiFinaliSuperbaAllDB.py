@@ -466,7 +466,7 @@ def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
     try:
         # Pulisci il DataFrame per il salvataggio
         df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
-tournaments_collection.update_one(
+        tournaments_collection.update_one(
             {"_id": ObjectId(tournament_id)},
             {"$set": {"calendario": df_torneo_pulito.to_dict('records')}}
         )
@@ -508,7 +508,7 @@ def rinomina_torneo_su_db(tournaments_collection, tournament_id, new_name):
     if tournaments_collection is None:
         return False
     try:
-tournaments_collection.update_one(
+        tournaments_collection.update_one(
             {"_id": ObjectId(tournament_id)},
             {"$set": {"nome_torneo": new_name}}
         )
