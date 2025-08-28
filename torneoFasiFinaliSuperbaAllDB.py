@@ -405,7 +405,7 @@ if 'giornata_nav_mode' not in st.session_state:
 # Aggiunto per pulire il nome del torneo
 def get_base_name(name):
     """Rimuove i prefissi noti dal nome del torneo per avere un nome base pulito."""
-    prefixes = ['completato_', 'fasefinaleAGironi_', 'fasefinaleEliminazionediretta_', 'finito_', 'fasefinale']
+    prefixes = ['completato_', 'fasefinaleAGironi_', 'fasefinaleEliminazionediretta_', 'finito_', 'fasefinale', 'Eliminazionediretta_']
     
     # Crea un pattern regex che corrisponde a uno dei prefissi all'inizio della stringa
     # e gestisce le ripetizioni
