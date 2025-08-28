@@ -466,7 +466,7 @@ def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
     try:
         # Pulisci il DataFrame per il salvataggio
         df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
-        tournaments_collection.update_one(
+tournaments_collection.update_one(
             {"_id": ObjectId(tournament_id)},
             {"$set": {"calendario": df_torneo_pulito.to_dict('records')}}
         )
@@ -508,7 +508,7 @@ def rinomina_torneo_su_db(tournaments_collection, tournament_id, new_name):
     if tournaments_collection is None:
         return False
     try:
-        tournaments_collection.update_one(
+tournaments_collection.update_one(
             {"_id": ObjectId(tournament_id)},
             {"$set": {"nome_torneo": new_name}}
         )
@@ -600,7 +600,7 @@ if st.session_state['ui_show_pre']:
                     options=list(tornei_opzioni.keys())
                 )
                 if scelta_torneo:
-                    st.session_state['tournament_name'] = scelta_torneo
+            st.session_state['tournament_name'] = scelta_torneo
                     st.session_state['tournament_id'] = tornei_opzioni[scelta_torneo]
                     if st.button("Continua con questo torneo (Nuova Fase Finale)"):
                         torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
@@ -623,7 +623,7 @@ if st.session_state['ui_show_pre']:
                                     if cloned_torneo_data:
                                         st.session_state['df_torneo_preliminare'] = pd.DataFrame(cloned_torneo_data['calendario'])
                                         st.session_state['tournament_id'] = str(new_id)
-                                        st.session_state['tournament_name'] = new_name
+                                st.session_state['tournament_name'] = new_name
                                         st.session_state['ui_show_pre'] = False
                                         st.rerun()
                                     else:
@@ -647,7 +647,7 @@ if st.session_state['ui_show_pre']:
                     options=list(tornei_opzioni.keys())
                 )
                 if scelta_torneo:
-                    st.session_state['tournament_name'] = scelta_torneo
+            st.session_state['tournament_name'] = scelta_torneo
                     st.session_state['tournament_id'] = tornei_opzioni[scelta_torneo]
                     if st.button("Continua con questo torneo"):
                         torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
@@ -933,8 +933,8 @@ st.session_state['tournament_name'] = nuovo_nome
                         
                         if not st.session_state['tournament_name'].startswith('finito_'):
                             nuovo_nome = st.session_state['tournament_name'].replace("fasefinale_", "finito_")
-                            rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
-                            st.session_state['tournament_name'] = nuovo_nome
+                    rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
+                    st.session_state['tournament_name'] = nuovo_nome
                             
                         vincitori = {}
                         gironi = sorted(df_finale_gironi['GironeFinale'].unique())
@@ -1059,15 +1059,15 @@ st.session_state['tournament_name'] = nuovo_nome
                         st.success(f"🏆 Il torneo è finito! Il vincitore è: **{winners[0]}**")
                         if not st.session_state['tournament_name'].startswith('finito_'):
                             nuovo_nome = st.session_state['tournament_name'].replace("fasefinale_", "finito_")
-                            rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
-                            st.session_state['tournament_name'] = nuovo_nome
+                    rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
+                    st.session_state['tournament_name'] = nuovo_nome
                 else:
                     st.balloons()
                     st.success(f"🏆 Il torneo è finito! Il vincitore è: **{winners[0]}**")
                     if not st.session_state['tournament_name'].startswith('finito_'):
                         nuovo_nome = st.session_state['tournament_name'].replace("fasefinale_", "finito_")
-                        rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
-                        st.session_state['tournament_name'] = nuovo_nome
+                rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
+                st.session_state['tournament_name'] = nuovo_nome
                 
                 st.rerun()
 
