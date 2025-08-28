@@ -750,6 +750,7 @@ else:
                 st.session_state['gironi_ar'] = st.checkbox("Turno andata e ritorno?")
                 st.session_state['gironi_seed'] = st.radio("Metodo di distribuzione", ["Fasce (bilanciata)", "Casuale"])
                 
+              
                 if st.button("Genera gironi e calendario"):
                     qualificati = list(df_classifica.head(st.session_state['n_finalisti'])['Squadra'])
                     if len(qualificati) < st.session_state['n_finalisti']:
@@ -763,13 +764,15 @@ else:
                                 df_girone.rename(columns={'Giornata': 'GiornataFinale', 'Casa': 'CasaFinale', 'Ospite': 'OspiteFinale'}, inplace=True)
                                 df_girone['GironeFinale'] = f"Girone {i}"
                                 df_finale_gironi = pd.concat([df_finale_gironi, df_girone], ignore_index=True)
-                        
-                        df_finale_gironi['GolCasa'] = None; df_finale_gironi['GolOspite'] = None; df_finale_gironi['Valida'] = False
+                
+                        df_finale_gironi['GolCasa'] = None
+                        df_finale_gironi['GolOspite'] = None
+                        df_finale_gironi['Valida'] = False
                         df_finale_gironi.insert(0, 'GironeFinale', df_finale_gironi.pop('GironeFinale'))
                         df_finale_gironi.insert(1, 'GiornataFinale', df_finale_gironi.pop('GiornataFinale'))
                         st.session_state['df_finale_gironi'] = df_finale_gironi
                         st.session_state['giornate_mode'] = 'gironi'
-                        
+                
                         # Salva i dati iniziali su DB
                         df_to_save_initial = df_finale_gironi.rename(columns={
                             'GironeFinale': 'Girone',
@@ -777,21 +780,30 @@ else:
                             'CasaFinale': 'Casa',
                             'OspiteFinale': 'Ospite'
                         })
+                
+                        # 🔑 PhaseID e PhaseMode
                         phase_id = str(uuid.uuid4())
-df_to_save_initial['PhaseID'] = phase_id
-df_to_save_initial['PhaseMode'] = 'Gironi'
-df_final_torneo = pd.concat([st.session_state['df_torneo_preliminare'], df_to_save_initial], ignore_index=True)
-tournaments_collection.update_one(
-    {"_id": ObjectId(st.session_state['tournament_id'])},
-    {"$set": {"phase_metadata": {"phase_id": phase_id, "phase_mode": 'Gironi'}}}
-)
-nuovo_nome = f'FasiFinaliAGironi_{st.session_state["tournament_name"]}'
-rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
-st.session_state['tournament_name'] = nuovo_nome
+                        df_to_save_initial["PhaseID"] = phase_id
+                        df_to_save_initial["PhaseMode"] = "Gironi"
+                
+                        df_final_torneo = pd.concat([st.session_state['df_torneo_preliminare'], df_to_save_initial], ignore_index=True)
                         tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
-                        aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_final_torneo)
+                
+                        tournaments_collection.update_one(
+                            {"_id": ObjectId(st.session_state["tournament_id"])},
+                            {"$set": {"phase_metadata": {"phase_id": phase_id, "phase_mode": "Gironi"}}}
+                        )
+                
+                        # 🔄 Rinominazione torneo
+                        nuovo_nome = f"FasiFinaliAGironi_{st.session_state['tournament_name']}"
+                        rinomina_torneo_su_db(tournaments_collection, st.session_state["tournament_id"], nuovo_nome)
+                        st.session_state["tournament_name"] = nuovo_nome
+                
+                        aggiorna_torneo_su_db(tournaments_collection, st.session_state["tournament_id"], df_final_torneo)
                         st.session_state['df_torneo_preliminare'] = df_final_torneo
                         st.rerun()
+    
+                   
 
             elif fase_finale_scelta == "Eliminazione diretta":
                 st.session_state['fase_scelta'] = "ko"
@@ -806,47 +818,54 @@ st.session_state['tournament_name'] = nuovo_nome
                 
                 if st.button("Genera tabellone"):
                     qualificati = list(df_classifica.head(n_squadre_ko)['Squadra'])
-                    
+                
                     matches = []
-                    
                     if len(qualificati) > 1:
                         accoppiamenti = bilanciato_ko_seed(qualificati)
                         for i, (sq_a, sq_b) in enumerate(accoppiamenti, 1):
-                             matches.append({
-                                 'Round': f"Ottavi di finale (di {n_squadre_ko})" if n_squadre_ko == 16 else f"Quarti di finale (di {n_squadre_ko})" if n_squadre_ko == 8 else f"Semifinali (di {n_squadre_ko})" if n_squadre_ko == 4 else f"Finale (di {n_squadre_ko})",
-                                 'Match': i,
-                                 'SquadraA': sq_a,
-                                 'SquadraB': sq_b,
-                                 'GolA': None, 'GolB': None, 'Valida': False, 'Vincitore': None
-                             })
+                            matches.append({
+                                'Round': f"Ottavi di finale (di {n_squadre_ko})" if n_squadre_ko == 16 else f"Quarti di finale (di {n_squadre_ko})" if n_squadre_ko == 8 else f"Semifinali (di {n_squadre_ko})" if n_squadre_ko == 4 else f"Finale (di {n_squadre_ko})",
+                                'Match': i,
+                                'SquadraA': sq_a,
+                                'SquadraB': sq_b,
+                                'GolA': None, 'GolB': None, 'Valida': False, 'Vincitore': None
+                            })
                     else:
                         st.warning("Non ci sono abbastanza squadre per generare un tabellone.")
                         st.stop()
-
+                
                     df_initial_round = pd.DataFrame(matches)
                     st.session_state['rounds_ko'] = [df_initial_round]
                     st.session_state['giornate_mode'] = 'ko'
-
+                
                     # Salva i dati iniziali su DB
                     df_to_save_initial = df_initial_round.rename(columns={'SquadraA': 'Casa', 'SquadraB': 'Ospite', 'GolA': 'GolCasa', 'GolB': 'GolOspite'})
                     df_to_save_initial['Girone'] = 'Eliminazione Diretta'
                     df_to_save_initial['Giornata'] = 1
+                
+                    # 🔑 PhaseID e PhaseMode
                     phase_id = str(uuid.uuid4())
-df_to_save_initial['PhaseID'] = phase_id
-df_to_save_initial['PhaseMode'] = 'Gironi'
-df_final_torneo = pd.concat([st.session_state['df_torneo_preliminare'], df_to_save_initial], ignore_index=True)
-tournaments_collection.update_one(
-    {"_id": ObjectId(st.session_state['tournament_id'])},
-    {"$set": {"phase_metadata": {"phase_id": phase_id, "phase_mode": 'Gironi'}}}
-)
-nuovo_nome = f'FasiFinaliAGironi_{st.session_state["tournament_name"]}'
-rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
-st.session_state['tournament_name'] = nuovo_nome
+                    df_to_save_initial["PhaseID"] = phase_id
+                    df_to_save_initial["PhaseMode"] = "KO"
+                
+                    df_final_torneo = pd.concat([st.session_state['df_torneo_preliminare'], df_to_save_initial], ignore_index=True)
                     tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
-                    aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_final_torneo)
+                
+                    tournaments_collection.update_one(
+                        {"_id": ObjectId(st.session_state["tournament_id"])},
+                        {"$set": {"phase_metadata": {"phase_id": phase_id, "phase_mode": "KO"}}}
+                    )
+                
+                    # 🔄 Rinominazione torneo
+                    nuovo_nome = f"fasifinaleEliminazionediretta_{st.session_state['tournament_name']}"
+                    rinomina_torneo_su_db(tournaments_collection, st.session_state["tournament_id"], nuovo_nome)
+                    st.session_state["tournament_name"] = nuovo_nome
+                
+                    aggiorna_torneo_su_db(tournaments_collection, st.session_state["tournament_id"], df_final_torneo)
                     st.session_state['df_torneo_preliminare'] = df_final_torneo
                     st.rerun()
-        
+
+                       
         # Renderizza il calendario/tabellone se già generato
         if st.session_state.get('giornate_mode'):
             st.divider()
