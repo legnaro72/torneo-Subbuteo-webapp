@@ -623,7 +623,7 @@ if st.session_state['ui_show_pre']:
                                     if cloned_torneo_data:
                                         st.session_state['df_torneo_preliminare'] = pd.DataFrame(cloned_torneo_data['calendario'])
                                         st.session_state['tournament_id'] = str(new_id)
-                                st.session_state['tournament_name'] = new_name
+                                        st.session_state['tournament_name'] = new_name
                                         st.session_state['ui_show_pre'] = False
                                         st.rerun()
                                     else:
