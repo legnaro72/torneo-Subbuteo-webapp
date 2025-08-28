@@ -97,6 +97,7 @@ h3 {
 # ==============================================================================
 REQUIRED_COLS = ['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']
 
+#def genera_fase_finale():
 def genera_fase_finale():
     """Genera la fase finale (gironi o KO) e salva il torneo nel DB, pulendo i dati precedenti."""
     tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
