@@ -952,11 +952,11 @@ else:
                         
                         if not st.session_state['tournament_name'].startswith('finito_'):
                             nuovo_nome = st.session_state['tournament_name'].replace("fasefinale_", "finito_")
-                    rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
-                    st.session_state['tournament_name'] = nuovo_nome
+                            rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
+                            st.session_state['tournament_name'] = nuovo_nome
                             
-                        vincitori = {}
-                        gironi = sorted(df_finale_gironi['GironeFinale'].unique())
+                            vincitori = {}
+                            gironi = sorted(df_finale_gironi['GironeFinale'].unique())
                         
                         for girone in gironi:
                             df_girone_blocco = df_finale_gironi[df_finale_gironi['GironeFinale'] == girone].copy()
