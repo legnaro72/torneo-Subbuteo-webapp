@@ -259,7 +259,6 @@ def standings_from_matches(df: pd.DataFrame, key_group: str) -> pd.DataFrame:
 # ==============================================================================
 # 📄 FUNZIONI PER EXPORT PDF
 # ==============================================================================
-
 def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
     """Genera un PDF con calendario e classifica dei gironi."""
     pdf = FPDF()
@@ -270,13 +269,13 @@ def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
     pdf.cell(0, 10, "Calendario e Classifiche Gironi", 0, 1, 'C')
     pdf.set_font("Helvetica", "", 12)
 
-    gironi = sorted(df_finale_gironi['GironeFinale'].unique())
+    gironi = sorted(df_finale_gironi['Girone'].unique()) # Modificato: 'GironeFinale' -> 'Girone'
 
     for girone in gironi:
         pdf.set_font("Helvetica", "B", 14)
         pdf.set_text_color(255, 0, 0)
         
-        girone_blocco = df_finale_gironi[df_finale_gironi['GironeFinale'] == girone]
+        girone_blocco = df_finale_gironi[df_finale_gironi['Girone'] == girone] # Modificato: 'GironeFinale' -> 'Girone'
         is_complete = all(girone_blocco['Valida'])
         
         pdf.cell(0, 10, f"Girone {girone}", 0, 1, 'L')
@@ -286,15 +285,8 @@ def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
         pdf.cell(0, 10, "Classifica:", 0, 1, 'L')
         pdf.set_font("Helvetica", "", 10)
         
-        # FIX: Renaming delle colonne 'CasaFinale' e 'OspiteFinale' per la funzione di classifica
-        classifica = standings_from_matches(
-            girone_blocco.rename(columns={
-                'GironeFinale': 'Gruppo',
-                'CasaFinale': 'Casa',
-                'OspiteFinale': 'Ospite'
-            }), 
-            key_group='Gruppo'
-        )
+        # Le colonne 'Casa' e 'Ospite' sono già corrette
+        classifica = standings_from_matches(girone_blocco, key_group='Girone') # Modificato: key_group='Girone'
         
         if not classifica.empty:
             classifica = classifica.sort_values(by=['Punti', 'DR', 'GF', 'V', 'Squadra'], ascending=[False, False, False, False, True]).reset_index(drop=True)
@@ -321,7 +313,7 @@ def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
         pdf.cell(0, 10, "Calendario partite:", 0, 1, 'L')
         pdf.set_font("Helvetica", "", 10)
 
-        partite_girone = girone_blocco.sort_values(by='GiornataFinale').reset_index(drop=True)
+        partite_girone = girone_blocco.sort_values(by='Giornata').reset_index(drop=True) # Modificato: 'GiornataFinale' -> 'Giornata'
         for idx, partita in partite_girone.iterrows():
             if not is_complete and not partita['Valida']:
                 pdf.set_text_color(255, 0, 0)
@@ -329,8 +321,8 @@ def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
                 pdf.set_text_color(0, 0, 0)
             
             res = f"{int(partita['GolCasa'])} - {int(partita['GolOspite'])}" if partita['Valida'] and pd.notna(partita['GolCasa']) and pd.notna(partita['GolOspite']) else " - "
-            pdf.cell(0, 7, f"Giornata {int(partita['GiornataFinale'])}: {partita['CasaFinale']} vs {partita['OspiteFinale']} ({res})", 0, 1)
-
+            pdf.cell(0, 7, f"Giornata {int(partita['Giornata'])}: {partita['Casa']} vs {partita['Ospite']} ({res})", 0, 1) # Modificati i nomi delle colonne
+        
         pdf.set_text_color(0, 0, 0)
         pdf.ln(5)
 
