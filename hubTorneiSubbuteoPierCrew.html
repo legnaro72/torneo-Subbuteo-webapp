@@ -1,26 +1,49 @@
-
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>Torneo Subbuteo PierCrew</title>
 
-  <!-- Meta tag Open Graph per generare l’anteprima su WhatsApp -->
+  <!-- Open Graph per anteprima WhatsApp -->
   <meta property="og:title" content="Hub Torneo Subbuteo PierCrew" />
   <meta property="og:description" content="Gestione tornei Subbuteo: calendario, classifiche e fasi finali." />
   <meta property="og:image" content="https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/zio.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
   <meta property="og:url" content="https://farm-tornei-subbuteo-piercrew-all-db.streamlit.app/" />
   <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="PierCrew Subbuteo" />
+
+  <!-- Twitter Card (opzionale) -->
   <meta name="twitter:card" content="summary_large_image" />
 
-  <!-- Redirect immediato verso l'app Streamlit -->
-  <meta http-equiv="refresh" content="0; url=https://farm-tornei-subbuteo-piercrew-all-db.streamlit.app/" />
+  <!-- NIENTE meta refresh: il redirect lo fa JS sotto -->
+  <script>
+    // Reindirizza dopo 2000 ms; gli scraper non eseguono JS, quindi leggono i meta OG
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        window.location.replace("https://farm-tornei-subbuteo-piercrew-all-db.streamlit.app/");
+      }, 2000);
+    });
+  </script>
+
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; 
+           display:flex; min-height:100dvh; align-items:center; justify-content:center; margin:0; }
+    .card { max-width: 640px; padding: 24px; border: 1px solid #e5e7eb; border-radius: 16px; text-align:center; }
+    a.button { display:inline-block; padding: 12px 18px; border-radius: 12px; text-decoration:none; border:1px solid #111; }
+  </style>
 </head>
 <body>
-  <p>Se non verrai reindirizzato automaticamente, 
-     <a href="https://farm-tornei-subbuteo-piercrew-all-db.streamlit.app/">
-     clicca qui</a>.
-  </p>
+  <div class="card">
+    <h1>Hub Torneo Subbuteo PierCrew</h1>
+    <p>Stai per essere reindirizzato all’app.</p>
+    <p><a class="button" href="https://farm-tornei-subbuteo-piercrew-all-db.streamlit.app/">Entra nell’app</a></p>
+    <noscript>
+      <p>JavaScript è disabilitato: clicca il pulsante qui sopra per continuare.</p>
+    </noscript>
+  </div>
 </body>
 </html>
