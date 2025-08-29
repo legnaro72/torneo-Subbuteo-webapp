@@ -110,7 +110,7 @@ with col4:
             <div class="card-desc">
                 Permette di inserire, modificare e cancellare i giocatori affiliati al club. Cancellare Tornei.
             </div>
-            <a class="card-link card-link-red" https://edit-piercrew-club-all-db.streamlit.app/" target="_blank">Apri App</a>
+            <a class="card-link card-link-red" href=https://edit-piercrew-club-all-db.streamlit.app/" target="_blank">Apri App</a>
         </div>
     ''', unsafe_allow_html=True)
 
