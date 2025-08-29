@@ -5,21 +5,67 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Torneo Subbuteo Superba</title>
 
-  <!-- Meta tag Open Graph per generare l’anteprima su WhatsApp -->
+  <!-- Meta tag Open Graph per WhatsApp/FB -->
   <meta property="og:title" content="Hub Torneo Subbuteo Superba" />
   <meta property="og:description" content="Gestione tornei Subbuteo: calendario, classifiche e fasi finali." />
   <meta property="og:image" content="https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/zio.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
   <meta property="og:url" content="https://farm-tornei-subbuteo-superba-all-db.streamlit.app/" />
   <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Torneo Subbuteo Superba" />
+
+  <!-- Twitter card -->
   <meta name="twitter:card" content="summary_large_image" />
 
-  <!-- Redirect immediato verso l'app Streamlit -->
-  <meta http-equiv="refresh" content="0; url=https://farm-tornei-subbuteo-superba-all-db.streamlit.app/" />
+  <!-- Redirect tramite JavaScript dopo 2 secondi -->
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        window.location.href = "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/";
+      }, 2000);
+    });
+  </script>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      display: flex;
+      min-height: 100dvh;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      background: #f9f9f9;
+    }
+    .container {
+      text-align: center;
+      padding: 24px;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      max-width: 600px;
+    }
+    .button {
+      display: inline-block;
+      padding: 12px 20px;
+      margin-top: 16px;
+      border-radius: 12px;
+      text-decoration: none;
+      color: #fff;
+      background-color: #0077cc;
+      transition: background-color 0.3s;
+    }
+    .button:hover { background-color: #005fa3; }
+  </style>
 </head>
 <body>
-  <p>Se non verrai reindirizzato automaticamente, 
-     <a href="https://farm-tornei-subbuteo-superba-all-db.streamlit.app/">
-     clicca qui</a>.
-  </p>
+  <div class="container">
+    <h1>Hub Torneo Subbuteo Superba</h1>
+    <p>Verrai reindirizzato all’app tra 2 secondi.</p>
+    <p><a class="button" href="https://farm-tornei-subbuteo-superba-all-db.streamlit.app/">Entra subito nell’app</a></p>
+    <noscript>
+      <p>JavaScript disabilitato? Clicca il pulsante sopra per entrare nell’app.</p>
+    </noscript>
+  </div>
 </body>
 </html>
