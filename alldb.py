@@ -300,7 +300,15 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
             )
             st.write("---")
 
+    #if st.button("💾 Salva Risultati Giornata", key="salva_giornata_button"):
     if st.button("💾 Salva Risultati Giornata", key="salva_giornata_button"):
+    with st.spinner('Salvataggio in corso...'):
+        # 🔎 DEBUG: Mostro DataFrame PRIMA del salvataggio
+        st.subheader("📊 DEBUG: DataFrame prima del salvataggio")
+        st.dataframe(st.session_state['df_torneo'], use_container_width=True)
+
+        df_to_save = st.session_state['df_torneo'].copy()
+
         with st.spinner('Salvataggio in corso...'):
             df_to_save = st.session_state['df_torneo'].copy()
 
@@ -313,11 +321,22 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
                 df_to_save.loc[index, 'GolOspite'] = int(gol_ospite)
                 df_to_save.loc[index, 'Valida'] = bool(valida)
 
+                # 🔎 DEBUG: Mostro DataFrame DOPO aggiornamento ma prima di salvare
+                st.subheader("📊 DEBUG: DataFrame dopo aggiornamento ma prima di scrivere su MongoDB")
+                st.dataframe(df_to_save, use_container_width=True)
+
+
             if 'tournament_id' in st.session_state:
                 try:
                     aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_to_save)
                     st.session_state['df_torneo'] = df_to_save
                     st.toast("Risultati salvati su MongoDB ✅")
+
+                    # 🔎 DEBUG 3: DataFrame DOPO salvataggio su MongoDB
+                    st.subheader("📊 DEBUG: DataFrame dopo salvataggio su MongoDB")
+                    st.dataframe(st.session_state['df_torneo'], use_container_width=True)
+
+                st.toast("Risultati salvati su MongoDB ✅")
 
                     if df_to_save['Valida'].all():
                         nome_completato = f"completato_{st.session_state['nome_torneo']}"
