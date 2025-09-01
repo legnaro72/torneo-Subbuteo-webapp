@@ -449,12 +449,17 @@ def main():
     players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players", show_ok=False)
     tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "TorneiSubbuteo", "Superba", show_ok=False)
 
+    # ➡️ MODIFICA FONDAMENTALE: Aggiungi un controllo per la connessione
+    if players_collection is None:
+        st.error("❌ Impossibile connettersi al database dei giocatori. Verificare le credenziali e la disponibilità del servizio.")
+        return
+
     # Titolo con stile personalizzato
     if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
         st.markdown(f"<div class='big-title'>🏆 {st.session_state['nome_torneo']}</div>", unsafe_allow_html=True)
     else:
         st.markdown("<div class='big-title'>🏆 Torneo Superba- Gestione Gironi</div>", unsafe_allow_html=True)
-
+        
     # Banner vincitori
     if st.session_state.get('torneo_completato', False) and st.session_state.get('classifica_finale') is not None:
         vincitori = []
@@ -463,7 +468,6 @@ def main():
             primo = df_classifica[df_classifica['Girone'] == girone].iloc[0]['Squadra']
             vincitori.append(f"🏅 {girone}: {primo}")
         st.success("🎉 Torneo Completato! Vincitori → " + ", ".join(vincitori))
-
 
     # CSS PERSONALIZZATO
     # -------------------------
@@ -479,22 +483,17 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    # ➡️ MODIFICA CRITICA: Gestione dell'errore nella riga 726
+    # ➡️ Modifica: Carica i giocatori dopo aver verificato la connessione
     try:
         df_master = carica_giocatori_da_db(players_collection)
         giocatori_esistenti = df_master['Giocatore'].unique().tolist()
     except KeyError:
-        st.error("❌ Errore: La colonna 'Nome' non è stata trovata nei dati del database. Potrebbe essere vuoto o avere una struttura diversa. Verrà caricata una lista vuota di giocatori.")
+        st.error("❌ Errore: La colonna 'Giocatore' non è stata trovata nei dati del database. Potrebbe essere vuoto o avere una struttura diversa. Verrà caricata una lista vuota di giocatori.")
         giocatori_esistenti = []
     
-    # ➡️ MODIFICA: La tua funzione `carica_giocatori_da_db` esistente è stata modificata per includere la gestione dell'errore.
-    # Non è necessario modificarla di nuovo.
-    # Il blocco try/except qui sopra assicura che il programma non si blocchi anche se la funzione restituisce un errore.
-
     if players_collection is None and tournaments_collection is None:
         st.error("❌ Impossibile avviare l'applicazione. La connessione a MongoDB non è disponibile.")
         return
-
     # Sidebar / Pagina
     if st.session_state.get('calendario_generato', False):
         st.sidebar.header("⚙️ Opzioni Torneo")
