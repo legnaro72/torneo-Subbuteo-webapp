@@ -547,7 +547,7 @@ def main():
                 if girone_class_sel != 'Nessuno':
                     st.subheader(f"Classifica {girone_class_sel}")
                     classifica = aggiorna_classifica(df)
-                    if classifica_corrente is not None and not classifica_corrente.empty: # Aggiunto controllo qui
+                    if classifica is not None and not classifica.empty: # Aggiunto controllo qui
                         mostra_classifica_stilizzata(classifica, girone_class_sel)
                     else:
                         st.info("⚽ Nessuna partita validata per questo girone.") # Messaggio specifico
