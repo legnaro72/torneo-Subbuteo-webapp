@@ -263,7 +263,10 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
             col1, col2, col3, col4, col5 = st.columns([1, 0.4, 0.1, 0.4, 1])
 
             with col1:
-                st.write(f"**{row['Casa']}**")
+                #st.write(f"**{row['Casa']}**")
+                st.write(f"**{safe_str(row['Casa'])}**")
+
+
             
             with col2:
                 gol_casa_val = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
@@ -271,7 +274,8 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
                     "Gol",
                     min_value=0,
                     step=1,
-                    key=f"golcasa_{index}",
+                    #key=f"golcasa_{index}",
+                    key=f"golcasa_{girone_sel}_{giornata_sel}_{index}",
                     label_visibility="hidden",
                     value=gol_casa_val
                 )
@@ -285,18 +289,22 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
                     "Gol",
                     min_value=0,
                     step=1,
-                    key=f"golospite_{index}",
+                    #key=f"golospite_{index}",
+                    key=f"golospite_{girone_sel}_{giornata_sel}_{index}",
+
                     label_visibility="hidden",
                     value=gol_ospite_val
                 )
             
             with col5:
-                st.write(f"**{row['Ospite']}**")
+                #st.write(f"**{row['Ospite']}**")
+                st.write(f"**{safe_str(row['Ospite'])}**")
             
             st.checkbox(
                 "Partita Conclusa",
                 value=bool(row['Valida']),
-                key=f"valida_{index}"
+                #key=f"valida_{index}"
+                key=f"valida_{girone_sel}_{giornata_sel}_{index}"
             )
             st.write("---")
 
@@ -551,12 +559,21 @@ def mostra_schermata_torneo(players_collection, tournaments_collection):
         )
         
         nuovo_girone = st.selectbox("Seleziona Girone", gironi, index=gironi.index(st.session_state['girone_sel']))
+        #if nuovo_girone != st.session_state['girone_sel']:
         if nuovo_girone != st.session_state['girone_sel']:
             st.session_state['girone_sel'] = nuovo_girone
             st.session_state['giornata_sel'] = 1
+            
+            # 🔎 Pulizia widget orfani
+            keys_to_remove = [k for k in st.session_state.keys() if k.startswith("golcasa_") or k.startswith("golospite_") or k.startswith("valida_")]
+            for k in keys_to_remove:
+                st.session_state.pop(k, None)
+            
             st.rerun()
+
+
         
-        modalita_nav = st.radio(
+        modalita_nav = st.radio(        
             "Modalità navigazione giornata",
             ["Menu a tendina", "Bottoni"],
             index=0,
@@ -573,9 +590,17 @@ def mostra_schermata_torneo(players_collection, tournaments_collection):
                 st.session_state['giornata_sel'] = giornate_correnti[0]
         
             nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=current_index)
+            #if nuova_giornata != st.session_state['giornata_sel']:
             if nuova_giornata != st.session_state['giornata_sel']:
                 st.session_state['giornata_sel'] = nuova_giornata
+                
+                # 🔎 Pulizia widget orfani
+                keys_to_remove = [k for k in st.session_state.keys() if k.startswith("golcasa_") or k.startswith("golospite_") or k.startswith("valida_")]
+                for k in keys_to_remove:
+                    st.session_state.pop(k, None)
+                
                 st.rerun()
+
 
         st.markdown("---")
         st.subheader("Navigazione Calendario")
