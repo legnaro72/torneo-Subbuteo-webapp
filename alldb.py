@@ -89,32 +89,45 @@ def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
 # -------------------------
 # FUNZIONI DI GESTIONE DATI SU MONGO
 # -------------------------
+
 def carica_giocatori_da_db(collection):
     """
     Carica i dati dei giocatori dalla collezione MongoDB.
     Restituisce un DataFrame con i dati, o un DataFrame vuoto se non ci sono dati.
     """
     try:
+        # Tenta di caricare i dati dal database
         data = list(collection.find({}))
+        
+        # Se la lista è vuota, crea un DataFrame vuoto con le colonne necessarie
         if not data:
             st.info("⚠️ La collezione dei giocatori è vuota. Crea un nuovo torneo per aggiungere i giocatori.")
-            return pd.DataFrame(columns=['Nome', 'Squadra']) # Ritorna un DataFrame vuoto ma con le colonne corrette
+            return pd.DataFrame(columns=['Nome', 'Squadra'])
         
+        # Converte i dati in un DataFrame
         df = pd.DataFrame(data)
+
+        # Controlla se il DataFrame contiene la colonna 'Nome'
+        if 'Nome' not in df.columns:
+            st.error("❌ Errore: La colonna 'Nome' non è stata trovata nei dati del database.")
+            st.info("Assicurati che i documenti nella collezione `superba_players` abbiano un campo 'Nome' con la 'N' maiuscola.")
+            return pd.DataFrame(columns=['Nome', 'Squadra'])
         
         # Elimina i record senza nome per pulizia
         df = df.dropna(subset=['Nome'])
         
-        # Gestisci il caso in cui la colonna 'Squadra' non esiste
+        # Aggiungi la colonna 'Squadra' se non esiste, per evitare errori successivi
         if 'Squadra' not in df.columns:
-            df['Squadra'] = "" # Aggiungi una colonna vuota per non far fallire il resto del codice
+            df['Squadra'] = ""
             
         return df
 
     except Exception as e:
-        st.error(f"❌ Errore durante il caricamento dei giocatori: {e}")
-        st.info("Assicurati che la collezione `superba_players` contenga documenti con un campo `Nome`.")
-        return pd.DataFrame(columns=['Nome', 'Squadra']) # Ritorna un DataFrame di fallback in caso di errore
+        # Cattura qualsiasi altro errore generico e fornisce un fallback
+        st.error(f"❌ Errore critico durante il caricamento dei giocatori: {e}")
+        st.info("Verifica la connessione e i dati nel tuo database. Ritorno un DataFrame vuoto di fallback.")
+        return pd.DataFrame(columns=['Nome', 'Squadra'])
+
 def carica_tornei_da_db(tournaments_collection):
     if tournaments_collection is None:
         return []
