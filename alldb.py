@@ -336,7 +336,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
                     st.subheader("📊 DEBUG: DataFrame dopo salvataggio su MongoDB")
                     st.dataframe(st.session_state['df_torneo'], use_container_width=True)
 
-                st.toast("Risultati salvati su MongoDB ✅")
+                    st.toast("Risultati salvati su MongoDB ✅")
 
                     if df_to_save['Valida'].all():
                         nome_completato = f"completato_{st.session_state['nome_torneo']}"
