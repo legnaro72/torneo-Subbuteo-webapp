@@ -807,10 +807,15 @@ def main():
                         st.error("❌ Per generare il calendario manualmente, clicca prima su 'Valida e Assegna Gironi Manuali'.")
                         return
 
-                    giocatori_formattati = [
-                        f"{st.session_state['gioc_info'][gioc]['Squadra']} ({gioc})"
-                        for gioc in st.session_state['giocatori_selezionati_definitivi']
-                    ]
+                    giocatori_formattati = []
+                    for gioc in st.session_state['giocatori_selezionati_definitivi']:
+                        # Controlla se le informazioni del giocatore esistono e se la squadra non è None
+                        info_giocatore = st.session_state['gioc_info'].get(gioc)
+                        if info_giocatore and 'Squadra' in info_giocatore and info_giocatore['Squadra'] is not None:
+                            giocatori_formattati.append(f"{info_giocatore['Squadra']} ({gioc})")
+                        else:
+                            # Opzionale: puoi aggiungere un debug qui per vedere quale giocatore causa il problema
+                            st.warning(f"❌ Informazioni squadra mancanti o nulle per il giocatore: {gioc}. Non verrà inserito nel calendario.")
 
                     if modalita_gironi == "Popola Gironi Automaticamente":
                         gironi_finali = [[] for _ in range(st.session_state['num_gironi'])]
