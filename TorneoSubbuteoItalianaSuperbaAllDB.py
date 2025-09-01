@@ -69,18 +69,6 @@ def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
 # -------------------------
 # UTILITY
 # -------------------------
-def combined_style(df: pd.DataFrame):
-    def apply_row_style(row):
-        base = [''] * len(row)
-        if row.name == 0:
-            base = ['background-color: #d4edda; color: black'] * len(row)
-        elif row.name <= 2:
-            base = ['background-color: #fff3cd; color: black'] * len(row)
-        return base
-
-    return df.style.apply(apply_row_style, axis=1)
-
-
 
 def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
     col1, col2, col3 = st.columns([1, 3, 1])
@@ -354,25 +342,10 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     #1st.rerun()
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):    
-    st.write("--- DEBUG: DataFrame della Classifica ---")
-    st.write(df_classifica)
-    
     if df_classifica is None or df_classifica.empty:
         st.info("⚽ Nessuna partita validata")
         return
-
-    # Filtra per girone scelto
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
-
-    # Pulisci i None/NaN → sostituisci con stringa vuota o 0
-    df_girone = df_girone.fillna("")
-
-    # Se ci sono colonne numeriche, forzale a int (evita NaN residui)
-    for col in ["Punti", "V", "P", "S", "GF", "GS", "DR"]:
-        if col in df_girone.columns:
-            df_girone[col] = pd.to_numeric(df_girone[col], errors="coerce").fillna(0).astype(int)
-
-    # Mostra la tabella pulita
     st.dataframe(df_girone, use_container_width=True)
 
 
