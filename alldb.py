@@ -721,7 +721,9 @@ def main():
 
         with col_iniziali[1]:
             st.session_state['tornei_disponibili'] = carica_tornei_da_db(tournaments_collection)
-            opzioni_tornei = {t['nome_torneo']: str(t['_id']) for t in st.session_state['tornei_disponibili']}
+
+            # ➡️ Rimuovi il ciclo e assegna direttamente il valore corretto
+            opzioni_tornei = st.session_state['tornei_disponibili']
 
             if not opzioni_tornei:
                 st.warning("Non ci sono tornei salvati. Crea un nuovo torneo per iniziare.")
