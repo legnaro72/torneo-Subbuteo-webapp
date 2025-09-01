@@ -824,7 +824,8 @@ def main():
                         else:
                             # Opzionale: puoi aggiungere un debug qui per vedere quale giocatore causa il problema
                             st.warning(f"❌ Informazioni squadra mancanti o nulle per il giocatore: {gioc}. Non verrà inserito nel calendario.")
-
+                    # ➡️ SEGNALE 1
+                    st.write("Segnale 1: Inizio generazione calendario")
                     if modalita_gironi == "Popola Gironi Automaticamente":
                         gironi_finali = [[] for _ in range(st.session_state['num_gironi'])]
                         random.shuffle(giocatori_formattati)
@@ -832,6 +833,8 @@ def main():
                             gironi_finali[i % st.session_state['num_gironi']].append(g)
                     else:
                         gironi_finali = list(st.session_state['gironi_manuali'].values())
+                    # ➡️ SEGNALE 2
+                    st.write("Segnale 2: Gironi finali creati, sto per generare il calendario")
 
                     # ➡️ SOLUZIONE DEFINITIVA: Controlla che nessun girone sia vuoto o con un solo giocatore
                     for girone in gironi_finali:
@@ -843,11 +846,18 @@ def main():
                     try:
                         # ➡️ Prova a fare queste operazioni
                         df_torneo = genera_calendario_from_list(gironi_finali, st.session_state['tipo_calendario'])
+                        
+                        # ➡️ SEGNALE 3
+                        st.write("Segnale 3: Calendario generato, sto per salvare su MongoDB")
+                        
                         tid = salva_torneo_su_db(tournaments_collection, df_torneo, st.session_state['nome_torneo'])
                     
                         # Questo debug si vedrà solo se non c'è un errore nel try
                         st.write("--- DEBUG: Valore di tid dopo il salvataggio ---")
                         st.write(tid)
+
+                        # ➡️ SEGNALE 4
+                        st.write(f"Segnale 4: Tentativo di salvataggio completato, il valore di tid è: {tid}")
                         
                         if tid:
                             st.session_state['df_torneo'] = df_torneo
