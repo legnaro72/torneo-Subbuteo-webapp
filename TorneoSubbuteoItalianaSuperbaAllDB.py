@@ -75,7 +75,7 @@ def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
     with col1:
         if st.button("◀️", key=f"{key_prefix}_prev", use_container_width=True):
             st.session_state[value_key] = max(min_val, st.session_state[value_key] - 1)
-            #1st.rerun()
+            st.rerun()
     with col2:
         st.markdown(
             f"<div style='text-align:center; font-weight:bold;'>{label} {st.session_state[value_key]}</div>",
@@ -84,7 +84,7 @@ def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
     with col3:
         if st.button("▶️", key=f"{key_prefix}_next", use_container_width=True):
             st.session_state[value_key] = min(max_val, st.session_state[value_key] + 1)
-            #1st.rerun()
+            st.rerun()
 
 # -------------------------
 # FUNZIONI DI GESTIONE DATI SU MONGO
@@ -114,18 +114,11 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
     try:
         torneo_data = tournaments_collection.find_one({"_id": ObjectId(tournament_id)})
         
-        # ➡️ PUNTO DI DEBUG 1: Ispeziona i dati appena letti dal DB
-        st.write("--- DEBUG: Dati grezzi da MongoDB ---")
-        st.write(torneo_data)
+
         
         if torneo_data and 'calendario' in torneo_data:
             df_torneo = pd.DataFrame(torneo_data['calendario'])
-            
-            # ➡️ PUNTO DI DEBUG 2: Ispeziona il DataFrame appena creato
-            st.write("--- DEBUG: DataFrame appena creato ---")
-            st.write(df_torneo)
-            st.write("Tipi di dato:", df_torneo.dtypes)
-            
+           
             df_torneo['Valida'] = df_torneo['Valida'].astype(bool)
             
             # ➡️ MODIFICA FONDAMENTALE: Pulisci e converti esplicitamente
@@ -276,11 +269,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     df = st.session_state['df_torneo']
     
-    # ➡️ PUNTO DI DEBUG 3: Ispeziona il DataFrame prima del salvataggio
-    st.write("--- DEBUG: DataFrame prima del salvataggio ---")
-    st.write(df)
-    st.write("Tipi di dato:", df.dtypes)
-    
+        
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
 
     #for idx, row in df_giornata.iterrows():
@@ -298,20 +287,14 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
         df.at[idx, 'GolOspite'] = gol_ospite if gol_ospite is not None else 0
         df.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
 
-        # 🔹 DEBUG per singola partita
-        st.write(f"Partita {idx} → Casa:{df.at[idx,'GolCasa']} Ospite:{df.at[idx,'GolOspite']} Valida:{df.at[idx,'Valida']}")
-
+       
     # ➡️ FORZA LA PULIZIA DEL TIPO DI DATO ANCHE QUI
     df['GolCasa'] = pd.to_numeric(df['GolCasa'], errors='coerce').fillna(0).astype('Int64')
     df['GolOspite'] = pd.to_numeric(df['GolOspite'], errors='coerce').fillna(0).astype('Int64')
 
     
     st.session_state['df_torneo'] = df
-    # 🔹 DEBUG finale post-salvataggio
-    st.write("--- DEBUG: DataFrame dopo il salvataggio ---")
-    st.write(st.session_state['df_torneo'])
-    st.write("Dtypes dopo:", st.session_state['df_torneo'].dtypes)
-
+   
     # 🔹 aggiorna torneo corrente
     if 'tournament_id' in st.session_state:
         aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
@@ -319,10 +302,7 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     else:
         st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
 
-    # ➡️ PUNTO DI DEBUG 13: Ispeziona il DataFrame dopo del salvataggio
-    st.write("--- DEBUG: DataFrame prima del salvataggio ---")
-    st.write(df)
-    st.write("Tipi di dato:", df.dtypes)
+   
 
     # 🔹 se tutte le partite sono validate → salva come “completato_nomeTorneo”
     if df['Valida'].all():
@@ -339,7 +319,7 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
    
 
     # 🔹 Forza ricarica della pagina per evitare None stampati
-    #1st.rerun()
+    st.rerun()
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):    
     if df_classifica is None or df_classifica.empty:
@@ -436,12 +416,14 @@ def main():
     if st.session_state.get('sidebar_state_reset', False):
         reset_app_state()
         st.session_state['sidebar_state_reset'] = False
-        #1st.rerun()
+        st.rerun()
     
      # ➡️ AGGIUNGI QUESTO CODICE QUI: Mostra le informazioni di debug
     if 'debug_message' in st.session_state and st.session_state['debug_message']:
-        st.write("--- ULTIMO DEBUG SALVATO ---")
-        st.write(st.session_state['debug_message'])
+        st.toast("--- ULTIMO DEBUG SALVATO ---")
+        st.toast(st.session_state['debug_message'])
+        #st.write("--- ULTIMO DEBUG SALVATO ---")
+        #st.write(st.session_state['debug_message'])
         # Pulisce la variabile per evitare di mostrare il messaggio in ricaricamenti futuri
         st.session_state['debug_message'] = None
         
@@ -471,9 +453,9 @@ def main():
     st.markdown("""
         <style>
         .big-title { text-align: center; font-size: clamp(18px, 4vw, 38px); font-weight: bold; margin: 15px 0; color: #e63946; }
-        .sub-title { font-size: 20px; font-weight: 600; margin-top: 15px; color: #1d3557; }
+        .sub-title { font-size: 20px; font-weight: 600; margin-top: 15px; color: d3557; }
         .stButton>button { background-color: #457b9d; color: white; border-radius: 8px; padding: 0.5em 1em; font-weight: bold; }
-        .stButton>button:hover { background-color: #1d3557; color: white; }
+        .stButton>button:hover { background-color: d3557; color: white; }
         .stDownloadButton>button { background-color: #2a9d8f; color: white; border-radius: 8px; font-weight: bold; }
         .stDownloadButton>button:hover { background-color: #21867a; }
         .stDataFrame { border: 2px solid #f4a261; border-radius: 10px; }
@@ -530,7 +512,7 @@ def main():
     
         if st.sidebar.button("🔙 Torna alla schermata iniziale", key='back_to_start_sidebar', use_container_width=True):
             st.session_state['sidebar_state_reset'] = True
-            #1st.rerun()
+            st.rerun()
 
         st.sidebar.markdown("---")
         st.sidebar.subheader("🔎 Filtra partite")
@@ -539,7 +521,7 @@ def main():
 
         if filtro_opzione != st.session_state['filtro_attivo']:
             st.session_state['filtro_attivo'] = filtro_opzione
-            #1st.rerun()
+            st.rerun()
 
         if st.session_state['filtro_attivo'] == 'Giocatore':
             st.sidebar.markdown("#### Filtra per Giocatore")
@@ -605,7 +587,7 @@ def main():
             if nuovo_girone != st.session_state['girone_sel']:
                 st.session_state['girone_sel'] = nuovo_girone
                 st.session_state['giornata_sel'] = 1
-                #1st.rerun()
+                st.rerun()
         
             # 🔹 Radio per scegliere la modalità di navigazione
             modalita_nav = st.radio(
@@ -627,7 +609,7 @@ def main():
                 nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=current_index)
                 if nuova_giornata != st.session_state['giornata_sel']:
                     st.session_state['giornata_sel'] = nuova_giornata
-                    #1st.rerun()
+                    st.rerun()
         
             mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
             st.button(
@@ -656,7 +638,7 @@ def main():
                     if torneo_data and 'calendario' in torneo_data:
                         st.session_state['calendario_generato'] = True
                         st.toast("Torneo caricato con successo ✅")
-                        #1st.rerun()
+                        st.rerun()
                     else:
                         st.error("❌ Errore durante il caricamento del torneo. Riprova.")
             else:
@@ -666,7 +648,7 @@ def main():
             st.markdown("---")
             if st.button("➕ Crea Nuovo Torneo"):
                 st.session_state['mostra_form_creazione'] = True
-                #1st.rerun()
+                st.rerun()
 
         if st.session_state.get('mostra_form_creazione', False):
             st.markdown("---")
@@ -724,7 +706,7 @@ def main():
                     }
                 
                 st.toast("Giocatori confermati ✅")
-                #1st.rerun()
+                st.rerun()
                 
             if st.session_state.get('mostra_assegnazione_squadre', False):
                 st.markdown("---")
@@ -761,7 +743,7 @@ def main():
             if st.button("Conferma Squadre e Potenziali"):
                     st.session_state['mostra_gironi'] = True
                     st.toast("Squadre e potenziali confermati ✅")
-                    #1st.rerun()
+                    st.rerun()
 
             if st.session_state.get('mostra_gironi', False):
                 st.markdown("---")
@@ -795,7 +777,7 @@ def main():
                             st.session_state['gironi_manuali'] = gironi_manuali
                             st.session_state['gironi_manuali_completi'] = True
                             st.toast("Gironi manuali assegnati ✅")
-                            #1st.rerun()
+                            st.rerun()
                         else:
                             st.error("❌ Assicurati di assegnare tutti i giocatori e che ogni giocatore sia in un solo girone.")
 
@@ -862,7 +844,7 @@ def main():
                             st.session_state['calendario_generato'] = True
                             st.session_state['debug_message']['tid_valore'] = str(tid)
                             st.toast("Calendario generato e salvato su MongoDB ✅")
-                            #1st.rerun()
+                            st.rerun()
                         
                         tid = salva_torneo_su_db(tournaments_collection, df_torneo, st.session_state['nome_torneo'])
 
@@ -876,9 +858,7 @@ def main():
                         st.write("--- DEBUG: Valore di tid dopo il salvataggio ---")
                         st.write(tid)
 
-                        # ➡️ SEGNALE 4
-                        st.write(f"Segnale 4: Tentativo di salvataggio completato, il valore di tid è: {tid}")
-
+                        
                         # ➡️ AGGIUNGI QUESTO CODICE: Salva le informazioni di debug
                         st.session_state['debug_message'] = {
                         'tid_valore': str(tid),
@@ -902,11 +882,8 @@ def main():
                         st.error(f"❌ Errore critico durante il salvataggio: {e}")
 
             
-                    # ➡️ PUNTO DI DEBUG: inserisci il tuo codice qui
-                    st.write("--- DEBUG: DF TORNEO DOPO IL SALVATAGGIO ---")
-                    st.write(st.session_state['df_torneo'])
-                    st.write("Dtypes dopo:", st.session_state['df_torneo'].dtypes)
-                    #1st.rerun()                       
+                    
+                    st.rerun()                       
 
 if __name__ == "__main__":
     main()
