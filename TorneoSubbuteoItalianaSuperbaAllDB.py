@@ -454,7 +454,14 @@ def main():
         reset_app_state()
         st.session_state['sidebar_state_reset'] = False
         #1st.rerun()
-
+    
+     # ➡️ AGGIUNGI QUESTO CODICE QUI: Mostra le informazioni di debug
+    if 'debug_message' in st.session_state and st.session_state['debug_message']:
+        st.write("--- ULTIMO DEBUG SALVATO ---")
+        st.write(st.session_state['debug_message'])
+        # Pulisce la variabile per evitare di mostrare il messaggio in ricaricamenti futuri
+        st.session_state['debug_message'] = None
+        
     # Connessioni (senza messaggi verdi)
     players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players", show_ok=False)
     tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "TorneiSubbuteo", "Superba", show_ok=False)
@@ -851,6 +858,12 @@ def main():
                         st.write("Segnale 3: Calendario generato, sto per salvare su MongoDB")
                         
                         tid = salva_torneo_su_db(tournaments_collection, df_torneo, st.session_state['nome_torneo'])
+
+                        # ➡️ SOLUZIONE DEFINITIVA: Salva il DEBUG nello stato della sessione
+                        st.session_state['debug_message'] = {
+                        'tid': str(tid),
+                        'df_info': df_torneo.dtypes.to_dict()
+                    }
                     
                         # Questo debug si vedrà solo se non c'è un errore nel try
                         st.write("--- DEBUG: Valore di tid dopo il salvataggio ---")
@@ -858,6 +871,14 @@ def main():
 
                         # ➡️ SEGNALE 4
                         st.write(f"Segnale 4: Tentativo di salvataggio completato, il valore di tid è: {tid}")
+
+                        # ➡️ AGGIUNGI QUESTO CODICE: Salva le informazioni di debug
+                        st.session_state['debug_message'] = {
+                        'tid_valore': str(tid),
+                        'df_colonne': list(df_torneo.columns),
+                        'df_dtypes': df_torneo.dtypes.to_dict(),
+                        'messaggio': "Debug salvato correttamente."
+                    }
                         
                         if tid:
                             st.session_state['df_torneo'] = df_torneo
