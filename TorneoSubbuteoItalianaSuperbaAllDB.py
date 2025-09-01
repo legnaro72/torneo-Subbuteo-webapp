@@ -70,23 +70,16 @@ def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
 # UTILITY
 # -------------------------
 def combined_style(df: pd.DataFrame):
-    # Evidenziazione classifiche + nascondi solo i veri None/NaN
     def apply_row_style(row):
         base = [''] * len(row)
         if row.name == 0:
-            base = ['background-color: #d4edda; color: black'] * len(row)  # primo posto
+            base = ['background-color: #d4edda; color: black'] * len(row)
         elif row.name <= 2:
-            base = ['background-color: #fff3cd; color: black'] * len(row)  # secondo/terzo
+            base = ['background-color: #fff3cd; color: black'] * len(row)
         return base
 
-    def hide_none(val):
-        # Nascondi solo valori mancanti reali, non gli zeri
-        if val is None or pd.isna(val):
-            return 'color: transparent; text-shadow: none;'
-        return ''
-
+    # ⚠️ Tolto hide_none per i numerici, lasciamo Pandas gestire
     styled_df = df.style.apply(apply_row_style, axis=1)
-    styled_df = styled_df.map(hide_none)
     return styled_df
 
 
@@ -363,18 +356,26 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
 
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):    
-
-    # ➡️ PUNTO DI DEBUG 4: Ispeziona il DataFrame della classifica
+    # Debug opzionale
     st.write("--- DEBUG: DataFrame della Classifica ---")
     st.write(df_classifica)
-    
+
     if df_classifica is None or df_classifica.empty:
         st.info("⚽ Nessuna partita validata")
         return
+
+    # 🔹 Filtra solo il girone richiesto
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
-    df_girone = df_girone.fillna(0)
-    df_girone = df_girone.replace("None", 0).replace("nan", 0)
+
+    # 🔹 Forza i campi numerici a essere veri interi senza NaN
+    colonne_numeriche = ["Punti", "V", "P", "S", "GF", "GS", "DR"]
+    for col in colonne_numeriche:
+        if col in df_girone.columns:
+            df_girone[col] = pd.to_numeric(df_girone[col], errors="coerce").fillna(0).astype(int)
+
+    # 🔹 Mostra la tabella con lo stile
     st.dataframe(combined_style(df_girone), use_container_width=True)
+
 
 def esporta_pdf(df_torneo, df_classifica, nome_torneo):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
