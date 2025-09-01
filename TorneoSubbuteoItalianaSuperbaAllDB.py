@@ -464,7 +464,9 @@ def main():
         st.sidebar.header("⚙️ Opzioni Torneo")
         df = st.session_state['df_torneo']
         classifica = aggiorna_classifica(df)
-        if classifica is not None:
+
+        # ➡️ CONTROLLO AGGIUNTIVO: Assicurati che la classifica non sia vuota prima di tentare l'esportazione
+        if classifica is not None and not classifica.empty:
             st.sidebar.download_button(
                 label="📄 Esporta in PDF",
                 data=esporta_pdf(df, classifica, st.session_state['nome_torneo']),
@@ -472,6 +474,8 @@ def main():
                 mime="application/pdf",
                 use_container_width=True
             )
+        else:
+            st.sidebar.info("Nessuna partita valida. Per generare la classifica completa, compila e valida i risultati.")
             
             # --- Blocco aggiunto: visualizzazione classifica dalla sidebar ---
             st.sidebar.markdown("---")
