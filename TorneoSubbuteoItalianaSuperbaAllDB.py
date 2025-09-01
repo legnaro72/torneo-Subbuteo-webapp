@@ -94,7 +94,7 @@ def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
     with col1:
         if st.button("◀️", key=f"{key_prefix}_prev", use_container_width=True):
             st.session_state[value_key] = max(min_val, st.session_state[value_key] - 1)
-            st.rerun()
+            #1st.rerun()
     with col2:
         st.markdown(
             f"<div style='text-align:center; font-weight:bold;'>{label} {st.session_state[value_key]}</div>",
@@ -103,7 +103,7 @@ def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
     with col3:
         if st.button("▶️", key=f"{key_prefix}_next", use_container_width=True):
             st.session_state[value_key] = min(max_val, st.session_state[value_key] + 1)
-            st.rerun()
+            #1st.rerun()
 
 # -------------------------
 # FUNZIONI DI GESTIONE DATI SU MONGO
@@ -314,7 +314,7 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
         st.toast(f"Torneo completato e salvato come {nome_completato} ✅")
 
     # 🔹 Forza ricarica della pagina per evitare None stampati
-    st.rerun()
+    #1st.rerun()
 
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):    
@@ -416,7 +416,7 @@ def main():
     if st.session_state.get('sidebar_state_reset', False):
         reset_app_state()
         st.session_state['sidebar_state_reset'] = False
-        st.rerun()
+        #1st.rerun()
 
     # Connessioni (senza messaggi verdi)
     players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players", show_ok=False)
@@ -503,7 +503,7 @@ def main():
     
         if st.sidebar.button("🔙 Torna alla schermata iniziale", key='back_to_start_sidebar', use_container_width=True):
             st.session_state['sidebar_state_reset'] = True
-            st.rerun()
+            #1st.rerun()
 
         st.sidebar.markdown("---")
         st.sidebar.subheader("🔎 Filtra partite")
@@ -512,7 +512,7 @@ def main():
 
         if filtro_opzione != st.session_state['filtro_attivo']:
             st.session_state['filtro_attivo'] = filtro_opzione
-            st.rerun()
+            #1st.rerun()
 
         if st.session_state['filtro_attivo'] == 'Giocatore':
             st.sidebar.markdown("#### Filtra per Giocatore")
@@ -578,7 +578,7 @@ def main():
             if nuovo_girone != st.session_state['girone_sel']:
                 st.session_state['girone_sel'] = nuovo_girone
                 st.session_state['giornata_sel'] = 1
-                st.rerun()
+                #1st.rerun()
         
             # 🔹 Radio per scegliere la modalità di navigazione
             modalita_nav = st.radio(
@@ -600,7 +600,7 @@ def main():
                 nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=current_index)
                 if nuova_giornata != st.session_state['giornata_sel']:
                     st.session_state['giornata_sel'] = nuova_giornata
-                    st.rerun()
+                    #1st.rerun()
         
             mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
             st.button(
@@ -629,7 +629,7 @@ def main():
                     if torneo_data and 'calendario' in torneo_data:
                         st.session_state['calendario_generato'] = True
                         st.toast("Torneo caricato con successo ✅")
-                        st.rerun()
+                        #1st.rerun()
                     else:
                         st.error("❌ Errore durante il caricamento del torneo. Riprova.")
             else:
@@ -639,7 +639,7 @@ def main():
             st.markdown("---")
             if st.button("➕ Crea Nuovo Torneo"):
                 st.session_state['mostra_form_creazione'] = True
-                st.rerun()
+                #1st.rerun()
 
         if st.session_state.get('mostra_form_creazione', False):
             st.markdown("---")
@@ -697,7 +697,7 @@ def main():
                     }
                 
                 st.toast("Giocatori confermati ✅")
-                st.rerun()
+                #1st.rerun()
                 
             if st.session_state.get('mostra_assegnazione_squadre', False):
                 st.markdown("---")
@@ -734,7 +734,7 @@ def main():
             if st.button("Conferma Squadre e Potenziali"):
                     st.session_state['mostra_gironi'] = True
                     st.toast("Squadre e potenziali confermati ✅")
-                    st.rerun()
+                    #1st.rerun()
 
             if st.session_state.get('mostra_gironi', False):
                 st.markdown("---")
@@ -768,7 +768,7 @@ def main():
                             st.session_state['gironi_manuali'] = gironi_manuali
                             st.session_state['gironi_manuali_completi'] = True
                             st.toast("Gironi manuali assegnati ✅")
-                            st.rerun()
+                            #1st.rerun()
                         else:
                             st.error("❌ Assicurati di assegnare tutti i giocatori e che ogni giocatore sia in un solo girone.")
 
@@ -797,7 +797,7 @@ def main():
                         st.session_state['tournament_id'] = str(tid)
                         st.session_state['calendario_generato'] = True
                         st.toast("Calendario generato e salvato su MongoDB ✅")
-                        st.rerun()
+                        #1st.rerun()
 
 if __name__ == "__main__":
     main()
