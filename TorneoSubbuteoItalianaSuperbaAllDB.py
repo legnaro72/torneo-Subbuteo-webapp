@@ -808,6 +808,9 @@ def main():
                         return
 
                     giocatori_formattati = []
+
+                    giocatori_formattati = []
+                                        
                     for gioc in st.session_state['giocatori_selezionati_definitivi']:
                         # Controlla se le informazioni del giocatore esistono e se la squadra non è None
                         info_giocatore = st.session_state['gioc_info'].get(gioc)
