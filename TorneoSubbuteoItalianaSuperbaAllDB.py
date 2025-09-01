@@ -840,28 +840,35 @@ def main():
                             st.error("❌ Errore: Un girone contiene meno di due giocatori. Aggiungi altri giocatori o modifica i gironi.")
                             return
 
-                    df_torneo = genera_calendario_from_list(gironi_finali, st.session_state['tipo_calendario'])
+                    try:
+                        # ➡️ Prova a fare queste operazioni
+                        df_torneo = genera_calendario_from_list(gironi_finali, st.session_state['tipo_calendario'])
+                        tid = salva_torneo_su_db(tournaments_collection, df_torneo, st.session_state['nome_torneo'])
                     
-                    # ➡️ SOLUZIONE DEFINITIVA: Forza il tipo di dato a stringa
-                    df_torneo['Girone'] = df_torneo['Girone'].astype('string')
-                    df_torneo['Casa'] = df_torneo['Casa'].astype('string')
-                    df_torneo['Ospite'] = df_torneo['Ospite'].astype('string')
+                        # Questo debug si vedrà solo se non c'è un errore nel try
+                        st.write("--- DEBUG: Valore di tid dopo il salvataggio ---")
+                        st.write(tid)
+                        
+                        if tid:
+                            st.session_state['df_torneo'] = df_torneo
+                            st.session_state['tournament_id'] = str(tid)
+                            st.session_state['calendario_generato'] = True
+                            st.toast("Calendario generato e salvato su MongoDB ✅")
+                            st.rerun()
+                        else:
+                            # Questo si vedrà se il salvataggio fallisce senza un errore
+                            st.error("❌ Errore: Il salvataggio su MongoDB è fallito. Controlla la connessione al database.")
                     
-                    tid = salva_torneo_su_db(tournaments_collection, df_torneo, st.session_state['nome_torneo'])
+                    except Exception as e:
+                        # ➡️ Questo si vedrà se c'è un errore imprevisto
+                        st.error(f"❌ Errore critico durante il salvataggio: {e}")
 
-                    # ➡️ PUNTO DI DEBUG CRUCIALE: Controlla il valore di tid
-                    st.write("--- DEBUG: Valore di tid dopo il salvataggio ---")
-                    st.write(tid)
-                    if tid:
-                        st.session_state['df_torneo'] = df_torneo
-                        st.session_state['tournament_id'] = str(tid)
-                        st.session_state['calendario_generato'] = True
-                        st.toast("Calendario generato e salvato su MongoDB ✅")
-                        # ➡️ PUNTO DI DEBUG: inserisci il tuo codice qui
-                        st.write("--- DEBUG: DF TORNEO DOPO IL SALVATAGGIO ---")
-                        st.write(st.session_state['df_torneo'])
-                        st.write("Dtypes dopo:", st.session_state['df_torneo'].dtypes)
-                        #1st.rerun()
+            
+                    # ➡️ PUNTO DI DEBUG: inserisci il tuo codice qui
+                    st.write("--- DEBUG: DF TORNEO DOPO IL SALVATAGGIO ---")
+                    st.write(st.session_state['df_torneo'])
+                    st.write("Dtypes dopo:", st.session_state['df_torneo'].dtypes)
+                    #1st.rerun()                       
 
 if __name__ == "__main__":
     main()
