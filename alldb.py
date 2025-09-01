@@ -89,7 +89,27 @@ def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
 # -------------------------
 # FUNZIONI DI GESTIONE DATI SU MONGO
 # -------------------------
+def carica_tornei_da_db(tournaments_collection):
+    """
+    Carica un dizionario con i nomi di tutti i tornei esistenti e i loro ID.
+    Restituisce un dizionario vuoto in caso di errore o assenza di tornei.
+    """
+    if tournaments_collection is None:
+        st.error("❌ Impossibile connettersi alla collezione dei tornei.")
+        return {}
+    
+    tornei_disponibili = {}
+    try:
+        # Trova tutti i documenti nella collezione e recupera 'nome_torneo' e '_id'
+        for torneo in tournaments_collection.find({}, {"nome_torneo": 1}):
+            # Aggiunge il nome del torneo e il suo ID al dizionario
+            tornei_disponibili[torneo['nome_torneo']] = str(torneo['_id'])
+    except Exception as e:
+        st.error(f"❌ Errore durante il caricamento della lista dei tornei: {e}")
+        return {}
 
+    return tornei_disponibili
+    
 def carica_giocatori_da_db(collection):
     """
     Carica i dati dei giocatori dalla collezione MongoDB.
