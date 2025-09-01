@@ -319,7 +319,7 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
    
 
     # 🔹 Forza ricarica della pagina per evitare None stampati
-    st.rerun()
+    #1st.rerun()
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):    
     if df_classifica is None or df_classifica.empty:
