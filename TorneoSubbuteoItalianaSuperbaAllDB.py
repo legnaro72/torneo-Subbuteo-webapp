@@ -132,8 +132,19 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
         return None
     try:
         torneo_data = tournaments_collection.find_one({"_id": ObjectId(tournament_id)})
+        
+        # ➡️ PUNTO DI DEBUG 1: Ispeziona i dati appena letti dal DB
+        st.write("--- DEBUG: Dati grezzi da MongoDB ---")
+        st.write(torneo_data)
+        
         if torneo_data and 'calendario' in torneo_data:
             df_torneo = pd.DataFrame(torneo_data['calendario'])
+            
+            # ➡️ PUNTO DI DEBUG 2: Ispeziona il DataFrame appena creato
+            st.write("--- DEBUG: DataFrame appena creato ---")
+            st.write(df_torneo)
+            st.write("Tipi di dato:", df_torneo.dtypes)
+            
             df_torneo['Valida'] = df_torneo['Valida'].astype(bool)
             df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').astype('Int64')
             df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').astype('Int64')
@@ -268,6 +279,12 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
 
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     df = st.session_state['df_torneo']
+    
+    # ➡️ PUNTO DI DEBUG 3: Ispeziona il DataFrame prima del salvataggio
+    st.write("--- DEBUG: DataFrame prima del salvataggio ---")
+    st.write(df)
+    st.write("Tipi di dato:", df.dtypes)
+    
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
 
     for idx, row in df_giornata.iterrows():
@@ -300,7 +317,12 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     st.rerun()
 
 
-def mostra_classifica_stilizzata(df_classifica, girone_sel):
+def mostra_classifica_stilizzata(df_classifica, girone_sel):    
+
+    # ➡️ PUNTO DI DEBUG 4: Ispeziona il DataFrame della classifica
+    st.write("--- DEBUG: DataFrame della Classifica ---")
+    st.write(df_classifica)
+    
     if df_classifica is None or df_classifica.empty:
         st.info("⚽ Nessuna partita validata")
         return
