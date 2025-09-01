@@ -861,6 +861,23 @@ def main():
                         
                         # ➡️ SEGNALE 3
                         st.write("Segnale 3: Calendario generato, sto per salvare su MongoDB")
+
+                        # ➡️ DEBUG: Salva le informazioni DOPO LA CONVERSIONE
+                        st.session_state['debug_message'] = {
+                            'tid_valore': "Non ancora salvato.",
+                            'df_colonne': list(df_torneo.columns),
+                            'df_dtypes': df_torneo.dtypes.to_dict(),
+                            'messaggio': "Debug salvato correttamente."
+                        }
+
+                        # ➡️ CONFERMA DEL SALVATAGGIO: Aggiorna il tid solo se è valido
+                        if tid:
+                            st.session_state['df_torneo'] = df_torneo
+                            st.session_state['tournament_id'] = str(tid)
+                            st.session_state['calendario_generato'] = True
+                            st.session_state['debug_message']['tid_valore'] = str(tid)
+                            st.toast("Calendario generato e salvato su MongoDB ✅")
+                            #1st.rerun()
                         
                         tid = salva_torneo_su_db(tournaments_collection, df_torneo, st.session_state['nome_torneo'])
 
