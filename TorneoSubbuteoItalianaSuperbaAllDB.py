@@ -846,6 +846,10 @@ def main():
                         st.session_state['tournament_id'] = str(tid)
                         st.session_state['calendario_generato'] = True
                         st.toast("Calendario generato e salvato su MongoDB ✅")
+                        # ➡️ PUNTO DI DEBUG: inserisci il tuo codice qui
+                        st.write("--- DEBUG: DF TORNEO DOPO IL SALVATAGGIO ---")
+                        st.write(st.session_state['df_torneo'])
+                        st.write("Dtypes dopo:", st.session_state['df_torneo'].dtypes)
                         #1st.rerun()
 
 if __name__ == "__main__":
