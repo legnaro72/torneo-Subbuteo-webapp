@@ -303,7 +303,12 @@ def salva_risultati_giornata_handler(tournaments_collection, girone_sel, giornat
         st.session_state['classifica_finale'] = classifica_finale
         st.toast(f"Torneo completato e salvato come {nome_completato} ✅")
 
-def salva_risultati_giornata__handler(tournaments_collection, girone_sel, giornata_sel):
+# Modifica la tua funzione esistente così
+def salva_risultati_giornata_handler():
+    st.session_state['salva_dati'] = True
+    st.session_state['show_progress'] = True # Aggiungi questo per mostrare un loader
+
+def salva_risultati_giornata_handler2(tournaments_collection, girone_sel, giornata_sel):
     df = st.session_state['df_torneo']
     
         
@@ -649,11 +654,58 @@ def main():
                     st.rerun()
         
             mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
-            st.button(
-                "💾 Salva Risultati Giornata",
-                on_click=salva_risultati_giornata__handler,
-                args=(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel'])
-            )
+
+            # Aggiungi un placeholder per il messaggio di "in caricamento"
+            placeholder_progress = st.empty()
+            
+            # Bottone per salvare
+            st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata_handler)
+            
+            # ➡️ QUESTO È IL NUOVO BLOCCO DI CODICE DA AGGIUNGERE
+            if st.session_state.get('salva_dati', False):
+                
+                # Mostra un messaggio di progresso o un spinner
+                with placeholder_progress:
+                    with st.spinner('Salvataggio in corso...'):
+                        df = st.session_state['df_torneo']
+                        
+                        # ➡️ Inserisci qui tutta la logica di salvataggio che avevi nella funzione precedente
+                        df_giornata = df[(df['Girone'] == st.session_state['girone_sel']) & (df['Giornata'] == st.session_state['giornata_sel'])].copy()
+                        for idx, row in df_giornata.iterrows():
+                            gol_casa = st.session_state.get(f"golcasa_{idx}")
+                            gol_ospite = st.session_state.get(f"golospite_{idx}")
+                            
+                            df.at[idx, 'GolCasa'] = gol_casa if gol_casa is not None else 0
+                            df.at[idx, 'GolOspite'] = gol_ospite if gol_ospite is not None else 0
+                            df.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
+            
+                        df['GolCasa'] = pd.to_numeric(df['GolCasa'], errors='coerce').fillna(0).astype('Int64')
+                        df['GolOspite'] = pd.to_numeric(df['GolOspite'], errors='coerce').fillna(0).astype('Int64')
+                        st.session_state['df_torneo'] = df
+            
+                        if 'tournament_id' in st.session_state:
+                            aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
+                            st.toast("Risultati salvati su MongoDB ✅")
+                        else:
+                            st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
+                        
+                        if df['Valida'].all():
+                            # ... (resto della tua logica per il torneo completato) ...
+                            
+                # Resetta lo stato di salvataggio a False
+                st.session_state['salva_dati'] = False
+                
+                # Cancella il placeholder di progresso
+                placeholder_progress.empty()
+                
+                # Fai il re-run una volta completato il tutto
+                st.rerun()
+    
+            #st.button(
+            #    "💾 Salva Risultati Giornata",
+            #    on_click=salva_risultati_giornata__handler,
+            #    args=(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel'])
+            #)
         
             #st.markdown("---")
             #st.subheader(f"Classifica {st.session_state['girone_sel']}")
