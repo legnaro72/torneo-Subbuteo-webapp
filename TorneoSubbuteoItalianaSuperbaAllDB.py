@@ -317,12 +317,18 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
         df.at[idx, 'GolOspite'] = gol_ospite if gol_ospite is not None else 0
         df.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
 
+        # 🔹 DEBUG per singola partita
+        st.write(f"Partita {idx} → Casa:{df.at[idx,'GolCasa']} Ospite:{df.at[idx,'GolOspite']} Valida:{df.at[idx,'Valida']}")
+
     # ➡️ FORZA LA PULIZIA DEL TIPO DI DATO ANCHE QUI
     df['GolCasa'] = pd.to_numeric(df['GolCasa'], errors='coerce').fillna(0).astype('Int64')
     df['GolOspite'] = pd.to_numeric(df['GolOspite'], errors='coerce').fillna(0).astype('Int64')
 
     
     st.session_state['df_torneo'] = df
+    # 🔹 DEBUG finale post-salvataggio
+    st.write("--- DEBUG: DataFrame dopo il salvataggio ---")
+    st.write(st.session_state['df_torneo'])
 
     # 🔹 aggiorna torneo corrente
     if 'tournament_id' in st.session_state:
