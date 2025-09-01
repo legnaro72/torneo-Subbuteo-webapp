@@ -833,6 +833,13 @@ def main():
                     else:
                         gironi_finali = list(st.session_state['gironi_manuali'].values())
 
+                    # ➡️ SOLUZIONE DEFINITIVA: Controlla che nessun girone sia vuoto o con un solo giocatore
+                    for girone in gironi_finali:
+                        # Un girone con meno di due giocatori non può generare un calendario valido
+                        if len(girone) < 2:
+                            st.error("❌ Errore: Un girone contiene meno di due giocatori. Aggiungi altri giocatori o modifica i gironi.")
+                            return
+
                     df_torneo = genera_calendario_from_list(gironi_finali, st.session_state['tipo_calendario'])
                     
                     # ➡️ SOLUZIONE DEFINITIVA: Forza il tipo di dato a stringa
