@@ -853,6 +853,11 @@ def main():
                     try:
                         # ➡️ Prova a fare queste operazioni
                         df_torneo = genera_calendario_from_list(gironi_finali, st.session_state['tipo_calendario'])
+
+                        # ➡️ SOLUZIONE DEFINITIVA: Forza il tipo di dato a stringa per tutte le colonne
+                        df_torneo['Girone'] = df_torneo['Girone'].astype('string')
+                        df_torneo['Casa'] = df_torneo['Casa'].astype('string')
+                        df_torneo['Ospite'] = df_torneo['Ospite'].astype('string')
                         
                         # ➡️ SEGNALE 3
                         st.write("Segnale 3: Calendario generato, sto per salvare su MongoDB")
