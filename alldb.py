@@ -158,7 +158,8 @@ def salva_torneo_su_db(tournaments_collection, df_torneo, nome_torneo):
     if tournaments_collection is None:
         return None
     try:
-        df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
+        # ➡️ CORREZIONE: Pulisci il dataframe prima di convertirlo, evitando i None
+        df_torneo_pulito = df_torneo.fillna(0)
         data = {"nome_torneo": nome_torneo, "calendario": df_torneo_pulito.to_dict('records')}
         result = tournaments_collection.insert_one(data)
         return result.inserted_id
@@ -170,7 +171,8 @@ def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
     if tournaments_collection is None:
         return False
     try:
-        df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
+        # ➡️ CORREZIONE: Pulisci il dataframe prima di aggiornarlo, evitando i None
+        df_torneo_pulito = df_torneo.fillna(0)
         tournaments_collection.update_one(
             {"_id": ObjectId(tournament_id)},
             {"$set": {"calendario": df_torneo_pulito.to_dict('records')}}
@@ -418,7 +420,8 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
 
 def mostra_schermata_torneo(players_collection, tournaments_collection):
     st.sidebar.header("⚙️ Opzioni Torneo")
-    df = st.session_state['df_torneo']
+    # ➡️ CORREZIONE: Assicurati che il dataframe non contenga None prima di visualizzarlo
+    df = st.session_state['df_torneo'].fillna(0)
     classifica = aggiorna_classifica(df)
 
     if classifica is not None and not classifica.empty:
