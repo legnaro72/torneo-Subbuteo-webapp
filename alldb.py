@@ -812,5 +812,5 @@ def main():
                     else:
                         st.error("❌ Errore durante il caricamento del torneo. Il file potrebbe essere corrotto.")
 
-#if __name__ == "__main__":
-#    main()
+if __name__ == "__main__":
+    main()
