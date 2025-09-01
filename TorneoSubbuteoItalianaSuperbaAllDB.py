@@ -196,7 +196,12 @@ def genera_calendario_from_list(gironi, tipo="Solo andata"):
                         })
             teams = [teams[0]] + [teams[-1]] + teams[1:-1]
      
-    return pd.DataFrame(partite)
+    df = pd.DataFrame(partite)
+    # Assicurati che le colonne dei gol siano di tipo intero fin da subito
+    df['GolCasa'] = df['GolCasa'].astype('Int64')
+    df['GolOspite'] = df['GolOspite'].astype('Int64')
+    df['Valida'] = df['Valida'].astype(bool)
+    return df
 
 def aggiorna_classifica(df):
     if 'Girone' not in df.columns:
