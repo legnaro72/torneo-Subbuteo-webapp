@@ -658,49 +658,62 @@ def main():
             # Aggiungi un placeholder per il messaggio di "in caricamento"
             placeholder_progress = st.empty()
             
-            # Bottone per salvare
+            # Bottone per salvare che si limita a chiamare la funzione di gestione dello stato
             st.button("💾 Salva Risultati Giornata", on_click=salva_risultati_giornata_handler)
             
-            # ➡️ QUESTO È IL NUOVO BLOCCO DI CODICE DA AGGIUNGERE
+            # ➡️ Logica di salvataggio che si attiva solo se il bottone è stato cliccato
             if st.session_state.get('salva_dati', False):
                 
-                # Mostra un messaggio di progresso o un spinner
+                # Mostra un messaggio di progresso o uno spinner
                 with placeholder_progress:
                     with st.spinner('Salvataggio in corso...'):
-                        df = st.session_state['df_torneo']
-                        
-                        # ➡️ Inserisci qui tutta la logica di salvataggio che avevi nella funzione precedente
-                        df_giornata = df[(df['Girone'] == st.session_state['girone_sel']) & (df['Giornata'] == st.session_state['giornata_sel'])].copy()
-                        for idx, row in df_giornata.iterrows():
-                            gol_casa = st.session_state.get(f"golcasa_{idx}")
-                            gol_ospite = st.session_state.get(f"golospite_{idx}")
+                        try:
+                            # Recupera i dati dal DataFrame della sessione
+                            df = st.session_state['df_torneo']
                             
-                            df.at[idx, 'GolCasa'] = gol_casa if gol_casa is not None else 0
-                            df.at[idx, 'GolOspite'] = gol_ospite if gol_ospite is not None else 0
-                            df.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
+                            # ➡️ Logica di salvataggio dei risultati nel DataFrame
+                            df_giornata = df[(df['Girone'] == st.session_state['girone_sel']) & (df['Giornata'] == st.session_state['giornata_sel'])].copy()
+                            for idx, row in df_giornata.iterrows():
+                                gol_casa = st.session_state.get(f"golcasa_{idx}")
+                                gol_ospite = st.session_state.get(f"golospite_{idx}")
+                                
+                                df.at[idx, 'GolCasa'] = gol_casa if gol_casa is not None else 0
+                                df.at[idx, 'GolOspite'] = gol_ospite if gol_ospite is not None else 0
+                                df.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
             
-                        df['GolCasa'] = pd.to_numeric(df['GolCasa'], errors='coerce').fillna(0).astype('Int64')
-                        df['GolOspite'] = pd.to_numeric(df['GolOspite'], errors='coerce').fillna(0).astype('Int64')
-                        st.session_state['df_torneo'] = df
+                            # Forzatura del tipo di dato per garantire l'integrità
+                            df['GolCasa'] = pd.to_numeric(df['GolCasa'], errors='coerce').fillna(0).astype('Int64')
+                            df['GolOspite'] = pd.to_numeric(df['GolOspite'], errors='coerce').fillna(0).astype('Int64')
+                            st.session_state['df_torneo'] = df
             
-                        if 'tournament_id' in st.session_state:
-                            aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
-                            st.toast("Risultati salvati su MongoDB ✅")
-                        else:
-                            st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
-                        
-                        if df['Valida'].all():
-                            # ... (resto della tua logica per il torneo completato) ...
+                            # ➡️ Logica di salvataggio su MongoDB
+                            if 'tournament_id' in st.session_state:
+                                aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
+                                st.toast("Risultati salvati su MongoDB ✅")
+                            else:
+                                st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
                             
-                # Resetta lo stato di salvataggio a False
-                st.session_state['salva_dati'] = False
-                
-                # Cancella il placeholder di progresso
-                placeholder_progress.empty()
-                
-                # Fai il re-run una volta completato il tutto
-                st.rerun()
-    
+                            # ➡️ Logica per il completamento del torneo
+                            if df['Valida'].all():
+                                nome_completato = f"completato_{st.session_state['nome_torneo']}"
+                                classifica_finale = aggiorna_classifica(df)
+                                salva_torneo_su_db(tournaments_collection, df, nome_completato)
+                                st.session_state['torneo_completato'] = True
+                                st.session_state['classifica_finale'] = classifica_finale
+                                st.toast(f"Torneo completato e salvato come {nome_completato} ✅")
+                                
+                        except Exception as e:
+                            st.error(f"❌ Errore durante il salvataggio: {e}")
+                        finally:
+                            # Resetta lo stato di salvataggio a False
+                            st.session_state['salva_dati'] = False
+                            
+                            # Cancella il placeholder di progresso
+                            placeholder_progress.empty()
+                            
+                            # Ricarica la pagina per riflettere le modifiche
+                            st.rerun()
+
             #st.button(
             #    "💾 Salva Risultati Giornata",
             #    on_click=salva_risultati_giornata__handler,
