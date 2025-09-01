@@ -829,6 +829,7 @@ def main():
                     df_torneo = genera_calendario_from_list(gironi_finali, st.session_state['tipo_calendario'])
                     
                     # ➡️ SOLUZIONE DEFINITIVA: Forza il tipo di dato a stringa
+                    df_torneo['Girone'] = df_torneo['Girone'].astype('string')
                     df_torneo['Casa'] = df_torneo['Casa'].astype('string')
                     df_torneo['Ospite'] = df_torneo['Ospite'].astype('string')
                     
