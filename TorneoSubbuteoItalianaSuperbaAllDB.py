@@ -743,7 +743,124 @@ def main():
                     else:
                         st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
                               
-                    st.rerun()                       
+                    st.rerun()
+        else: # Questo else gestisce il caso in cui nessun torneo è stato caricato o creato
+            st.info("Benvenuto! Seleziona una delle opzioni qui sotto per iniziare.")
+    
+            col_iniziali = st.columns(2)
+    
+            with col_iniziali[0]:
+                if st.button("➕ Crea Nuovo Torneo", use_container_width=True, key="crea_nuovo_button"):
+                    st.session_state['mostra_form_creazione'] = True
+                    st.session_state['filtro_attivo'] = 'Nessuno'
+                    st.rerun()
+    
+            with col_iniziali[1]:
+                st.session_state['tornei_disponibili'] = carica_tornei_da_db(tournaments_collection)
+                opzioni_tornei = {t['nome_torneo']: str(t['_id']) for t in st.session_state['tornei_disponibili']}
+    
+                if not opzioni_tornei:
+                    st.warning("Non ci sono tornei salvati. Crea un nuovo torneo per iniziare.")
+                else:
+                    if st.button("📂 Carica Torneo Esistente", use_container_width=True, key="carica_esistente_button"):
+                        st.session_state['mostra_form_creazione'] = False
+                        st.session_state['filtro_attivo'] = 'Nessuno'
+    
+            if st.session_state.get('mostra_form_creazione', False):
+                st.markdown("---")
+                st.subheader("Nuovo Torneo")
+                st.session_state['nome_torneo'] = st.text_input("Nome del Torneo")
+                num_partecipanti = st.number_input("Numero di partecipanti (4-12)", min_value=4, max_value=12, step=1)
+                tipo_torneo = st.selectbox("Tipo di Torneo", ["Solo andata", "Andata e ritorno"])
+                
+                giocatori_esistenti = df_master['Nome'].unique().tolist()
+                giocatori_scelti = st.multiselect("Seleziona i partecipanti", giocatori_esistenti, max_selections=num_partecipanti)
+    
+                if len(giocatori_scelti) == num_partecipanti:
+                    st.session_state['giocatori_selezionati_definitivi'] = giocatori_scelti
+                    st.session_state['mostra_assegnazione_squadre'] = True
+                    st.session_state['tipo_torneo'] = tipo_torneo
+    
+                if st.session_state.get('mostra_assegnazione_squadre', False) and len(st.session_state['giocatori_selezionati_definitivi']) == num_partecipanti:
+                    st.markdown("---")
+                    if st.button("Avanti e Assegna Squadre"):
+                        st.session_state['mostra_gironi'] = True
+                        st.rerun()
+    
+            if st.session_state.get('mostra_gironi', False):
+                st.markdown("---")
+                st.subheader("Assegnazione Squadre ai Gironi")
+                col_gironi_manuali = st.columns(2)
+                with col_gironi_manuali[0]:
+                    st.write("Configurazione Gironi")
+                
+                with col_gironi_manuali[1]:
+                    if st.button("Torna indietro", key="indietro_assegnazione"):
+                        st.session_state['mostra_gironi'] = False
+                        st.rerun()
+                
+                gironi_players = {}
+                num_gironi = st.number_input("Numero di gironi", min_value=1, max_value=3, step=1)
+                players_per_girone = len(st.session_state['giocatori_selezionati_definitivi']) // num_gironi
+                
+                giocatori_shuffled = st.session_state['giocatori_selezionati_definitivi'][:]
+                random.shuffle(giocatori_shuffled)
+    
+                st.markdown("---")
+                for i in range(num_gironi):
+                    girone_name = f"Girone {i+1}"
+                    gironi_players[girone_name] = st.multiselect(
+                        f"Giocatori del {girone_name}",
+                        giocatori_shuffled,
+                        default=giocatori_shuffled[i*players_per_girone: (i+1)*players_per_girone],
+                        key=f"manual_girone_{i}"
+                    )
+                
+                gironi_completi = all(len(gironi_players[f"Girone {i+1}"]) == players_per_girone for i in range(num_gironi))
+                st.session_state['gironi_manuali_completi'] = gironi_completi and all(p in sum(gironi_players.values(), []) for p in st.session_state['giocatori_selezionati_definitivi'])
+    
+                if st.session_state['gironi_manuali_completi']:
+                    if st.button("Conferma Gironi e Genera Calendario"):
+                        df_torneo = genera_calendario_from_list(list(gironi_players.values()), tipo=st.session_state['tipo_torneo'])
+                        st.session_state['df_torneo'] = df_torneo
+                        
+                        tid = salva_torneo_su_db(tournaments_collection, df_torneo, st.session_state['nome_torneo'])
+    
+                        if tid:
+                            st.session_state['df_torneo'] = df_torneo
+                            st.session_state['tournament_id'] = str(tid)
+                            st.session_state['calendario_generato'] = True
+                            st.toast("Calendario generato e salvato su MongoDB ✅")
+                            st.rerun()
+                        else:
+                            st.error("❌ Errore: Il salvataggio su MongoDB è fallito. Controlla la connessione al database.")
+                else:
+                    st.warning("Per continuare, devi assegnare tutti i giocatori ai gironi senza duplicazioni.")
+            
+            # ➡️ Logica per caricare un torneo esistente
+            if st.session_state.get('carica_esistente_button', False):
+                st.session_state['mostra_form_creazione'] = False
+                st.markdown("---")
+                st.subheader("Carica Torneo Esistente")
+                torneo_selezionato_nome = st.selectbox(
+                    "Seleziona un torneo da caricare",
+                    list(opzioni_tornei.keys()),
+                    key="selezione_torneo_carica"
+                )
+                
+                if st.button("Carica Torneo"):
+                    if torneo_selezionato_nome:
+                        tournament_id_selezionato = opzioni_tornei[torneo_selezionato_nome]
+                        dati_caricati = carica_torneo_da_db(tournaments_collection, tournament_id_selezionato)
+                        
+                        if dati_caricati and 'calendario' in dati_caricati:
+                            st.session_state['nome_torneo'] = dati_caricati['nome_torneo']
+                            st.session_state['tournament_id'] = str(dati_caricati['_id'])
+                            st.session_state['calendario_generato'] = True
+                            st.toast(f"Torneo '{st.session_state['nome_torneo']}' caricato con successo ✅")
+                            st.rerun()
+                        else:
+                            st.error("❌ Errore durante il caricamento del torneo. Il file potrebbe essere corrotto.")
 
 if __name__ == "__main__":
     main()
