@@ -851,6 +851,8 @@ def main():
                             return
 
                     try:
+                        # ➡️ Inizializza tid a None per prevenire l'errore
+                        tid = None
                         # ➡️ Prova a fare queste operazioni
                         df_torneo = genera_calendario_from_list(gironi_finali, st.session_state['tipo_calendario'])
 
