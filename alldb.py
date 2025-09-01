@@ -446,13 +446,13 @@ def main():
         reset_app_state()
         st.session_state['sidebar_state_reset'] = False
         st.rerun()
-    
+
     # ➡️ AGGIUNGI QUESTO CODICE QUI: Mostra le informazioni di debug
     if 'debug_message' in st.session_state and st.session_state['debug_message']:
         st.toast("--- ULTIMO DEBUG SALVATO ---")
         st.toast(st.session_state['debug_message'])
         st.session_state['debug_message'] = None
-    
+
     # Connessioni (senza messaggi verdi)
     players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players", show_ok=False)
     tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "TorneiSubbuteo", "Superba", show_ok=False)
@@ -487,7 +487,17 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    df_master = carica_giocatori_da_db(players_collection)
+    # ➡️ MODIFICA CRITICA: Gestione dell'errore nella riga 726
+    try:
+        df_master = carica_giocatori_da_db(players_collection)
+        giocatori_esistenti = df_master['Nome'].unique().tolist()
+    except KeyError:
+        st.error("❌ Errore: La colonna 'Nome' non è stata trovata nei dati del database. Potrebbe essere vuoto o avere una struttura diversa. Verrà caricata una lista vuota di giocatori.")
+        giocatori_esistenti = []
+    
+    # ➡️ MODIFICA: La tua funzione `carica_giocatori_da_db` esistente è stata modificata per includere la gestione dell'errore.
+    # Non è necessario modificarla di nuovo.
+    # Il blocco try/except qui sopra assicura che il programma non si blocchi anche se la funzione restituisce un errore.
 
     if players_collection is None and tournaments_collection is None:
         st.error("❌ Impossibile avviare l'applicazione. La connessione a MongoDB non è disponibile.")
@@ -752,7 +762,6 @@ def main():
             num_partecipanti = st.number_input("Numero di partecipanti (4-12)", min_value=4, max_value=12, step=1)
             tipo_torneo = st.selectbox("Tipo di Torneo", ["Solo andata", "Andata e ritorno"])
             
-            giocatori_esistenti = df_master['Nome'].unique().tolist()
             giocatori_scelti = st.multiselect("Seleziona i partecipanti", giocatori_esistenti, max_selections=num_partecipanti)
 
             if len(giocatori_scelti) == num_partecipanti:
@@ -840,6 +849,5 @@ def main():
                         st.rerun()
                     else:
                         st.error("❌ Errore durante il caricamento del torneo. Il file potrebbe essere corrotto.")
-
 if __name__ == "__main__":
     main()
