@@ -331,7 +331,10 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     else:
         st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
 
-
+    # ➡️ PUNTO DI DEBUG 13: Ispeziona il DataFrame dopo del salvataggio
+    st.write("--- DEBUG: DataFrame prima del salvataggio ---")
+    st.write(df)
+    st.write("Tipi di dato:", df.dtypes)
 
     # 🔹 se tutte le partite sono validate → salva come “completato_nomeTorneo”
     if df['Valida'].all():
@@ -345,10 +348,7 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
 
         st.toast(f"Torneo completato e salvato come {nome_completato} ✅")
 
-    # ➡️ PUNTO DI DEBUG 13: Ispeziona il DataFrame dopo del salvataggio
-    st.write("--- DEBUG: DataFrame prima del salvataggio ---")
-    st.write(df)
-    st.write("Tipi di dato:", df.dtypes)
+   
 
     # 🔹 Forza ricarica della pagina per evitare None stampati
     #1st.rerun()
