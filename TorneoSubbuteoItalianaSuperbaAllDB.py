@@ -146,8 +146,14 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
             st.write("Tipi di dato:", df_torneo.dtypes)
             
             df_torneo['Valida'] = df_torneo['Valida'].astype(bool)
-            df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').astype('Int64')
-            df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').astype('Int64')
+            
+            # ➡️ FORZA LA CONVERSIONE ESPLICITA E PULISCI OGNI AMBIGUITA'
+            # Converte in numerico, sostituisce eventuali NaN con 0, quindi forza a Int64
+            df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').fillna(0).astype('Int64')
+            df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').fillna(0).astype('Int64')
+            
+            #df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').astype('Int64')
+            #df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').astype('Int64')
             st.session_state['df_torneo'] = df_torneo
         return torneo_data
     except Exception as e:
@@ -287,11 +293,26 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
 
+    #for idx, row in df_giornata.iterrows():
+        #df.at[idx, 'GolCasa'] = st.session_state.get(f"golcasa_{idx}", 0)
+        #df.at[idx, 'GolOspite'] = st.session_state.get(f"golospite_{idx}", 0)
+        #df.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
+
+    # ➡️ GESTISCI IN MODO ESPLICITO I VALORI VUOTI
     for idx, row in df_giornata.iterrows():
-        df.at[idx, 'GolCasa'] = st.session_state.get(f"golcasa_{idx}", 0)
-        df.at[idx, 'GolOspite'] = st.session_state.get(f"golospite_{idx}", 0)
+        gol_casa = st.session_state.get(f"golcasa_{idx}")
+        gol_ospite = st.session_state.get(f"golospite_{idx}")
+        
+        # Sostituisci None con 0 prima di assegnare il valore al DataFrame
+        df.at[idx, 'GolCasa'] = gol_casa if gol_casa is not None else 0
+        df.at[idx, 'GolOspite'] = gol_ospite if gol_ospite is not None else 0
         df.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
 
+    # ➡️ FORZA LA PULIZIA DEL TIPO DI DATO ANCHE QUI
+    df['GolCasa'] = pd.to_numeric(df['GolCasa'], errors='coerce').fillna(0).astype('Int64')
+    df['GolOspite'] = pd.to_numeric(df['GolOspite'], errors='coerce').fillna(0).astype('Int64')
+
+    
     st.session_state['df_torneo'] = df
 
     # 🔹 aggiorna torneo corrente
