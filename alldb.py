@@ -67,6 +67,10 @@ def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
 
 # -------------------------
 # UTILITY
+
+def safe_str(val):
+    return "" if val is None else str(val)
+
 # -------------------------
 
 def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
@@ -570,7 +574,7 @@ def main():
         return
 
     if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
-        st.markdown(f"<div class='big-title'>🏆 {st.session_state['nome_torneo']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='big-title'>🏆 {safe_str(st.session_state.get('nome_torneo'))}</div>", unsafe_allow_html=True)
         if st.session_state.get('torneo_completato', False) and st.session_state.get('classifica_finale') is not None:
             vincitori = []
             df_classifica = st.session_state['classifica_finale']
@@ -627,10 +631,25 @@ def main():
         st.session_state['nome_torneo'] = st.text_input("Nome del Torneo")
         num_partecipanti = st.number_input("Numero di partecipanti (4-12)", min_value=4, max_value=12, step=1)
         tipo_torneo = st.selectbox("Tipo di Torneo", ["Solo andata", "Andata e ritorno"])
-        giocatori_scelti = st.multiselect("Seleziona i partecipanti", giocatori_esistenti, max_selections=num_partecipanti)
+        giocatori_scelti = st.multiselect(
+        "Seleziona i partecipanti dal DB",
+        giocatori_esistenti,
+        max_selections=num_partecipanti
+    )
 
-        if len(giocatori_scelti) == num_partecipanti:
-            st.session_state['giocatori_selezionati_definitivi'] = giocatori_scelti
+        mancanti = num_partecipanti - len(giocatori_scelti)
+        nuovi_giocatori = []
+        if mancanti > 0:
+            st.warning(f"⚠️ Mancano {mancanti} giocatori: inseriscili manualmente")
+            for i in range(mancanti):
+                nuovo_nome = st.text_input(f"Nome giocatore {i+1}", key=f"nuovo_giocatore_{i}")
+                if nuovo_nome:
+                    nuovi_giocatori.append(nuovo_nome)
+
+        giocatori_finali = giocatori_scelti + nuovi_giocatori
+
+        if len(giocatori_finali) == num_partecipanti:
+            st.session_state['giocatori_selezionati_definitivi'] = giocatori_finali
             st.session_state['mostra_assegnazione_squadre'] = True
             st.session_state['tipo_torneo'] = tipo_torneo
 
