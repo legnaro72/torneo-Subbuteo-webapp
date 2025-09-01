@@ -70,24 +70,25 @@ def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
 # UTILITY
 # -------------------------
 def combined_style(df: pd.DataFrame):
-    # Evidenziazione classifiche + nascondi None/NaN nelle celle
+    # Evidenziazione classifiche + nascondi solo i veri None/NaN
     def apply_row_style(row):
         base = [''] * len(row)
         if row.name == 0:
-            base = ['background-color: #d4edda; color: black'] * len(row)
+            base = ['background-color: #d4edda; color: black'] * len(row)  # primo posto
         elif row.name <= 2:
-            base = ['background-color: #fff3cd; color: black'] * len(row)
+            base = ['background-color: #fff3cd; color: black'] * len(row)  # secondo/terzo
         return base
 
     def hide_none(val):
-        sval = str(val).strip().lower()
-        if sval in ["none", "nan", ""]:
+        # Nascondi solo valori mancanti reali, non gli zeri
+        if val is None or pd.isna(val):
             return 'color: transparent; text-shadow: none;'
         return ''
 
     styled_df = df.style.apply(apply_row_style, axis=1)
     styled_df = styled_df.map(hide_none)
     return styled_df
+
 
 def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
     col1, col2, col3 = st.columns([1, 3, 1])
@@ -371,6 +372,8 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
         st.info("⚽ Nessuna partita validata")
         return
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
+    df_girone = df_girone.fillna(0)
+    df_girone = df_girone.replace("None", 0).replace("nan", 0)
     st.dataframe(combined_style(df_girone), use_container_width=True)
 
 def esporta_pdf(df_torneo, df_classifica, nome_torneo):
