@@ -329,6 +329,7 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     # 🔹 DEBUG finale post-salvataggio
     st.write("--- DEBUG: DataFrame dopo il salvataggio ---")
     st.write(st.session_state['df_torneo'])
+    st.write("Dtypes dopo:", st.session_state['df_torneo'].dtypes)
 
     # 🔹 aggiorna torneo corrente
     if 'tournament_id' in st.session_state:
