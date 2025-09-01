@@ -147,10 +147,17 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
             
             df_torneo['Valida'] = df_torneo['Valida'].astype(bool)
             
-            # ➡️ FORZA LA CONVERSIONE ESPLICITA E PULISCI OGNI AMBIGUITA'
-            # Converte in numerico, sostituisce eventuali NaN con 0, quindi forza a Int64
-            df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').fillna(0).astype('Int64')
-            df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').fillna(0).astype('Int64')
+            # ➡️ MODIFICA FONDAMENTALE: Pulisci e converti esplicitamente
+            # 1. Rimuovi i valori non numerici e sostituiscili con NaN
+            df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce')
+            df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce')
+            
+            # 2. Sostituisci tutti i NaN (Not a Number) con 0
+            df_torneo = df_torneo.fillna(0)
+
+            # 3. Forza la conversione a intero
+            df_torneo['GolCasa'] = df_torneo['GolCasa'].astype('Int64')
+            df_torneo['GolOspite'] = df_torneo['GolOspite'].astype('Int64')
             
             #df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').astype('Int64')
             #df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').astype('Int64')
