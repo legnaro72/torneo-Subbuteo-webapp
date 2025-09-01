@@ -32,21 +32,18 @@ DEFAULT_STATE = {
     'giocatori_selezionati_definitivi': [],
     'gioc_info': {},
     'usa_bottoni': False,
-    'filtro_attivo': 'Nessuno',  # stato per i filtri
+    'filtro_attivo': 'Nessuno',
     'nome_torneo': None,
     'tournament_id': None,
     'torneo_completato': False,
     'classifica_finale': None,
-    'sidebar_state_reset': False
+    'sidebar_state_reset': False,
+    'show_load_menu': False
 }
-
-for key, value in DEFAULT_STATE.items():
-    if key not in st.session_state:
-        st.session_state[key] = value
 
 def reset_app_state():
     for key in list(st.session_state.keys()):
-        if key not in ['df_torneo', 'sidebar_state_reset', 'players_collection', 'tournaments_collection']:
+        if key not in ['df_torneo', 'players_collection', 'tournaments_collection']:
             st.session_state.pop(key)
     st.session_state.update(DEFAULT_STATE)
     st.session_state['df_torneo'] = pd.DataFrame()
@@ -56,10 +53,6 @@ def reset_app_state():
 # -------------------------
 @st.cache_resource
 def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
-    """
-    Se show_ok=True mostra un messaggio di ok.
-    Di default è False per evitare i badge verdi.
-    """
     try:
         client = MongoClient(uri, server_api=ServerApi('1'))
         db = client.get_database(db_name)
@@ -96,10 +89,6 @@ def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
 # FUNZIONI DI GESTIONE DATI SU MONGO
 # -------------------------
 def carica_tornei_da_db(tournaments_collection):
-    """
-    Carica un dizionario con i nomi di tutti i tornei esistenti e i loro ID.
-    Restituisce un dizionario vuoto in caso di errore o assenza di tornei.
-    """
     if tournaments_collection is None:
         st.error("❌ Impossibile connettersi alla collezione dei tornei.")
         return {}
@@ -115,10 +104,6 @@ def carica_tornei_da_db(tournaments_collection):
     return tornei_disponibili
 
 def carica_torneo_da_db(tournaments_collection, tournament_id):
-    """
-    Carica i dati di un torneo specifico dal database.
-    Restituisce i dati del torneo o None se fallisce.
-    """
     if tournaments_collection is None:
         st.error("❌ La collezione dei tornei non è disponibile.")
         return None
@@ -144,10 +129,6 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
         return None
 
 def carica_giocatori_da_db(collection):
-    """
-    Carica i dati dei giocatori dalla collezione MongoDB.
-    Restituisce un DataFrame con i dati, o un DataFrame vuoto in caso di errore o assenza di dati.
-    """
     if collection is None:
         st.error("❌ La collezione dei giocatori non è disponibile. Ritorno un DataFrame vuoto.")
         return pd.DataFrame(columns=['Giocatore', 'Squadra', 'Potenziale'])
@@ -569,15 +550,14 @@ def mostra_schermata_torneo(players_collection, tournaments_collection):
         mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], tournaments_collection)
     
 def main():
+    for key, value in DEFAULT_STATE.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
     if st.session_state.get('sidebar_state_reset', False):
         reset_app_state()
         st.session_state['sidebar_state_reset'] = False
         st.rerun()
-
-    if 'debug_message' in st.session_state and st.session_state['debug_message']:
-        st.toast("--- ULTIMO DEBUG SALVATO ---")
-        st.toast(st.session_state['debug_message'])
-        st.session_state['debug_message'] = None
 
     players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players", show_ok=False)
     tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "TorneiSubbuteo", "Superba", show_ok=False)
@@ -586,7 +566,6 @@ def main():
         st.error("❌ Impossibile avviare l'applicazione. La connessione a MongoDB non è disponibile.")
         return
 
-    # Questo blocco ora gestisce l'intera visualizzazione del torneo
     if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
         st.markdown(f"<div class='big-title'>🏆 {st.session_state['nome_torneo']}</div>", unsafe_allow_html=True)
         if st.session_state.get('torneo_completato', False) and st.session_state.get('classifica_finale') is not None:
@@ -597,9 +576,8 @@ def main():
                 vincitori.append(f"🏅 {girone}: {primo}")
             st.success("🎉 Torneo Completato! Vincitori → " + ", ".join(vincitori))
         mostra_schermata_torneo(players_collection, tournaments_collection)
-        return # esce dalla main() per non mostrare il resto del codice
+        return
 
-    # CSS PERSONALIZZATO
     st.markdown("""
         <style>
         .big-title { text-align: center; font-size: clamp(18px, 4vw, 38px); font-weight: bold; margin: 15px 0; color: #e63946; }
@@ -625,7 +603,7 @@ def main():
     with col_iniziali[0]:
         if st.button("➕ Crea Nuovo Torneo", use_container_width=True, key="crea_nuovo_button"):
             st.session_state['mostra_form_creazione'] = True
-            st.session_state['filtro_attivo'] = 'Nessuno'
+            st.session_state['show_load_menu'] = False
             st.rerun()
 
     with col_iniziali[1]:
@@ -637,7 +615,8 @@ def main():
         else:
             if st.button("📂 Carica Torneo Esistente", use_container_width=True, key="carica_esistente_button"):
                 st.session_state['mostra_form_creazione'] = False
-                st.session_state['filtro_attivo'] = 'Nessuno'
+                st.session_state['show_load_menu'] = True
+                st.rerun()
 
     if st.session_state.get('mostra_form_creazione', False):
         st.markdown("---")
@@ -708,8 +687,7 @@ def main():
         else:
             st.warning("Per continuare, devi assegnare tutti i giocatori ai gironi senza duplicazioni.")
     
-    if st.session_state.get('carica_esistente_button', False):
-        st.session_state['mostra_form_creazione'] = False
+    if st.session_state.get('show_load_menu', False):
         st.markdown("---")
         st.subheader("Carica Torneo Esistente")
         torneo_selezionato_nome = st.selectbox(
