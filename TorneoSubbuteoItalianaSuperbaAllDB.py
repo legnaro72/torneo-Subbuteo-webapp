@@ -827,6 +827,11 @@ def main():
                         gironi_finali = list(st.session_state['gironi_manuali'].values())
 
                     df_torneo = genera_calendario_from_list(gironi_finali, st.session_state['tipo_calendario'])
+                    
+                    # ➡️ SOLUZIONE DEFINITIVA: Forza il tipo di dato a stringa
+                    df_torneo['Casa'] = df_torneo['Casa'].astype('string')
+                    df_torneo['Ospite'] = df_torneo['Ospite'].astype('string')
+                    
                     tid = salva_torneo_su_db(tournaments_collection, df_torneo, st.session_state['nome_torneo'])
                     if tid:
                         st.session_state['df_torneo'] = df_torneo
