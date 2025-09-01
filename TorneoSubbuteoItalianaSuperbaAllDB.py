@@ -226,7 +226,7 @@ def aggiorna_classifica(df):
         df_stat['Girone'] = girone
         classifiche.append(df_stat)
     if not classifiche:
-        return None
+        return pd.DataFrame()
     df_classifica = pd.concat(classifiche, ignore_index=True)
     df_classifica = df_classifica.sort_values(by=['Girone', 'Punti', 'DR'], ascending=[True, False, False])
     return df_classifica
