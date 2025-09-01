@@ -302,12 +302,12 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
 
     #if st.button("💾 Salva Risultati Giornata", key="salva_giornata_button"):
     if st.button("💾 Salva Risultati Giornata", key="salva_giornata_button"):
-    with st.spinner('Salvataggio in corso...'):
-        # 🔎 DEBUG: Mostro DataFrame PRIMA del salvataggio
-        st.subheader("📊 DEBUG: DataFrame prima del salvataggio")
-        st.dataframe(st.session_state['df_torneo'], use_container_width=True)
-
-        df_to_save = st.session_state['df_torneo'].copy()
+        with st.spinner('Salvataggio in corso...'):
+            # 🔎 DEBUG: Mostro DataFrame PRIMA del salvataggio
+            st.subheader("📊 DEBUG: DataFrame prima del salvataggio")
+            st.dataframe(st.session_state['df_torneo'], use_container_width=True)
+    
+            df_to_save = st.session_state['df_torneo'].copy()
 
         with st.spinner('Salvataggio in corso...'):
             df_to_save = st.session_state['df_torneo'].copy()
