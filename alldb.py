@@ -89,16 +89,32 @@ def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
 # -------------------------
 # FUNZIONI DI GESTIONE DATI SU MONGO
 # -------------------------
-def carica_giocatori_da_db(players_collection):
-    if players_collection is None:
-        return pd.DataFrame()
+def carica_giocatori_da_db(collection):
+    """
+    Carica i dati dei giocatori dalla collezione MongoDB.
+    Restituisce un DataFrame con i dati, o un DataFrame vuoto se non ci sono dati.
+    """
     try:
-        df = pd.DataFrame(list(players_collection.find({}, {"_id": 0})))
-        return df if not df.empty else pd.DataFrame()
-    except Exception as e:
-        st.error(f"❌ Errore durante la lettura dei giocatori: {e}")
-        return pd.DataFrame()
+        data = list(collection.find({}))
+        if not data:
+            st.info("⚠️ La collezione dei giocatori è vuota. Crea un nuovo torneo per aggiungere i giocatori.")
+            return pd.DataFrame(columns=['Nome', 'Squadra']) # Ritorna un DataFrame vuoto ma con le colonne corrette
+        
+        df = pd.DataFrame(data)
+        
+        # Elimina i record senza nome per pulizia
+        df = df.dropna(subset=['Nome'])
+        
+        # Gestisci il caso in cui la colonna 'Squadra' non esiste
+        if 'Squadra' not in df.columns:
+            df['Squadra'] = "" # Aggiungi una colonna vuota per non far fallire il resto del codice
+            
+        return df
 
+    except Exception as e:
+        st.error(f"❌ Errore durante il caricamento dei giocatori: {e}")
+        st.info("Assicurati che la collezione `superba_players` contenga documenti con un campo `Nome`.")
+        return pd.DataFrame(columns=['Nome', 'Squadra']) # Ritorna un DataFrame di fallback in caso di errore
 def carica_tornei_da_db(tournaments_collection):
     if tournaments_collection is None:
         return []
