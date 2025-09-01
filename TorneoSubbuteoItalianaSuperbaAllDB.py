@@ -78,9 +78,8 @@ def combined_style(df: pd.DataFrame):
             base = ['background-color: #fff3cd; color: black'] * len(row)
         return base
 
-    # ⚠️ Tolto hide_none per i numerici, lasciamo Pandas gestire
-    styled_df = df.style.apply(apply_row_style, axis=1)
-    return styled_df
+    return df.style.apply(apply_row_style, axis=1)
+
 
 
 def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
