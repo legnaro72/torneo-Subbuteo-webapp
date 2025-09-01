@@ -362,58 +362,19 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
         st.info("⚽ Nessuna partita validata")
         return
 
+    # Filtra per girone scelto
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
 
-    # Costruzione tabella HTML
-    html = """
-    <style>
-        .classifica-table {
-            border-collapse: collapse;
-            width: 100%;
-        }
-        .classifica-table th, .classifica-table td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: center;
-        }
-        .classifica-table th {
-            background-color: #f4a261;
-            color: white;
-        }
-        .row-first { background-color: #d4edda; }  /* Verde */
-        .row-top { background-color: #fff3cd; }   /* Giallo */
-    </style>
-    <table class="classifica-table">
-        <thead>
-            <tr>
-                <th>Squadra</th><th>Punti</th><th>V</th><th>P</th><th>S</th><th>GF</th><th>GS</th><th>DR</th>
-            </tr>
-        </thead>
-        <tbody>
-    """
+    # Pulisci i None/NaN → sostituisci con stringa vuota o 0
+    df_girone = df_girone.fillna("")
 
-    for i, r in df_girone.iterrows():
-        row_class = ""
-        if i == 0:
-            row_class = "row-first"
-        elif i in [1, 2]:
-            row_class = "row-top"
-        
-        html += f"""
-        <tr class="{row_class}">
-            <td>{r['Squadra']}</td>
-            <td>{r['Punti']}</td>
-            <td>{r['V']}</td>
-            <td>{r['P']}</td>
-            <td>{r['S']}</td>
-            <td>{r['GF']}</td>
-            <td>{r['GS']}</td>
-            <td>{r['DR']}</td>
-        </tr>
-        """
+    # Se ci sono colonne numeriche, forzale a int (evita NaN residui)
+    for col in ["Punti", "V", "P", "S", "GF", "GS", "DR"]:
+        if col in df_girone.columns:
+            df_girone[col] = pd.to_numeric(df_girone[col], errors="coerce").fillna(0).astype(int)
 
-    html += "</tbody></table>"
-    st.markdown(html, unsafe_allow_html=True)
+    # Mostra la tabella pulita
+    st.dataframe(df_girone, use_container_width=True)
 
 
 def esporta_pdf(df_torneo, df_classifica, nome_torneo):
