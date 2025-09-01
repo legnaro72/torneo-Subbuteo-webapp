@@ -90,77 +90,41 @@ def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
 # FUNZIONI DI GESTIONE DATI SU MONGO
 # -------------------------
 
-def carica_torneo_da_db(tournaments_collection, tournament_id):
-    if tournaments_collection is None:
-        return None
+def carica_giocatori_da_db(collection):
+    """
+    Carica i dati dei giocatori dalla collezione MongoDB.
+    Restituisce un DataFrame con i dati, o un DataFrame vuoto in caso di errore o assenza di dati.
+    """
+    if collection is None:
+        st.error("❌ La collezione dei giocatori non è disponibile. Ritorno un DataFrame vuoto.")
+        return pd.DataFrame(columns=['Giocatore', 'Squadra', 'Potenziale'])
+
     try:
-        torneo_data = tournaments_collection.find_one({"_id": ObjectId(tournament_id)})
+        # Tenta di caricare i dati
+        data = list(collection.find({}, {'_id': 0, 'Giocatore': 1, 'Squadra': 1, 'Potenziale': 1}))
         
-        if torneo_data and 'calendario' in torneo_data:
-            df_torneo = pd.DataFrame(torneo_data['calendario'])
-            df_torneo['Valida'] = df_torneo['Valida'].astype(bool)
-            
-            # --- MODIFICA FONDAMENTALE INIZIA QUI ---
-            # Pulisci e converti esplicitamente i valori numerici
-            # 1. Converte in tipo numerico, sostituendo i valori non validi con NaN
-            df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce')
-            df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce')
-            
-            # 2. Sostituisce i NaN (Not a Number) con 0
-            df_torneo = df_torneo.fillna(0)
-            
-            # 3. Forza la conversione a intero
-            df_torneo['GolCasa'] = df_torneo['GolCasa'].astype('Int64')
-            df_torneo['GolOspite'] = df_torneo['GolOspite'].astype('Int64')
-            # --- MODIFICA FONDAMENTALE FINISCE QUI ---
-
-            st.session_state['df_torneo'] = df_torneo
-        return torneo_data
-    except Exception as e:
-        st.error(f"❌ Errore caricamento torneo: {e}")
-        return None
-
-def carica_tornei_da_db(tournaments_collection):
-    if tournaments_collection is None:
-        return []
-    try:
-        return list(tournaments_collection.find({}, {"nome_torneo": 1}))
-    except Exception as e:
-        st.error(f"❌ Errore caricamento tornei: {e}")
-        return []
-
-def carica_torneo_da_db(tournaments_collection, tournament_id):
-    if tournaments_collection is None:
-        return None
-    try:
-        torneo_data = tournaments_collection.find_one({"_id": ObjectId(tournament_id)})
+        # Se la lista è vuota, crea un DataFrame vuoto con le colonne necessarie
+        if not data:
+            return pd.DataFrame(columns=['Giocatore', 'Squadra', 'Potenziale'])
         
+        # Converte i dati in un DataFrame
+        df = pd.DataFrame(data)
 
+        # Se il DataFrame non ha le colonne previste, torna un DataFrame vuoto
+        if 'Giocatore' not in df.columns or 'Squadra' not in df.columns:
+            st.warning("⚠️ I documenti del database non contengono le colonne 'Giocatore' o 'Squadra'.")
+            return pd.DataFrame(columns=['Giocatore', 'Squadra', 'Potenziale'])
         
-        if torneo_data and 'calendario' in torneo_data:
-            df_torneo = pd.DataFrame(torneo_data['calendario'])
-           
-            df_torneo['Valida'] = df_torneo['Valida'].astype(bool)
+        # Pulisci i record senza nome
+        df = df.dropna(subset=['Giocatore'])
             
-            # ➡️ MODIFICA FONDAMENTALE: Pulisci e converti esplicitamente
-            # 1. Rimuovi i valori non numerici e sostituiscili con NaN
-            df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce')
-            df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce')
-            
-            # 2. Sostituisci tutti i NaN (Not a Number) con 0
-            df_torneo = df_torneo.fillna(0)
+        return df
 
-            # 3. Forza la conversione a intero
-            df_torneo['GolCasa'] = df_torneo['GolCasa'].astype('Int64')
-            df_torneo['GolOspite'] = df_torneo['GolOspite'].astype('Int64')
-            
-            #df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').astype('Int64')
-            #df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').astype('Int64')
-            st.session_state['df_torneo'] = df_torneo
-        return torneo_data
     except Exception as e:
-        st.error(f"❌ Errore caricamento torneo: {e}")
-        return None
+        # Cattura qualsiasi errore (es. problemi di connessione) e restituisce un DataFrame vuoto
+        st.error(f"❌ Errore durante il caricamento dei giocatori: {e}")
+        st.info("Ritorno un DataFrame vuoto per prevenire ulteriori errori.")
+        return pd.DataFrame(columns=['Giocatore', 'Squadra', 'Potenziale'])
 
 def salva_torneo_su_db(tournaments_collection, df_torneo, nome_torneo):
     if tournaments_collection is None:
