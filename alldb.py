@@ -306,6 +306,8 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
             # 🔎 DEBUG: Mostro DataFrame PRIMA del salvataggio
             st.subheader("📊 DEBUG: DataFrame prima del salvataggio")
             st.dataframe(st.session_state['df_torneo'], use_container_width=True)
+            st.text("Tipi di colonna:")
+            st.write(st.session_state['df_torneo'].dtypes)
     
             df_to_save = st.session_state['df_torneo'].copy()
 
@@ -324,6 +326,8 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
                 # 🔎 DEBUG: Mostro DataFrame DOPO aggiornamento ma prima di salvare
                 st.subheader("📊 DEBUG: DataFrame dopo aggiornamento ma prima di scrivere su MongoDB")
                 st.dataframe(df_to_save, use_container_width=True)
+                st.text("Tipi di colonna:")
+                st.write(df_to_save.dtypes)
 
 
             if 'tournament_id' in st.session_state:
@@ -335,6 +339,8 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
                     # 🔎 DEBUG 3: DataFrame DOPO salvataggio su MongoDB
                     st.subheader("📊 DEBUG: DataFrame dopo salvataggio su MongoDB")
                     st.dataframe(st.session_state['df_torneo'], use_container_width=True)
+                    st.text("Tipi di colonna:")
+                    st.write(st.session_state['df_torneo'].dtypes)
 
                     st.toast("Risultati salvati su MongoDB ✅")
 
