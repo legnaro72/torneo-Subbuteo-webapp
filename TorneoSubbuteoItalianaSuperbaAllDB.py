@@ -848,6 +848,10 @@ def main():
                     df_torneo['Ospite'] = df_torneo['Ospite'].astype('string')
                     
                     tid = salva_torneo_su_db(tournaments_collection, df_torneo, st.session_state['nome_torneo'])
+
+                    # ➡️ PUNTO DI DEBUG CRUCIALE: Controlla il valore di tid
+                    st.write("--- DEBUG: Valore di tid dopo il salvataggio ---")
+                    st.write(tid)
                     if tid:
                         st.session_state['df_torneo'] = df_torneo
                         st.session_state['tournament_id'] = str(tid)
