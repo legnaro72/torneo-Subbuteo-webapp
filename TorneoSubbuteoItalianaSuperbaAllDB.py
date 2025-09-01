@@ -470,7 +470,7 @@ def main():
                     if classifica_corrente is not None and not classifica_corrente.empty: # Aggiunto controllo qui
                         mostra_classifica_stilizzata(classifica, girone_class_sel)
                     else:
-                    st.info("⚽ Nessuna partita validata per questo girone.") # Messaggio specifico
+                        st.info("⚽ Nessuna partita validata per questo girone.") # Messaggio specifico
                 else:
                     # Puoi aggiungere un messaggio o semplicemente non mostrare nulla
                     st.info("Seleziona un girone per visualizzare la classifica.")
