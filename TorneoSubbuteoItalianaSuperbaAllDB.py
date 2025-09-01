@@ -206,20 +206,22 @@ def genera_calendario_from_list(gironi, tipo="Solo andata"):
         n = len(gr)
         half = n // 2
         teams = gr[:]
+
         for giornata in range(n - 1):
             for i in range(half):
                 casa, ospite = teams[i], teams[-(i + 1)]
                 if casa != "Riposo" and ospite != "Riposo":
                     partite.append({
                         "Girone": gname, "Giornata": giornata + 1,
-                        "Casa": casa, "Ospite": ospite, "GolCasa": None, "GolOspite": None, "Valida": False
+                        "Casa": casa, "Ospite": ospite, "GolCasa": 0, "GolOspite": 0, "Valida": False
                     })
                     if tipo == "Andata e ritorno":
                         partite.append({
                             "Girone": gname, "Giornata": giornata + 1 + n - 1,
-                            "Casa": ospite, "Ospite": casa, "GolCasa": None, "GolOspite": None, "Valida": False
+                            "Casa": ospite, "Ospite": casa, "GolCasa": 0, "GolOspite": 0, "Valida": False
                         })
             teams = [teams[0]] + [teams[-1]] + teams[1:-1]
+     
     return pd.DataFrame(partite)
 
 def aggiorna_classifica(df):
