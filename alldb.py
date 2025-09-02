@@ -200,7 +200,6 @@ def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
 def genera_calendario_from_list(gironi, tipo="Solo andata"):
     partite = []
     for idx, girone in enumerate(gironi, 1):
-        gname = f"Girone {idx}"
         gr = girone[:]
         if len(gr) % 2 == 1:
             gr.append("Riposo")
@@ -213,18 +212,20 @@ def genera_calendario_from_list(gironi, tipo="Solo andata"):
                 casa, ospite = teams[i], teams[-(i + 1)]
                 if casa != "Riposo" and ospite != "Riposo":
                     partite.append({
-                        "Girone": gname, "Giornata": giornata + 1,
+                        "Girone": idx,  # ➡️ Utilizza un numero intero
+                        "Giornata": giornata + 1,
                         "Casa": casa, "Ospite": ospite, "GolCasa": 0, "GolOspite": 0, "Valida": False
                     })
                     if tipo == "Andata e ritorno":
                         partite.append({
-                            "Girone": gname, "Giornata": giornata + 1 + n - 1,
+                            "Girone": idx,  # ➡️ Utilizza un numero intero
+                            "Giornata": giornata + 1 + n - 1,
                             "Casa": ospite, "Ospite": casa, "GolCasa": 0, "GolOspite": 0, "Valida": False
                         })
             teams = [teams[0]] + [teams[-1]] + teams[1:-1]
      
     return pd.DataFrame(partite)
-
+    
 def aggiorna_classifica(df):
     if 'Girone' not in df.columns:
         return pd.DataFrame()
@@ -262,6 +263,8 @@ def aggiorna_classifica(df):
 # FUNZIONI DI VISUALIZZAZIONE & EVENTI
 # -------------------------
 def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collection):
+    # ➡️ Aggiungi la stringa "Girone" qui per la visualizzazione
+    st.subheader(f"Giornata {giornata_sel} - Girone {girone_sel}")
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         return
@@ -363,6 +366,8 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
     if df_classifica is None or df_classifica.empty:
         st.info("⚽ Nessuna partita validata")
         return
+    # ➡️ Aggiungi la stringa "Girone" qui per la visualizzazione
+    st.subheader(f"Classifica Girone {girone_sel}")
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
     st.dataframe(df_girone, use_container_width=True)
 
@@ -381,7 +386,7 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
         pdf.set_font("Arial", 'B', 14)
         if pdf.get_y() + 8 + margin_bottom > page_height:
             pdf.add_page()
-        pdf.cell(0, 8, f"{girone}", ln=True)
+        pdf.cell(0, 8, f"Girone {girone}", ln=True)
         giornate = sorted(df_torneo[df_torneo['Girone'] == girone]['Giornata'].dropna().unique())
         for g in giornate:
             needed_space = 7 + line_height + line_height + margin_bottom
@@ -417,7 +422,7 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
         if pdf.get_y() + 40 + margin_bottom > page_height:
             pdf.add_page()
         pdf.set_font("Arial", 'B', 13)
-        pdf.cell(0, 8, f"Classifica {girone}", ln=True)
+        pdf.cell(0, 8, f"Classifica Girone {girone}", ln=True)
         df_c = df_classifica[df_classifica['Girone'] == girone]
         pdf.set_font("Arial", 'B', 11)
         headers = ["Squadra", "Punti", "V", "P", "S", "GF", "GS", "DR"]
@@ -463,20 +468,22 @@ def mostra_schermata_torneo(players_collection, tournaments_collection):
         )
     else:
         st.sidebar.info("Nessuna partita valida. Per generare la classifica completa, compila e valida i risultati.")
-        
+
+    # ➡️ Modifica qui: ottieni i numeri interi dei gironi
+    gironi_sidebar = sorted(df['Girone'].dropna().unique().tolist())
     st.sidebar.markdown("---")
     st.sidebar.subheader("📊 Visualizza Classifica")
-    gironi_sidebar = sorted(df['Girone'].dropna().unique().tolist())
-    
-    gironi_sidebar.insert(0, 'Nessuno')  
-    
+    # Inserisci "Nessuno" all'inizio solo se ci sono gironi
+    options_select = ['Nessuno'] + gironi_sidebar if gironi_sidebar else []
+
     girone_class_sel = st.sidebar.selectbox(
-        "Seleziona Girone", gironi_sidebar, key="sidebar_classifica_girone"
+        "Seleziona Girone", options_select, key="sidebar_classifica_girone"
     )
     
     if st.sidebar.button("Visualizza Classifica", key="btn_classifica_sidebar"):
         if girone_class_sel != 'Nessuno':
-            st.subheader(f"Classifica {girone_class_sel}")
+            # ➡️ Rimuovi f-string per la visualizzazione qui, viene gestita nella funzione
+            st.subheader(f"Classifica Girone {girone_class_sel}")
             classifica = aggiorna_classifica(df)
             if classifica is not None and not classifica.empty:
                 mostra_classifica_stilizzata(classifica, girone_class_sel)
