@@ -569,7 +569,7 @@ def mostra_schermata_torneo(players_collection, tournaments_collection):
 
     st.markdown("---")
     if st.session_state['filtro_attivo'] == 'Nessuno':
-        st.subheader("Navigazione Calendario")
+        #st.subheader("Navigazione Calendario")
         gironi = sorted(df['Girone'].dropna().unique().tolist())
         giornate_correnti = sorted(
             df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist()
