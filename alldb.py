@@ -654,22 +654,22 @@ def main():
         return
 
     st.markdown("""
-        <style>
-        .big-title {
-            text-align: center;
-            font-size: 2.5em; /* Aumenta la dimensione del font */
-            font-weight: bold;
-            color: #ff0000; /* Imposta il colore rosso */
-            margin: 15px 0;
-        }
-        .sub-title { font-size: 20px; font-weight: 600; margin-top: 15px; color: d3557; }
-        .stButton>button { background-color: #457b9d; color: white; border-radius: 8px; padding: 0.5em 1em; font-weight: bold; }
-        .stButton>button:hover { background-color: #d3557; color: white; }
-        .stDownloadButton>button { background-color: #2a9d8f; color: white; border-radius: 8px; font-weight: bold; }
-        .stDownloadButton>button:hover { background-color: #21867a; }
-        .stDataFrame { border: 2px solid #f4a261; border-radius: 10px; }
-        </style>
-    """, unsafe_allow_html=True)
+    <style>
+    .big-title {
+        text-align: center;
+        font-size: clamp(18px, 4vw, 38px);
+        font-weight: bold;
+        margin: 15px 0;
+        color: #e63946;
+    }
+    .sub-title { font-size: 20px; font-weight: 600; margin-top: 15px; color: #d3557; }
+    .stButton>button { background-color: #457b9d; color: white; border-radius: 8px; padding: 0.5em 1em; font-weight: bold; }
+    .stButton>button:hover { background-color: #d3557; color: white; }
+    .stDownloadButton>button { background-color: #2a9d8f; color: white; border-radius: 8px; font-weight: bold; }
+    .stDownloadButton>button:hover { background-color: #21867a; }
+    .stDataFrame { border: 2px solid #f4a261; border-radius: 10px; }
+    </style>
+""", unsafe_allow_html=True)
 
     try:
         df_master = carica_giocatori_da_db(players_collection)
