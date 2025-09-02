@@ -114,8 +114,6 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
     try:
         torneo_data = tournaments_collection.find_one({"_id": ObjectId(tournament_id)})
         
-
-        
         if torneo_data and 'calendario' in torneo_data:
             df_torneo = pd.DataFrame(torneo_data['calendario'])
            
@@ -133,8 +131,6 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
             df_torneo['GolCasa'] = df_torneo['GolCasa'].astype('Int64')
             df_torneo['GolOspite'] = df_torneo['GolOspite'].astype('Int64')
             
-            #df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').astype('Int64')
-            #df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').astype('Int64')
             st.session_state['df_torneo'] = df_torneo
         return torneo_data
     except Exception as e:
@@ -269,13 +265,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     df = st.session_state['df_torneo']
     
-        
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
-
-    #for idx, row in df_giornata.iterrows():
-        #df.at[idx, 'GolCasa'] = st.session_state.get(f"golcasa_{idx}", 0)
-        #df.at[idx, 'GolOspite'] = st.session_state.get(f"golospite_{idx}", 0)
-        #df.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
 
     # ➡️ GESTISCI IN MODO ESPLICITO I VALORI VUOTI
     for idx, row in df_giornata.iterrows():
@@ -286,12 +276,10 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
         df.at[idx, 'GolCasa'] = gol_casa if gol_casa is not None else 0
         df.at[idx, 'GolOspite'] = gol_ospite if gol_ospite is not None else 0
         df.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
-
        
     # ➡️ FORZA LA PULIZIA DEL TIPO DI DATO ANCHE QUI
     df['GolCasa'] = pd.to_numeric(df['GolCasa'], errors='coerce').fillna(0).astype('Int64')
     df['GolOspite'] = pd.to_numeric(df['GolOspite'], errors='coerce').fillna(0).astype('Int64')
-
     
     st.session_state['df_torneo'] = df
    
@@ -301,8 +289,6 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
         st.toast("Risultati salvati su MongoDB ✅")
     else:
         st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
-
-   
 
     # 🔹 se tutte le partite sono validate → salva come “completato_nomeTorneo”
     if df['Valida'].all():
@@ -316,18 +302,12 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
 
         st.toast(f"Torneo completato e salvato come {nome_completato} ✅")
 
-   
-
-    # 🔹 Forza ricarica della pagina per evitare None stampati
-    #1st.rerun()
-
 def mostra_classifica_stilizzata(df_classifica, girone_sel):    
     if df_classifica is None or df_classifica.empty:
         st.info("⚽ Nessuna partita validata")
         return
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
     st.dataframe(df_girone, use_container_width=True)
-
 
 def esporta_pdf(df_torneo, df_classifica, nome_torneo):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
@@ -358,7 +338,7 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
                 pdf.cell(col_widths[i], 6, h, border=1, align='C')
             pdf.ln()
             pdf.set_font("Arial", '', 11)
-            partite = df_torneo[(df_torneo['Girone'] == girone) & (df_torneo['Giornata'] == g)]
+            partite = df_torneo[(df_torneo['Girone'] == girone) & (df['Giornata'] == g)]
             for _, row in partite.iterrows():
                 if pdf.get_y() + line_height + margin_bottom > page_height:
                     pdf.add_page()
@@ -422,8 +402,6 @@ def main():
     if 'debug_message' in st.session_state and st.session_state['debug_message']:
         st.toast("--- ULTIMO DEBUG SALVATO ---")
         st.toast(st.session_state['debug_message'])
-        #st.write("--- ULTIMO DEBUG SALVATO ---")
-        #st.write(st.session_state['debug_message'])
         # Pulisce la variabile per evitare di mostrare il messaggio in ricaricamenti futuri
         st.session_state['debug_message'] = None
         
@@ -445,8 +423,6 @@ def main():
             primo = df_classifica[df_classifica['Girone'] == girone].iloc[0]['Squadra']
             vincitori.append(f"🏅 {girone}: {primo}")
         st.success("🎉 Torneo Completato! Vincitori → " + ", ".join(vincitori))
-
-
 
     # CSS PERSONALIZZATO
     # -------------------------
@@ -510,16 +486,13 @@ def main():
                 # Puoi aggiungere un messaggio o semplicemente non mostrare nulla
                 st.info("Seleziona un girone per visualizzare la classifica.")
     
-        # ➡️ Modifica qui: assegna il valore di ritorno del pulsante a una variabile
-        back_to_start_btn = st.sidebar.button("🔙 Torna alla schermata iniziale", key='back_to_start_sidebar', use_container_width=True)
-        if back_to_start_btn:
+        if st.sidebar.button("🔙 Torna alla schermata iniziale", key='back_to_start_sidebar', use_container_width=True):
             st.session_state['sidebar_state_reset'] = True
             st.rerun()
 
         st.sidebar.markdown("---")
         st.sidebar.subheader("🔎 Filtra partite")
 
-        # ➡️ Modifica qui: assegna il valore di ritorno del radio a una variabile
         filtro_opzione = st.sidebar.radio("Scegli un filtro", ('Nessuno', 'Giocatore', 'Girone'), key='filtro_selettore')
 
         if filtro_opzione != st.session_state['filtro_attivo']:
@@ -568,7 +541,7 @@ def main():
                 df_filtrato = df_filtrato[df_filtrato['Giornata'] <= n_squadre_girone - 1]
             elif tipo_andata_ritorno == "Ritorno":
                 n_squadre_girone = len(df[df['Girone'] == girone_scelto]['Casa'].unique())
-                df_filtrato = df_filtrato[df['Giornata'] > n_squadre_girone - 1]
+                df_filtrato = df_filtrato[df_filtrato['Giornata'] > n_squadre_girone - 1]
 
             if not df_filtrato.empty:
                 df_filtrato_show = df_filtrato[['Giornata', 'Casa', 'Ospite']].rename(
@@ -615,9 +588,7 @@ def main():
                     st.rerun()
         
             mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
-            
-            # ➡️ Modifica qui: assegna il valore di ritorno del pulsante a una variabile
-            salva_risultati_btn = st.button(
+            st.button(
                 "💾 Salva Risultati Giornata",
                 on_click=salva_risultati_giornata,
                 args=(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel'])
@@ -631,10 +602,7 @@ def main():
             if tornei_disponibili:
                 tornei_map = {t['nome_torneo']: str(t['_id']) for t in tornei_disponibili}
                 nome_sel = st.selectbox("Seleziona torneo esistente:", list(tornei_map.keys()))
-                
-                # ➡️ Modifica qui: assegna il valore di ritorno del pulsante a una variabile
-                carica_torneo_btn = st.button("Carica Torneo Selezionato")
-                if carica_torneo_btn:
+                if st.button("Carica Torneo Selezionato"):
                     st.session_state['tournament_id'] = tornei_map[nome_sel]
                     st.session_state['nome_torneo'] = nome_sel
                     torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
@@ -649,9 +617,7 @@ def main():
 
         with col2:
             st.markdown("---")
-            # ➡️ Modifica qui: assegna il valore di ritorno del pulsante a una variabile
-            crea_nuovo_btn = st.button("➕ Crea Nuovo Torneo")
-            if crea_nuovo_btn:
+            if st.button("➕ Crea Nuovo Torneo"):
                 st.session_state['mostra_form_creazione'] = True
                 st.rerun()
 
@@ -675,7 +641,6 @@ def main():
             num_supplementari = st.session_state["n_giocatori"] - len(amici_selezionati)
             if num_supplementari < 0:
                 st.warning(f"⚠️ Hai selezionato più giocatori ({len(amici_selezionati)}) del numero partecipanti ({st.session_state['n_giocatori']}). Riduci la selezione.")
-                # ➡️ Modifica qui: esci dalla funzione per evitare errori
                 return
 
             st.markdown(f"Giocatori ospiti da aggiungere: **{max(0, num_supplementari)}**")
@@ -689,13 +654,10 @@ def main():
                 if nome_ospite:
                     giocatori_supplementari.append(nome_ospite.strip())
 
-            # ➡️ Modifica qui: assegna il valore di ritorno del pulsante a una variabile
-            conferma_giocatori_btn = st.button("Conferma Giocatori")
-            if conferma_giocatori_btn:
+            if st.button("Conferma Giocatori"):
                 giocatori_scelti = amici_selezionati + [g for g in giocatori_supplementari if g]
                 if len(set(giocatori_scelti)) < 4:
                     st.warning("⚠️ Inserisci almeno 4 giocatori diversi.")
-                    # ➡️ Modifica qui: esci dalla funzione per evitare errori
                     return
                 st.session_state['giocatori_selezionati_definitivi'] = list(set(giocatori_scelti))
                 st.session_state['mostra_assegnazione_squadre'] = True
@@ -749,9 +711,7 @@ def main():
                     st.session_state['gioc_info'][gioc]["Squadra"] = squadra_nuova
                     st.session_state['gioc_info'][gioc]["Potenziale"] = potenziale_nuovo
 
-            # ➡️ Modifica qui: assegna il valore di ritorno del pulsante a una variabile
-            conferma_squadre_btn = st.button("Conferma Squadre e Potenziali")
-            if conferma_squadre_btn:
+            if st.button("Conferma Squadre e Potenziali"):
                     st.session_state['mostra_gironi'] = True
                     st.toast("Squadre e potenziali confermati ✅")
                     st.rerun()
@@ -782,9 +742,7 @@ def main():
                         )
                         gironi_manuali[f"Girone {i+1}"] = giocatori_selezionati
 
-                    # ➡️ Modifica qui: assegna il valore di ritorno del pulsante a una variabile
-                    valida_gironi_btn = st.button("Valida e Assegna Gironi Manuali")
-                    if valida_gironi_btn:
+                    if st.button("Valida e Assegna Gironi Manuali"):
                         tutti_i_giocatori_assegnati = sum(gironi_manuali.values(), [])
                         if sorted(tutti_i_giocatori_assegnati) == sorted(st.session_state['giocatori_selezionati_definitivi']):
                             st.session_state['gironi_manuali'] = gironi_manuali
@@ -794,26 +752,19 @@ def main():
                         else:
                             st.error("❌ Assicurati di assegnare tutti i giocatori e che ogni giocatore sia in un solo girone.")
 
-                # ➡️ Modifica qui: assegna il valore di ritorno del pulsante a una variabile
-                genera_calendario_btn = st.button("Genera Calendario")
-                if genera_calendario_btn:
+                if st.button("Genera Calendario"):
                     if modalita_gironi == "Popola Gironi Manualmente" and not st.session_state.get('gironi_manuali_completi', False):
                         st.error("❌ Per generare il calendario manualmente, clicca prima su 'Valida e Assegna Gironi Manuali'.")
-                        # ➡️ Modifica qui: esci dalla funzione per evitare errori
                         return
 
-                                        
                     giocatori_formattati = []
                     for gioc in st.session_state['giocatori_selezionati_definitivi']:
-                        # Controlla se le informazioni del giocatore esistono e se la squadra non è None
                         info_giocatore = st.session_state['gioc_info'].get(gioc)
                         if info_giocatore and 'Squadra' in info_giocatore and info_giocatore['Squadra'] is not None:
                             giocatori_formattati.append(f"{info_giocatore['Squadra']}-{gioc}")
                         else:
-                            # Opzionale: puoi aggiungere un debug qui per vedere quale giocatore causa il problema
                             st.warning(f"❌ Informazioni squadra mancanti o nulle per il giocatore: {gioc}. Non verrà inserito nel calendario.")
-                    # ➡️ SEGNALE 1
-                    # st.write("Segnale 1: Inizio generazione calendario")
+                    
                     if modalita_gironi == "Popola Gironi Automaticamente":
                         gironi_finali = [[] for _ in range(st.session_state['num_gironi'])]
                         random.shuffle(giocatori_formattati)
@@ -821,68 +772,26 @@ def main():
                             gironi_finali[i % st.session_state['num_gironi']].append(g)
                     else:
                         gironi_finali = list(st.session_state['gironi_manuali'].values())
-                    # ➡️ SEGNALE 2
-                    # st.write("Segnale 2: Gironi finali creati, sto per generare il calendario")
-
-                    # ➡️ SOLUZIONE DEFINITIVA: Controlla che nessun girone sia vuoto o con un solo giocatore
+                    
                     for girone in gironi_finali:
-                        # Un girone con meno di due giocatori non può generare un calendario valido
                         if len(girone) < 2:
                             st.error("❌ Errore: Un girone contiene meno di due giocatori. Aggiungi altri giocatori o modifica i gironi.")
                             return
 
                     try:
-                        # ➡️ Inizializza tid a None per prevenire l'errore
-                        tid = None
-                        # ➡️ Prova a fare queste operazioni
                         df_torneo = genera_calendario_from_list(gironi_finali, st.session_state['tipo_calendario'])
 
-                        # ➡️ SOLUZIONE DEFINITIVA: Forza il tipo di dato a stringa per tutte le colonne
                         df_torneo['Girone'] = df_torneo['Girone'].astype('string')
                         df_torneo['Casa'] = df_torneo['Casa'].astype('string')
                         df_torneo['Ospite'] = df_torneo['Ospite'].astype('string')
                         
-                        # ➡️ SEGNALE 3
-                        # st.write("Segnale 3: Calendario generato, sto per salvare su MongoDB")
-
-                        # ➡️ DEBUG: Salva le informazioni DOPO LA CONVERSIONE
-                        st.session_state['debug_message'] = {
-                            'tid_valore': "Non ancora salvato.",
-                            'df_colonne': list(df_torneo.columns),
-                            'df_dtypes': df_torneo.dtypes.to_dict(),
-                            'messaggio': "Debug salvato correttamente."
-                        }
-
-                        # ➡️ CONFERMA DEL SALVATAGGIO: Aggiorna il tid solo se è valido
-                        if tid:
-                            st.session_state['df_torneo'] = df_torneo
-                            st.session_state['tournament_id'] = str(tid)
-                            st.session_state['calendario_generato'] = True
-                            st.session_state['debug_message']['tid_valore'] = str(tid)
-                            st.toast("Calendario generato e salvato su MongoDB ✅")
-                            st.rerun()
-                        
                         tid = salva_torneo_su_db(tournaments_collection, df_torneo, st.session_state['nome_torneo'])
 
-                        # ➡️ SOLUZIONE DEFINITIVA: Salva il DEBUG nello stato della sessione
                         st.session_state['debug_message'] = {
                         'tid': str(tid),
                         'df_info': df_torneo.dtypes.to_dict()
                     }
                     
-                        # Questo debug si vedrà solo se non c'è un errore nel try
-                        # st.write("--- DEBUG: Valore di tid dopo il salvataggio ---")
-                        # st.write(tid)
-
-                        
-                        # ➡️ AGGIUNGI QUESTO CODICE: Salva le informazioni di debug
-                        st.session_state['debug_message'] = {
-                        'tid_valore': str(tid),
-                        'df_colonne': list(df_torneo.columns),
-                        'df_dtypes': df_torneo.dtypes.to_dict(),
-                        'messaggio': "Debug salvato correttamente."
-                    }
-                        
                         if tid:
                             st.session_state['df_torneo'] = df_torneo
                             st.session_state['tournament_id'] = str(tid)
@@ -890,14 +799,10 @@ def main():
                             st.toast("Calendario generato e salvato su MongoDB ✅")
                             st.rerun()
                         else:
-                            # Questo si vedrà se il salvataggio fallisce senza un errore
                             st.error("❌ Errore: Il salvataggio su MongoDB è fallito. Controlla la connessione al database.")
                     
                     except Exception as e:
-                        # ➡️ Questo si vedrà se c'è un errore imprevisto
                         st.error(f"❌ Errore critico durante il salvataggio: {e}")
-
-            
                     
                     st.rerun()                       
 
