@@ -297,48 +297,64 @@ def aggiorna_classifica(df):
 # FUNZIONI DI VISUALIZZAZIONE & EVENTI
 # -------------------------
 def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collection):
-    # ➡️ Aggiungi la stringa "Girone" qui per la visualizzazione
     st.subheader(f"Giornata {giornata_sel} - Girone {girone_sel}")
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         return
     
+    # Pre-popola il session_state per i widget della giornata corrente
+    for index, row in df_giornata.iterrows():
+        key_casa = f"golcasa_{girone_sel}_{giornata_sel}_{index}"
+        key_ospite = f"golospite_{girone_sel}_{giornata_sel}_{index}"
+        key_valida = f"valida_{girone_sel}_{giornata_sel}_{index}"
+        
+        # Popola lo stato del widget solo se non esiste già
+        if key_casa not in st.session_state:
+            st.session_state[key_casa] = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
+        if key_ospite not in st.session_state:
+            st.session_state[key_ospite] = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
+        if key_valida not in st.session_state:
+            st.session_state[key_valida] = bool(row['Valida'])
+
     with st.expander("⚽ Inserisci i risultati della giornata"):
         for index, row in df_giornata.iterrows():
             col1, col2, col3, col4, col5 = st.columns([1, 0.4, 0.1, 0.4, 1])
             with col1:
                 st.markdown(f"<p style='text-align: right; font-weight: bold;'>{safe_str(row['Casa'])}</p>", unsafe_allow_html=True)
             with col2:
-                gol_casa_val = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
                 st.number_input(
                     "Gol",
                     min_value=0,
                     step=1,
                     key=f"golcasa_{girone_sel}_{giornata_sel}_{index}",
                     label_visibility="hidden",
-                    value=gol_casa_val
+                    # Passa il valore dal session_state
+                    value=st.session_state[f"golcasa_{girone_sel}_{giornata_sel}_{index}"]
                 )
             with col3:
                 st.markdown("<div style='text-align:center;'>-</div>", unsafe_allow_html=True)
             with col4:
-                gol_ospite_val = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
                 st.number_input(
                     "Gol",
                     min_value=0,
                     step=1,
                     key=f"golospite_{girone_sel}_{giornata_sel}_{index}",
                     label_visibility="hidden",
-                    value=gol_ospite_val
+                    # Passa il valore dal session_state
+                    value=st.session_state[f"golospite_{girone_sel}_{giornata_sel}_{index}"]
                 )
             with col5:
                 st.markdown(f"<p style='text-align: left; font-weight: bold;'>{safe_str(row['Ospite'])}</p>", unsafe_allow_html=True)
             
             st.checkbox(
                 "Partita Conclusa",
-                value=bool(row['Valida']),
+                # Passa il valore dal session_state
+                value=st.session_state[f"valida_{girone_sel}_{giornata_sel}_{index}"],
                 key=f"valida_{girone_sel}_{giornata_sel}_{index}"
             )
             st.write("---")
+    
+    # ... il resto della funzione rimane invariato
 
     if st.button("💾 Salva Risultati Giornata", key="salva_giornata_button"):
         with st.spinner('Salvataggio in corso...'):
