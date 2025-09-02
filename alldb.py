@@ -358,7 +358,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
             if 'tournament_id' in st.session_state:
                 try:
                     aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_to_save)
-                    st.session_state['df_torneo'] = ensure_string_cols(df, ("Casa", "Ospite"))_to_save
+                    st.session_state['df_torneo'] = ensure_string_cols(df_to_save, ("Casa", "Ospite"))_to_save
                     st.toast("Risultati salvati su MongoDB ✅")
 
                     # 🔎 DEBUG 3: DataFrame DOPO salvataggio su MongoDB
