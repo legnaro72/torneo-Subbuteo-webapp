@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 from pandas import StringDtype
@@ -308,31 +309,33 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
             with col1:
                 st.markdown(f"<p style='text-align: right; font-weight: bold;'>{safe_str(row['Casa'])}</p>", unsafe_allow_html=True)
             with col2:
-                # ❌ ELIMINATO: value=gol_casa_val
+                gol_casa_val = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
                 st.number_input(
                     "Gol",
                     min_value=0,
                     step=1,
                     key=f"golcasa_{girone_sel}_{giornata_sel}_{index}",
-                    label_visibility="hidden"
+                    label_visibility="hidden",
+                    value=gol_casa_val
                 )
             with col3:
                 st.markdown("<div style='text-align:center;'>-</div>", unsafe_allow_html=True)
             with col4:
-                # ❌ ELIMINATO: value=gol_ospite_val
+                gol_ospite_val = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
                 st.number_input(
                     "Gol",
                     min_value=0,
                     step=1,
                     key=f"golospite_{girone_sel}_{giornata_sel}_{index}",
-                    label_visibility="hidden"
+                    label_visibility="hidden",
+                    value=gol_ospite_val
                 )
             with col5:
                 st.markdown(f"<p style='text-align: left; font-weight: bold;'>{safe_str(row['Ospite'])}</p>", unsafe_allow_html=True)
             
-            # ❌ ELIMINATO: value=bool(row['Valida'])
             st.checkbox(
                 "Partita Conclusa",
+                value=bool(row['Valida']),
                 key=f"valida_{girone_sel}_{giornata_sel}_{index}"
             )
             st.write("---")
@@ -393,8 +396,6 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
                     st.error(f"❌ Errore durante il salvataggio: {e}")
             else:
                 st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
-
-
 def mostra_classifica_stilizzata(df_classifica, girone_sel):    
     if df_classifica is None or df_classifica.empty:
         st.info("⚽ Nessuna partita validata")
