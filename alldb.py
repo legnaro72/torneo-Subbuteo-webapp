@@ -586,10 +586,10 @@ def mostra_schermata_torneo(players_collection, tournaments_collection):
             
             st.rerun()
 
-    if 'giornata_sel' not in st.session_state:
-        st.session_state['giornata_sel'] = 1
-
-    giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
+        if 'giornata_sel' not in st.session_state:
+            st.session_state['giornata_sel'] = 1
+    
+        giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
         
         modalita_nav = st.radio(        
             "Modalità navigazione giornata",
