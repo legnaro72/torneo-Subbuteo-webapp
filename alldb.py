@@ -696,6 +696,56 @@ def main():
             st.session_state['tipo_torneo'] = tipo_torneo
 
         if st.session_state.get('mostra_assegnazione_squadre', False) and len(st.session_state['giocatori_selezionati_definitivi']) == num_partecipanti:
+            ###
+            # --- Aggiungi questo blocco di codice ---
+            st.markdown("---")
+            st.subheader("Modifica Squadre e Potenziale")
+            
+            giocatori_info = st.session_state.get('gioc_info', {})
+            if not giocatori_info:
+                # Inizializza le informazioni sui giocatori la prima volta
+                for g in st.session_state['giocatori_selezionati_definitivi']:
+                    giocatori_info[g] = {'Squadra': '', 'Potenziale': 5}
+                st.session_state['gioc_info'] = giocatori_info
+    
+            cols = st.columns([1, 1, 1])
+            with cols[0]:
+                st.write("**Giocatore**")
+            with cols[1]:
+                st.write("**Squadra**")
+            with cols[2]:
+                st.write("**Potenziale (1-10)**")
+    
+            for giocatore in st.session_state['giocatori_selezionati_definitivi']:
+                col1, col2, col3 = st.columns([1, 1, 1])
+                with col1:
+                    st.write(giocatore)
+                with col2:
+                    nuova_squadra = st.text_input(
+                        "Nome Squadra", 
+                        value=giocatori_info[giocatore]['Squadra'],
+                        key=f"squadra_{giocatore}",
+                        label_visibility="hidden"
+                    )
+                    giocatori_info[giocatore]['Squadra'] = nuova_squadra
+                with col3:
+                    nuovo_potenziale = st.number_input(
+                        "Potenziale",
+                        min_value=1,
+                        max_value=10,
+                        value=giocatori_info[giocatore]['Potenziale'],
+                        key=f"potenziale_{giocatore}",
+                        label_visibility="hidden"
+                    )
+                    giocatori_info[giocatore]['Potenziale'] = nuovo_potenziale
+            
+            st.session_state['gioc_info'] = giocatori_info
+            # --- Fine blocco di codice da aggiungere ---
+
+        if st.button("Avanti e Assegna Squadre"):
+            st.session_state['mostra_gironi'] = True
+            st.rerun()
+            
             st.markdown("---")
             if st.button("Avanti e Assegna Squadre"):
                 st.session_state['mostra_gironi'] = True
