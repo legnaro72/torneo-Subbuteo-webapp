@@ -766,7 +766,7 @@ def main():
                 tid = salva_torneo_su_db(tournaments_collection, df_torneo, st.session_state['nome_torneo'])
 
                 if tid:
-                    st.session_state['df_torneo'] = ensure_string_cols(df, ("Casa", "Ospite"))_torneo
+                    st.session_state['df_torneo'] = ensure_string_cols(df_torneo, ("Casa", "Ospite"))
                     st.session_state['tournament_id'] = str(tid)
                     st.session_state['calendario_generato'] = True
                     st.toast("Calendario generato e salvato su MongoDB ✅")
