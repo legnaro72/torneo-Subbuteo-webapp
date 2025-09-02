@@ -666,20 +666,21 @@ def main():
                 st.session_state['mostra_form_creazione'] = False
                 st.session_state['show_load_menu'] = True
                 st.rerun()
-
+    #inizio 
     if st.session_state.get('mostra_form_creazione', False):
         st.markdown("---")
         st.subheader("Nuovo Torneo")
+        
         st.session_state['nome_torneo'] = st.text_input("Nome del Torneo")
         num_partecipanti = st.number_input("Numero di partecipanti (4-12)", min_value=4, max_value=12, step=1)
         tipo_torneo = st.selectbox("Tipo di Torneo", ["Solo andata", "Andata e ritorno"])
-        giocatori_scelti = st.multiselect(
-        "Seleziona i partecipanti dal DB",
-        giocatori_esistenti,
-        max_selections=num_partecipanti
-    )
-
-        mancanti = num_partecipanti - len(giocatori_scelti)
+        giocatori_selezionati = st.multiselect(
+            "Seleziona i partecipanti dal DB",
+            giocatori_esistenti,
+            max_selections=num_partecipanti
+        )
+        
+        mancanti = num_partecipanti - len(giocatori_selezionati)
         nuovi_giocatori = []
         if mancanti > 0:
             st.warning(f"⚠️ Mancano {mancanti} giocatori: inseriscili manualmente")
@@ -687,29 +688,32 @@ def main():
                 nuovo_nome = st.text_input(f"Nome giocatore {i+1}", key=f"nuovo_giocatore_{i}")
                 if nuovo_nome:
                     nuovi_giocatori.append(nuovo_nome)
-
-        giocatori_finali = giocatori_scelti + nuovi_giocatori
-
-        # ➡️ Nuovo blocco di codice per prelevare i dati dal DB
-        # Rimuovi l'intero blocco "if st.session_state.get('mostra_assegnazione_squadre', False)..."
-        # e sostituiscilo con questo
-        if len(giocatori_finali) == num_partecipanti and 'gioc_info' not in st.session_state:
-            st.session_state['giocatori_selezionati_definitivi'] = giocatori_finali
-            giocatori_info = {}
-            for g in st.session_state['giocatori_selezionati_definitivi']:
-                giocatore_data = players_collection.find_one({"Giocatore": g})
-                if giocatore_data:
-                    giocatori_info[g] = {
-                        'Squadra': giocatore_data.get('Squadra', ''),
-                        'Potenziale': giocatore_data.get('Potenziale', 5)
-                    }
-                else:
-                    giocatori_info[g] = { 'Squadra': '', 'Potenziale': 5 }
-            
-            st.session_state['gioc_info'] = giocatori_info
-            st.session_state['mostra_assegnazione_squadre'] = True
-            st.session_state['tipo_torneo'] = tipo_torneo
-            st.rerun()
+        
+        giocatori_finali = giocatori_selezionati + nuovi_giocatori
+        
+        # ➡️ Nuovo pulsante per confermare la selezione dei partecipanti
+        if st.button("Conferma Partecipanti"):
+            if len(giocatori_finali) == num_partecipanti:
+                st.session_state['giocatori_selezionati_definitivi'] = giocatori_finali
+                
+                # Inizializza il dizionario 'gioc_info' recuperando i dati dal database
+                giocatori_info = {}
+                for g in st.session_state['giocatori_selezionati_definitivi']:
+                    giocatore_data = players_collection.find_one({"Giocatore": g})
+                    if giocatore_data:
+                        giocatori_info[g] = {
+                            'Squadra': giocatore_data.get('Squadra', ''),
+                            'Potenziale': giocatore_data.get('Potenziale', 5)
+                        }
+                    else:
+                        giocatori_info[g] = { 'Squadra': '', 'Potenziale': 5 }
+                
+                st.session_state['gioc_info'] = giocatori_info
+                st.session_state['mostra_assegnazione_squadre'] = True
+                st.session_state['tipo_torneo'] = tipo_torneo
+                st.rerun() # Riavvia lo script per mostrare la nuova schermata
+            else:
+                st.error(f"Devi selezionare esattamente {num_partecipanti} giocatori.")
 
     if st.session_state.get('mostra_assegnazione_squadre', False):
         st.markdown("---")
