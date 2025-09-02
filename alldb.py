@@ -330,7 +330,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
 
         with st.spinner('Salvataggio in corso...'):
             df_to_save = st.session_state['df_torneo'].copy()
-        df_to_save = ensure_string_cols(df_to_save, ("Casa", "Ospite"))
+            df_to_save = ensure_string_cols(df_to_save, ("Casa", "Ospite"))
 
             for index, row in df_giornata.iterrows():
                 key_casa = f"golcasa_{girone_sel}_{giornata_sel}_{index}"
