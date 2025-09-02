@@ -254,9 +254,6 @@ def update_score(idx, is_home):
     
     if 'tournament_id' in st.session_state:
         aggiorna_torneo_su_db(st.session_state.get('tournaments_collection'), st.session_state['tournament_id'], df)
-        # st.toast("Risultati salvati ✅", icon="💾")
-    else:
-        st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
     
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
@@ -297,7 +294,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             st.markdown("<hr>", unsafe_allow_html=True)
         else:
             st.markdown('<div style="color:red; margin-bottom: 15px;">Partita non ancora validata ❌</div>', unsafe_allow_html=True)
-
+    
     # ➡️ Il pulsante per salvare l'intera giornata ora non è più strettamente necessario per il salvataggio dei valori
     #    ma può essere utile per il controllo finale e il salvataggio su MongoDB
     if st.button("💾 Salva Risultati Giornata", key="save_final_button"):
@@ -308,7 +305,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             nome_completato = f"completato_{st.session_state['nome_torneo']}"
             classifica_finale = aggiorna_classifica(df)
 
-            salva_torneo_su_db(tournaments_collection, df, nome_completato)
+            salva_torneo_su_db(st.session_state.get('tournaments_collection'), df, nome_completato)
 
             st.session_state['torneo_completato'] = True
             st.session_state['classifica_finale'] = classifica_finale
@@ -316,7 +313,6 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             st.toast(f"Torneo completato e salvato come {nome_completato} ✅")
         else:
             st.toast("Risultati giornata salvati ✅")
-
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):    
     if df_classifica is None or df_classifica.empty:
