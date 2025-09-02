@@ -230,78 +230,93 @@ def aggiorna_classifica(df):
 # -------------------------
 # FUNZIONI DI VISUALIZZAZIONE & EVENTI
 # -------------------------
+def update_score(idx, is_home):
+    """Callback function per aggiornare il dataframe in session state."""
+    df = st.session_state['df_torneo']
+    
+    # ➡️ Se la partita è già validata, non fare nulla.
+    if df.loc[idx, 'Valida']:
+        return
+
+    key_gol = f"golcasa_{idx}" if is_home else f"golospite_{idx}"
+    key_valida = f"valida_{idx}"
+    
+    # Prendi i valori dalle session state keys
+    gol_val = st.session_state.get(key_gol)
+    valida_val = st.session_state.get(key_valida)
+    
+    # ➡️ Aggiorna il dataframe in session state
+    df.loc[idx, 'GolCasa'] = int(gol_val) if is_home and gol_val is not None else df.loc[idx, 'GolCasa']
+    df.loc[idx, 'GolOspite'] = int(gol_val) if not is_home and gol_val is not None else df.loc[idx, 'GolOspite']
+    df.loc[idx, 'Valida'] = valida_val if valida_val is not None else df.loc[idx, 'Valida']
+
+    st.session_state['df_torneo'] = df
+    
+    if 'tournament_id' in st.session_state:
+        aggiorna_torneo_su_db(st.session_state.get('tournaments_collection'), st.session_state['tournament_id'], df)
+        # st.toast("Risultati salvati ✅", icon="💾")
+    else:
+        st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
+    
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         return
+
     for idx, row in df_giornata.iterrows():
-        # ➡️ CORREZIONE QUI: Assicurati che i valori siano sempre numeri
-        gol_casa = int(row['GolCasa']) if pd.notna(row['GolCasa']) and str(row['GolCasa']).isdigit() else 0
-        gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) and str(row['GolOspite']).isdigit() else 0
+        gol_casa = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
+        gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
+        valida = row['Valida']
 
         col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
+
         with col1:
             st.markdown(f"**{row['Casa']}** vs **{row['Ospite']}**")
         with col2:
             st.number_input(
-                "", min_value=0, max_value=20, key=f"golcasa_{idx}", value=gol_casa,
-                disabled=row['Valida'], label_visibility="hidden"
+                "", min_value=0, max_value=20, value=gol_casa,
+                key=f"golcasa_{idx}", disabled=valida, label_visibility="hidden",
+                on_change=update_score, args=(idx, True) # ➡️ AGGIUNTO IL CALLBACK
             )
         with col3:
             st.markdown("-")
         with col4:
             st.number_input(
-                "", min_value=0, max_value=20, key=f"golospite_{idx}", value=gol_ospite,
-                disabled=row['Valida'], label_visibility="hidden"
+                "", min_value=0, max_value=20, value=gol_ospite,
+                key=f"golospite_{idx}", disabled=valida, label_visibility="hidden",
+                on_change=update_score, args=(idx, False) # ➡️ AGGIUNTO IL CALLBACK
             )
         with col5:
-            st.checkbox("Valida", key=f"valida_{idx}", value=row['Valida'])
+            st.checkbox(
+                "Valida", key=f"valida_{idx}", value=valida,
+                on_change=update_score, args=(idx, True) # ➡️ AGGIUNTO IL CALLBACK
+            )
 
         # Riga separatrice / stato partita
-        if st.session_state.get(f"valida_{idx}", False):
+        if valida:
             st.markdown("<hr>", unsafe_allow_html=True)
         else:
             st.markdown('<div style="color:red; margin-bottom: 15px;">Partita non ancora validata ❌</div>', unsafe_allow_html=True)
 
-def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
-    df = st.session_state['df_torneo']
-    
-    df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
-
-    # ➡️ GESTISCI IN MODO ESPLICITO I VALORI VUOTI
-    for idx, row in df_giornata.iterrows():
-        gol_casa = st.session_state.get(f"golcasa_{idx}")
-        gol_ospite = st.session_state.get(f"golospite_{idx}")
+    # ➡️ Il pulsante per salvare l'intera giornata ora non è più strettamente necessario per il salvataggio dei valori
+    #    ma può essere utile per il controllo finale e il salvataggio su MongoDB
+    if st.button("💾 Salva Risultati Giornata", key="save_final_button"):
+        df = st.session_state['df_torneo']
         
-        # Sostituisci None con 0 prima di assegnare il valore al DataFrame
-        df.at[idx, 'GolCasa'] = gol_casa if gol_casa is not None else 0
-        df.at[idx, 'GolOspite'] = gol_ospite if gol_ospite is not None else 0
-        df.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
-       
-    # ➡️ FORZA LA PULIZIA DEL TIPO DI DATO ANCHE QUI
-    df['GolCasa'] = pd.to_numeric(df['GolCasa'], errors='coerce').fillna(0).astype('Int64')
-    df['GolOspite'] = pd.to_numeric(df['GolOspite'], errors='coerce').fillna(0).astype('Int64')
-    
-    st.session_state['df_torneo'] = df
-   
-    # 🔹 aggiorna torneo corrente
-    if 'tournament_id' in st.session_state:
-        aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
-        st.toast("Risultati salvati su MongoDB ✅")
-    else:
-        st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
+        # 🔹 se tutte le partite sono validate → salva come “completato_nomeTorneo”
+        if df['Valida'].all():
+            nome_completato = f"completato_{st.session_state['nome_torneo']}"
+            classifica_finale = aggiorna_classifica(df)
 
-    # 🔹 se tutte le partite sono validate → salva come “completato_nomeTorneo”
-    if df['Valida'].all():
-        nome_completato = f"completato_{st.session_state['nome_torneo']}"
-        classifica_finale = aggiorna_classifica(df)
+            salva_torneo_su_db(tournaments_collection, df, nome_completato)
 
-        salva_torneo_su_db(tournaments_collection, df, nome_completato)
+            st.session_state['torneo_completato'] = True
+            st.session_state['classifica_finale'] = classifica_finale
 
-        st.session_state['torneo_completato'] = True
-        st.session_state['classifica_finale'] = classifica_finale
+            st.toast(f"Torneo completato e salvato come {nome_completato} ✅")
+        else:
+            st.toast("Risultati giornata salvati ✅")
 
-        st.toast(f"Torneo completato e salvato come {nome_completato} ✅")
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):    
     if df_classifica is None or df_classifica.empty:
@@ -411,6 +426,10 @@ def main():
     players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players", show_ok=False)
     tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "TorneiSubbuteo", "Superba", show_ok=False)
 
+    # ➡️ Salva le collection in session_state per un accesso più semplice
+    st.session_state['players_collection'] = players_collection
+    st.session_state['tournaments_collection'] = tournaments_collection
+    
     # Titolo con stile personalizzato
     if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
         st.markdown(f"<div class='big-title'>🏆 {st.session_state['nome_torneo']}</div>", unsafe_allow_html=True)
@@ -590,12 +609,9 @@ def main():
                     st.rerun()
         
             mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
-            st.button(
-                "💾 Salva Risultati Giornata",
-                on_click=salva_risultati_giornata,
-                args=(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel'])
-            )
-
+            # Il pulsante non è più necessario per il salvataggio dei singoli risultati,
+            # ma è stato mantenuto per la logica di salvataggio del torneo completo.
+            
     else:
         st.subheader("📁 Carica un torneo o crea uno nuovo")
         col1, col2 = st.columns(2)
