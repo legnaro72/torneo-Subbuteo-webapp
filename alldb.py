@@ -398,7 +398,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
                 st.markdown(f"<p style='text-align: left; font-weight: bold;'>{safe_str(row['Ospite'])}</p>", unsafe_allow_html=True)
 
             st.checkbox("Partita Conclusa", value=val_valida, key=key_valida)
-            st.write("---")
+            st.markdown("---")
 
     # Salvataggio: mappiamo gli i -> orig_index per aggiornare il df originale correttamente
     if st.button("💾 Salva Risultati Giornata", key="salva_giornata_button"):
