@@ -269,66 +269,49 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
     with st.expander("⚽ Inserisci i risultati della giornata"):
         for index, row in df_giornata.iterrows():
             col1, col2, col3, col4, col5 = st.columns([1, 0.4, 0.1, 0.4, 1])
-
             with col1:
-                #st.write(f"**{row['Casa']}**")
-                st.write(f"**{safe_str(row['Casa'])}**")
-
-
-            
+                st.markdown(f"<p style='text-align: right; font-weight: bold;'>{safe_str(row['Casa'])}</p>", unsafe_allow_html=True)
             with col2:
                 gol_casa_val = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
                 st.number_input(
                     "Gol",
                     min_value=0,
                     step=1,
-                    #key=f"golcasa_{index}",
                     key=f"golcasa_{girone_sel}_{giornata_sel}_{index}",
                     label_visibility="hidden",
                     value=gol_casa_val
                 )
-            
             with col3:
-                st.write("**:**")
-            
+                st.markdown("<div style='text-align:center;'>-</div>", unsafe_allow_html=True)
             with col4:
                 gol_ospite_val = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
                 st.number_input(
                     "Gol",
                     min_value=0,
                     step=1,
-                    #key=f"golospite_{index}",
                     key=f"golospite_{girone_sel}_{giornata_sel}_{index}",
-
                     label_visibility="hidden",
                     value=gol_ospite_val
                 )
-            
             with col5:
-                #st.write(f"**{row['Ospite']}**")
-                st.write(f"**{safe_str(row['Ospite'])}**")
+                st.markdown(f"<p style='text-align: left; font-weight: bold;'>{safe_str(row['Ospite'])}</p>", unsafe_allow_html=True)
             
             st.checkbox(
                 "Partita Conclusa",
                 value=bool(row['Valida']),
-                #key=f"valida_{index}"
                 key=f"valida_{girone_sel}_{giornata_sel}_{index}"
             )
             st.write("---")
 
-    #if st.button("💾 Salva Risultati Giornata", key="salva_giornata_button"):
     if st.button("💾 Salva Risultati Giornata", key="salva_giornata_button"):
         with st.spinner('Salvataggio in corso...'):
-            # 🔎 DEBUG: Mostro DataFrame PRIMA del salvataggio
-            st.subheader("📊 DEBUG: DataFrame prima del salvataggio")
-            st.dataframe(st.session_state['df_torneo'], use_container_width=True)
-            st.text("Tipi di colonna:")
-            st.write(st.session_state['df_torneo'].dtypes)
-    
-            df_to_save = st.session_state['df_torneo'].copy()
-        df_to_save = ensure_string_cols(df_to_save, ("Casa", "Ospite"))
+            # ➡️ Aggiunto expander per i messaggi di debug
+            with st.expander("🔎 DEBUG: Dettagli salvataggio"):
+                st.subheader("📊 DEBUG: DataFrame prima del salvataggio")
+                st.dataframe(st.session_state['df_torneo'], use_container_width=True)
+                st.text("Tipi di colonna:")
+                st.write(st.session_state['df_torneo'].dtypes)
 
-        with st.spinner('Salvataggio in corso...'):
             df_to_save = st.session_state['df_torneo'].copy()
             df_to_save = ensure_string_cols(df_to_save, ("Casa", "Ospite"))
 
@@ -345,29 +328,23 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
                 df_to_save.loc[index, 'GolOspite'] = int(gol_ospite)
                 df_to_save.loc[index, 'Valida'] = bool(valida)
 
-                st.text(f"Salvataggio riga {index}: Casa={row['Casa']} GolCasa={gol_casa}, Ospite={row['Ospite']} GolOspite={gol_ospite}, Valida={valida}")
-
-
-                # 🔎 DEBUG: Mostro DataFrame DOPO aggiornamento ma prima di salvare
+            with st.expander("🔎 DEBUG: Dettagli salvataggio"):
                 st.subheader("📊 DEBUG: DataFrame dopo aggiornamento ma prima di scrivere su MongoDB")
                 st.dataframe(df_to_save, use_container_width=True)
                 st.text("Tipi di colonna:")
                 st.write(df_to_save.dtypes)
-
 
             if 'tournament_id' in st.session_state:
                 try:
                     aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_to_save)
                     st.session_state['df_torneo'] = ensure_string_cols(df_to_save, ("Casa", "Ospite"))
                     st.toast("Risultati salvati su MongoDB ✅")
-
-                    # 🔎 DEBUG 3: DataFrame DOPO salvataggio su MongoDB
-                    st.subheader("📊 DEBUG: DataFrame dopo salvataggio su MongoDB")
-                    st.dataframe(st.session_state['df_torneo'], use_container_width=True)
-                    st.text("Tipi di colonna:")
-                    st.write(st.session_state['df_torneo'].dtypes)
-
-                    st.toast("Risultati salvati su MongoDB ✅")
+                    
+                    with st.expander("🔎 DEBUG: Dettagli salvataggio"):
+                        st.subheader("📊 DEBUG: DataFrame dopo salvataggio su MongoDB")
+                        st.dataframe(st.session_state['df_torneo'], use_container_width=True)
+                        st.text("Tipi di colonna:")
+                        st.write(st.session_state['df_torneo'].dtypes)
 
                     if df_to_save['Valida'].all():
                         nome_completato = f"completato_{st.session_state['nome_torneo']}"
@@ -382,8 +359,6 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
                     st.error(f"❌ Errore durante il salvataggio: {e}")
             else:
                 st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
-    
-
 def mostra_classifica_stilizzata(df_classifica, girone_sel):    
     if df_classifica is None or df_classifica.empty:
         st.info("⚽ Nessuna partita validata")
