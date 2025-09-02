@@ -1,5 +1,13 @@
 import streamlit as st
 import pandas as pd
+from pandas import StringDtype
+
+def ensure_string_cols(df, cols=("Casa", "Ospite")):
+    for c in cols:
+        if c in df.columns:
+            df[c] = df[c].astype(StringDtype())
+    return df
+
 import random
 from fpdf import FPDF
 from datetime import datetime
@@ -8,8 +16,6 @@ from pymongo.server_api import ServerApi
 from bson.objectid import ObjectId
 import json
 import io
-from pandas import StringDtype
-
 
 # -------------------------------------------------
 # CONFIG PAGINA (deve essere la prima chiamata st.*)
@@ -49,14 +55,6 @@ def reset_app_state():
             st.session_state.pop(key)
     st.session_state.update(DEFAULT_STATE)
     st.session_state['df_torneo'] = pd.DataFrame()
-
-# --- TEXT DTYPE UTILS ---
-def ensure_string_cols(df, cols=("Casa", "Ospite")):
-    for c in cols:
-        if c in df.columns:
-            df[c] = df[c].astype(StringDtype())
-    return df
-
 
 # -------------------------
 # FUNZIONI CONNESSIONE MONGO (SENZA SUCCESS VERDI)
@@ -135,10 +133,8 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
             
             df_torneo['GolCasa'] = df_torneo['GolCasa'].astype('Int64')
             df_torneo['GolOspite'] = df_torneo['GolOspite'].astype('Int64')
-            
-            #st.session_state['df_torneo'] = df_torneo
-            st.session_state['df_torneo'] = ensure_string_cols(df_torneo, ("Casa", "Ospite"))
 
+            st.session_state['df_torneo'] = ensure_string_cols(df, ("Casa", "Ospite"))_torneo
             return torneo_data
     except Exception as e:
         st.error(f"❌ Errore caricamento torneo: {e}")
@@ -326,16 +322,15 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
             # 🔎 DEBUG: Mostro DataFrame PRIMA del salvataggio
             st.subheader("📊 DEBUG: DataFrame prima del salvataggio")
             st.dataframe(st.session_state['df_torneo'], use_container_width=True)
-            st.session_state['df_torneo'] = ensure_string_cols(df_torneo, ("Casa", "Ospite"))
             st.text("Tipi di colonna:")
-            st.write(st.session_state['df_torneo'].dtypes)         
-
+            st.write(st.session_state['df_torneo'].dtypes)
+    
             df_to_save = st.session_state['df_torneo'].copy()
-            df_to_save = ensure_string_cols(df_to_save, ("Casa", "Ospite"))
+        df_to_save = ensure_string_cols(df_to_save, ("Casa", "Ospite"))
 
         with st.spinner('Salvataggio in corso...'):
             df_to_save = st.session_state['df_torneo'].copy()
-            df_to_save = ensure_string_cols(df_to_save, ("Casa", "Ospite"))
+        df_to_save = ensure_string_cols(df_to_save, ("Casa", "Ospite"))
 
             for index, row in df_giornata.iterrows():
                 key_casa = f"golcasa_{girone_sel}_{giornata_sel}_{index}"
@@ -363,9 +358,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
             if 'tournament_id' in st.session_state:
                 try:
                     aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_to_save)
-                    df_to_save = ensure_string_cols(df_to_save, ("Casa", "Ospite"))
-                    st.session_state['df_torneo'] = df_to_save
-            
+                    st.session_state['df_torneo'] = ensure_string_cols(df, ("Casa", "Ospite"))_to_save
                     st.toast("Risultati salvati su MongoDB ✅")
 
                     # 🔎 DEBUG 3: DataFrame DOPO salvataggio su MongoDB
@@ -768,12 +761,12 @@ def main():
         if st.session_state['gironi_manuali_completi']:
             if st.button("Conferma Gironi e Genera Calendario"):
                 df_torneo = genera_calendario_from_list(list(gironi_players.values()), tipo=st.session_state['tipo_torneo'])
-                st.session_state['df_torneo'] = df_torneo
+                st.session_state['df_torneo'] = ensure_string_cols(df, ("Casa", "Ospite"))_torneo
                 
                 tid = salva_torneo_su_db(tournaments_collection, df_torneo, st.session_state['nome_torneo'])
 
                 if tid:
-                    st.session_state['df_torneo'] = df_torneo
+                    st.session_state['df_torneo'] = ensure_string_cols(df, ("Casa", "Ospite"))_torneo
                     st.session_state['tournament_id'] = str(tid)
                     st.session_state['calendario_generato'] = True
                     st.toast("Calendario generato e salvato su MongoDB ✅")
