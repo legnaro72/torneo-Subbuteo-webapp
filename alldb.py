@@ -792,12 +792,7 @@ def main():
             st.rerun()
 
     elif st.session_state.get('mostra_gironi', False):
-                   
-            st.markdown("---")
-            if st.button("Avanti e Assegna Squadre"):
-                st.session_state['mostra_gironi'] = True
-                st.session_state['mostra_assegnazione_squadre'] = False
-                st.rerun()
+        st.rerun()
 
     if st.session_state.get('mostra_gironi', False):
         st.markdown("---")
