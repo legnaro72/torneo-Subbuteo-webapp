@@ -32,7 +32,7 @@ if 'df_torneo' not in st.session_state:
 DEFAULT_STATE = {
     'calendario_generato': False,
     'mostra_form_creazione': False,
-    'girone_sel': "Girone 1",
+    'girone_sel': 1, 
     'giornata_sel': 1,
     'mostra_assegnazione_squadre': False,
     'mostra_gironi': False,
@@ -551,26 +551,45 @@ def mostra_schermata_torneo(players_collection, tournaments_collection):
 
     st.markdown("---")
     if st.session_state['filtro_attivo'] == 'Nessuno':
+        #st.subheader("Navigazione Calendario")
+
         st.subheader("Navigazione Calendario")
+    
         gironi = sorted(df['Girone'].dropna().unique().tolist())
-        giornate_correnti = sorted(
-            df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist()
-        )
         
-        nuovo_girone = st.selectbox("Seleziona Girone", gironi, index=gironi.index(st.session_state['girone_sel']))
-        #if nuovo_girone != st.session_state['girone_sel']:
-        if nuovo_girone != st.session_state['girone_sel']:
+        # ➡️ Aggiungi questa logica di conversione
+        if 'girone_sel' in st.session_state and isinstance(st.session_state['girone_sel'], str):
+            try:
+                st.session_state['girone_sel'] = int(st.session_state['girone_sel'].split()[-1])
+            except (ValueError, IndexError):
+                st.session_state['girone_sel'] = gironi[0] if gironi else None
+    
+        # Imposta un indice predefinito in modo sicuro
+        idx_selezione = 0
+        if st.session_state.get('girone_sel') in gironi:
+            idx_selezione = gironi.index(st.session_state['girone_sel'])
+        
+        if gironi:
+            nuovo_girone = st.selectbox("Seleziona Girone", gironi, index=idx_selezione)
+        else:
+            st.info("Nessun girone da visualizzare.")
+            nuovo_girone = None
+    
+        if nuovo_girone and nuovo_girone != st.session_state['girone_sel']:
             st.session_state['girone_sel'] = nuovo_girone
             st.session_state['giornata_sel'] = 1
             
-            # 🔎 Pulizia widget orfani
+            # Pulizia widget orfani
             keys_to_remove = [k for k in st.session_state.keys() if k.startswith("golcasa_") or k.startswith("golospite_") or k.startswith("valida_")]
             for k in keys_to_remove:
                 st.session_state.pop(k, None)
             
             st.rerun()
 
+    if 'giornata_sel' not in st.session_state:
+        st.session_state['giornata_sel'] = 1
 
+    giornate_correnti = sorted(df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist())
         
         modalita_nav = st.radio(        
             "Modalità navigazione giornata",
