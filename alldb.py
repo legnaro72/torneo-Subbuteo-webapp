@@ -230,73 +230,61 @@ def aggiorna_classifica(df):
 # -------------------------
 # FUNZIONI DI VISUALIZZAZIONE & EVENTI
 # -------------------------
-def save_home_score(idx):
-    """Callback per salvare il punteggio di casa."""
-    df = st.session_state['df_torneo']
-    gol_val = st.session_state[f"golcasa_{idx}"]
-    df.loc[idx, 'GolCasa'] = int(gol_val) if gol_val is not None else 0
-    st.session_state['df_torneo'] = df
-    if 'tournament_id' in st.session_state:
-        aggiorna_torneo_su_db(st.session_state.get('tournaments_collection'), st.session_state['tournament_id'], df)
-
-def save_away_score(idx):
-    """Callback per salvare il punteggio ospite."""
-    df = st.session_state['df_torneo']
-    gol_val = st.session_state[f"golospite_{idx}"]
-    df.loc[idx, 'GolOspite'] = int(gol_val) if gol_val is not None else 0
-    st.session_state['df_torneo'] = df
-    if 'tournament_id' in st.session_state:
-        aggiorna_torneo_su_db(st.session_state.get('tournaments_collection'), st.session_state['tournament_id'], df)
-
 def save_validation(idx):
-    """Callback per salvare lo stato di validazione."""
+    """Callback per salvare lo stato di validazione e i punteggi."""
     df = st.session_state['df_torneo']
+    
+    # ➡️ MODIFICA FONDAMENTALE: Legge i valori attuali dei campi dalla session state
     valida_val = st.session_state[f"valida_{idx}"]
+    gol_casa_val = st.session_state[f"golcasa_{idx}"]
+    gol_ospite_val = st.session_state[f"golospite_{idx}"]
+
+    # ➡️ Aggiorna il DataFrame in una singola operazione
+    df.loc[idx, 'GolCasa'] = int(gol_casa_val) if gol_casa_val is not None else 0
+    df.loc[idx, 'GolOspite'] = int(gol_ospite_val) if gol_ospite_val is not None else 0
     df.loc[idx, 'Valida'] = valida_val if valida_val is not None else False
+    
     st.session_state['df_torneo'] = df
+    
     if 'tournament_id' in st.session_state:
         aggiorna_torneo_su_db(st.session_state.get('tournaments_collection'), st.session_state['tournament_id'], df)
-
+    
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         return
+
+    # ➡️ AGGIUNGI QUESTA FUNZIONE PER IL CALCOLO E LA VISUALIZZAZIONE DEL NUMERO TOTALE DI PARTITE
+    st.info(f"⚽ Numero totale di partite del torneo: {len(df)}")
 
     for idx, row in df_giornata.iterrows():
         gol_casa = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
         gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
         valida = row['Valida']
 
-        # ➡️ Inizializza le chiavi in session state prima di usarle
-        if f"golcasa_{idx}" not in st.session_state:
-            st.session_state[f"golcasa_{idx}"] = gol_casa
-        if f"golospite_{idx}" not in st.session_state:
-            st.session_state[f"golospite_{idx}"] = gol_ospite
-        if f"valida_{idx}" not in st.session_state:
-            st.session_state[f"valida_{idx}"] = valida
-
         col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
 
         with col1:
             st.markdown(f"**{row['Casa']}** vs **{row['Ospite']}**")
         with col2:
+            # ➡️ MODIFICATO: Rimuovi l'on_change dal number_input
             st.number_input(
                 "", min_value=0, max_value=20, value=gol_casa,
-                key=f"golcasa_{idx}", disabled=valida, label_visibility="hidden",
-                on_change=save_home_score, args=(idx,) # ➡️ NUOVO CALLBACK
+                key=f"golcasa_{idx}", disabled=valida, label_visibility="hidden"
             )
         with col3:
             st.markdown("-")
         with col4:
+            # ➡️ MODIFICATO: Rimuovi l'on_change dal number_input
             st.number_input(
                 "", min_value=0, max_value=20, value=gol_ospite,
-                key=f"golospite_{idx}", disabled=valida, label_visibility="hidden",
-                on_change=save_away_score, args=(idx,) # ➡️ NUOVO CALLBACK
+                key=f"golospite_{idx}", disabled=valida, label_visibility="hidden"
             )
         with col5:
+            # ➡️ MODIFICATO: Il callback della checkbox ora gestisce tutto
             st.checkbox(
                 "Valida", key=f"valida_{idx}", value=valida,
-                on_change=save_validation, args=(idx,) # ➡️ NUOVO CALLBACK
+                on_change=save_validation, args=(idx,)
             )
 
         # Riga separatrice / stato partita
@@ -305,12 +293,9 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         else:
             st.markdown('<div style="color:red; margin-bottom: 15px;">Partita non ancora validata ❌</div>', unsafe_allow_html=True)
     
-    # ➡️ Il pulsante per salvare l'intera giornata ora non è più strettamente necessario per il salvataggio dei valori
-    #    ma può essere utile per il controllo finale e il salvataggio su MongoDB
     if st.button("💾 Salva Risultati Giornata", key="save_final_button"):
         df = st.session_state['df_torneo']
         
-        # 🔹 se tutte le partite sono validate → salva come “completato_nomeTorneo”
         if df['Valida'].all():
             nome_completato = f"completato_{st.session_state['nome_torneo']}"
             classifica_finale = aggiorna_classifica(df)
@@ -361,7 +346,7 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
             pdf.ln()
             pdf.set_font("Arial", '', 11)
             # CORREZIONE QUI: Usa df_torneo invece di df
-            partite = df_torneo[(df_torneo['Girone'] == girone) & (df_torneo['Giornata'] == g)]
+            partite = df_torneo[(df_torneo['Girone'] == girone) & (df['Giornata'] == g)]
             for _, row in partite.iterrows():
                 if pdf.get_y() + line_height + margin_bottom > page_height:
                     pdf.add_page()
