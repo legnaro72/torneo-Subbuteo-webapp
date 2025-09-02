@@ -483,7 +483,7 @@ def mostra_schermata_torneo(players_collection, tournaments_collection):
     if st.sidebar.button("Visualizza Classifica", key="btn_classifica_sidebar"):
         if girone_class_sel != 'Nessuno':
             # ➡️ Rimuovi f-string per la visualizzazione qui, viene gestita nella funzione
-            st.subheader(f"Classifica Girone {girone_class_sel}")
+            #st.subheader(f"Classifica Girone {girone_class_sel}")
             classifica = aggiorna_classifica(df)
             if classifica is not None and not classifica.empty:
                 mostra_classifica_stilizzata(classifica, girone_class_sel)
