@@ -791,8 +791,8 @@ def main():
             st.session_state['mostra_assegnazione_squadre'] = False # ➡️ Disattiva la schermata precedente
             st.rerun()
 
-    elif st.session_state.get('mostra_gironi', False):
-        st.rerun()
+    #elif st.session_state.get('mostra_gironi', False):
+    #    st.rerun()
 
     if st.session_state.get('mostra_gironi', False):
         st.markdown("---")
