@@ -134,7 +134,7 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
             df_torneo['GolCasa'] = df_torneo['GolCasa'].astype('Int64')
             df_torneo['GolOspite'] = df_torneo['GolOspite'].astype('Int64')
 
-            st.session_state['df_torneo'] = ensure_string_cols(df, ("Casa", "Ospite"))_torneo
+            st.session_state['df_torneo'] = ensure_string_cols(df, ("Casa", "Ospite"))
             return torneo_data
     except Exception as e:
         st.error(f"❌ Errore caricamento torneo: {e}")
