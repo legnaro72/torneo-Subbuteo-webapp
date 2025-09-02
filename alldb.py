@@ -671,16 +671,17 @@ def main():
         st.markdown("---")
         st.subheader("Nuovo Torneo")
         
-        st.session_state['nome_torneo'] = st.text_input("Nome del Torneo")
-        num_partecipanti = st.number_input("Numero di partecipanti (4-12)", min_value=4, max_value=12, step=1)
-        tipo_torneo = st.selectbox("Tipo di Torneo", ["Solo andata", "Andata e ritorno"])
+        st.session_state['nome_torneo'] = st.text_input("Nome del Torneo", key="nome_torneo_creazione")
+        num_partecipanti = st.number_input("Numero di partecipanti (4-12)", min_value=4, max_value=12, step=1, key="num_partecipanti_creazione")
+        tipo_torneo = st.selectbox("Tipo di Torneo", ["Solo andata", "Andata e ritorno"], key="tipo_torneo_creazione")
         giocatori_selezionati = st.multiselect(
             "Seleziona i partecipanti dal DB",
             giocatori_esistenti,
-            max_selections=num_partecipanti
+            max_selections=num_partecipanti,
+            key="giocatori_db_selezionati"
         )
         
-        mancanti = num_partecipanti - len(giocatori_selezionati)
+        mancanti = num_partecipanti - len(st.session_state.get("giocatori_db_selezionati", []))
         nuovi_giocatori = []
         if mancanti > 0:
             st.warning(f"⚠️ Mancano {mancanti} giocatori: inseriscili manualmente")
@@ -709,12 +710,12 @@ def main():
                 st.session_state['gioc_info'] = giocatori_info
                 st.session_state['mostra_assegnazione_squadre'] = True
                 st.session_state['tipo_torneo'] = tipo_torneo
+                st.session_state['mostra_form_creazione'] = False # ➡️ Disattiva la schermata precedente
                 st.rerun()
             else:
                 st.error(f"Devi selezionare esattamente {num_partecipanti} giocatori.")
 
-    # --- Sezione di modifica squadre, ora mostrata separatamente ---
-    if st.session_state.get('mostra_assegnazione_squadre', False):
+    elif st.session_state.get('mostra_assegnazione_squadre', False):
         st.markdown("---")
         st.subheader("Modifica Squadre e Potenziale")
         
@@ -755,7 +756,10 @@ def main():
 
         if st.button("Avanti e Assegna Squadre"):
             st.session_state['mostra_gironi'] = True
+            st.session_state['mostra_assegnazione_squadre'] = False # ➡️ Disattiva la schermata precedente
             st.rerun()
+
+    elif st.session_state.get('mostra_gironi', False):
         # fine nuovo blocce
 
         
