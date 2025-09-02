@@ -761,7 +761,7 @@ def main():
         if st.session_state['gironi_manuali_completi']:
             if st.button("Conferma Gironi e Genera Calendario"):
                 df_torneo = genera_calendario_from_list(list(gironi_players.values()), tipo=st.session_state['tipo_torneo'])
-                st.session_state['df_torneo'] = ensure_string_cols(df, ("Casa", "Ospite"))_torneo
+                st.session_state['df_torneo'] = ensure_string_cols(df_torneo, ("Casa", "Ospite"))
                 
                 tid = salva_torneo_su_db(tournaments_collection, df_torneo, st.session_state['nome_torneo'])
 
