@@ -691,12 +691,10 @@ def main():
         
         giocatori_finali = giocatori_selezionati + nuovi_giocatori
         
-        # ➡️ Nuovo pulsante per confermare la selezione dei partecipanti
         if st.button("Conferma Partecipanti"):
             if len(giocatori_finali) == num_partecipanti:
                 st.session_state['giocatori_selezionati_definitivi'] = giocatori_finali
                 
-                # Inizializza il dizionario 'gioc_info' recuperando i dati dal database
                 giocatori_info = {}
                 for g in st.session_state['giocatori_selezionati_definitivi']:
                     giocatore_data = players_collection.find_one({"Giocatore": g})
@@ -711,15 +709,16 @@ def main():
                 st.session_state['gioc_info'] = giocatori_info
                 st.session_state['mostra_assegnazione_squadre'] = True
                 st.session_state['tipo_torneo'] = tipo_torneo
-                st.rerun() # Riavvia lo script per mostrare la nuova schermata
+                st.rerun()
             else:
                 st.error(f"Devi selezionare esattamente {num_partecipanti} giocatori.")
 
+    # --- Sezione di modifica squadre, ora mostrata separatamente ---
     if st.session_state.get('mostra_assegnazione_squadre', False):
         st.markdown("---")
         st.subheader("Modifica Squadre e Potenziale")
         
-        giocatori_info = st.session_state['gioc_info']
+        giocatori_info = st.session_state.get('gioc_info', {})
         
         cols = st.columns([1, 1, 1])
         with cols[0]:
