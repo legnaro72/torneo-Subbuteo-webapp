@@ -70,18 +70,38 @@ DEFAULT_STATE = {
 }
 
 def initialize_widgets_state(df):
-    """Initializes the session state for all match widgets."""
-    for index, row in df.iterrows():
-        key_casa = f"golcasa_{row['Girone']}_{row['Giornata']}_{index}"
-        key_ospite = f"golospite_{row['Girone']}_{row['Giornata']}_{index}"
-        key_valida = f"valida_{row['Girone']}_{row['Giornata']}_{index}"
-        
-        if key_casa not in st.session_state:
-            st.session_state[key_casa] = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
-        if key_ospite not in st.session_state:
-            st.session_state[key_ospite] = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
-        if key_valida not in st.session_state:
-            st.session_state[key_valida] = bool(row['Valida'])
+    """
+    Inizializza le chiavi in session_state in modo deterministico:
+    per ogni (Girone, Giornata) enumeriamo le partite e creiamo chiavi
+    del tipo golcasa_<girone>_<giornata>_<i> (i è l'indice dentro quel gruppo).
+    """
+    if df is None or df.empty:
+        return
+
+    # Manteniamo l'ordine originale del DF con sort=False
+    grouped = df.groupby(['Girone', 'Giornata'], sort=False)
+    for (g, day), group in grouped:
+        orig_indices = group.index.tolist()
+        for i, orig_idx in enumerate(orig_indices):
+            row = group.loc[orig_idx]
+            key_casa = f"golcasa_{g}_{day}_{i}"
+            key_ospite = f"golospite_{g}_{day}_{i}"
+            key_valida = f"valida_{g}_{day}_{i}"
+
+            # difensivo: proteggiamo da pd.NA / np.nan / None
+            if st.session_state.get(key_casa) is None or pd.isna(st.session_state.get(key_casa)):
+                try:
+                    st.session_state[key_casa] = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
+                except Exception:
+                    st.session_state[key_casa] = 0
+            if st.session_state.get(key_ospite) is None or pd.isna(st.session_state.get(key_ospite)):
+                try:
+                    st.session_state[key_ospite] = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
+                except Exception:
+                    st.session_state[key_ospite] = 0
+            if st.session_state.get(key_valida) is None or pd.isna(st.session_state.get(key_valida)):
+                st.session_state[key_valida] = bool(row['Valida']) if pd.notna(row.get('Valida', True)) else False
+
 
 def reset_app_state():
     for key in list(st.session_state.keys()):
@@ -301,83 +321,121 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         return
-    
-    # Pre-popola il session_state per i widget della giornata corrente
-    for index, row in df_giornata.iterrows():
-        key_casa = f"golcasa_{girone_sel}_{giornata_sel}_{index}"
-        key_ospite = f"golospite_{girone_sel}_{giornata_sel}_{index}"
-        key_valida = f"valida_{girone_sel}_{giornata_sel}_{index}"
-        
-        if key_casa not in st.session_state or st.session_state[key_casa] is None:
-            st.session_state[key_casa] = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
-        if key_ospite not in st.session_state or st.session_state[key_ospite] is None:
-            st.session_state[key_ospite] = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
-        if key_valida not in st.session_state or st.session_state[key_valida] is None:
-            st.session_state[key_valida] = bool(row['Valida'])
+
+    # Manteniamo i "orig_indices" per scrivere correttamente sul df originale al salvataggio
+    orig_indices = df_giornata.index.tolist()
+
+    # Inizializza le chiavi (enumerazione per partita dentro questo girone/giornata)
+    for i, orig_idx in enumerate(orig_indices):
+        row = df_giornata.loc[orig_idx]
+        key_casa = f"golcasa_{girone_sel}_{giornata_sel}_{i}"
+        key_ospite = f"golospite_{girone_sel}_{giornata_sel}_{i}"
+        key_valida = f"valida_{girone_sel}_{giornata_sel}_{i}"
+
+        if st.session_state.get(key_casa) is None or pd.isna(st.session_state.get(key_casa)):
+            try:
+                st.session_state[key_casa] = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
+            except Exception:
+                st.session_state[key_casa] = 0
+        if st.session_state.get(key_ospite) is None or pd.isna(st.session_state.get(key_ospite)):
+            try:
+                st.session_state[key_ospite] = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
+            except Exception:
+                st.session_state[key_ospite] = 0
+        if st.session_state.get(key_valida) is None or pd.isna(st.session_state.get(key_valida)):
+            st.session_state[key_valida] = bool(row['Valida']) if pd.notna(row.get('Valida', True)) else False
+
+    # DEBUG: mostra eventuali chiavi problematiche per questa giornata
+    with st.expander("🔎 DEBUG: session_state (chiavi problematiche per questa giornata)"):
+        problematiche = {}
+        for i in range(len(orig_indices)):
+            for prefix in ("golcasa", "golospite", "valida"):
+                k = f"{prefix}_{girone_sel}_{giornata_sel}_{i}"
+                v = st.session_state.get(k, "<missing>")
+                if pd.isna(v) or v is None:
+                    problematiche[k] = v
+        st.write(problematiche if problematiche else "Nessuna chiave problematica rilevata.")
 
     with st.expander("⚽ Inserisci i risultati della giornata"):
-        for index, row in df_giornata.iterrows():
-            key_casa = f"golcasa_{girone_sel}_{giornata_sel}_{index}"
-            key_ospite = f"golospite_{girone_sel}_{giornata_sel}_{index}"
-            key_valida = f"valida_{girone_sel}_{giornata_sel}_{index}"
+        for i, orig_idx in enumerate(orig_indices):
+            row = df_giornata.loc[orig_idx]
+            key_casa = f"golcasa_{girone_sel}_{giornata_sel}_{i}"
+            key_ospite = f"golospite_{girone_sel}_{giornata_sel}_{i}"
+            key_valida = f"valida_{girone_sel}_{giornata_sel}_{i}"
 
-            val_casa = int(st.session_state.get(key_casa, 0) or 0)
-            val_ospite = int(st.session_state.get(key_ospite, 0) or 0)
-            val_valida = bool(st.session_state.get(key_valida, False) or False)
+            # read safely
+            def safe_int_from_state(k):
+                v = st.session_state.get(k, 0)
+                try:
+                    if pd.isna(v):
+                        return 0
+                except Exception:
+                    pass
+                try:
+                    return int(v)
+                except Exception:
+                    return 0
+
+            val_casa = safe_int_from_state(key_casa)
+            val_ospite = safe_int_from_state(key_ospite)
+            raw_val_valida = st.session_state.get(key_valida, False)
+            val_valida = False if pd.isna(raw_val_valida) else bool(raw_val_valida)
 
             col1, col2, col3, col4, col5 = st.columns([1, 0.4, 0.1, 0.4, 1])
             with col1:
                 st.markdown(f"<p style='text-align: right; font-weight: bold;'>{safe_str(row['Casa'])}</p>", unsafe_allow_html=True)
             with col2:
                 st.number_input("Gol", min_value=0, step=1,
-                                key=key_casa,
-                                label_visibility="hidden",
+                                key=key_casa, label_visibility="hidden",
                                 value=val_casa)
             with col3:
                 st.markdown("<div style='text-align:center;'>-</div>", unsafe_allow_html=True)
             with col4:
                 st.number_input("Gol", min_value=0, step=1,
-                                key=key_ospite,
-                                label_visibility="hidden",
+                                key=key_ospite, label_visibility="hidden",
                                 value=val_ospite)
             with col5:
                 st.markdown(f"<p style='text-align: left; font-weight: bold;'>{safe_str(row['Ospite'])}</p>", unsafe_allow_html=True)
 
-            st.checkbox("Partita Conclusa",
-                        value=val_valida,
-                        key=key_valida)
+            st.checkbox("Partita Conclusa", value=val_valida, key=key_valida)
             st.write("---")
 
-    # ... resto della funzione invariato ...
-
+    # Salvataggio: mappiamo gli i -> orig_index per aggiornare il df originale correttamente
     if st.button("💾 Salva Risultati Giornata", key="salva_giornata_button"):
         with st.spinner('Salvataggio in corso...'):
-            # ➡️ Aggiunto expander per i messaggi di debug
-            with st.expander("🔎 DEBUG: Dettagli salvataggio"):
-                st.subheader("📊 DEBUG: DataFrame prima del salvataggio")
-                st.dataframe(st.session_state['df_torneo'], use_container_width=True)
-                st.text("Tipi di colonna:")
-                st.write(st.session_state['df_torneo'].dtypes)
-
             df_to_save = st.session_state['df_torneo'].copy()
             df_to_save = ensure_string_cols(df_to_save, ("Casa", "Ospite"))
 
-            for index, row in df_giornata.iterrows():
-                key_casa = f"golcasa_{girone_sel}_{giornata_sel}_{index}"
-                key_ospite = f"golospite_{girone_sel}_{giornata_sel}_{index}"
-                key_valida = f"valida_{girone_sel}_{giornata_sel}_{index}"
-                
-                # 🔧 Normalizzazione dei valori
-                gol_casa = int(st.session_state.get(key_casa, 0) or 0)
-                gol_ospite = int(st.session_state.get(key_ospite, 0) or 0)
-                valida = bool(st.session_state.get(key_valida, False) or False)
-                
-                df_to_save.loc[index, 'GolCasa'] = int(gol_casa)
-                df_to_save.loc[index, 'GolOspite'] = int(gol_ospite)
-                df_to_save.loc[index, 'Valida'] = bool(valida)
+            for i, orig_idx in enumerate(orig_indices):
+                key_casa = f"golcasa_{girone_sel}_{giornata_sel}_{i}"
+                key_ospite = f"golospite_{girone_sel}_{giornata_sel}_{i}"
+                key_valida = f"valida_{girone_sel}_{giornata_sel}_{i}"
 
-            with st.expander("🔎 DEBUG: Dettagli salvataggio"):
-                st.subheader("📊 DEBUG: DataFrame dopo aggiornamento ma prima di scrivere su MongoDB")
+                # normalizzazione sicura
+                def safe_int(k):
+                    v = st.session_state.get(k, 0)
+                    try:
+                        if pd.isna(v):
+                            return 0
+                    except Exception:
+                        pass
+                    try:
+                        return int(v)
+                    except Exception:
+                        return 0
+
+                gol_casa = safe_int(key_casa)
+                gol_ospite = safe_int(key_ospite)
+                raw_val = st.session_state.get(key_valida, False)
+                valida = False if pd.isna(raw_val) else bool(raw_val)
+
+                # Aggiorna la riga corretta nel df_to_save usando orig_idx
+                df_to_save.loc[orig_idx, 'GolCasa'] = gol_casa
+                df_to_save.loc[orig_idx, 'GolOspite'] = gol_ospite
+                df_to_save.loc[orig_idx, 'Valida'] = valida
+
+            # ora salva su DB come fai già tu (mantengo la tua logica)
+            with st.expander("🔎 DEBUG: DataFrame dopo aggiornamento ma prima di scrivere su MongoDB"):
                 st.dataframe(df_to_save, use_container_width=True)
                 st.text("Tipi di colonna:")
                 st.write(df_to_save.dtypes)
@@ -387,13 +445,6 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
                     aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_to_save)
                     st.session_state['df_torneo'] = ensure_string_cols(df_to_save, ("Casa", "Ospite"))
                     st.toast("Risultati salvati su MongoDB ✅")
-                    
-                    with st.expander("🔎 DEBUG: Dettagli salvataggio"):
-                        st.subheader("📊 DEBUG: DataFrame dopo salvataggio su MongoDB")
-                        st.dataframe(st.session_state['df_torneo'], use_container_width=True)
-                        st.text("Tipi di colonna:")
-                        st.write(st.session_state['df_torneo'].dtypes)
-
                     if df_to_save['Valida'].all():
                         nome_completato = f"completato_{st.session_state['nome_torneo']}"
                         classifica_finale = aggiorna_classifica(df_to_save)
@@ -402,11 +453,11 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
                         st.session_state['classifica_finale'] = classifica_finale
                         st.toast(f"Torneo completato e salvato come {nome_completato} ✅")
                         st.rerun()
-                        
                 except Exception as e:
                     st.error(f"❌ Errore durante il salvataggio: {e}")
             else:
                 st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
+
                 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):    
     if df_classifica is None or df_classifica.empty:
@@ -622,15 +673,17 @@ def mostra_schermata_torneo(players_collection, tournaments_collection):
             nuovo_girone = None
     
         if nuovo_girone and nuovo_girone != st.session_state['girone_sel']:
-            st.session_state['girone_sel'] = nuovo_girone
-            st.session_state['giornata_sel'] = 1
-            
-            # Pulizia widget orfani
-            keys_to_remove = [k for k in st.session_state.keys() if k.startswith("golcasa_") or k.startswith("golospite_") or k.startswith("valida_")]
+            previous_g = st.session_state.get('girone_sel')
+            # rimuoviamo solo le chiavi relative al girone precedente (non tutte le chiavi globali)
+            keys_to_remove = [k for k in list(st.session_state.keys())
+                              if k.startswith(f"golcasa_{previous_g}_") or k.startswith(f"golospite_{previous_g}_") or k.startswith(f"valida_{previous_g}_")]
             for k in keys_to_remove:
                 st.session_state.pop(k, None)
-            
+        
+            st.session_state['girone_sel'] = nuovo_girone
+            st.session_state['giornata_sel'] = 1
             st.rerun()
+
 
         if 'giornata_sel' not in st.session_state:
             st.session_state['giornata_sel'] = 1
@@ -656,13 +709,13 @@ def mostra_schermata_torneo(players_collection, tournaments_collection):
             nuova_giornata = st.selectbox("Seleziona Giornata", giornate_correnti, index=current_index)
             #if nuova_giornata != st.session_state['giornata_sel']
             if nuova_giornata != st.session_state['giornata_sel']:
-                st.session_state['giornata_sel'] = nuova_giornata
-                
-                # 🔎 Pulizia widget orfani
-                keys_to_remove = [k for k in st.session_state.keys() if k.startswith("golcasa_") or k.startswith("golospite_") or k.startswith("valida_")]
+                prev_day = st.session_state.get('giornata_sel')
+                g_sel = st.session_state.get('girone_sel')
+                keys_to_remove = [k for k in list(st.session_state.keys())
+                                  if k.startswith(f"golcasa_{g_sel}_{prev_day}_") or k.startswith(f"golospite_{g_sel}_{prev_day}_") or k.startswith(f"valida_{g_sel}_{prev_day}_")]
                 for k in keys_to_remove:
                     st.session_state.pop(k, None)
-                
+                st.session_state['giornata_sel'] = nuova_giornata
                 st.rerun()
 
 
