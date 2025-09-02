@@ -308,53 +308,47 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
         key_ospite = f"golospite_{girone_sel}_{giornata_sel}_{index}"
         key_valida = f"valida_{girone_sel}_{giornata_sel}_{index}"
         
-        # Popola lo stato del widget solo se non esiste già
-        if key_casa not in st.session_state:
+        if key_casa not in st.session_state or st.session_state[key_casa] is None:
             st.session_state[key_casa] = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
-        if key_ospite not in st.session_state:
+        if key_ospite not in st.session_state or st.session_state[key_ospite] is None:
             st.session_state[key_ospite] = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
-        if key_valida not in st.session_state:
+        if key_valida not in st.session_state or st.session_state[key_valida] is None:
             st.session_state[key_valida] = bool(row['Valida'])
 
     with st.expander("⚽ Inserisci i risultati della giornata"):
         for index, row in df_giornata.iterrows():
+            key_casa = f"golcasa_{girone_sel}_{giornata_sel}_{index}"
+            key_ospite = f"golospite_{girone_sel}_{giornata_sel}_{index}"
+            key_valida = f"valida_{girone_sel}_{giornata_sel}_{index}"
+
+            val_casa = int(st.session_state.get(key_casa, 0) or 0)
+            val_ospite = int(st.session_state.get(key_ospite, 0) or 0)
+            val_valida = bool(st.session_state.get(key_valida, False) or False)
+
             col1, col2, col3, col4, col5 = st.columns([1, 0.4, 0.1, 0.4, 1])
             with col1:
                 st.markdown(f"<p style='text-align: right; font-weight: bold;'>{safe_str(row['Casa'])}</p>", unsafe_allow_html=True)
             with col2:
-                st.number_input(
-                    "Gol",
-                    min_value=0,
-                    step=1,
-                    key=f"golcasa_{girone_sel}_{giornata_sel}_{index}",
-                    label_visibility="hidden",
-                    # Passa il valore dal session_state
-                    value=st.session_state[f"golcasa_{girone_sel}_{giornata_sel}_{index}"]
-                )
+                st.number_input("Gol", min_value=0, step=1,
+                                key=key_casa,
+                                label_visibility="hidden",
+                                value=val_casa)
             with col3:
                 st.markdown("<div style='text-align:center;'>-</div>", unsafe_allow_html=True)
             with col4:
-                st.number_input(
-                    "Gol",
-                    min_value=0,
-                    step=1,
-                    key=f"golospite_{girone_sel}_{giornata_sel}_{index}",
-                    label_visibility="hidden",
-                    # Passa il valore dal session_state
-                    value=st.session_state[f"golospite_{girone_sel}_{giornata_sel}_{index}"]
-                )
+                st.number_input("Gol", min_value=0, step=1,
+                                key=key_ospite,
+                                label_visibility="hidden",
+                                value=val_ospite)
             with col5:
                 st.markdown(f"<p style='text-align: left; font-weight: bold;'>{safe_str(row['Ospite'])}</p>", unsafe_allow_html=True)
-            
-            st.checkbox(
-                "Partita Conclusa",
-                # Passa il valore dal session_state
-                value=st.session_state[f"valida_{girone_sel}_{giornata_sel}_{index}"],
-                key=f"valida_{girone_sel}_{giornata_sel}_{index}"
-            )
+
+            st.checkbox("Partita Conclusa",
+                        value=val_valida,
+                        key=key_valida)
             st.write("---")
-    
-    # ... il resto della funzione rimane invariato
+
+    # ... resto della funzione invariato ...
 
     if st.button("💾 Salva Risultati Giornata", key="salva_giornata_button"):
         with st.spinner('Salvataggio in corso...'):
@@ -373,9 +367,10 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
                 key_ospite = f"golospite_{girone_sel}_{giornata_sel}_{index}"
                 key_valida = f"valida_{girone_sel}_{giornata_sel}_{index}"
                 
-                gol_casa = st.session_state.get(key_casa, 0)
-                gol_ospite = st.session_state.get(key_ospite, 0)
-                valida = st.session_state.get(key_valida, False)
+                # 🔧 Normalizzazione dei valori
+                gol_casa = int(st.session_state.get(key_casa, 0) or 0)
+                gol_ospite = int(st.session_state.get(key_ospite, 0) or 0)
+                valida = bool(st.session_state.get(key_valida, False) or False)
                 
                 df_to_save.loc[index, 'GolCasa'] = int(gol_casa)
                 df_to_save.loc[index, 'GolOspite'] = int(gol_ospite)
@@ -412,6 +407,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
                     st.error(f"❌ Errore durante il salvataggio: {e}")
             else:
                 st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
+                
 def mostra_classifica_stilizzata(df_classifica, girone_sel):    
     if df_classifica is None or df_classifica.empty:
         st.info("⚽ Nessuna partita validata")
