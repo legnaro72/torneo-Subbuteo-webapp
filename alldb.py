@@ -68,6 +68,20 @@ DEFAULT_STATE = {
     'show_load_menu': False
 }
 
+def initialize_widgets_state(df):
+    """Initializes the session state for all match widgets."""
+    for index, row in df.iterrows():
+        key_casa = f"golcasa_{row['Girone']}_{row['Giornata']}_{index}"
+        key_ospite = f"golospite_{row['Girone']}_{row['Giornata']}_{index}"
+        key_valida = f"valida_{row['Girone']}_{row['Giornata']}_{index}"
+        
+        if key_casa not in st.session_state:
+            st.session_state[key_casa] = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
+        if key_ospite not in st.session_state:
+            st.session_state[key_ospite] = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
+        if key_valida not in st.session_state:
+            st.session_state[key_valida] = bool(row['Valida'])
+
 def reset_app_state():
     for key in list(st.session_state.keys()):
         if key not in ['df_torneo', 'players_collection', 'tournaments_collection']:
@@ -837,6 +851,8 @@ def main():
                     st.session_state['df_torneo'] = ensure_string_cols(df_torneo, ("Casa", "Ospite"))
                     st.session_state['tournament_id'] = str(tid)
                     st.session_state['calendario_generato'] = True
+                    # ✨ NUOVA RIGA
+                    initialize_widgets_state(st.session_state['df_torneo']) 
                     st.toast("Calendario generato e salvato su MongoDB ✅")
                     st.rerun()
                 else:
@@ -862,6 +878,8 @@ def main():
                     st.session_state['nome_torneo'] = dati_caricati['nome_torneo']
                     st.session_state['tournament_id'] = str(dati_caricati['_id'])
                     st.session_state['calendario_generato'] = True
+                    # ✨ NUOVA RIGA
+                    initialize_widgets_state(st.session_state['df_torneo'])
                     st.toast(f"Torneo '{st.session_state['nome_torneo']}' caricato con successo ✅")
                     st.rerun()
                 else:
