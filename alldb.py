@@ -230,31 +230,33 @@ def aggiorna_classifica(df):
 # -------------------------
 # FUNZIONI DI VISUALIZZAZIONE & EVENTI
 # -------------------------
-def update_score(idx, is_home):
-    """Callback function per aggiornare il dataframe in session state."""
+def save_home_score(idx):
+    """Callback per salvare il punteggio di casa."""
     df = st.session_state['df_torneo']
-    
-    # ➡️ Se la partita è già validata, non fare nulla.
-    if df.loc[idx, 'Valida']:
-        return
-
-    key_gol = f"golcasa_{idx}" if is_home else f"golospite_{idx}"
-    key_valida = f"valida_{idx}"
-    
-    # Prendi i valori dalle session state keys
-    gol_val = st.session_state.get(key_gol)
-    valida_val = st.session_state.get(key_valida)
-    
-    # ➡️ Aggiorna il dataframe in session state
-    df.loc[idx, 'GolCasa'] = int(gol_val) if is_home and gol_val is not None else df.loc[idx, 'GolCasa']
-    df.loc[idx, 'GolOspite'] = int(gol_val) if not is_home and gol_val is not None else df.loc[idx, 'GolOspite']
-    df.loc[idx, 'Valida'] = valida_val if valida_val is not None else df.loc[idx, 'Valida']
-
+    gol_val = st.session_state[f"golcasa_{idx}"]
+    df.loc[idx, 'GolCasa'] = int(gol_val) if gol_val is not None else 0
     st.session_state['df_torneo'] = df
-    
     if 'tournament_id' in st.session_state:
         aggiorna_torneo_su_db(st.session_state.get('tournaments_collection'), st.session_state['tournament_id'], df)
-    
+
+def save_away_score(idx):
+    """Callback per salvare il punteggio ospite."""
+    df = st.session_state['df_torneo']
+    gol_val = st.session_state[f"golospite_{idx}"]
+    df.loc[idx, 'GolOspite'] = int(gol_val) if gol_val is not None else 0
+    st.session_state['df_torneo'] = df
+    if 'tournament_id' in st.session_state:
+        aggiorna_torneo_su_db(st.session_state.get('tournaments_collection'), st.session_state['tournament_id'], df)
+
+def save_validation(idx):
+    """Callback per salvare lo stato di validazione."""
+    df = st.session_state['df_torneo']
+    valida_val = st.session_state[f"valida_{idx}"]
+    df.loc[idx, 'Valida'] = valida_val if valida_val is not None else False
+    st.session_state['df_torneo'] = df
+    if 'tournament_id' in st.session_state:
+        aggiorna_torneo_su_db(st.session_state.get('tournaments_collection'), st.session_state['tournament_id'], df)
+
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
@@ -265,6 +267,14 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
         valida = row['Valida']
 
+        # ➡️ Inizializza le chiavi in session state prima di usarle
+        if f"golcasa_{idx}" not in st.session_state:
+            st.session_state[f"golcasa_{idx}"] = gol_casa
+        if f"golospite_{idx}" not in st.session_state:
+            st.session_state[f"golospite_{idx}"] = gol_ospite
+        if f"valida_{idx}" not in st.session_state:
+            st.session_state[f"valida_{idx}"] = valida
+
         col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
 
         with col1:
@@ -273,7 +283,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             st.number_input(
                 "", min_value=0, max_value=20, value=gol_casa,
                 key=f"golcasa_{idx}", disabled=valida, label_visibility="hidden",
-                on_change=update_score, args=(idx, True) # ➡️ AGGIUNTO IL CALLBACK
+                on_change=save_home_score, args=(idx,) # ➡️ NUOVO CALLBACK
             )
         with col3:
             st.markdown("-")
@@ -281,12 +291,12 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             st.number_input(
                 "", min_value=0, max_value=20, value=gol_ospite,
                 key=f"golospite_{idx}", disabled=valida, label_visibility="hidden",
-                on_change=update_score, args=(idx, False) # ➡️ AGGIUNTO IL CALLBACK
+                on_change=save_away_score, args=(idx,) # ➡️ NUOVO CALLBACK
             )
         with col5:
             st.checkbox(
                 "Valida", key=f"valida_{idx}", value=valida,
-                on_change=update_score, args=(idx, True) # ➡️ AGGIUNTO IL CALLBACK
+                on_change=save_validation, args=(idx,) # ➡️ NUOVO CALLBACK
             )
 
         # Riga separatrice / stato partita
