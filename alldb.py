@@ -323,13 +323,20 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, tournaments_collect
             df_to_save = st.session_state['df_torneo'].copy()
 
             for index, row in df_giornata.iterrows():
-                gol_casa = st.session_state.get(f"golcasa_{index}", 0)
-                gol_ospite = st.session_state.get(f"golospite_{index}", 0)
-                valida = st.session_state.get(f"valida_{index}", False)
+                key_casa = f"golcasa_{girone_sel}_{giornata_sel}_{index}"
+                key_ospite = f"golospite_{girone_sel}_{giornata_sel}_{index}"
+                key_valida = f"valida_{girone_sel}_{giornata_sel}_{index}"
+                
+                gol_casa = st.session_state.get(key_casa, 0)
+                gol_ospite = st.session_state.get(key_ospite, 0)
+                valida = st.session_state.get(key_valida, False)
                 
                 df_to_save.loc[index, 'GolCasa'] = int(gol_casa)
                 df_to_save.loc[index, 'GolOspite'] = int(gol_ospite)
                 df_to_save.loc[index, 'Valida'] = bool(valida)
+
+                st.text(f"Salvataggio riga {index}: Casa={row['Casa']} GolCasa={gol_casa}, Ospite={row['Ospite']} GolOspite={gol_ospite}, Valida={valida}")
+
 
                 # 🔎 DEBUG: Mostro DataFrame DOPO aggiornamento ma prima di salvare
                 st.subheader("📊 DEBUG: DataFrame dopo aggiornamento ma prima di scrivere su MongoDB")
