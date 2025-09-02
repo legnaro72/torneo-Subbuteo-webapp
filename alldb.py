@@ -691,20 +691,18 @@ def main():
         giocatori_finali = giocatori_scelti + nuovi_giocatori
 
         # ➡️ Nuovo blocco di codice per prelevare i dati dal DB
-        # e inizializzare st.session_state['gioc_info']
+        # Rimuovi l'intero blocco "if st.session_state.get('mostra_assegnazione_squadre', False)..."
+        # e sostituiscilo con questo
         if len(giocatori_finali) == num_partecipanti and 'gioc_info' not in st.session_state:
+            st.session_state['giocatori_selezionati_definitivi'] = giocatori_finali
             giocatori_info = {}
-            for g in giocatori_finali:
-                # Controlla se il giocatore esiste nel DB
-                if g in giocatori_esistenti:
-                    giocatore_data = players_collection.find_one({"Giocatore": g})
-                    if giocatore_data:
-                        giocatori_info[g] = {
-                            'Squadra': giocatore_data.get('Squadra', ''),
-                            'Potenziale': giocatore_data.get('Potenziale', 5)
-                        }
-                    else:
-                        giocatori_info[g] = { 'Squadra': '', 'Potenziale': 5 }
+            for g in st.session_state['giocatori_selezionati_definitivi']:
+                giocatore_data = players_collection.find_one({"Giocatore": g})
+                if giocatore_data:
+                    giocatori_info[g] = {
+                        'Squadra': giocatore_data.get('Squadra', ''),
+                        'Potenziale': giocatore_data.get('Potenziale', 5)
+                    }
                 else:
                     giocatori_info[g] = { 'Squadra': '', 'Potenziale': 5 }
             
@@ -713,49 +711,51 @@ def main():
             st.session_state['tipo_torneo'] = tipo_torneo
             st.rerun()
 
+    if st.session_state.get('mostra_assegnazione_squadre', False):
+        st.markdown("---")
+        st.subheader("Modifica Squadre e Potenziale")
+        
+        giocatori_info = st.session_state['gioc_info']
+        
+        cols = st.columns([1, 1, 1])
+        with cols[0]:
+            st.write("**Giocatore**")
+        with cols[1]:
+            st.write("**Squadra**")
+        with cols[2]:
+            st.write("**Potenziale (1-10)**")
 
-        if st.session_state.get('mostra_assegnazione_squadre', False) and len(st.session_state['giocatori_selezionati_definitivi']) == num_partecipanti:
-            ###
-            st.markdown("---")
-            st.subheader("Modifica Squadre e Potenziale")
-            
-            giocatori_info = st.session_state.get('gioc_info', {})
-            # ➡️ Rimosso il blocco di inizializzazione, ora i dati sono già caricati
-            
-            cols = st.columns([1, 1, 1])
-            with cols[0]:
-                st.write("**Giocatore**")
-            with cols[1]:
-                st.write("**Squadra**")
-            with cols[2]:
-                st.write("**Potenziale (1-10)**")
-    
-            for giocatore in st.session_state['giocatori_selezionati_definitivi']:
-                col1, col2, col3 = st.columns([1, 1, 1])
-                with col1:
-                    st.write(giocatore)
-                with col2:
-                    nuova_squadra = st.text_input(
-                        "Nome Squadra", 
-                        value=giocatori_info[giocatore]['Squadra'],
-                        key=f"squadra_{giocatore}",
-                        label_visibility="hidden"
-                    )
-                    giocatori_info[giocatore]['Squadra'] = nuova_squadra
-                with col3:
-                    nuovo_potenziale = st.number_input(
-                        "Potenziale",
-                        min_value=1,
-                        max_value=10,
-                        value=giocatori_info[giocatore]['Potenziale'],
-                        key=f"potenziale_{giocatore}",
-                        label_visibility="hidden"
-                    )
-                    giocatori_info[giocatore]['Potenziale'] = nuovo_potenziale
-            
-            st.session_state['gioc_info'] = giocatori_info
-            # --- Fine blocco di codice da aggiornare ---
+        for giocatore in st.session_state['giocatori_selezionati_definitivi']:
+            col1, col2, col3 = st.columns([1, 1, 1])
+            with col1:
+                st.write(giocatore)
+            with col2:
+                nuova_squadra = st.text_input(
+                    "Nome Squadra", 
+                    value=giocatori_info[giocatore]['Squadra'],
+                    key=f"squadra_{giocatore}",
+                    label_visibility="hidden"
+                )
+                giocatori_info[giocatore]['Squadra'] = nuova_squadra
+            with col3:
+                nuovo_potenziale = st.number_input(
+                    "Potenziale",
+                    min_value=1,
+                    max_value=10,
+                    value=giocatori_info[giocatore]['Potenziale'],
+                    key=f"potenziale_{giocatore}",
+                    label_visibility="hidden"
+                )
+                giocatori_info[giocatore]['Potenziale'] = nuovo_potenziale
+        
+        st.session_state['gioc_info'] = giocatori_info
 
+        if st.button("Avanti e Assegna Squadre"):
+            st.session_state['mostra_gironi'] = True
+            st.rerun()
+        # fine nuovo blocce
+
+        
         if st.button("Avanti e Assegna Squadre"):
             st.session_state['mostra_gironi'] = True
             st.rerun()
