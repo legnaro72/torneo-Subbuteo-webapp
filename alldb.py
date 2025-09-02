@@ -786,7 +786,7 @@ def main():
         
         st.session_state['gioc_info'] = giocatori_info
 
-        if st.button("Avanti e Assegna Squadre"):
+        if st.button("Assegna squadre a gironi"):
             st.session_state['mostra_gironi'] = True
             st.session_state['mostra_assegnazione_squadre'] = False # ➡️ Disattiva la schermata precedente
             st.rerun()
@@ -795,13 +795,14 @@ def main():
         # fine nuovo blocce
 
         
-        if st.button("Avanti e Assegna Squadre"):
+        if st.button("Assegna squadre a gironi"):
             st.session_state['mostra_gironi'] = True
             st.rerun()
             
             st.markdown("---")
             if st.button("Avanti e Assegna Squadre"):
                 st.session_state['mostra_gironi'] = True
+                st.session_state['mostra_assegnazione_squadre'] = False
                 st.rerun()
 
     if st.session_state.get('mostra_gironi', False):
