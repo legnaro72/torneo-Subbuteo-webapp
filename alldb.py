@@ -792,13 +792,7 @@ def main():
             st.rerun()
 
     elif st.session_state.get('mostra_gironi', False):
-        # fine nuovo blocce
-
-        
-        if st.button("Assegna squadre a gironi"):
-            st.session_state['mostra_gironi'] = True
-            st.rerun()
-            
+                   
             st.markdown("---")
             if st.button("Avanti e Assegna Squadre"):
                 st.session_state['mostra_gironi'] = True
