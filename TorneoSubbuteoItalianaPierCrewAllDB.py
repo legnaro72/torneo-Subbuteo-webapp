@@ -245,7 +245,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
                 )
             with col_spazio:
                 st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-                st.markdown("vs")
+                st.markdown("🆚")
             with col_ospite:
                 st.markdown(f"**🛫 {row['Ospite']}**")
                 st.number_input(
@@ -655,8 +655,8 @@ def main():
 
             if st.button("✅ Conferma Giocatori", use_container_width=True):
                 giocatori_scelti = amici_selezionati + [g for g in giocatori_supplementari if g]
-                if len(set(giocatori_scelti)) < 4:
-                    st.warning("⚠️ Inserisci almeno 4 giocatori diversi.")
+                if len(set(giocatori_scelti)) < 3:
+                    st.warning("⚠️ Inserisci almeno 3 giocatori diversi.")
                     return
                 st.session_state['giocatori_selezionati_definitivi'] = list(set(giocatori_scelti))
                 st.session_state['mostra_assegnazione_squadre'] = True
@@ -823,7 +823,7 @@ def main():
 
     # Footer leggero
     st.markdown("---")
-    st.caption("⚽ Subbuteo Tournament Manager • UI rivista con emoji e stile • Made with Streamlit")
+    st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
 
 if __name__ == "__main__":
     main()
