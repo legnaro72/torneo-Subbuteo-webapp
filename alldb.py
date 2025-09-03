@@ -245,7 +245,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
                 )
             with col_spazio:
                 st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-                st.markdown("vs")
+                st.markdown("🆚")
             with col_ospite:
                 st.markdown(f"**🛫 {row['Ospite']}**")
                 st.number_input(
@@ -630,7 +630,7 @@ def main():
             st.session_state["num_gironi"] = num_gironi
             tipo_calendario = st.selectbox("📅 Tipo calendario", ["Solo andata", "Andata e ritorno"], key="tipo_calendario_input")
             st.session_state["tipo_calendario"] = tipo_calendario
-            n_giocatori = st.number_input("👥 Numero giocatori", 3, 24, value=st.session_state.get("n_giocatori", 3), key="n_giocatori_input")
+            n_giocatori = st.number_input("👥 Numero giocatori", 3, 64, value=st.session_state.get("n_giocatori", 3), key="n_giocatori_input")
             st.session_state["n_giocatori"] = n_giocatori
 
             st.markdown("### 👥 Seleziona Giocatori")
@@ -823,7 +823,7 @@ def main():
 
     # Footer leggero
     st.markdown("---")
-    st.caption("⚽ Subbuteo Tournament Manager • UI rivista con emoji e stile • Made with Streamlit")
+    st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
 
 if __name__ == "__main__":
     main()
