@@ -626,11 +626,11 @@ def main():
             nome_default = f"TorneoSubbuteo_{datetime.now().strftime('%d%m%Y')}"
             nome_torneo = st.text_input("📝 Nome del torneo", value=st.session_state.get("nome_torneo", nome_default), key="nome_torneo_input")
             st.session_state["nome_torneo"] = nome_torneo
-            num_gironi = st.number_input("🔢 Numero di gironi", 1, 8, value=st.session_state.get("num_gironi", 2), key="num_gironi_input")
+            num_gironi = st.number_input("🔢 Numero di gironi", 1, 8, value=st.session_state.get("num_gironi", 1), key="num_gironi_input")
             st.session_state["num_gironi"] = num_gironi
             tipo_calendario = st.selectbox("📅 Tipo calendario", ["Solo andata", "Andata e ritorno"], key="tipo_calendario_input")
             st.session_state["tipo_calendario"] = tipo_calendario
-            n_giocatori = st.number_input("👥 Numero giocatori", 4, 32, value=st.session_state.get("n_giocatori", 8), key="n_giocatori_input")
+            n_giocatori = st.number_input("👥 Numero giocatori", 3, 64, value=st.session_state.get("n_giocatori", 3), key="n_giocatori_input")
             st.session_state["n_giocatori"] = n_giocatori
 
             st.markdown("### 👥 Seleziona Giocatori")
