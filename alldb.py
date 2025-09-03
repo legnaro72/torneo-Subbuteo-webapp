@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import random
@@ -114,6 +115,8 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
     try:
         torneo_data = tournaments_collection.find_one({"_id": ObjectId(tournament_id)})
         
+
+        
         if torneo_data and 'calendario' in torneo_data:
             df_torneo = pd.DataFrame(torneo_data['calendario'])
            
@@ -131,6 +134,8 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
             df_torneo['GolCasa'] = df_torneo['GolCasa'].astype('Int64')
             df_torneo['GolOspite'] = df_torneo['GolOspite'].astype('Int64')
             
+            #df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').astype('Int64')
+            #df_torneo['GolOspite'] = pd.to_numeric(df_torneo['GolOspite'], errors='coerce').astype('Int64')
             st.session_state['df_torneo'] = df_torneo
         return torneo_data
     except Exception as e:
@@ -230,84 +235,92 @@ def aggiorna_classifica(df):
 # -------------------------
 # FUNZIONI DI VISUALIZZAZIONE & EVENTI
 # -------------------------
-def save_validation(idx):
-    """Callback per salvare lo stato di validazione e i punteggi."""
-    df = st.session_state['df_torneo']
-    
-    # ➡️ MODIFICA FONDAMENTALE: Legge i valori attuali dei campi dalla session state
-    valida_val = st.session_state[f"valida_{idx}"]
-    gol_casa_val = st.session_state[f"golcasa_{idx}"]
-    gol_ospite_val = st.session_state[f"golospite_{idx}"]
-
-    # ➡️ Aggiorna il DataFrame in una singola operazione
-    df.loc[idx, 'GolCasa'] = int(gol_casa_val) if gol_casa_val is not None else 0
-    df.loc[idx, 'GolOspite'] = int(gol_ospite_val) if gol_ospite_val is not None else 0
-    df.loc[idx, 'Valida'] = valida_val if valida_val is not None else False
-    
-    st.session_state['df_torneo'] = df
-    
-    if 'tournament_id' in st.session_state:
-        aggiorna_torneo_su_db(st.session_state.get('tournaments_collection'), st.session_state['tournament_id'], df)
-    
 def mostra_calendario_giornata(df, girone_sel, giornata_sel):
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         return
-
-    # ➡️ AGGIUNGI QUESTA FUNZIONE PER IL CALCOLO E LA VISUALIZZAZIONE DEL NUMERO TOTALE DI PARTITE
-    st.info(f"⚽ Numero totale di partite del torneo: {len(df)}")
-
     for idx, row in df_giornata.iterrows():
         gol_casa = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
         gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
-        valida = row['Valida']
 
-        col1, col2, col3, col4, col5 = st.columns([5, 1.5, 1, 1.5, 1])
+        # Crea un set di colonne per i nomi delle squadre
+        col_nome_casa, col_spazio, col_nome_ospite, col_valida_placeholder = st.columns([3, 1, 3, 1])
+        with col_nome_casa:
+            st.markdown(f"**{row['Casa']}**")
+        with col_nome_ospite:
+            st.markdown(f"**{row['Ospite']}**")
 
-        with col1:
-            st.markdown(f"**{row['Casa']}** vs **{row['Ospite']}**")
-        with col2:
-            # ➡️ MODIFICATO: Rimuovi l'on_change dal number_input
-            st.number_input(
-                "", min_value=0, max_value=20, value=gol_casa,
-                key=f"golcasa_{idx}", disabled=valida, label_visibility="hidden"
-            )
-        with col3:
+        # Crea un secondo set di colonne per i campi di input
+        col_input_casa, col_trattino, col_input_ospite, col_valida_check = st.columns([3, 1, 3, 1])
+        with col_input_casa:
+            st.number_input("", min_value=0, max_value=20, key=f"golcasa_{idx}", value=gol_casa, disabled=row['Valida'], label_visibility="hidden")
+        with col_trattino:
             st.markdown("-")
-        with col4:
-            # ➡️ MODIFICATO: Rimuovi l'on_change dal number_input
-            st.number_input(
-                "", min_value=0, max_value=20, value=gol_ospite,
-                key=f"golospite_{idx}", disabled=valida, label_visibility="hidden"
-            )
-        with col5:
-            # ➡️ MODIFICATO: Il callback della checkbox ora gestisce tutto
-            st.checkbox(
-                "Valida", key=f"valida_{idx}", value=valida,
-                on_change=save_validation, args=(idx,)
-            )
+        with col_input_ospite:
+            st.number_input("", min_value=0, max_value=20, key=f"golospite_{idx}", value=gol_ospite, disabled=row['Valida'], label_visibility="hidden")
+        with col_valida_check:
+            st.checkbox("Valida", key=f"valida_{idx}", value=row['Valida'])
 
         # Riga separatrice / stato partita
-        if valida:
+        if st.session_state.get(f"valida_{idx}", False):
             st.markdown("<hr>", unsafe_allow_html=True)
         else:
             st.markdown('<div style="color:red; margin-bottom: 15px;">Partita non ancora validata ❌</div>', unsafe_allow_html=True)
+
+def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
+    df = st.session_state['df_torneo']
     
-    if st.button("💾 Salva Risultati Giornata", key="save_final_button"):
-        df = st.session_state['df_torneo']
         
-        if df['Valida'].all():
-            nome_completato = f"completato_{st.session_state['nome_torneo']}"
-            classifica_finale = aggiorna_classifica(df)
+    df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
 
-            salva_torneo_su_db(st.session_state.get('tournaments_collection'), df, nome_completato)
+    #for idx, row in df_giornata.iterrows():
+        #df.at[idx, 'GolCasa'] = st.session_state.get(f"golcasa_{idx}", 0)
+        #df.at[idx, 'GolOspite'] = st.session_state.get(f"golospite_{idx}", 0)
+        #df.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
 
-            st.session_state['torneo_completato'] = True
-            st.session_state['classifica_finale'] = classifica_finale
+    # ➡️ GESTISCI IN MODO ESPLICITO I VALORI VUOTI
+    for idx, row in df_giornata.iterrows():
+        gol_casa = st.session_state.get(f"golcasa_{idx}")
+        gol_ospite = st.session_state.get(f"golospite_{idx}")
+        
+        # Sostituisci None con 0 prima di assegnare il valore al DataFrame
+        df.at[idx, 'GolCasa'] = gol_casa if gol_casa is not None else 0
+        df.at[idx, 'GolOspite'] = gol_ospite if gol_ospite is not None else 0
+        df.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
 
-            st.toast(f"Torneo completato e salvato come {nome_completato} ✅")
-        else:
-            st.toast("Risultati giornata salvati ✅")
+       
+    # ➡️ FORZA LA PULIZIA DEL TIPO DI DATO ANCHE QUI
+    df['GolCasa'] = pd.to_numeric(df['GolCasa'], errors='coerce').fillna(0).astype('Int64')
+    df['GolOspite'] = pd.to_numeric(df['GolOspite'], errors='coerce').fillna(0).astype('Int64')
+
+    
+    st.session_state['df_torneo'] = df
+   
+    # 🔹 aggiorna torneo corrente
+    if 'tournament_id' in st.session_state:
+        aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
+        st.toast("Risultati salvati su MongoDB ✅")
+    else:
+        st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
+
+   
+
+    # 🔹 se tutte le partite sono validate → salva come “completato_nomeTorneo”
+    if df['Valida'].all():
+        nome_completato = f"completato_{st.session_state['nome_torneo']}"
+        classifica_finale = aggiorna_classifica(df)
+
+        salva_torneo_su_db(tournaments_collection, df, nome_completato)
+
+        st.session_state['torneo_completato'] = True
+        st.session_state['classifica_finale'] = classifica_finale
+
+        st.toast(f"Torneo completato e salvato come {nome_completato} ✅")
+
+   
+
+    # 🔹 Forza ricarica della pagina per evitare None stampati
+    #1st.rerun()
 
 def mostra_classifica_stilizzata(df_classifica, girone_sel):    
     if df_classifica is None or df_classifica.empty:
@@ -316,6 +329,7 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
     st.dataframe(df_girone, use_container_width=True)
 
+#  export PDF
 def esporta_pdf(df_torneo, df_classifica, nome_torneo):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.set_auto_page_break(auto=False)
@@ -326,11 +340,13 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
     margin_bottom = 15
     page_height = 297
     gironi = df_torneo['Girone'].dropna().unique()
+
     for girone in gironi:
         pdf.set_font("Arial", 'B', 14)
         if pdf.get_y() + 8 + margin_bottom > page_height:
             pdf.add_page()
         pdf.cell(0, 8, f"{girone}", ln=True)
+
         giornate = sorted(df_torneo[df_torneo['Girone'] == girone]['Giornata'].dropna().unique())
         for g in giornate:
             needed_space = 7 + line_height + line_height + margin_bottom
@@ -341,12 +357,14 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
             pdf.set_font("Arial", 'B', 11)
             headers = ["Casa", "Gol", "Gol", "Ospite"]
             col_widths = [60, 20, 20, 60]
+
+            # intestazioni
             for i, h in enumerate(headers):
                 pdf.cell(col_widths[i], 6, h, border=1, align='C')
             pdf.ln()
             pdf.set_font("Arial", '', 11)
-            # CORREZIONE QUI: Usa df_torneo invece di df
-            partite = df_torneo[(df_torneo['Girone'] == girone) & (df['Giornata'] == g)]
+
+            partite = df_torneo[(df_torneo['Girone'] == girone) & (df_torneo['Giornata'] == g)]
             for _, row in partite.iterrows():
                 if pdf.get_y() + line_height + margin_bottom > page_height:
                     pdf.add_page()
@@ -357,17 +375,28 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
                         pdf.cell(col_widths[i], 6, h, border=1, align='C')
                     pdf.ln()
                     pdf.set_font("Arial", '', 11)
+
+                # fallback sicuro
+                casa   = str(row['Casa'])   if pd.notna(row['Casa'])   and str(row['Casa']).strip().lower() not in ["none", "nan"] else "-"
+                ospite = str(row['Ospite']) if pd.notna(row['Ospite']) and str(row['Ospite']).strip().lower() not in ["none", "nan"] else "-"
+                golc   = str(row['GolCasa'])   if pd.notna(row['GolCasa'])   else "-"
+                golo   = str(row['GolOspite']) if pd.notna(row['GolOspite']) else "-"
+
                 pdf.set_text_color(255, 0, 0) if not row['Valida'] else pdf.set_text_color(0, 0, 0)
-                pdf.cell(col_widths[0], 6, str(row['Casa']), border=1)
-                pdf.cell(col_widths[1], 6, str(row['GolCasa']) if pd.notna(row['GolCasa']) else "-", border=1, align='C')
-                pdf.cell(col_widths[2], 6, str(row['GolOspite']) if pd.notna(row['GolOspite']) else "-", border=1, align='C')
-                pdf.cell(col_widths[3], 6, str(row['Ospite']), border=1)
+                #pdf.cell(col_widths[0], 6, casa, border=1)
+                pdf.cell(col_widths[0], 6, ("-" if (pd.isna(casa) or str(casa).strip().lower() in ("none", "nan", "")) else str(casa)), border=1)
+                pdf.cell(col_widths[1], 6, golc, border=1, align='C')
+                pdf.cell(col_widths[2], 6, golo, border=1, align='C')
+                pdf.cell(col_widths[3], 6, ospite, border=1)
                 pdf.ln()
             pdf.ln(3)
+
+        # classifica girone
         if pdf.get_y() + 40 + margin_bottom > page_height:
             pdf.add_page()
         pdf.set_font("Arial", 'B', 13)
         pdf.cell(0, 8, f"Classifica {girone}", ln=True)
+
         df_c = df_classifica[df_classifica['Girone'] == girone]
         pdf.set_font("Arial", 'B', 11)
         headers = ["Squadra", "Punti", "V", "P", "S", "GF", "GS", "DR"]
@@ -376,6 +405,7 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
             pdf.cell(col_widths[i], 6, h, border=1, align='C')
         pdf.ln()
         pdf.set_font("Arial", '', 11)
+
         for _, r in df_c.iterrows():
             if pdf.get_y() + line_height + margin_bottom > page_height:
                 pdf.add_page()
@@ -384,7 +414,8 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
                     pdf.cell(col_widths[i], 6, h, border=1, align='C')
                 pdf.ln()
                 pdf.set_font("Arial", '', 11)
-            pdf.cell(col_widths[0], 6, str(r['Squadra']), border=1)
+            squadra = r['Squadra'] if pd.notna(r['Squadra']) else "-"
+            pdf.cell(col_widths[0], 6, squadra, border=1)
             pdf.cell(col_widths[1], 6, str(r['Punti']), border=1, align='C')
             pdf.cell(col_widths[2], 6, str(r['V']), border=1, align='C')
             pdf.cell(col_widths[3], 6, str(r['P']), border=1, align='C')
@@ -394,9 +425,13 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
             pdf.cell(col_widths[7], 6, str(r['DR']), border=1, align='C')
             pdf.ln()
         pdf.ln(10)
-    pdf_bytes = pdf.output(dest='S').encode('latin1')
+
+    
+    # versione fpdf classica
+    pdf_bytes = pdf.output(dest='S').encode('latin-1')
     return pdf_bytes
 
+# fine export PDF
 # -------------------------
 # APP
 # -------------------------
@@ -407,20 +442,18 @@ def main():
         st.rerun()
     
     # ➡️ AGGIUNGI QUESTO CODICE QUI: Mostra le informazioni di debug
-    if 'debug_message' in st.session_state and st.session_state['debug_message']:
-        st.toast("--- ULTIMO DEBUG SALVATO ---")
-        st.toast(st.session_state['debug_message'])
+    #if 'debug_message' in st.session_state and st.session_state['debug_message']:
+        #st.toast("--- ULTIMO DEBUG SALVATO ---")
+        #st.toast(st.session_state['debug_message'])
+        #st.write("--- ULTIMO DEBUG SALVATO ---")
+        #st.write(st.session_state['debug_message'])
         # Pulisce la variabile per evitare di mostrare il messaggio in ricaricamenti futuri
-        st.session_state['debug_message'] = None
+        #st.session_state['debug_message'] = None
         
     # Connessioni (senza messaggi verdi)
     players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players", show_ok=False)
     tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "TorneiSubbuteo", "Superba", show_ok=False)
 
-    # ➡️ Salva le collection in session_state per un accesso più semplice
-    st.session_state['players_collection'] = players_collection
-    st.session_state['tournaments_collection'] = tournaments_collection
-    
     # Titolo con stile personalizzato
     if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
         st.markdown(f"<div class='big-title'>🏆 {st.session_state['nome_torneo']}</div>", unsafe_allow_html=True)
@@ -436,10 +469,13 @@ def main():
             vincitori.append(f"🏅 {girone}: {primo}")
         st.success("🎉 Torneo Completato! Vincitori → " + ", ".join(vincitori))
 
+
+
     # CSS PERSONALIZZATO
     # -------------------------
     st.markdown("""
         <style>
+        ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
         .big-title { text-align: center; font-size: clamp(18px, 4vw, 38px); font-weight: bold; margin: 15px 0; color: #e63946; }
         .sub-title { font-size: 20px; font-weight: 600; margin-top: 15px; color: d3557; }
         .stButton>button { background-color: #457b9d; color: white; border-radius: 8px; padding: 0.5em 1em; font-weight: bold; }
@@ -462,19 +498,22 @@ def main():
         df = st.session_state['df_torneo']
         classifica = aggiorna_classifica(df)
 
-        # ➡️ CONTROLLO AGGIUNTIVO: Assicurati che la classifica non sia vuota prima di tentare l'esportazione
-        if classifica is not None and not classifica.empty:
-            st.sidebar.download_button(
-                label="📄 Esporta in PDF",
-                data=esporta_pdf(df, classifica, st.session_state['nome_torneo']),
-                file_name=f"torneo_{st.session_state['nome_torneo']}.pdf",
-                mime="application/pdf",
-                use_container_width=True
-            )
+        #➡️ CONTROLLO AGGIUNTIVO: Assicurati che la classifica non sia vuota prima di tentare l'esportazione
+        if classifica is not None and not classifica.empty:   
+            if st.sidebar.button("📄 Prepara PDF"):
+                pdf_bytes = esporta_pdf(df, classifica, st.session_state['nome_torneo'])
+                st.sidebar.download_button(
+                    label="📥 Scarica PDF",
+                    data=pdf_bytes,
+                    file_name=f"torneo_{st.session_state['nome_torneo']}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+
         else:
             st.sidebar.info("Nessuna partita valida. Per generare la classifica completa, compila e valida i risultati.")
             
-        # --- Blocco aggiunto: visualizzazione classifica dalla sidebar ---
+        #--- Blocco aggiunto: visualizzazione classifica dalla sidebar ---
         st.sidebar.markdown("---")
         st.sidebar.subheader("📊 Visualizza Classifica")
         gironi_sidebar = sorted(df['Girone'].dropna().unique().tolist())
@@ -565,6 +604,7 @@ def main():
 
         st.markdown("---")
         if st.session_state['filtro_attivo'] == 'Nessuno':
+            #inizio calendario
             st.subheader("Navigazione Calendario")
             gironi = sorted(df['Girone'].dropna().unique().tolist())
             giornate_correnti = sorted(
@@ -600,9 +640,17 @@ def main():
                     st.rerun()
         
             mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
-            # Il pulsante non è più necessario per il salvataggio dei singoli risultati,
-            # ma è stato mantenuto per la logica di salvataggio del torneo completo.
-            
+            st.button(
+                "💾 Salva Risultati Giornata",
+                on_click=salva_risultati_giornata,
+                args=(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel'])
+            )
+            #Fine calendario 
+            #st.markdown("---")
+            #st.subheader(f"Classifica {st.session_state['girone_sel']}")
+            #classifica = aggiorna_classifica(df)
+            #mostra_classifica_stilizzata(classifica, st.session_state['girone_sel'])
+
     else:
         st.subheader("📁 Carica un torneo o crea uno nuovo")
         col1, col2 = st.columns(2)
@@ -766,14 +814,18 @@ def main():
                         st.error("❌ Per generare il calendario manualmente, clicca prima su 'Valida e Assegna Gironi Manuali'.")
                         return
 
+                                        
                     giocatori_formattati = []
                     for gioc in st.session_state['giocatori_selezionati_definitivi']:
+                        # Controlla se le informazioni del giocatore esistono e se la squadra non è None
                         info_giocatore = st.session_state['gioc_info'].get(gioc)
                         if info_giocatore and 'Squadra' in info_giocatore and info_giocatore['Squadra'] is not None:
                             giocatori_formattati.append(f"{info_giocatore['Squadra']}-{gioc}")
                         else:
+                            # Opzionale: puoi aggiungere un debug qui per vedere quale giocatore causa il problema
                             st.warning(f"❌ Informazioni squadra mancanti o nulle per il giocatore: {gioc}. Non verrà inserito nel calendario.")
-                    
+                    # ➡️ SEGNALE 1
+                    st.write("Segnale 1: Inizio generazione calendario")
                     if modalita_gironi == "Popola Gironi Automaticamente":
                         gironi_finali = [[] for _ in range(st.session_state['num_gironi'])]
                         random.shuffle(giocatori_formattati)
@@ -781,26 +833,68 @@ def main():
                             gironi_finali[i % st.session_state['num_gironi']].append(g)
                     else:
                         gironi_finali = list(st.session_state['gironi_manuali'].values())
-                    
+                    # ➡️ SEGNALE 2
+                    st.write("Segnale 2: Gironi finali creati, sto per generare il calendario")
+
+                    # ➡️ SOLUZIONE DEFINITIVA: Controlla che nessun girone sia vuoto o con un solo giocatore
                     for girone in gironi_finali:
+                        # Un girone con meno di due giocatori non può generare un calendario valido
                         if len(girone) < 2:
                             st.error("❌ Errore: Un girone contiene meno di due giocatori. Aggiungi altri giocatori o modifica i gironi.")
                             return
 
                     try:
+                        # ➡️ Inizializza tid a None per prevenire l'errore
+                        tid = None
+                        # ➡️ Prova a fare queste operazioni
                         df_torneo = genera_calendario_from_list(gironi_finali, st.session_state['tipo_calendario'])
 
+                        # ➡️ SOLUZIONE DEFINITIVA: Forza il tipo di dato a stringa per tutte le colonne
                         df_torneo['Girone'] = df_torneo['Girone'].astype('string')
                         df_torneo['Casa'] = df_torneo['Casa'].astype('string')
                         df_torneo['Ospite'] = df_torneo['Ospite'].astype('string')
                         
+                        # ➡️ SEGNALE 3
+                        st.write("Segnale 3: Calendario generato, sto per salvare su MongoDB")
+
+                        # ➡️ DEBUG: Salva le informazioni DOPO LA CONVERSIONE
+                        st.session_state['debug_message'] = {
+                            'tid_valore': "Non ancora salvato.",
+                            'df_colonne': list(df_torneo.columns),
+                            'df_dtypes': df_torneo.dtypes.to_dict(),
+                            'messaggio': "Debug salvato correttamente."
+                        }
+
+                        # ➡️ CONFERMA DEL SALVATAGGIO: Aggiorna il tid solo se è valido
+                        if tid:
+                            st.session_state['df_torneo'] = df_torneo
+                            st.session_state['tournament_id'] = str(tid)
+                            st.session_state['calendario_generato'] = True
+                            st.session_state['debug_message']['tid_valore'] = str(tid)
+                            st.toast("Calendario generato e salvato su MongoDB ✅")
+                            st.rerun()
+                        
                         tid = salva_torneo_su_db(tournaments_collection, df_torneo, st.session_state['nome_torneo'])
 
+                        # ➡️ SOLUZIONE DEFINITIVA: Salva il DEBUG nello stato della sessione
                         st.session_state['debug_message'] = {
                         'tid': str(tid),
                         'df_info': df_torneo.dtypes.to_dict()
                     }
                     
+                        # Questo debug si vedrà solo se non c'è un errore nel try
+                        st.write("--- DEBUG: Valore di tid dopo il salvataggio ---")
+                        st.write(tid)
+
+                        
+                        # ➡️ AGGIUNGI QUESTO CODICE: Salva le informazioni di debug
+                        st.session_state['debug_message'] = {
+                        'tid_valore': str(tid),
+                        'df_colonne': list(df_torneo.columns),
+                        'df_dtypes': df_torneo.dtypes.to_dict(),
+                        'messaggio': "Debug salvato correttamente."
+                    }
+                        
                         if tid:
                             st.session_state['df_torneo'] = df_torneo
                             st.session_state['tournament_id'] = str(tid)
@@ -808,10 +902,14 @@ def main():
                             st.toast("Calendario generato e salvato su MongoDB ✅")
                             st.rerun()
                         else:
+                            # Questo si vedrà se il salvataggio fallisce senza un errore
                             st.error("❌ Errore: Il salvataggio su MongoDB è fallito. Controlla la connessione al database.")
                     
                     except Exception as e:
+                        # ➡️ Questo si vedrà se c'è un errore imprevisto
                         st.error(f"❌ Errore critico durante il salvataggio: {e}")
+
+            
                     
                     st.rerun()                       
 
