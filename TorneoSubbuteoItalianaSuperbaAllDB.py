@@ -245,7 +245,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
                 )
             with col_spazio:
                 st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-                st.markdown("vs")
+                st.markdown("🆚")
             with col_ospite:
                 st.markdown(f"**🛫 {row['Ospite']}**")
                 st.number_input(
@@ -823,7 +823,7 @@ def main():
 
     # Footer leggero
     st.markdown("---")
-    st.caption("⚽ Subbuteo Tournament Manager • UI rivista con emoji e stile • Made with Streamlit")
+    st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
 
 if __name__ == "__main__":
     main()
