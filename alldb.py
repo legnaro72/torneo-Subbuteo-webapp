@@ -485,6 +485,19 @@ def main():
         .stDownloadButton>button { background-color: #2a9d8f; color: white; border-radius: 8px; font-weight: bold; }
         .stDownloadButton>button:hover { background-color: #21867a; }
         .stDataFrame { border: 2px solid #f4a261; border-radius: 10px; }
+
+        @media (max-width: 768px) {
+            /* Regole specifiche per schermi piccoli (tablet e cellulari) */
+            .st-emotion-cache-1f84s9j, .st-emotion-cache-1j0n4k {
+                flex-direction: row;
+                justify-content: center;
+            }
+            .st-emotion-cache-1f84s9j > div, .st-emotion-cache-1j0n4k > div {
+                flex: 1;
+                padding: 0 5px;
+            }
+        }
+        
         </style>
     """, unsafe_allow_html=True)
 
