@@ -630,7 +630,7 @@ def main():
             st.session_state["num_gironi"] = num_gironi
             tipo_calendario = st.selectbox("📅 Tipo calendario", ["Solo andata", "Andata e ritorno"], key="tipo_calendario_input")
             st.session_state["tipo_calendario"] = tipo_calendario
-            n_giocatori = st.number_input("👥 Numero giocatori", 3, 24, value=st.session_state.get("n_giocatori", 3), key="n_giocatori_input")
+            n_giocatori = st.number_input("👥 Numero giocatori", 3, 64, value=st.session_state.get("n_giocatori", 3), key="n_giocatori_input")
             st.session_state["n_giocatori"] = n_giocatori
 
             st.markdown("### 👥 Seleziona Giocatori")
