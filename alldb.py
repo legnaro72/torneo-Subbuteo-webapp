@@ -698,57 +698,74 @@ def main():
                 st.rerun()
 
         if st.session_state.get('mostra_form_creazione', False):
-        
-            # 🆕 La logica di visualizzazione si basa su una nuova variabile di stato
-            if not st.session_state.get('giocatori_confermati', False):
-                # 🟢 BLOCCO A: Impostazioni iniziali e conferma giocatori
-                # Questo blocco viene visualizzato se 'giocatori_confermati' è False
-                st.markdown("---")
-                st.header("Dettagli Nuovo Torneo")
-                nome_default = f"TorneoSubbuteo_{datetime.now().strftime('%d%m%Y')}"
-                nome_torneo = st.text_input("📝 Nome del torneo:", value=st.session_state.get("nome_torneo", nome_default), key="nome_torneo_input")
-                st.session_state["nome_torneo"] = nome_torneo
-                num_gironi = st.number_input("🔢 Numero di gironi", 1, 8, value=st.session_state.get("num_gironi", 2), key="num_gironi_input")
-                st.session_state["num_gironi"] = num_gironi
-                tipo_calendario = st.selectbox("📅 Tipo calendario", ["Solo andata", "Andata e ritorno"], key="tipo_calendario_input")
-                st.session_state["tipo_calendario"] = tipo_calendario
-                n_giocatori = st.number_input("👥 Numero giocatori", 4, 32, value=st.session_state.get("n_giocatori", 8), key="n_giocatori_input")
-                st.session_state["n_giocatori"] = n_giocatori
-    
-                st.markdown("### 👥 Seleziona Giocatori")
-                amici = df_master['Giocatore'].tolist()
-                amici_selezionati = st.multiselect("Seleziona giocatori dal database:", amici, default=st.session_state.get("amici_selezionati", []), key="amici_multiselect")
-    
-                num_supplementari = st.session_state["n_giocatori"] - len(amici_selezionati)
-                if num_supplementari < 0:
-                    st.warning(f"⚠️ Hai selezionato più giocatori ({len(amici_selezionati)}) del numero partecipanti ({st.session_state['n_giocatori']}). Riduci la selezione.")
+            st.markdown("---")
+            st.header("Dettagli Nuovo Torneo")
+            nome_default = f"TorneoSubbuteo_{datetime.now().strftime('%d%m%Y')}"
+            nome_torneo = st.text_input("📝 Nome del torneo:", value=st.session_state.get("nome_torneo", nome_default), key="nome_torneo_input")
+            st.session_state["nome_torneo"] = nome_torneo
+            num_gironi = st.number_input("🔢 Numero di gironi", 1, 8, value=st.session_state.get("num_gironi", 2), key="num_gironi_input")
+            st.session_state["num_gironi"] = num_gironi
+            tipo_calendario = st.selectbox("📅 Tipo calendario", ["Solo andata", "Andata e ritorno"], key="tipo_calendario_input")
+            st.session_state["tipo_calendario"] = tipo_calendario
+            n_giocatori = st.number_input("👥 Numero giocatori", 4, 32, value=st.session_state.get("n_giocatori", 8), key="n_giocatori_input")
+            st.session_state["n_giocatori"] = n_giocatori
+
+            st.markdown("### 👥 Seleziona Giocatori")
+            amici = df_master['Giocatore'].tolist()
+            amici_selezionati = st.multiselect("Seleziona giocatori dal database:", amici, default=st.session_state.get("amici_selezionati", []), key="amici_multiselect")
+
+            num_supplementari = st.session_state["n_giocatori"] - len(amici_selezionati)
+            if num_supplementari < 0:
+                st.warning(f"⚠️ Hai selezionato più giocatori ({len(amici_selezionati)}) del numero partecipanti ({st.session_state['n_giocatori']}). Riduci la selezione.")
+                return
+
+            st.markdown(f"Giocatori ospiti da aggiungere: **{max(0, num_supplementari)}**")
+            giocatori_supplementari = []
+            if 'giocatori_supplementari_list' not in st.session_state:
+                st.session_state['giocatori_supplementari_list'] = [''] * max(0, num_supplementari)
+
+            for i in range(max(0, num_supplementari)):
+                nome_ospite = st.text_input(f"Nome ospite {i+1}", value=st.session_state['giocatori_supplementari_list'][i], key=f"ospite_{i}")
+                st.session_state['giocatori_supplementari_list'][i] = nome_ospite
+                if nome_ospite:
+                    giocatori_supplementari.append(nome_ospite.strip())
+
+            #if st.button("Conferma Giocatori"):
+            # Blocco del pulsante "Conferma Giocatori"
+            if st.button("Conferma Giocatori"):
+                giocatori_scelti = amici_selezionati + [g for g in giocatori_supplementari if g]
+                if len(set(giocatori_scelti)) < 4:
+                    st.warning("⚠️ Inserisci almeno 4 giocatori diversi.")
                     return
-    
-                st.markdown(f"Giocatori ospiti da aggiungere: **{max(0, num_supplementari)}**")
-                giocatori_supplementari = []
-                if 'giocatori_supplementari_list' not in st.session_state:
-                    st.session_state['giocatori_supplementari_list'] = [''] * max(0, num_supplementari)
-    
-                for i in range(max(0, num_supplementari)):
-                    nome_ospite = st.text_input(f"Nome ospite {i+1}", value=st.session_state['giocatori_supplementari_list'][i], key=f"ospite_{i}")
-                    st.session_state['giocatori_supplementari_list'][i] = nome_ospite
-                    if nome_ospite:
-                        giocatori_supplementari.append(nome_ospite.strip())
-    
-                if st.button("Conferma Giocatori"):
-                    giocatori_scelti = amici_selezionati + [g for g in giocatori_supplementari if g]
-                    if len(set(giocatori_scelti)) < 4:
-                        st.warning("⚠️ Inserisci almeno 4 giocatori diversi.")
-                        return
-                    st.session_state['giocatori_selezionati_definitivi'] = list(set(giocatori_scelti))
-                    st.session_state['mostra_assegnazione_squadre'] = True
-                    st.session_state['mostra_gironi'] = False
-                    st.session_state['gironi_manuali_completi'] = False
+                st.session_state['giocatori_selezionati_definitivi'] = list(set(giocatori_scelti))
+                st.session_state['mostra_assegnazione_squadre'] = True
+                st.session_state['mostra_gironi'] = False
+                st.session_state['gironi_manuali_completi'] = False
+                st.session_state['giocatori_confermati'] = True # Variabile di stato per mostrare il secondo pulsante
                 
-                    # 🔹 CORREZIONE: Inizializza il dizionario qui, prima del ricaricamento.
-                    st.session_state['gioc_info'] = {}
-                    for gioc in st.session_state['giocatori_selezionati_definitivi']:
-                        # Questo blocco cerca e imposta i valori predefiniti
+                st.session_state['gioc_info'] = {}
+                for gioc in st.session_state['giocatori_selezionati_definitivi']:
+                    row = df_master[df_master['Giocatore'] == gioc].iloc[0] if gioc in df_master['Giocatore'].values else None
+                    squadra_default = row['Squadra'] if row is not None else ""
+                    potenziale_default = int(row['Potenziale']) if row is not None else 4
+                    st.session_state['gioc_info'][gioc] = {
+                        "Squadra": squadra_default,
+                        "Potenziale": potenziale_default
+                    }
+                
+                st.toast("Giocatori confermati ✅")
+                st.rerun()
+            
+            # 🔹 Blocco condizionale per mostrare gli input e il secondo pulsante
+            if st.session_state.get('mostra_assegnazione_squadre', False):
+                st.markdown("---")
+                st.markdown("### ⚽ Modifica Squadra e Potenziale")
+                
+                for gioc in st.session_state['giocatori_selezionati_definitivi']:
+                    # ... (tutta la logica di visualizzazione dei campi text_input e slider)
+                    if 'gioc_info' not in st.session_state:
+                        st.session_state['gioc_info'] = {}
+                    if gioc not in st.session_state['gioc_info']:
                         row = df_master[df_master['Giocatore'] == gioc].iloc[0] if gioc in df_master['Giocatore'].values else None
                         squadra_default = row['Squadra'] if row is not None else ""
                         potenziale_default = int(row['Potenziale']) if row is not None else 4
@@ -756,54 +773,28 @@ def main():
                             "Squadra": squadra_default,
                             "Potenziale": potenziale_default
                         }
-                    
-                    st.toast("Giocatori confermati ✅")
+                
+                    squadra_nuova = st.text_input(
+                        f"Squadra per {gioc}",
+                        value=st.session_state['gioc_info'][gioc]["Squadra"],
+                        key=f"squadra_{gioc}"
+                    )
+                    potenziale_nuovo = st.slider(
+                        f"Potenziale per {gioc}",
+                        1, 10,
+                        int(st.session_state['gioc_info'][gioc]["Potenziale"]),
+                        key=f"potenziale_{gioc}"
+                    )
+                
+                    st.session_state['gioc_info'][gioc]["Squadra"] = squadra_nuova
+                    st.session_state['gioc_info'][gioc]["Potenziale"] = potenziale_nuovo
+            
+                # 🔹 Sposta il pulsante qui, all'interno del blocco condizionale
+                if st.button("Conferma Squadre e Potenziali"):
+                    st.session_state['mostra_gironi'] = True
+                    st.toast("Squadre e potenziali confermati ✅")
                     st.rerun()
-                else:
-                    # 🟢 BLOCCO B: Modifica squadre e potenziali
-                    # Questo blocco viene visualizzato solo se 'giocatori_confermati' è True
-                    st.markdown("---")
-                    st.markdown("### ⚽ Modifica Squadra e Potenziale")
-
-                    # Pulsante per tornare indietro al blocco A
-                    if st.button("⬅️ Torna a Modifica Giocatori"):
-                        st.session_state['giocatori_confermati'] = False
-                        st.session_state['mostra_assegnazione_squadre'] = False
-                        st.rerun()
-   
-                    for gioc in st.session_state['giocatori_selezionati_definitivi']:
-                        # inizializza il dizionario se non esiste
-                        if 'gioc_info' not in st.session_state:
-                            st.session_state['gioc_info'] = {}
-                        if gioc not in st.session_state['gioc_info']:
-                            row = df_master[df_master['Giocatore'] == gioc].iloc[0] if gioc in df_master['Giocatore'].values else None
-                            squadra_default = row['Squadra'] if row is not None else ""
-                            potenziale_default = int(row['Potenziale']) if row is not None else 4
-                            st.session_state['gioc_info'][gioc] = {
-                                "Squadra": squadra_default,
-                                "Potenziale": potenziale_default
-                            }
-                
-                        squadra_nuova = st.text_input(
-                            f"Squadra per {gioc}",
-                            value=st.session_state['gioc_info'][gioc]["Squadra"],
-                            key=f"squadra_{gioc}"
-                        )
-                        potenziale_nuovo = st.slider(
-                            f"Potenziale per {gioc}",
-                            1, 10,
-                            int(st.session_state['gioc_info'][gioc]["Potenziale"]),
-                            key=f"potenziale_{gioc}"
-                        )
-                
-                        st.session_state['gioc_info'][gioc]["Squadra"] = squadra_nuova
-                        st.session_state['gioc_info'][gioc]["Potenziale"] = potenziale_nuovo
-    
-                        if st.button("Conferma Squadre e Potenziali"):
-                                st.session_state['mostra_gironi'] = True
-                                st.toast("Squadre e potenziali confermati ✅")
-                                st.rerun()
-
+            
             if st.session_state.get('mostra_gironi', False):
                 st.markdown("---")
                 st.markdown("### ➡️ Modalità di creazione dei gironi")
