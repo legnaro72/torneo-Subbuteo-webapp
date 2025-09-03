@@ -12,7 +12,9 @@ import json
 # -------------------------------------------------
 # CONFIG PAGINA (deve essere la prima chiamata st.*)
 # -------------------------------------------------
-st.set_page_config(page_title="⚽Campionato/Torneo Preliminare Subbuteo", layout="wide")
+st.set_page_config(page_title="⚽Campionato/Torneo Preliminare Subbuteo") 
+#, layout="wide")
+
 
 
 # -------------------------
