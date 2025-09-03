@@ -247,25 +247,35 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
 
         # Crea un contenitore unico per ogni partita
         with st.container():
-            # Prima riga: Nomi delle squadre
-            col_nome_casa, col_spazio, col_nome_ospite = st.columns([1, 1, 1])
-            with col_nome_casa:
+            # Layout per nomi e input, con spaziatura fissa
+            col_casa, col_spazio, col_ospite, col_valida = st.columns([1, 0.2, 1, 0.5])
+
+            with col_casa:
+                # Sezione Squadra Casa
                 st.markdown(f"**{row['Casa']}**")
-            with col_nome_ospite:
-                st.markdown(f"**{row['Ospite']}**")
-    
-            # Seconda riga: Input dei gol e checkbox
-            col_input_casa, col_trattino, col_input_ospite, col_valida_check = st.columns([1, 1, 1, 1])
-            with col_input_casa:
-                st.number_input("", min_value=0, max_value=20, key=f"golcasa_{idx}", value=gol_casa, disabled=row['Valida'], label_visibility="hidden")
-            with col_trattino:
+                st.number_input(
+                    "", min_value=0, max_value=20, key=f"golcasa_{idx}", value=gol_casa,
+                    disabled=row['Valida'], label_visibility="hidden"
+                )
+            
+            with col_spazio:
+                # Separatore 'vs' o '-'
+                st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
                 st.markdown("-")
-            with col_input_ospite:
-                st.number_input("", min_value=0, max_value=20, key=f"golospite_{idx}", value=gol_ospite, disabled=row['Valida'], label_visibility="hidden")
-            with col_valida_check:
+            
+            with col_ospite:
+                # Sezione Squadra Ospite
+                st.markdown(f"**{row['Ospite']}**")
+                st.number_input(
+                    "", min_value=0, max_value=20, key=f"golospite_{idx}", value=gol_ospite,
+                    disabled=row['Valida'], label_visibility="hidden"
+                )
+
+            with col_valida:
+                st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
                 st.checkbox("Valida", key=f"valida_{idx}", value=row['Valida'])
 
-            # Messaggio di stato partita
+            # Riga separatrice / stato partita
             if st.session_state.get(f"valida_{idx}", False):
                 st.markdown("<hr>", unsafe_allow_html=True)
             else:
@@ -445,15 +455,7 @@ def main():
         st.session_state['sidebar_state_reset'] = False
         st.rerun()
     
-    # ➡️ AGGIUNGI QUESTO CODICE QUI: Mostra le informazioni di debug
-    #if 'debug_message' in st.session_state and st.session_state['debug_message']:
-        #st.toast("--- ULTIMO DEBUG SALVATO ---")
-        #st.toast(st.session_state['debug_message'])
-        #st.write("--- ULTIMO DEBUG SALVATO ---")
-        #st.write(st.session_state['debug_message'])
-        # Pulisce la variabile per evitare di mostrare il messaggio in ricaricamenti futuri
-        #st.session_state['debug_message'] = None
-        
+       
     # Connessioni (senza messaggi verdi)
     players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players", show_ok=False)
     tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "TorneiSubbuteo", "Superba", show_ok=False)
