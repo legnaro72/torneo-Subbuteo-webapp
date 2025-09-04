@@ -1018,25 +1018,28 @@ else:
                 query_params = parse_qs(parsed_url.query)
                 
                 #inizio 
-                # Ottieni il nome del torneo dalla sessione
-                torneo_nome = st.session_state["tournament_name"]
-                
-                # Costruisci l'URL di reindirizzamento
-                redirect_url = f"https://torneo-subbuteo-superba-ita-all-db.streamlit.app/?torneo={torneo_nome}"
-                
-                # Inietta lo script JavaScript per il reindirizzamento
-                st.markdown(
-                    f"""
-                    <script>
-                        window.location.href = "{redirect_url}";
-                    </script>
-                    <p style="text-align:center; font-size:1.1rem;">
-                        ⏳ Reindirizzamento automatico alla web app dei gironi...<br>
-                        Se non parte entro pochi secondi <a href="{redirect_url}">clicca qui</a>.
-                    </p>
-                    """,
-                    unsafe_allow_html=True
-                )
+                if st.button("Clicca per reindirizzare alla Web App dei Gironi"):
+            
+                    # 1. Ottieni il nome del torneo dalla sessione
+                    torneo_nome = st.session_state["tournament_name"]
+            
+                    # 2. Definisci l'URL di reindirizzamento
+                    redirect_url = f"https://torneo-subbuteo-superba-ita-all-db.streamlit.app/?torneo={torneo_nome}"
+                    
+                    # 3. Usa st.markdown per iniettare il codice JavaScript
+                    st.markdown(
+                        f"""
+                        <script>
+                            // Questo comando JavaScript cambia l'URL del browser
+                            window.location.href = "{redirect_url}";
+                        </script>
+                        <p style="text-align:center; font-size:1.1rem;">
+                            ⏳ Reindirizzamento in corso...<br>
+                            Se non parte entro pochi secondi <a href="{redirect_url}">clicca qui</a>.
+                        </p>
+                        """,
+                        unsafe_allow_html=True
+                    )
 
                 #fine
 
