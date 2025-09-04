@@ -1012,11 +1012,7 @@ else:
                 #1</p>
                 #1""", unsafe_allow_html=True)
 
-                # Ottieni l'URL attuale e i suoi parametri di query
-                current_url = st.get_option("server.app_url")
-                parsed_url = urlparse(current_url)
-                query_params = parse_qs(parsed_url.query)
-                
+   
                 #inizio 
                 if st.button("Clicca per reindirizzare alla Web App dei Gironi"):
             
