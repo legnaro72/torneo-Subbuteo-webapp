@@ -1017,12 +1017,13 @@ else:
                 query_params = parse_qs(parsed_url.query)
                 
                 #inizio 
-
+                # Assicurati che 'tournament_name' sia presente nello stato della sessione
                 if "tournament_name" in st.session_state:
                     torneo_nome = st.session_state["tournament_name"]
-                    # Crea l'URL con il parametro di query
+                
+                    # Costruisci l'URL di reindirizzamento in modo corretto
                     redirect_url = f"https://tornospalldb.streamlit.app/?torneo={torneo_nome}"
-                    
+                
                     st.markdown(f"""
                         <p style="text-align:center; font-size:1.1rem;">
                             Per continuare, clicca sul link per accedere alla web app dei gironi.<br>
@@ -1030,7 +1031,9 @@ else:
                         </p>
                     """, unsafe_allow_html=True)
                 else:
-                    st.warning("Nessun nome del torneo trovato nella sessione.")
+                    # Gestisci il caso in cui il nome del torneo non è disponibile
+                    st.warning("Nessun nome del torneo trovato per il reindirizzamento.")
+
                 #fine
 
 
