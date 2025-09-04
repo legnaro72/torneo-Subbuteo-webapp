@@ -8,6 +8,7 @@ from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 from bson.objectid import ObjectId
 import json
+import urllib.parse
 
 # -------------------------------------------------
 # CONFIG PAGINA (deve essere la prima chiamata st.*)
@@ -441,6 +442,54 @@ def main():
     # Connessioni (senza messaggi verdi)
     players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players", show_ok=False)
     tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "TorneiSubbuteo", "Superba", show_ok=False)
+    
+    # --- Auto-load from URL param (es. ?torneo=nome_torneo) ---
+    
+
+    # usa experimental_get_query_params per compatibilità
+    # usa st.query_params (nuova API stabile)
+    q = st.query_params
+    if 'torneo' in q and q['torneo']:
+        # con la nuova API è già una stringa, non più una lista
+        raw_param = q['torneo']
+        try:
+            torneo_param = urllib.parse.unquote_plus(raw_param)
+        except Exception:
+            torneo_param = raw_param
+
+        # evita ripetuti tentativi se il torneo è già in session_state
+        already_loaded = (
+            st.session_state.get('calendario_generato', False)
+            and st.session_state.get('nome_torneo') == torneo_param
+        )
+
+        if not already_loaded:
+            if tournaments_collection is not None:
+                torneo_doc = tournaments_collection.find_one({"nome_torneo": torneo_param})
+                if not torneo_doc:
+                    try:
+                        torneo_doc = tournaments_collection.find_one({"_id": ObjectId(torneo_param)})
+                    except Exception:
+                        torneo_doc = None
+
+                if torneo_doc:
+                    st.session_state['tournament_id'] = str(torneo_doc['_id'])
+                    st.session_state['nome_torneo'] = torneo_doc.get('nome_torneo', torneo_param)
+                    torneo_data = carica_torneo_da_db(
+                        tournaments_collection, st.session_state['tournament_id']
+                    )
+                    if torneo_data and 'calendario' in torneo_data:
+                        st.session_state['calendario_generato'] = True
+                        st.toast(f"✅ Torneo '{st.session_state['nome_torneo']}' caricato automaticamente")
+                        # pulisci i query params per evitare loop di reload
+                        st.query_params.clear()
+                        st.rerun()
+
+                    else:
+                        st.warning(f"⚠️ Trovato documento torneo ma non è presente il calendario o si è verificato un errore.")
+                else:
+                    st.warning(f"⚠️ Torneo '{torneo_param}' non trovato nel DB.")
+
 
     # Titolo con stile personalizzato
     if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
