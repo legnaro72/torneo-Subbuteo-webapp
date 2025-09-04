@@ -993,21 +993,35 @@ else:
                 st.session_state['giornata_selezionata'] = giornata
                 
             if st.session_state['giornate_mode'] == 'gironi':
-                 if 'df_finale_gironi' not in st.session_state:
-                     st.error("Errore nel caricamento dei dati dei gironi. Riprova.")
-                     st.button("Torna indietro", on_click=reset_to_setup)
-                     st.stop()
+                if 'df_finale_gironi' not in st.session_state:
+                    st.error("Errore nel caricamento dei dati dei gironi. Riprova.")
+                    st.button("Torna indietro", on_click=reset_to_setup)
+                    st.stop()
                  
-                 st.info("✅ Gironi creati con successo!")
-                 
-                 st.markdown(f"""
-                 <div style="text-align: center; padding: 20px; border: 2px solid #008080; border-radius: 10px; margin-top: 20px;">
-                    <h3>Gestisci il tuo torneo a gironi!</h3>
-                    <p>Ora che la fase finale a gironi è stata creata, puoi utilizzare l'altra web app per proseguire.</p>
-                    <a href="https://tornospalldb.streamlit.app/" target="_blank" style="background-color: #008080; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: bold;">Vai alla Web App dei Tornei</a>
-                    <p style="font-size: 0.8rem; margin-top: 10px;">(Il nome del torneo da cercare è **{st.session_state['tournament_name']}**)</p>
-                 </div>
-                 """, unsafe_allow_html=True)
+                #st.info("✅ Gironi creati con successo!")
+                # Redirect automatico con query param
+                #1torneo_nome = st.session_state["tournament_name"]
+                #1redirect_url = f"https://tornospalldb.streamlit.app/?torneo={torneo_nome}"
+
+                #1st.markdown(f"""
+                #1<meta http-equiv="refresh" content="0; url={redirect_url}">
+                #1<p style="text-align:center; font-size:1.1rem;">
+                #1   ⏳ Reindirizzamento automatico alla web app dei gironi...<br>
+                #1   Se non parte entro pochi secondi <a href="{redirect_url}">clicca qui</a>.
+                #1</p>
+                #1""", unsafe_allow_html=True)
+                
+                # Redirect automatico con query param
+                torneo_nome = st.session_state["tournament_name"]
+                redirect_url = f"https://tornospalldb.streamlit.app/?torneo={torneo_nome}"
+                #redirect_url = f"http://localhost:8502/?torneo={torneo_nome}"
+                st.markdown(f"""
+                <meta http-equiv="refresh" content="0; url={redirect_url}">
+                <p style="text-align:center; font-size:1.1rem;">
+                   ⏳ Reindirizzamento automatico alla web app dei gironi...<br>
+                   Se non parte entro pochi secondi <a href="{redirect_url}">clicca qui</a>.
+                </p>
+                """, unsafe_allow_html=True)
 
 
             elif st.session_state['giornate_mode'] == 'ko':
