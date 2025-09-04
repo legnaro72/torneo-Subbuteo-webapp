@@ -1018,17 +1018,25 @@ else:
                 query_params = parse_qs(parsed_url.query)
                 
                 #inizio 
-                # Redirect automatico con query param
+                # Ottieni il nome del torneo dalla sessione
                 torneo_nome = st.session_state["tournament_name"]
+                
+                # Costruisci l'URL di reindirizzamento
                 redirect_url = f"https://torneo-subbuteo-superba-ita-all-db.streamlit.app/?torneo={torneo_nome}"
                 
-                st.markdown(f"""
-                <meta http-equiv="refresh" content="0; url={redirect_url}">
-                <p style="text-align:center; font-size:1.1rem;">
-                   ⏳ Reindirizzamento automatico alla web app dei gironi...<br>
-                   Se non parte entro pochi secondi <a href="{redirect_url}">clicca qui</a>.
-                </p>
-                """, unsafe_allow_html=True)
+                # Inietta lo script JavaScript per il reindirizzamento
+                st.markdown(
+                    f"""
+                    <script>
+                        window.location.href = "{redirect_url}";
+                    </script>
+                    <p style="text-align:center; font-size:1.1rem;">
+                        ⏳ Reindirizzamento automatico alla web app dei gironi...<br>
+                        Se non parte entro pochi secondi <a href="{redirect_url}">clicca qui</a>.
+                    </p>
+                    """,
+                    unsafe_allow_html=True
+                )
 
                 #fine
 
