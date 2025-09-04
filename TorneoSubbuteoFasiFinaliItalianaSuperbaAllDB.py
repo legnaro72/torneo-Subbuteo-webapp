@@ -1018,46 +1018,19 @@ else:
                 
                 #inizio 
 
-                # Ottieni il nome del torneo dalla sessione
-                torneo_nome = st.session_state.get("tournament_name")
-                
-                if torneo_nome:
-                    # Costruisci l'URL di reindirizzamento
+                if "tournament_name" in st.session_state:
+                    torneo_nome = st.session_state["tournament_name"]
+                    # Crea l'URL con il parametro di query
                     redirect_url = f"https://tornospalldb.streamlit.app/?torneo={torneo_nome}"
-                
-                    st.markdown("---")
-                
-                    # Mostra un messaggio e un link esplicito per il reindirizzamento
-                    st.info("Reindirizzamento completato. Clicca sul link qui sotto per accedere all'app dei gironi.")
-                
-                    st.markdown(
-                        f"""
-                        <div style="text-align: center; margin-top: 20px;">
-                            <a href="{redirect_url}" target="_self" 
-                               style="
-                                  display: inline-block;
-                                  padding: 10px 20px;
-                                  background-color: #4CAF50;
-                                  color: white;
-                                  text-align: center;
-                                  text-decoration: none;
-                                  border-radius: 5px;
-                                  font-size: 1.1rem;
-                                  font-weight: bold;
-                               "
-                            >
-                            Vai alla web app dei gironi
-                            </a>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
                     
-                    st.markdown("---")
-                
+                    st.markdown(f"""
+                        <p style="text-align:center; font-size:1.1rem;">
+                            Per continuare, clicca sul link per accedere alla web app dei gironi.<br>
+                            <a href="{redirect_url}" target="_self">Clicca qui per andare all'app</a>
+                        </p>
+                    """, unsafe_allow_html=True)
                 else:
-                    st.error("Errore: Nessun nome del torneo trovato nella sessione.")
-                    st.info("Assicurati di aver inserito un nome di torneo prima di procedere.")
+                    st.warning("Nessun nome del torneo trovato nella sessione.")
                 #fine
 
 
