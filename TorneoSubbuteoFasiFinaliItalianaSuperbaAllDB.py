@@ -1018,24 +1018,17 @@ else:
                 query_params = parse_qs(parsed_url.query)
                 
                 #inizio 
-                # Verifica se il nome del torneo esiste nello stato della sessione
-                if "tournament_name" in st.session_state:
-                    torneo_nome = st.session_state["tournament_name"]
+                # Redirect automatico con query param
+                torneo_nome = st.session_state["tournament_name"]
+                redirect_url = f"https://torneo-subbuteo-superba-ita-all-db.streamlit.app/?torneo={torneo_nome}"
                 
-                    # Costruisci l'URL di reindirizzamento completo con il parametro di query
-                    redirect_url = f"https://tornospalldb.streamlit.app/?torneo={torneo_nome}"
-                
-                    # Mostra un messaggio e un link esplicito su cui l'utente può cliccare
-                    st.markdown(
-                        f"""
-                        <p style="text-align:center; font-size:1.1rem;">
-                            Per continuare, clicca sul link per accedere alla web app dei gironi.<br>
-                            <a href="{redirect_url}" target="_self">Clicca qui per andare all'app</a>
-                        </p>
-                    """, unsafe_allow_html=True)
-                else:
-                    # Gestisci il caso in cui il nome del torneo non è disponibile
-                    st.warning("Nessun nome del torneo trovato per il reindirizzamento.")
+                st.markdown(f"""
+                <meta http-equiv="refresh" content="0; url={redirect_url}">
+                <p style="text-align:center; font-size:1.1rem;">
+                   ⏳ Reindirizzamento automatico alla web app dei gironi...<br>
+                   Se non parte entro pochi secondi <a href="{redirect_url}">clicca qui</a>.
+                </p>
+                """, unsafe_allow_html=True)
 
                 #fine
 
