@@ -1003,17 +1003,21 @@ else:
                 st.info("✅ Gironi creati con successo!")
                 torneo_nome = st.session_state["tournament_name"]
                 redirect_url = f"https://torneo-subbuteo-superba-ita-all-db.streamlit.app/?torneo={torneo_nome}"
-            
-                st.markdown(f"""
-                <p style="text-align:center; font-size:1.1rem;">
-                    Reindirizzamento alla web app dei gironi...
-                    <br>
-                    Se non parte automaticamente, <a href="{redirect_url}" target="_self">clicca qui</a>.
-                </p>
-                <script>
-                    window.location.href = "{redirect_url}";
-                </script>
-                """, unsafe_allow_html=True)
+                st.markdown(
+                    f"""
+                    <script>
+                        // Questo comando JavaScript cambia l'URL del browser
+                        window.location.href = "{redirect_url}";
+                    </script>
+                    <p style="text-align:center; font-size:1.1rem;">
+                        ⏳ Reindirizzamento in corso...<br>
+                        Se non parte entro pochi secondi <a href="{redirect_url}">clicca qui</a>.
+                    </p>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+                     
 
                 #fine
 
