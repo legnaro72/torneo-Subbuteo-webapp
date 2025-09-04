@@ -1011,19 +1011,34 @@ else:
                 #1</p>
                 #1""", unsafe_allow_html=True)
 
-                # Assicurati che 'tournament_name' sia nello stato della sessione
-                if "tournament_name" not in st.session_state:
-                    st.session_state["tournament_name"] = "NomeTorneoEsempio" # Valore di esempio
+                # Ottieni l'URL attuale e i suoi parametri di query
+                current_url = st.get_option("server.app_url")
+                parsed_url = urlparse(current_url)
+                query_params = parse_qs(parsed_url.query)
                 
-                torneo_nome = st.session_state["tournament_name"]
-                redirect_url = f"https://tornospalldb.streamlit.app/?torneo={torneo_nome}"
+                # Verifica se il parametro 'torneo' è già presente nell'URL
+                if 'torneo' not in query_params:
+                    # Se il parametro non c'è, procedi con il reindirizzamento
+                    if "tournament_name" in st.session_state:
+                        torneo_nome = st.session_state["tournament_name"]
+                        redirect_url = f"https://tornospalldb.streamlit.app/?torneo={torneo_nome}"
+                        
+                        st.markdown(f"""
+                        <meta http-equiv="refresh" content="0; url={redirect_url}">
+                        <p style="text-align:center; font-size:1.1rem;">
+                            ⏳ Reindirizzamento automatico in corso...<br>
+                            Se non parte entro pochi secondi <a href="{redirect_url}">clicca qui</a>.
+                        </p>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.warning("Nessun nome del torneo trovato per il reindirizzamento.")
+                else:
+                    # Se il parametro 'torneo' è già nell'URL, non fare nulla e mostra il contenuto della pagina
+                    st.info("Reindirizzamento completato. Ora puoi visualizzare i dati del torneo.")
                 
-                st.markdown(f"""
-                <p style="text-align:center; font-size:1.1rem;">
-                    Per continuare, clicca sul link per accedere alla web app dei gironi.<br>
-                    <a href="{redirect_url}" target="_self">Vai alla web app dei gironi</a>
-                </p>
-                """, unsafe_allow_html=True)
+                    # Qui puoi inserire il resto del codice della tua app
+                    st.write(f"Parametro 'torneo' rilevato: **{query_params['torneo'][0]}**")
+
                 
                 
 
