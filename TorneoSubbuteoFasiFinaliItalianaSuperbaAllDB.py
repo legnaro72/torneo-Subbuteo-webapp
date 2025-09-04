@@ -1010,19 +1010,22 @@ else:
                 #1   Se non parte entro pochi secondi <a href="{redirect_url}">clicca qui</a>.
                 #1</p>
                 #1""", unsafe_allow_html=True)
+
+                # Assicurati che 'tournament_name' sia nello stato della sessione
+                if "tournament_name" not in st.session_state:
+                    st.session_state["tournament_name"] = "NomeTorneoEsempio" # Valore di esempio
                 
-                # Redirect automatico con query param
                 torneo_nome = st.session_state["tournament_name"]
                 redirect_url = f"https://tornospalldb.streamlit.app/?torneo={torneo_nome}"
-                #redirect_url = f"http://localhost:8502/?torneo={torneo_nome}"
+                
                 st.markdown(f"""
-                <meta http-equiv="refresh" content="0; url={redirect_url}">
                 <p style="text-align:center; font-size:1.1rem;">
-                   ⏳ Reindirizzamento automatico alla web app dei gironi...<br>
-                   Se non parte entro pochi secondi <a href="{redirect_url}">clicca qui</a>.
+                    Per continuare, clicca sul link per accedere alla web app dei gironi.<br>
+                    <a href="{redirect_url}" target="_self">Vai alla web app dei gironi</a>
                 </p>
                 """, unsafe_allow_html=True)
-
+                
+                
 
             elif st.session_state['giornate_mode'] == 'ko':
                 st.markdown("<h3 style='text-align: center;'>Tabellone Eliminazione Diretta</h3>", unsafe_allow_html=True)
