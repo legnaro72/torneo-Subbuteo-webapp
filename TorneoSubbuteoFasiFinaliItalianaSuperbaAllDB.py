@@ -1020,28 +1020,10 @@ else:
                 #inizio 
                 if "tournament_name" in st.session_state:
                     torneo_nome = st.session_state["tournament_name"]
-                    torneo_nome_enc = urllib.parse.quote_plus(torneo_nome)  # codifica spazi/accènti
+                    torneo_nome_enc = urllib.parse.quote_plus(torneo_nome)
                     redirect_url = f"https://tornospalldb.streamlit.app/?torneo={torneo_nome_enc}"
                 
-                    st.markdown(f"""
-                        <div style="text-align: center; margin-top: 20px;">
-                            <a href="{redirect_url}" target="_blank" style="
-                                display: inline-block;
-                                padding: 12px 24px;
-                                font-size: 1.1rem;
-                                font-weight: bold;
-                                color: white;
-                                background: linear-gradient(90deg, #1d3557, #457b9d);
-                                border-radius: 12px;
-                                text-decoration: none;
-                                box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
-                                transition: 0.3s;
-                            " onmouseover="this.style.transform='scale(1.05)';"
-                              onmouseout="this.style.transform='scale(1)';">
-                                👉 Vai alla Web App dei Gironi
-                            </a>
-                        </div>
-                    """, unsafe_allow_html=True)
+                    st.link_button("👉 Vai alla Web App dei Gironi", redirect_url)
                 else:
                     st.warning("Nessun nome del torneo trovato per il reindirizzamento.")
 
