@@ -11,6 +11,7 @@ import json
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 from bson.objectid import ObjectId
+import urllib.parse
 
 # ==============================================================================
 # ✨ Configurazione e stile di pagina (con nuove emoji e colori)
@@ -1017,21 +1018,31 @@ else:
                 query_params = parse_qs(parsed_url.query)
                 
                 #inizio 
-                # Assicurati che 'tournament_name' sia presente nello stato della sessione
                 if "tournament_name" in st.session_state:
                     torneo_nome = st.session_state["tournament_name"]
-                
-                    # Costruisci l'URL di reindirizzamento in modo corretto
-                    redirect_url = f"https://tornospalldb.streamlit.app/?torneo={torneo_nome}"
+                    torneo_nome_enc = urllib.parse.quote_plus(torneo_nome)  # codifica spazi/accènti
+                    redirect_url = f"https://tornospalldb.streamlit.app/?torneo={torneo_nome_enc}"
                 
                     st.markdown(f"""
-                        <p style="text-align:center; font-size:1.1rem;">
-                            Per continuare, clicca sul link per accedere alla web app dei gironi.<br>
-                            <a href="{redirect_url}" target="_self">Clicca qui per andare all'app</a>
-                        </p>
+                        <div style="text-align: center; margin-top: 20px;">
+                            <a href="{redirect_url}" target="_blank" style="
+                                display: inline-block;
+                                padding: 12px 24px;
+                                font-size: 1.1rem;
+                                font-weight: bold;
+                                color: white;
+                                background: linear-gradient(90deg, #1d3557, #457b9d);
+                                border-radius: 12px;
+                                text-decoration: none;
+                                box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+                                transition: 0.3s;
+                            " onmouseover="this.style.transform='scale(1.05)';"
+                              onmouseout="this.style.transform='scale(1)';">
+                                👉 Vai alla Web App dei Gironi
+                            </a>
+                        </div>
                     """, unsafe_allow_html=True)
                 else:
-                    # Gestisci il caso in cui il nome del torneo non è disponibile
                     st.warning("Nessun nome del torneo trovato per il reindirizzamento.")
 
                 #fine
