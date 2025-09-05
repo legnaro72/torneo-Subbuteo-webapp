@@ -14,6 +14,14 @@ from bson.objectid import ObjectId
 import urllib.parse
 import time
 import requests
+import warnings
+
+# Silenzia solo il warning di deprecazione relativo a st.experimental_get_query_params
+warnings.filterwarnings(
+    "ignore",
+    message=".*st.experimental_get_query_params.*",
+    category=DeprecationWarning
+)
 
 # ==============================================================================
 # ✨ Configurazione e stile di pagina (con nuove emoji e colori)
