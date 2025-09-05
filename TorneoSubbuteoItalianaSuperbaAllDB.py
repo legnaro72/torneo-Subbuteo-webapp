@@ -159,7 +159,23 @@ def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
     except Exception as e:
         st.error(f"❌ Errore aggiornamento torneo: {e}")
         return False
-
+def redirect_to_final_phase(torneo_nome):
+    """Reindirizza l'utente allo script delle fasi finali."""
+    redirect_url = f"https://torneo-subbuteo-ff-superba-ita-all-db.streamlit.app/?torneo={urllib.parse.quote(torneo_nome)}"
+    st.markdown(
+        f"""
+        <script>
+            window.location.href = "{redirect_url}";
+        </script>
+        <p style="text-align:center; font-size:1.1rem;">
+            ⏳ Reindirizzamento in corso...<br>
+            Se non parte entro pochi secondi <a href="{redirect_url}">clicca qui</a>.
+        </p>
+        """,
+        unsafe_allow_html=True
+    )
+    # Per fermare l'esecuzione dello script attuale dopo il reindirizzamento
+    st.stop()
 # -------------------------
 # CALENDARIO & CLASSIFICA LOGIC
 # -------------------------
@@ -262,6 +278,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
             else:
                 st.markdown('<div style="color:#e63946; margin-bottom: 15px;">Partita non ancora validata ❌</div>', unsafe_allow_html=True)
 
+# Modifica la funzione esistente
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     df = st.session_state['df_torneo']
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
@@ -278,7 +295,6 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
 
     st.session_state['df_torneo'] = df
 
-    # aggiorna torneo corrente
     if 'tournament_id' in st.session_state:
         ok = aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
         if ok:
@@ -288,13 +304,14 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     else:
         st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
 
-    # se tutte le partite sono validate → salva come “completato_nomeTorneo”
     if df['Valida'].all():
         nome_completato = f"completato_{st.session_state['nome_torneo']}"
         classifica_finale = aggiorna_classifica(df)
         salva_torneo_su_db(tournaments_collection, df, nome_completato)
         st.session_state['torneo_completato'] = True
         st.session_state['classifica_finale'] = classifica_finale
+        # Aggiungi questa nuova variabile di stato
+        st.session_state['show_redirect_button'] = True 
         st.toast(f"🏁 Torneo completato e salvato come {nome_completato} ✅")
 
 # --- CLASSIFICA ---
@@ -505,6 +522,16 @@ def main():
             primo = df_classifica[df_classifica['Girone'] == girone].iloc[0]['Squadra']
             vincitori.append(f"🏅 {girone}: {primo}")
         st.success("🎉 Torneo Completato! Vincitori → " + ", ".join(vincitori))
+        # Nuovo blocco di codice per il reindirizzamento
+        if st.session_state.get('show_redirect_button', False):
+            st.markdown("---")
+            st.subheader("🚀 Prosegui alle fasi finali?")
+            st.info("Il torneo è completo e salvato. Vuoi passare all'applicazione per le fasi finali?")
+            
+            # Questo bottone chiamerà la funzione di reindirizzamento
+            if st.button("👉 Vai alle Fasi Finali", use_container_width=True):
+                redirect_to_final_phase(f"completato_{st.session_state['nome_torneo']}")
+    
 
     df_master = carica_giocatori_da_db(players_collection)
 
