@@ -720,11 +720,14 @@ def main():
                     #if preliminary_data and 'calendario' in preliminary_data:
 
                     try:
+                        # Ricerca del torneo preliminare per nome o per ID
                         preliminary_data = tournaments_collection.find_one({"$or": [{"nome_torneo": f"completato_{base_name}"}, {"nome_torneo": {"$regex": f".*{re.escape(base_name)}.*"}}]})
                         
+                        # Se il torneo preliminare è stato trovato e ha un calendario...
                         if preliminary_data and 'calendario' in preliminary_data:
                             df_preliminary = pd.DataFrame(preliminary_data['calendario'])
 
+                            # ...e se contiene le colonne dei giocatori
                             if 'GiocatoreCasa' in df_preliminary.columns and 'GiocatoreOspite' in df_preliminary.columns:
                                 player_map_df = pd.concat([
                                     df_preliminary[['Casa', 'GiocatoreCasa']].rename(columns={'Casa': 'Squadra', 'GiocatoreCasa': 'Giocatore'}),
@@ -733,13 +736,16 @@ def main():
                                 player_map = player_map_df.drop_duplicates().set_index('Squadra')['Giocatore'].to_dict()
                                 st.session_state['player_map'] = player_map
                             else:
+                                # Caso 1: Torneo trovato, ma senza colonne GiocatoreCasa/Ospite
                                 st.warning("⚠️ Le colonne 'GiocatoreCasa' e 'GiocatoreOspite' non esistono nel torneo preliminare.")
                                 st.session_state['player_map'] = {}
                         else:
+                            # Caso 2: Torneo preliminare non trovato
                             st.warning("⚠️ Dati del torneo preliminare non trovati. I nomi dei giocatori potrebbero mancare.")
                             st.session_state['player_map'] = {}
 
                     except Exception as e:
+                        # Gestione di qualsiasi altro errore imprevisto
                         st.error(f"❌ Errore durante il caricamento dei nomi dei giocatori: {e}")
                         st.session_state['player_map'] = {}
                     
