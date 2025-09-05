@@ -251,7 +251,8 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         gol_casa = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
         gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
 
-        with st.container():
+        #with st.container():
+        with st.container(border=True):
             col_casa, col_spazio, col_ospite, col_valida = st.columns([1, 0.2, 1, 0.7])
 
             with col_casa:
