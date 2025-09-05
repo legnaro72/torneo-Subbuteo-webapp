@@ -485,55 +485,48 @@ def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
 
 
 # ------------------------------------------------------------------------------
-# 🛰️ Gestione automatica del parametro `?torneo=` in query string
+# 🛰️ Gestione automatica del parametro `?torneo=` in query string (con debug)
 # ------------------------------------------------------------------------------
 def handle_query_param_load():
     """
-    Cerca il parametro 'torneo' nella query string (compatibile con diverse versioni Streamlit),
-    prova a decodificarlo, lo cerca nel DB (per nome o _id) e, se esiste, lo carica nello session_state.
-    Alla fine pulisce i query params con experimental_set_query_params() per evitare loop di reload.
+    Carica automaticamente un torneo se presente nella query string (?torneo=...).
+    Usa esattamente lo stesso flusso del caricamento manuale, senza ricostruire colonne a mano.
     """
     try:
-        # compatibilità: experimental_get_query_params vs st.query_params
         if hasattr(st, "experimental_get_query_params"):
             q = st.experimental_get_query_params() or {}
         else:
             q = dict(st.query_params) if hasattr(st, "query_params") else {}
     except Exception:
         q = {}
-    raw = None
-    if isinstance(q, dict) and "torneo" in q:
-        raw = q.get("torneo")
-        if isinstance(raw, list) and raw:
-            raw = raw[0]
-    elif isinstance(q, str):
-        raw = q
 
-    if not raw:
+    # niente parametro "torneo"? esci subito
+    if not q or "torneo" not in q or not q["torneo"]:
         return
 
-    # prova a decodificare (gestisce spazi codificati, +, ecc.)
+    raw = q["torneo"]
+    if isinstance(raw, list) and raw:
+        raw = raw[0]
+
     try:
         torneo_param = urllib.parse.unquote_plus(raw)
     except Exception:
         torneo_param = raw
 
-    # evita di ricaricare ripetutamente lo stesso torneo se già caricato via query
+    # evita loop multipli
     if st.session_state.get("query_loaded_torneo") == torneo_param:
         return
 
-    # inizializza la connessione al DB
+    # connessione al DB
     try:
         tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
     except Exception:
         tournaments_collection = None
 
     if tournaments_collection is None:
-        # non possiamo caricare senza DB: non blocchiamo l'app ma notifichiamo
-        st.warning("⚠️ Non è stato possibile connettersi al DB per caricare il torneo dalla query string.")
         return
 
-    # cerca per nome (corrispondenza esatta) o per _id (ObjectId)
+    # cerca il torneo nel DB
     torneo_doc = tournaments_collection.find_one({"nome_torneo": torneo_param})
     if not torneo_doc:
         try:
@@ -543,40 +536,56 @@ def handle_query_param_load():
 
     if not torneo_doc:
         st.warning(f"⚠️ Torneo '{torneo_param}' non trovato nel DB.")
-        # pulisci comunque i query params per evitare ripetute segnalazioni
         try:
             if hasattr(st, "experimental_set_query_params"):
                 st.experimental_set_query_params()
             else:
-                # fallback
                 st.query_params.clear()
         except Exception:
             pass
         return
 
-    # OK: torneo trovato, carichiamo i dati nello session_state come fa l'app quando si seleziona manualmente
-    st.session_state["tournament_id"] = str(torneo_doc["_id"])
+    torneo_id = str(torneo_doc["_id"])
+    st.session_state["tournament_id"] = torneo_id
     st.session_state["tournament_name"] = torneo_doc.get("nome_torneo", torneo_param)
-    torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state["tournament_id"])
+
+    # usa la stessa funzione di caricamento manuale
+    torneo_data = carica_torneo_da_db(tournaments_collection, torneo_id)
+
     if torneo_data and "calendario" in torneo_data:
-        st.session_state["df_torneo_preliminare"] = pd.DataFrame(torneo_data["calendario"])
-        # genera classifica preliminare se possibile
-        try:
-            df_class = classifica_complessiva(st.session_state["df_torneo_preliminare"])
-            # prova a ricavare la mappa giocatori se presente nelle colonne
-            if "GiocatoreCasa" in st.session_state["df_torneo_preliminare"].columns and "GiocatoreOspite" in st.session_state["df_torneo_preliminare"].columns:
-                pm = pd.concat([st.session_state["df_torneo_preliminare"][["Casa", "GiocatoreCasa"]].rename(columns={"Casa":"Squadra","GiocatoreCasa":"Giocatore"}),
-                                st.session_state["df_torneo_preliminare"][["Ospite", "GiocatoreOspite"]].rename(columns={"Ospite":"Squadra","GiocatoreOspite":"Giocatore"})]).drop_duplicates().set_index("Squadra")["Giocatore"].to_dict()
-                st.session_state["player_map"] = pm
-            df_class["Giocatore"] = df_class["Squadra"].map(st.session_state.get("player_map", {}))
-            st.session_state["df_classifica_preliminare"] = df_class
-        except Exception:
-            pass
+        df_torneo = pd.DataFrame(torneo_data['calendario'])
+        
+        # --- 🐛 INIZIO CORREZIONE DEL BUG 🐛 ---
+        st.session_state['df_torneo_preliminare'] = df_torneo
+        
+        is_complete, msg = tournament_is_complete(df_torneo)
+        if not is_complete:
+            st.error(f"❌ Il torneo preliminare selezionato non è completo: {msg}")
+            # Non procedere se il torneo non è completo
+            return
 
+        # Genera player map e classifica qui, come fatto nella parte manuale
+        if 'GiocatoreCasa' not in df_torneo.columns:
+            df_torneo['GiocatoreCasa'] = ""
+        if 'GiocatoreOspite' not in df_torneo.columns:
+            df_torneo['GiocatoreOspite'] = ""
+        
+        player_map = pd.concat([df_torneo[['Casa', 'GiocatoreCasa']].rename(columns={'Casa':'Squadra', 'GiocatoreCasa':'Giocatore'}),
+                                df_torneo[['Ospite', 'GiocatoreOspite']].rename(columns={'Ospite':'Squadra', 'GiocatoreOspite':'Giocatore'})])
+        player_map = player_map.drop_duplicates().set_index('Squadra')['Giocatore'].to_dict()
+        st.session_state['player_map'] = player_map
+        
+        df_classifica = classifica_complessiva(df_torneo)
+        df_classifica['Giocatore'] = df_classifica['Squadra'].map(player_map)
+        st.session_state['df_classifica_preliminare'] = df_classifica
+        
+        st.session_state['ui_show_pre'] = False
         st.session_state["query_loaded_torneo"] = torneo_param
-        st.toast(f"✅ Torneo '{st.session_state['tournament_name']}' caricato automaticamente dalla query string.")
+        # --- 🐛 FINE CORREZIONE DEL BUG 🐛 ---
+        
+        st.toast(f"✅ Torneo '{st.session_state['tournament_name']}' caricato automaticamente")
 
-        # Pulisce i query params in modo compatibile con varie versioni di Streamlit
+        # pulisci query params
         try:
             if hasattr(st, "experimental_set_query_params"):
                 st.experimental_set_query_params()
@@ -585,19 +594,16 @@ def handle_query_param_load():
         except Exception:
             pass
 
-        # assicura che l'interfaccia passi alla pagina principale dell'app come se l'utente avesse selezionato il torneo
-        st.session_state["ui_show_pre"] = False
-        # effettua un rerun per applicare i nuovi stati (breaker di flussi)
+        # rerun per applicare stato
         try:
-            # sia experimental_rerun che rerun sono possibili secondo versione Streamlit
             if hasattr(st, "experimental_rerun"):
                 st.experimental_rerun()
             else:
                 st.rerun()
         except Exception:
-            # se non è permesso fare rerun in questo contesto, lasciamo che l'app venga renderizzata con i nuovi stati
-            return
-
+            pass
+    else:
+        st.warning(f"⚠️ Trovato documento torneo ma non è presente il calendario o si è verificato un errore.")
 # ------------------------------------------------------------------------------
 # Fine gestione query param
 # ------------------------------------------------------------------------------
@@ -788,6 +794,8 @@ def salva_risultati_ko():
 # ==============================================================================
 def main():
     # Inizializzazione stato
+    # chiamata per gestire ?torneo=... in query string
+    handle_query_param_load()
     if 'ui_show_pre' not in st.session_state: st.session_state['ui_show_pre'] = True
     if 'fase_modalita' not in st.session_state: st.session_state['fase_modalita'] = None
     if 'filter_player' not in st.session_state: st.session_state['filter_player'] = None
