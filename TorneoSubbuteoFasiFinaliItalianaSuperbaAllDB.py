@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import math
@@ -30,7 +31,15 @@ st.set_page_config(
 # -------------------------
 st.markdown("""
 <style>
-
+ul, li, div[data-testid*="stMarkdownContainer"] ul {
+    list-style-type: none !important;
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+}
+p, ul, li {
+    margin: 0 !important;
+    padding: 0 !important;
+}
 ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; margin: 0 !important; padding: 0 !important; }
 .big-title { text-align: center; font-size: clamp(22px, 4vw, 42px); font-weight: 800; margin: 15px 0 10px; color: #e63946; text-shadow: 0 1px 2px #0002; }
 .sub-title { font-size: 20px; font-weight: 700; margin-top: 10px; color: #1d3557; }
@@ -383,8 +392,8 @@ def render_round(df_round, round_idx):
             col1, col2, col3, col4 = st.columns([2, 0.5, 2, 1])
 
             with col1:
-                # Nomi delle squadre senza il grassetto
-                st.markdown(f"🏠 {match['SquadraA']}")
+                # Ripristinato il grassetto
+                st.markdown(f"🏠 **{match['SquadraA']}**")
                 st.markdown(f"*{match.get('GiocatoreA', '')}*")
                 gol_a = st.number_input(
                     "Gol Casa",
@@ -396,12 +405,12 @@ def render_round(df_round, round_idx):
                 df_round.loc[idx, 'GolA'] = gol_a
             
             with col2:
-                st.markdown(" ") # Spazio per l'allineamento
+                # Eliminata la riga st.markdown(" ") che causava il problema
                 st.markdown("<div style='text-align: center; font-size: 1.5rem;'>🆚</div>", unsafe_allow_html=True)
             
             with col3:
-                # Nomi delle squadre senza il grassetto
-                st.markdown(f"🛫 {match['SquadraB']}")
+                # Ripristinato il grassetto
+                st.markdown(f"🛫 **{match['SquadraB']}**")
                 st.markdown(f"*{match.get('GiocatoreB', '')}*")
                 gol_b = st.number_input(
                     "Gol Ospite",
@@ -512,14 +521,14 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
         return None
     return None
 
-def aggiorna_torneo_su_db(tournaments_collection, df_torneo):
+def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
     """Aggiorna il calendario di un torneo esistente su MongoDB."""
     if tournaments_collection is None:
         return False
     try:
         df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
         tournaments_collection.update_one(
-            {"_id": ObjectId(st.session_state['tournament_id'])},
+            {"_id": ObjectId(tournament_id)},
             {"$set": {"calendario": df_torneo_pulito.to_dict('records')}}
         )
         return True
@@ -616,7 +625,7 @@ def salva_risultati_ko():
     df_final_torneo = st.session_state.get('df_torneo_preliminare', pd.DataFrame())
     df_final_torneo = pd.concat([df_final_torneo, df_ko_da_salvare], ignore_index=True)
     
-    if aggiorna_torneo_su_db(tournaments_collection, df_final_torneo):
+    if aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_final_torneo):
         st.toast("✅ Risultati salvati su DB!")
         st.session_state['df_torneo_preliminare'] = df_final_torneo
     else:
@@ -680,133 +689,7 @@ def main():
     if 'giornata_nav_mode' not in st.session_state: st.session_state['giornata_nav_mode'] = 'Menu a tendina'
     if 'player_map' not in st.session_state: st.session_state['player_map'] = {}
     if 'ko_setup_complete' not in st.session_state: st.session_state['ko_setup_complete'] = False
-
-    # ==============================================================================
-    # 🕵️‍♂️ NUOVA LOGICA PER CARICAMENTO DA URL
-    # ==============================================================================
-    uri = os.environ.get("MONGO_URI_TOURNEMENTS")
-    tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name, show_ok=False)
-
-    q = st.query_params
-    if 'torneo' in q and q['torneo']:
-        raw_param = q['torneo']
-        try:
-            torneo_param = urllib.parse.unquote_plus(raw_param)
-        except Exception:
-            torneo_param = raw_param
-
-        if tournaments_collection is not None:
-            torneo_doc = tournaments_collection.find_one({"nome_torneo": torneo_param})
-            if not torneo_doc:
-                try:
-                    torneo_doc = tournaments_collection.find_one({"_id": ObjectId(torneo_param)})
-                except Exception:
-                    torneo_doc = None
-
-            if torneo_doc:
-                st.session_state['tournament_id'] = str(torneo_doc['_id'])
-                st.session_state['tournament_name'] = torneo_doc.get('nome_torneo', torneo_param)
-                torneo_data = carica_torneo_da_db(
-                    tournaments_collection, st.session_state['tournament_id']
-                )
-
-                if torneo_data and 'calendario' in torneo_data:
-                    df_torneo_completo = pd.DataFrame(torneo_data['calendario'])
-                    st.session_state['df_torneo_preliminare'] = df_torneo_completo
-                    
-                    base_name = get_base_name(st.session_state['tournament_name'])
-                    preliminary_data = tournaments_collection.find_one({"nome_torneo": f"completato_{base_name}"})
-
-                    #if preliminary_data and 'calendario' in preliminary_data:
-
-                    try:
-                        # Ricerca del torneo preliminare per nome o per ID
-                        preliminary_data = tournaments_collection.find_one({"$or": [{"nome_torneo": f"completato_{base_name}"}, {"nome_torneo": {"$regex": f".*{re.escape(base_name)}.*"}}]})
-                        
-                        # Se il torneo preliminare è stato trovato e ha un calendario...
-                        if preliminary_data and 'calendario' in preliminary_data:
-                            df_preliminary = pd.DataFrame(preliminary_data['calendario'])
-
-                            # ...e se contiene le colonne dei giocatori
-                            if 'GiocatoreCasa' in df_preliminary.columns and 'GiocatoreOspite' in df_preliminary.columns:
-                                player_map_df = pd.concat([
-                                    df_preliminary[['Casa', 'GiocatoreCasa']].rename(columns={'Casa': 'Squadra', 'GiocatoreCasa': 'Giocatore'}),
-                                    df_preliminary[['Ospite', 'GiocatoreOspite']].rename(columns={'Ospite': 'Squadra', 'GiocatoreOspite': 'Giocatore'})
-                                ])
-                                player_map = player_map_df.drop_duplicates().set_index('Squadra')['Giocatore'].to_dict()
-                                st.session_state['player_map'] = player_map
-                            else:
-                                # Caso 1: Torneo trovato, ma senza colonne GiocatoreCasa/Ospite
-                                st.warning("⚠️ Le colonne 'GiocatoreCasa' e 'GiocatoreOspite' non esistono nel torneo preliminare.")
-                                st.session_state['player_map'] = {}
-                        else:
-                            # Caso 2: Torneo preliminare non trovato
-                            st.warning("⚠️ Dati del torneo preliminare non trovati. I nomi dei giocatori potrebbero mancare.")
-                            st.session_state['player_map'] = {}
-
-                    except Exception as e:
-                        # Gestione di qualsiasi altro errore imprevisto
-                        st.error(f"❌ Errore durante il caricamento dei nomi dei giocatori: {e}")
-                        st.session_state['player_map'] = {}
-                    
-                    is_ko_tournament = (df_torneo_completo['Girone'].astype(str) == 'Eliminazione Diretta').any()
-                    
-                    if is_ko_tournament:
-                        st.session_state['ko_setup_complete'] = True
-                        df_ko_esistente = df_torneo_completo[df_torneo_completo['Girone'] == 'Eliminazione Diretta'].copy()
-                        
-                        df_ko_esistente['GiocatoreCasa'] = df_ko_esistente['Casa'].map(st.session_state['player_map'])
-                        df_ko_esistente['GiocatoreOspite'] = df_ko_esistente['Ospite'].map(st.session_state['player_map'])
-
-                        rounds_list = []
-                        for r in sorted(df_ko_esistente['Giornata'].unique()):
-                            df_round = df_ko_esistente[df_ko_esistente['Giornata'] == r].copy()
-                            df_round.rename(columns={'Casa': 'SquadraA', 'Ospite': 'SquadraB', 'GolCasa': 'GolA', 'GolOspite': 'GolB', 'GiocatoreCasa': 'GiocatoreA', 'GiocatoreOspite': 'GiocatoreB'}, inplace=True)
-                            df_round['Round'] = f"Round {int(r)}"
-                            df_round['Match'] = df_round.index + 1
-                            df_round['Vincitore'] = df_round.apply(lambda row: row['SquadraA'] if pd.notna(row['GolA']) and row['GolA'] > row['GolB'] else row['SquadraB'] if pd.notna(row['GolB']) and row['GolB'] > row['GolA'] else None, axis=1)
-                            rounds_list.append(df_round)
-                        
-                        rounds_filtrati = []
-                        for _df_round in rounds_list:
-                            rounds_filtrati.append(_df_round)
-                            if 'Valida' in _df_round.columns and not _df_round['Valida'].fillna(False).all():
-                                break
-                        
-                        if rounds_filtrati and ('Valida' in rounds_filtrati[-1].columns) and rounds_filtrati[-1]['Valida'].fillna(False).all():
-                            winners = rounds_filtrati[-1].get('Vincitore')
-                            if winners is None or winners.isna().all():
-                                last_round = rounds_filtrati[-1]
-                                winners = last_round.apply(lambda row: row['SquadraA'] if pd.notna(row.get('GolA')) and pd.notna(row.get('GolB')) and row.get('GolA') > row.get('GolB') else (row['SquadraB'] if pd.notna(row.get('GolA')) and pd.notna(row.get('GolB')) and row.get('GolB') > row.get('GolA') else None), axis=1)
-                            winners = [w for w in winners.tolist() if pd.notna(w)]
-                            if len(winners) > 1:
-                                next_round_name = 'Semifinali' if len(winners) == 4 else ('Finale' if len(winners) == 2 else 'Quarti di finale')
-                                next_matches = []
-                                for i in range(0, len(winners), 2):
-                                    if i+1 < len(winners):
-                                        next_matches.append({
-                                            'Round': next_round_name,
-                                            'Match': (i//2) + 1,
-                                            'SquadraA': winners[i],
-                                            'GiocatoreA': st.session_state['player_map'].get(winners[i], ''),
-                                            'SquadraB': winners[i+1],
-                                            'GiocatoreB': st.session_state['player_map'].get(winners[i+1], ''),
-                                            'GolA': None, 'GolB': None, 'Valida': False, 'Vincitore': None
-                                        })
-                                if next_matches:
-                                    rounds_filtrati.append(pd.DataFrame(next_matches))
-            
-                        st.session_state['rounds_ko'] = rounds_filtrati
-                        st.session_state['giornate_mode'] = 'ko'
-                        st.session_state['fase_modalita'] = "Eliminazione diretta"
-                        st.session_state['ui_show_pre'] = False
-                        st.query_params.clear()
-                        st.rerun()
-
-                    else:
-                        st.error("❌ La fase finale a gironi non è gestita da questa web app.")
-                        st.info(f"Utilizza l'altra web app per la gestione del torneo '{st.session_state['tournament_name']}'.")
-
+    
     # Header dinamico
     if 'tournament_name' in st.session_state and not st.session_state['ui_show_pre']:
         cleaned_name = re.sub(r'\(.*\)', '', st.session_state["tournament_name"]).strip()
@@ -1037,12 +920,8 @@ def main():
             if not st.session_state.get('ko_setup_complete'):
                 if 'df_torneo_preliminare' in st.session_state and st.session_state['df_torneo_preliminare'] is not None:
                     df_classifica = classifica_complessiva(st.session_state['df_torneo_preliminare'])
-                    #player_map = pd.concat([st.session_state['df_torneo_preliminare'][['Casa', 'GiocatoreCasa']].rename(columns={'Casa': 'Squadra', 'GiocatoreCasa': 'Giocatore'}),
-                                            #st.session_state['df_torneo_preliminare'][['Ospite', 'GiocatoreOspite']].rename(columns={'Ospite': 'Squadra', 'GiocatoreOspite': 'Giocatore'})])
-                    player_map_df = pd.concat([df_preliminary[['Casa', 'GiocatoreCasa']].rename(columns={'Casa': 'Squadra', 'GiocatoreCasa': 'Giocatore'}),
-                           df_preliminary[['Ospite', 'GiocatoreOspite']].rename(columns={'Ospite': 'Squadra', 'GiocatoreOspite': 'Giocatore'})])
-                    player_map = player_map_df.drop_duplicates().set_index('Squadra')['Giocatore'].to_dict()
-                    st.session_state['player_map'] = player_map
+                    player_map = pd.concat([st.session_state['df_torneo_preliminare'][['Casa', 'GiocatoreCasa']].rename(columns={'Casa': 'Squadra', 'GiocatoreCasa': 'Giocatore'}),
+                                            st.session_state['df_torneo_preliminare'][['Ospite', 'GiocatoreOspite']].rename(columns={'Ospite': 'Squadra', 'GiocatoreOspite': 'Giocatore'})])
                     player_map = player_map.drop_duplicates().set_index('Squadra')['Giocatore'].to_dict()
                     df_classifica['Giocatore'] = df_classifica['Squadra'].map(player_map)
                 else:
