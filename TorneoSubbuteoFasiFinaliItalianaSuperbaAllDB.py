@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import math
@@ -31,15 +30,7 @@ st.set_page_config(
 # -------------------------
 st.markdown("""
 <style>
-ul, li, div[data-testid*="stMarkdownContainer"] ul {
-    list-style-type: none !important;
-    padding-left: 0 !important;
-    margin-left: 0 !important;
-}
-p, ul, li {
-    margin: 0 !important;
-    padding: 0 !important;
-}
+
 ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; margin: 0 !important; padding: 0 !important; }
 .big-title { text-align: center; font-size: clamp(22px, 4vw, 42px); font-weight: 800; margin: 15px 0 10px; color: #e63946; text-shadow: 0 1px 2px #0002; }
 .sub-title { font-size: 20px; font-weight: 700; margin-top: 10px; color: #1d3557; }
@@ -392,8 +383,8 @@ def render_round(df_round, round_idx):
             col1, col2, col3, col4 = st.columns([2, 0.5, 2, 1])
 
             with col1:
-                # Ripristinato il grassetto
-                st.markdown(f"🏠 **{match['SquadraA']}**")
+                # Nomi delle squadre senza il grassetto
+                st.markdown(f"🏠 {match['SquadraA']}")
                 st.markdown(f"*{match.get('GiocatoreA', '')}*")
                 gol_a = st.number_input(
                     "Gol Casa",
@@ -405,12 +396,12 @@ def render_round(df_round, round_idx):
                 df_round.loc[idx, 'GolA'] = gol_a
             
             with col2:
-                # Eliminata la riga st.markdown(" ") che causava il problema
+                st.markdown(" ") # Spazio per l'allineamento
                 st.markdown("<div style='text-align: center; font-size: 1.5rem;'>🆚</div>", unsafe_allow_html=True)
             
             with col3:
-                # Ripristinato il grassetto
-                st.markdown(f"🛫 **{match['SquadraB']}**")
+                # Nomi delle squadre senza il grassetto
+                st.markdown(f"🛫 {match['SquadraB']}")
                 st.markdown(f"*{match.get('GiocatoreB', '')}*")
                 gol_b = st.number_input(
                     "Gol Ospite",
@@ -491,6 +482,125 @@ def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
     except Exception as e:
         st.error(f"❌ Errore di connessione a {db_name}.{col_name}: {e}")
         return None
+
+
+# ------------------------------------------------------------------------------
+# 🛰️ Gestione automatica del parametro `?torneo=` in query string
+# ------------------------------------------------------------------------------
+def handle_query_param_load():
+    """
+    Cerca il parametro 'torneo' nella query string (compatibile con diverse versioni Streamlit),
+    prova a decodificarlo, lo cerca nel DB (per nome o _id) e, se esiste, lo carica nello session_state.
+    Alla fine pulisce i query params con experimental_set_query_params() per evitare loop di reload.
+    """
+    try:
+        # compatibilità: experimental_get_query_params vs st.query_params
+        if hasattr(st, "experimental_get_query_params"):
+            q = st.experimental_get_query_params() or {}
+        else:
+            q = dict(st.query_params) if hasattr(st, "query_params") else {}
+    except Exception:
+        q = {}
+    raw = None
+    if isinstance(q, dict) and "torneo" in q:
+        raw = q.get("torneo")
+        if isinstance(raw, list) and raw:
+            raw = raw[0]
+    elif isinstance(q, str):
+        raw = q
+
+    if not raw:
+        return
+
+    # prova a decodificare (gestisce spazi codificati, +, ecc.)
+    try:
+        torneo_param = urllib.parse.unquote_plus(raw)
+    except Exception:
+        torneo_param = raw
+
+    # evita di ricaricare ripetutamente lo stesso torneo se già caricato via query
+    if st.session_state.get("query_loaded_torneo") == torneo_param:
+        return
+
+    # inizializza la connessione al DB
+    try:
+        tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
+    except Exception:
+        tournaments_collection = None
+
+    if tournaments_collection is None:
+        # non possiamo caricare senza DB: non blocchiamo l'app ma notifichiamo
+        st.warning("⚠️ Non è stato possibile connettersi al DB per caricare il torneo dalla query string.")
+        return
+
+    # cerca per nome (corrispondenza esatta) o per _id (ObjectId)
+    torneo_doc = tournaments_collection.find_one({"nome_torneo": torneo_param})
+    if not torneo_doc:
+        try:
+            torneo_doc = tournaments_collection.find_one({"_id": ObjectId(torneo_param)})
+        except Exception:
+            torneo_doc = None
+
+    if not torneo_doc:
+        st.warning(f"⚠️ Torneo '{torneo_param}' non trovato nel DB.")
+        # pulisci comunque i query params per evitare ripetute segnalazioni
+        try:
+            if hasattr(st, "experimental_set_query_params"):
+                st.experimental_set_query_params()
+            else:
+                # fallback
+                st.query_params.clear()
+        except Exception:
+            pass
+        return
+
+    # OK: torneo trovato, carichiamo i dati nello session_state come fa l'app quando si seleziona manualmente
+    st.session_state["tournament_id"] = str(torneo_doc["_id"])
+    st.session_state["tournament_name"] = torneo_doc.get("nome_torneo", torneo_param)
+    torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state["tournament_id"])
+    if torneo_data and "calendario" in torneo_data:
+        st.session_state["df_torneo_preliminare"] = pd.DataFrame(torneo_data["calendario"])
+        # genera classifica preliminare se possibile
+        try:
+            df_class = classifica_complessiva(st.session_state["df_torneo_preliminare"])
+            # prova a ricavare la mappa giocatori se presente nelle colonne
+            if "GiocatoreCasa" in st.session_state["df_torneo_preliminare"].columns and "GiocatoreOspite" in st.session_state["df_torneo_preliminare"].columns:
+                pm = pd.concat([st.session_state["df_torneo_preliminare"][["Casa", "GiocatoreCasa"]].rename(columns={"Casa":"Squadra","GiocatoreCasa":"Giocatore"}),
+                                st.session_state["df_torneo_preliminare"][["Ospite", "GiocatoreOspite"]].rename(columns={"Ospite":"Squadra","GiocatoreOspite":"Giocatore"})]).drop_duplicates().set_index("Squadra")["Giocatore"].to_dict()
+                st.session_state["player_map"] = pm
+            df_class["Giocatore"] = df_class["Squadra"].map(st.session_state.get("player_map", {}))
+            st.session_state["df_classifica_preliminare"] = df_class
+        except Exception:
+            pass
+
+        st.session_state["query_loaded_torneo"] = torneo_param
+        st.toast(f"✅ Torneo '{st.session_state['tournament_name']}' caricato automaticamente dalla query string.")
+
+        # Pulisce i query params in modo compatibile con varie versioni di Streamlit
+        try:
+            if hasattr(st, "experimental_set_query_params"):
+                st.experimental_set_query_params()
+            else:
+                st.query_params.clear()
+        except Exception:
+            pass
+
+        # assicura che l'interfaccia passi alla pagina principale dell'app come se l'utente avesse selezionato il torneo
+        st.session_state["ui_show_pre"] = False
+        # effettua un rerun per applicare i nuovi stati (breaker di flussi)
+        try:
+            # sia experimental_rerun che rerun sono possibili secondo versione Streamlit
+            if hasattr(st, "experimental_rerun"):
+                st.experimental_rerun()
+            else:
+                st.rerun()
+        except Exception:
+            # se non è permesso fare rerun in questo contesto, lasciamo che l'app venga renderizzata con i nuovi stati
+            return
+
+# ------------------------------------------------------------------------------
+# Fine gestione query param
+# ------------------------------------------------------------------------------
 
 def carica_tornei_da_db(tournaments_collection, prefix: list[str]):
     """Carica l'elenco dei tornei dal DB filtrando per prefisso."""
