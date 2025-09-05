@@ -44,8 +44,6 @@ ul, li { list-style-type: none !important; padding-left: 0 !important; margin-le
 hr { margin: 0.6rem 0 1rem 0; }
 .main-title {
     font-size: 2.5rem; font-weight: bold; text-align: center; margin-bottom: 2rem;
-    background: linear-gradient(45deg, #FF4B4B, #FF0000);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     animation: bounce 1s ease-in-out infinite alternate;
 }
 @keyframes bounce {
