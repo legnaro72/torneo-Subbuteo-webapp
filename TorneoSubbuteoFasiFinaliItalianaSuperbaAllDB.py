@@ -499,13 +499,14 @@ def handle_query_param_load():
     Usa esattamente lo stesso flusso del caricamento manuale, senza ricostruire colonne a mano.
     """
     try:
-        if hasattr(st, "experimental_get_query_params"):
-            q = st.experimental_get_query_params() or {}
+        # Prioritizza il nuovo API st.query_params
+        if hasattr(st, "query_params"):
+            q = dict(st.query_params)
         else:
-            q = dict(st.query_params) if hasattr(st, "query_params") else {}
+            # Fallback per le vecchie versioni di Streamlit
+            q = st.experimental_get_query_params() or {}
     except Exception:
         q = {}
-
     # niente parametro "torneo"? esci subito
     if not q or "torneo" not in q or not q["torneo"]:
         return
