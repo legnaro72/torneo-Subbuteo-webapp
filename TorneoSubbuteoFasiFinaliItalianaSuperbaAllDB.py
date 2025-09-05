@@ -27,7 +27,7 @@ warnings.filterwarnings(
 # ✨ Configurazione e stile di pagina (con nuove emoji e colori)
 # ==============================================================================
 st.set_page_config(
-    page_title="⚽ Fasi Finali Torneo Subbuteo",
+    page_title="⚽ Fase Finale Torneo Subbuteo",
     layout="wide",
     page_icon="🏆"
 )
@@ -819,7 +819,7 @@ def main():
         cleaned_name = re.sub(r'\(.*\)', '', st.session_state["tournament_name"]).strip()
         st.markdown(f'<h1 class="main-title">🏆 FASE FINALE {cleaned_name}</h1>', unsafe_allow_html=True)
     else:
-        st.title("⚽ Fasi Finali")
+        st.title("⚽ Fase Finale Torneo Subbuteo")
         if 'tournament_name' in st.session_state and st.session_state['ui_show_pre']:
             st.markdown(f"### 🏷️ {st.session_state['tournament_name']}")
 
