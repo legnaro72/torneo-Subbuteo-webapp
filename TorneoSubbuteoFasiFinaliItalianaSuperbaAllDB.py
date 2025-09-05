@@ -717,18 +717,24 @@ def main():
                     base_name = get_base_name(st.session_state['tournament_name'])
                     preliminary_data = tournaments_collection.find_one({"nome_torneo": f"completato_{base_name}"})
 
-                    if preliminary_data and 'calendario' in preliminary_data:
-                        df_preliminary = pd.DataFrame(preliminary_data['calendario'])
-                        if 'GiocatoreCasa' in df_preliminary.columns and 'GiocatoreOspite' in df_preliminary.columns:
-                            player_map_df = pd.concat([df_preliminary[['Casa', 'GiocatoreCasa']].rename(columns={'Casa': 'Squadra', 'GiocatoreCasa': 'Giocatore'}),
-                                                    df_preliminary[['Ospite', 'GiocatoreOspite']].rename(columns={'Ospite': 'Squadra', 'GiocatoreOspite': 'Giocatore'})])
-                            player_map = player_map_df.drop_duplicates().set_index('Squadra')['Giocatore'].to_dict()
-                            st.session_state['player_map'] = player_map
+                    #if preliminary_data and 'calendario' in preliminary_data:
+
+                    try:
+                        if preliminary_data and 'calendario' in preliminary_data:
+                            df_preliminary = pd.DataFrame(preliminary_data['calendario'])
+                            if 'GiocatoreCasa' in df_preliminary.columns and 'GiocatoreOspite' in df_preliminary.columns:
+                                player_map_df = pd.concat([df_preliminary[['Casa', 'GiocatoreCasa']].rename(columns={'Casa': 'Squadra', 'GiocatoreCasa': 'Giocatore'}),
+                                                        df_preliminary[['Ospite', 'GiocatoreOspite']].rename(columns={'Ospite': 'Squadra', 'GiocatoreOspite': 'Giocatore'})])
+                                player_map = player_map_df.drop_duplicates().set_index('Squadra')['Giocatore'].to_dict()
+                                st.session_state['player_map'] = player_map
+                            else:
+                                st.warning("⚠️ Le colonne 'GiocatoreCasa' e 'GiocatoreOspite' non esistono nel torneo preliminare.")
+                                st.session_state['player_map'] = {}
                         else:
-                            st.warning("⚠️ Dati del torneo preliminare non trovati, o le colonne 'GiocatoreCasa' e 'GiocatoreOspite' non esistono.")
+                            st.warning("⚠️ Dati del torneo preliminare non trovati. I nomi dei giocatori potrebbero mancare.")
                             st.session_state['player_map'] = {}
-                    else:
-                        st.warning("⚠️ Dati del torneo preliminare non trovati, i nomi dei giocatori potrebbero mancare.")
+                    except Exception as e:
+                        st.error(f"❌ Errore durante il caricamento dei nomi dei giocatori: {e}")
                         st.session_state['player_map'] = {}
                     
                     is_ko_tournament = (df_torneo_completo['Girone'].astype(str) == 'Eliminazione Diretta').any()
