@@ -1025,8 +1025,12 @@ def main():
             if not st.session_state.get('ko_setup_complete'):
                 if 'df_torneo_preliminare' in st.session_state and st.session_state['df_torneo_preliminare'] is not None:
                     df_classifica = classifica_complessiva(st.session_state['df_torneo_preliminare'])
-                    player_map = pd.concat([st.session_state['df_torneo_preliminare'][['Casa', 'GiocatoreCasa']].rename(columns={'Casa': 'Squadra', 'GiocatoreCasa': 'Giocatore'}),
-                                            st.session_state['df_torneo_preliminare'][['Ospite', 'GiocatoreOspite']].rename(columns={'Ospite': 'Squadra', 'GiocatoreOspite': 'Giocatore'})])
+                    #player_map = pd.concat([st.session_state['df_torneo_preliminare'][['Casa', 'GiocatoreCasa']].rename(columns={'Casa': 'Squadra', 'GiocatoreCasa': 'Giocatore'}),
+                                            #st.session_state['df_torneo_preliminare'][['Ospite', 'GiocatoreOspite']].rename(columns={'Ospite': 'Squadra', 'GiocatoreOspite': 'Giocatore'})])
+                    player_map_df = pd.concat([df_preliminary[['Casa', 'GiocatoreCasa']].rename(columns={'Casa': 'Squadra', 'GiocatoreCasa': 'Giocatore'}),
+                           df_preliminary[['Ospite', 'GiocatoreOspite']].rename(columns={'Ospite': 'Squadra', 'GiocatoreOspite': 'Giocatore'})])
+                    player_map = player_map_df.drop_duplicates().set_index('Squadra')['Giocatore'].to_dict()
+                    st.session_state['player_map'] = player_map
                     player_map = player_map.drop_duplicates().set_index('Squadra')['Giocatore'].to_dict()
                     df_classifica['Giocatore'] = df_classifica['Squadra'].map(player_map)
                 else:
