@@ -811,7 +811,7 @@ def salva_risultati_ko():
                          font-size:28px; 
                          font-weight:bold;
                          margin-top:20px;'>
-                🏆 Il vincitore del torneo **{winners[0]}** è {vincitore}! 🎉
+                🏆 Il vincitore del torneo **{winners[0]}**! 🎉
              </div>
              """, unsafe_allow_html=True)
         # we are the champions
