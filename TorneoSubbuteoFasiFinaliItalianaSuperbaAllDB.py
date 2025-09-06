@@ -374,7 +374,7 @@ def generate_pdf_ko(rounds_ko: list[pd.DataFrame]) -> bytes:
             pdf.cell(0, 7, f"Partita {int(match['Match'])}: {match['SquadraA']} vs {match['SquadraB']} ({res})", 0, 1)
 
     pdf.set_text_color(0, 0, 0)
-    return pdf.output(dest='S').encode('latin1'))
+    return pdf.output(dest='S').encode('latin1')
 
 def render_round(df_round, round_idx):
     st.markdown(f"### {df_round['Round'].iloc[0]}")
