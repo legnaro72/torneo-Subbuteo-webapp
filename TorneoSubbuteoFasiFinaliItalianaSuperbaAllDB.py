@@ -347,7 +347,7 @@ def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
         pdf.set_text_color(0, 0, 0)
         pdf.ln(5)
 
-    return pdf.output(dest='S').encode('latin1')
+    return bytes(pdf.output(dest='S'))
 
 def generate_pdf_ko(rounds_ko: list[pd.DataFrame]) -> bytes:
     """Genera un PDF con il tabellone a eliminazione diretta."""
@@ -374,7 +374,7 @@ def generate_pdf_ko(rounds_ko: list[pd.DataFrame]) -> bytes:
             pdf.cell(0, 7, f"Partita {int(match['Match'])}: {match['SquadraA']} vs {match['SquadraB']} ({res})", 0, 1)
 
     pdf.set_text_color(0, 0, 0)
-    return pdf.output(dest='S').encode('latin1')
+    return bytes(pdf.output(dest='S'))
 
 def render_round(df_round, round_idx):
     st.markdown(f"### {df_round['Round'].iloc[0]}")
@@ -386,58 +386,63 @@ def render_round(df_round, round_idx):
     for idx, match in df_temp.iterrows():
         # Utilizza un container per raggruppare visivamente gli elementi di una singola partita
         with st.container(border=True):
-            col1, col2, col3, col4 = st.columns([2, 0.5, 2, 1])
-
-            with col1:
-                # Nomi delle squadre senza il grassetto
-                st.markdown(f"🏠 {match['SquadraA']}")
-                st.markdown(f"*{match.get('GiocatoreA', '')}*")
-                gol_a = st.number_input(
+            # Utilizzo le session_state per i valori
+            key_gol_a = f"ko_gola_{round_idx}_{idx}"
+            key_gol_b = f"ko_golb_{round_idx}_{idx}"
+            key_valida = f"ko_valida_{round_idx}_{idx}"
+            
+            # Inizializza i valori in session_state se non esistono
+            if key_gol_a not in st.session_state:
+                st.session_state[key_gol_a] = int(match['GolA']) if pd.notna(match['GolA']) else 0
+            if key_gol_b not in st.session_state:
+                st.session_state[key_gol_b] = int(match['GolB']) if pd.notna(match['GolB']) else 0
+            if key_valida not in st.session_state:
+                st.session_state[key_valida] = bool(match['Valida']) if pd.notna(match['Valida']) else False
+            
+            # Intestazione della partita con il formato aggiornato
+            st.markdown(f"<h3 style='text-align:center;'>⚽ Partita</h3>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align:center; font-weight:bold;'>🏠{match['SquadraA']} {match.get('GiocatoreA', '')} 🆚 {match['SquadraB']} {match.get('GiocatoreB', '')}🛫</p>", unsafe_allow_html=True)
+            #st.markdown(f"<p style='text-align:center; font-weight:bold;'>🏠{match['SquadraA']} ({match.get('GiocatoreA')}) 🆚 {match['SquadraB']} ({match.get('GiocatoreB')})🛫</p>", unsafe_allow_html=True)
+            #st.markdown(f"<p style='text-align:center; font-weight:bold;'>🏠{casa} ({giocatore_casa}) 🆚 {ospite} ({giocatore_ospite})🛫</p>", unsafe_allow_html=True)
+            
+            # Campi per i gol
+            c_score1, c_score2 = st.columns(2)
+            with c_score1:
+                st.number_input(
                     "Gol Casa",
                     min_value=0, max_value=20,
-                    key=f"ko_gola_{round_idx}_{idx}",
-                    value=int(match['GolA']) if pd.notna(match['GolA']) else 0,
+                    key=key_gol_a,
+                    disabled=st.session_state[key_valida],
                     label_visibility="hidden"
                 )
-                df_round.loc[idx, 'GolA'] = gol_a
-            
-            with col2:
-                st.markdown(" ") # Spazio per l'allineamento
-                st.markdown("<div style='text-align: center; font-size: 1.5rem;'>🆚</div>", unsafe_allow_html=True)
-            
-            with col3:
-                # Nomi delle squadre senza il grassetto
-                st.markdown(f"🛫 {match['SquadraB']}")
-                st.markdown(f"*{match.get('GiocatoreB', '')}*")
-                gol_b = st.number_input(
+            with c_score2:
+                st.number_input(
                     "Gol Ospite",
                     min_value=0, max_value=20,
-                    key=f"ko_golb_{round_idx}_{idx}",
-                    value=int(match['GolB']) if pd.notna(match['GolB']) else 0,
+                    key=key_gol_b,
+                    disabled=st.session_state[key_valida],
                     label_visibility="hidden"
                 )
-                df_round.loc[idx, 'GolB'] = gol_b
+
+            # Checkbox di validazione
+            st.markdown("---")
+            st.checkbox(
+                "✅ Valida Risultato",
+                key=key_valida,
+            )
             
-            with col4:
-                st.markdown(" ") # Spazio per l'allineamento
-                st.markdown(" ")
-                validata = st.checkbox(
-                    "✅ Valida",
-                    key=f"ko_valida_{round_idx}_{idx}",
-                    value=bool(match['Valida']) if pd.notna(match['Valida']) else False
-                )
-                df_round.loc[idx, 'Valida'] = validata
+            # Aggiorna il DataFrame e mostra il messaggio di stato
+            df_round.loc[idx, 'GolA'] = st.session_state[key_gol_a]
+            df_round.loc[idx, 'GolB'] = st.session_state[key_gol_b]
+            df_round.loc[idx, 'Valida'] = st.session_state[key_valida]
 
-            # Messaggio dinamico in base allo stato della checkbox
-            if validata:
-                st.markdown("<p style='color: green;'>Partita validata ✅</p>", unsafe_allow_html=True)
+            if st.session_state[key_valida]:
+                st.success("✅ Partita validata!")
             else:
-                st.markdown("<p style='color: red;'>Partita non ancora validata ❌</p>", unsafe_allow_html=True)
-
+                st.warning("⚠️ Partita non ancora validata.")
 
     # Aggiorna lo stato di sessione con il DataFrame modificato
     st.session_state['rounds_ko'][round_idx] = df_round.copy()
-
 # ==============================================================================
 # 🧠 FUNZIONI DI GESTIONE STATO E INTERAZIONE CON DB
 # ==============================================================================
