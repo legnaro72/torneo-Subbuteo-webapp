@@ -1303,7 +1303,7 @@ def main():
                                          font-size:28px; 
                                          font-weight:bold;
                                          margin-top:20px;'>
-                                🏆 Il vincitore del torneo **{st.session_state['vincitore_torneo']}**! 🎉
+                                🏆 Il vincitore del torneo {st.session_state['vincitore_torneo']}! 🎉
                              </div>
                              """, unsafe_allow_html=True)                        
                         st.balloons()
