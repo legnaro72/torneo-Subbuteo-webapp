@@ -557,43 +557,7 @@ def main():
         </div>
         """, unsafe_allow_html=True)
 
-    # Banner vincitori
-    if st.session_state.get('torneo_completato', False) and st.session_state.get('classifica_finale') is not None:
-        vincitori = []
-        df_classifica = st.session_state['classifica_finale']
-        for girone in df_classifica['Girone'].unique():
-            primo = df_classifica[df_classifica['Girone'] == girone].iloc[0]['Squadra']
-            vincitori.append(f"🏅 {girone}: {primo}")
-            
-        vincitori_stringa = ", ".join(vincitori)
-
-        # Visualizza il banner personalizzato con i vincitori
-        st.markdown(
-            f"""
-            <div style='background:linear-gradient(90deg, gold, orange);
-                        padding:20px;
-                        border-radius:12px;
-                        text-align:center;
-                        color:black;
-                        font-size:28px;
-                        font-weight:bold;
-                        margin-top:20px;'>
-                🎉 Torneo Completato! Vincitori → {vincitori_stringa}
-            </div>
-            """, unsafe_allow_html=True)
-        
-        #st.success("🎉 Torneo Completato! Vincitori → " + ", ".join(vincitori))
-        # Nuovo blocco di codice per il reindirizzamento
-        if st.session_state.get('show_redirect_button', False):
-            st.markdown("---")
-            st.subheader("🚀 Prosegui alle fasi finali?")
-            st.info("Il torneo è completo e salvato. Vuoi passare all'applicazione per le fasi finali?")
-            
-            # Questo bottone chiamerà la funzione di reindirizzamento
-            if st.button("👉 Vai alle Fasi Finali", use_container_width=True):
-                redirect_to_final_phase(f"completato_{st.session_state['nome_torneo']}")
-    
-
+   
     df_master = carica_giocatori_da_db(players_collection)
 
     if players_collection is None and tournaments_collection is None:
@@ -963,7 +927,42 @@ def main():
                     except Exception as e:
                         st.error(f"❌ Errore critico durante il salvataggio: {e}")
                     st.rerun()
+                    
+    # Banner vincitori
+    if st.session_state.get('torneo_completato', False) and st.session_state.get('classifica_finale') is not None:
+        vincitori = []
+        df_classifica = st.session_state['classifica_finale']
+        for girone in df_classifica['Girone'].unique():
+            primo = df_classifica[df_classifica['Girone'] == girone].iloc[0]['Squadra']
+            vincitori.append(f"🏅 {girone}: {primo}")
+            
+        vincitori_stringa = ", ".join(vincitori)
 
+        # Visualizza il banner personalizzato con i vincitori
+        st.markdown(
+            f"""
+            <div style='background:linear-gradient(90deg, gold, orange);
+                        padding:20px;
+                        border-radius:12px;
+                        text-align:center;
+                        color:black;
+                        font-size:28px;
+                        font-weight:bold;
+                        margin-top:20px;'>
+                🎉 Torneo Completato! Vincitori → {vincitori_stringa}
+            </div>
+            """, unsafe_allow_html=True)
+        
+        #st.success("🎉 Torneo Completato! Vincitori → " + ", ".join(vincitori))
+        # Nuovo blocco di codice per il reindirizzamento
+        if st.session_state.get('show_redirect_button', False):
+            st.markdown("---")
+            st.subheader("🚀 Prosegui alle fasi finali?")
+            st.info("Il torneo è completo e salvato. Vuoi passare all'applicazione per le fasi finali?")
+            
+            # Questo bottone chiamerà la funzione di reindirizzamento
+            if st.button("👉 Vai alle Fasi Finali", use_container_width=True):
+                redirect_to_final_phase(f"completato_{st.session_state['nome_torneo']}")
     # Footer leggero
     st.markdown("---")
     st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
