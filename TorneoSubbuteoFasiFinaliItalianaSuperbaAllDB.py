@@ -856,17 +856,19 @@ def main():
     if 'ko_setup_complete' not in st.session_state: st.session_state['ko_setup_complete'] = False
     
     # Header dinamico
-    if 'tournament_name' in st.session_state and not st.session_state['ui_show_pre']:
-        cleaned_name = re.sub(r'\(.*\)', '', st.session_state["tournament_name"]).strip()
+    tournament_name = st.session_state.get("tournament_name")
+    
+    if tournament_name and not st.session_state['ui_show_pre']:
+        cleaned_name = re.sub(r'\(.*\)', '', tournament_name).strip()
         st.markdown(f"""
         <div style='text-align:center; padding:20px; border-radius:12px; background: linear-gradient(to right, #ffefba, #ffffff);'>
             <h1 style='color:#0B5FFF;'>⚽ {cleaned_name} 🏆</h1>
         </div>
         """, unsafe_allow_html=True)
-    elif 'tournament_name' in st.session_state and st.session_state['ui_show_pre']:
+    elif tournament_name and st.session_state['ui_show_pre']:
         st.markdown(f"""
         <div style='text-align:center; padding:20px; border-radius:12px; background: linear-gradient(to right, #ffefba, #ffffff);'>
-            <h1 style='color:#0B5FFF;'>⚽ {st.session_state['tournament_name']} 🏆</h1>
+            <h1 style='color:#0B5FFF;'>⚽ {tournament_name} 🏆</h1>
         </div>
         """, unsafe_allow_html=True)
     else:
@@ -876,7 +878,6 @@ def main():
             <h1 style='color:#0B5FFF;'>⚽ Fase Finale Torneo Subbuteo 🏆</h1>
         </div>
         """, unsafe_allow_html=True)
-
     # Sidebar (tutti i pulsanti qui)
     with st.sidebar:
         st.header("Opzioni 🚀")
