@@ -801,19 +801,9 @@ def salva_risultati_ko():
     elif len(winners) == 1:
         st.balloons()
         #st.success(f"🏆 Il torneo è finito! Il vincitore è: {winners[0]}")
-        st.markdown(
-            f"""
-            <div style='background:linear-gradient(90deg, gold, orange); 
-                         padding:20px; 
-                         border-radius:12px; 
-                         text-align:center; 
-                         color:black; 
-                         font-size:28px; 
-                         font-weight:bold;
-                         margin-top:20px;'>
-                🏆 Il vincitore del torneo **{winners[0]}**! 🎉
-             </div>
-             """, unsafe_allow_html=True)
+        # Salva il vincitore nella session_state
+        st.session_state['vincitore_torneo'] = winners[0]
+        
         # we are the champions
         # Codice corretto per scaricare l'audio dall'URL
         audio_url = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3"
@@ -1297,6 +1287,25 @@ def main():
                     if st.session_state['giornate_mode'] == 'ko':
                         st.markdown("<style>#root > div:nth-child(1) > div > div > div > div:nth-child(1) > div > div:nth-child(2) > div:nth-child(1) > div:nth-child(1), #root > div:nth-child(1) > div > div > div > div:nth-child(1) > div > div:nth-child(3) > div:nth-child(1) > div:nth-child(1){display:none;}</style>", unsafe_allow_html=True)
                         st.markdown("<style>#root > div:nth-child(1) > div > div > div > div:nth-child(1) > div > div:nth-child(4) {display:none;}</style>", unsafe_allow_html=True)
-
+                    
+                    # Questo è il nuovo blocco da aggiungere in fondo
+                    
+                    if st.session_state.get('vincitore_torneo'):
+                        #st.markdown("<br><br>", unsafe_allow_html=True)
+                        #st.success(f"🏆 Il vincitore del torneo è: **{st.session_state['vincitore_torneo']}** 🎉")
+                        st.markdown(
+                            f"""
+                            <div style='background:linear-gradient(90deg, gold, orange); 
+                                         padding:20px; 
+                                         border-radius:12px; 
+                                         text-align:center; 
+                                         color:black; 
+                                         font-size:28px; 
+                                         font-weight:bold;
+                                         margin-top:20px;'>
+                                🏆 Il vincitore del torneo **{st.session_state['vincitore_torneo']}**! 🎉
+                             </div>
+                             """, unsafe_allow_html=True)                        
+                        st.balloons()
 if __name__ == "__main__":
     main()
