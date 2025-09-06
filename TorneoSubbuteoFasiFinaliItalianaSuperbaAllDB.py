@@ -1306,7 +1306,7 @@ def main():
                                 🏆 Il vincitore del torneo {st.session_state['vincitore_torneo']}! 🎉
                              </div>
                              """, unsafe_allow_html=True)                        
-                        st.balloons()
+                        st.fireworks()
     # Footer leggero
     st.markdown("---")
     st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
