@@ -89,16 +89,14 @@ REQUIRED_COLS = ['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite',
 db_name = "TorneiSubbuteo"
 col_name = "Superba"
 
-def autoplay_audio(file_path: str):
-    with open(file_path, "rb") as f:
-        data = f.read()
-        b64 = base64.b64encode(data).decode()
-        md = f"""
-            <audio autoplay="true">
-            <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
-            </audio>
-            """
-        st.markdown(md, unsafe_allow_html=True)
+def autoplay_audio(audio_data: bytes):
+    b64 = base64.b64encode(audio_data).decode("utf-8")
+    md = f"""
+        <audio autoplay="true">
+        <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+        </audio>
+        """
+    st.markdown(md, unsafe_allow_html=True)
 
 def check_csv_structure(df: pd.DataFrame) -> tuple[bool, str]:
     """Controlla che le colonne necessarie siano presenti nel DataFrame."""
@@ -804,7 +802,15 @@ def salva_risultati_ko():
         st.balloons()
         st.success(f"🏆 Il torneo è finito! Il vincitore è: **{winners[0]}**")
         # we are the champions
-        autoplay_audio("https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3")
+        # Codice corretto per scaricare l'audio dall'URL
+        audio_url = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3"
+        try:
+            response = requests.get(audio_url, timeout=10) # Imposta un timeout
+            response.raise_for_status() # Lancia un'eccezione per risposte HTTP errate
+            autoplay_audio(response.content)
+        except requests.exceptions.RequestException as e:
+            st.error(f"Errore durante lo scaricamento dell'audio: {e}")
+        
         
         if not st.session_state['tournament_name'].startswith('finito_'):
             nuovo_nome = f"finito_{st.session_state['tournament_name']}"
