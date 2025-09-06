@@ -983,15 +983,15 @@ def main():
     
             # Lancia i palloncini in un ciclo per 3 secondi
             with placeholder.container():
-                st.balloons()
+                st.fireworks()
                 time.sleep(1) # Aspetta 1 secondo
             
             with placeholder.container():
-                st.balloons()
+                st.fireworks()
                 time.sleep(1) # Aspetta 1 secondo
             
             with placeholder.container():
-                st.balloons()
+                st.fireworks()
                 time.sleep(1) # Aspetta 1 secondo
 
         
