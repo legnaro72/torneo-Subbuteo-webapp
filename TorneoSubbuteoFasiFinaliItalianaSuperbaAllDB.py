@@ -89,6 +89,17 @@ REQUIRED_COLS = ['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite',
 db_name = "TorneiSubbuteo"
 col_name = "Superba"
 
+def autoplay_audio(file_path: str):
+    with open(file_path, "rb") as f:
+        data = f.read()
+        b64 = base64.b64encode(data).decode()
+        md = f"""
+            <audio autoplay="true">
+            <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+            </audio>
+            """
+        st.markdown(md, unsafe_allow_html=True)
+
 def check_csv_structure(df: pd.DataFrame) -> tuple[bool, str]:
     """Controlla che le colonne necessarie siano presenti nel DataFrame."""
     missing = [c for c in REQUIRED_COLS if c not in df.columns]
@@ -793,7 +804,7 @@ def salva_risultati_ko():
         st.balloons()
         st.success(f"🏆 Il torneo è finito! Il vincitore è: **{winners[0]}**")
         # we are the champions
-        st.audio("https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3", format="audio/mp3")
+        autoplay_audio("https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3")
         
         if not st.session_state['tournament_name'].startswith('finito_'):
             nuovo_nome = f"finito_{st.session_state['tournament_name']}"
