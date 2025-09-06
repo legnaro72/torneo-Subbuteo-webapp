@@ -247,37 +247,62 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
     if df_giornata.empty:
         st.info("📅 Nessuna partita per questa giornata.")
         return
+
+    # Crea una mappa di squadre-giocatori per una ricerca efficiente e sicura
+    giocatore_map = {}
+    if 'df_squadre' in st.session_state and not st.session_state.df_squadre.empty:
+        giocatore_map = dict(zip(st.session_state.df_squadre['Squadra'], st.session_state.df_squadre['Giocatore']))
+
+    if not giocatore_map:
+        st.warning("⚠️ Dati delle squadre non trovati. Assicurati che il torneo sia stato inizializzato correttamente.")
+    
     for idx, row in df_giornata.iterrows():
-        gol_casa = int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
-        gol_ospite = int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
-
-        #with st.container():
         with st.container(border=True):
-            col_casa, col_spazio, col_ospite, col_valida = st.columns([1, 0.2, 1, 0.7])
+            squadra_casa = row['Casa']
+            squadra_ospite = row['Ospite']
 
-            with col_casa:
-                st.markdown(f"**🏠 {row['Casa']}**")
+            # Recupera i nomi dei giocatori in modo sicuro dalla mappa
+            giocatore_casa = giocatore_map.get(squadra_casa, "")
+            giocatore_ospite = giocatore_map.get(squadra_ospite, "")
+            
+            # Titolo della partita con il formato e le emoji desiderate
+            st.markdown(f"<p style='text-align:center; font-weight:bold;'>⚽ Partita</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align:center; font-weight:bold;'>🏠{squadra_casa} {giocatore_casa} 🆚 {squadra_ospite} {giocatore_ospite}🛫</p>", unsafe_allow_html=True)
+            
+            # Campi per i gol
+            c_score1, c_score2 = st.columns(2)
+            with c_score1:
                 st.number_input(
-                    "Gol Casa", min_value=0, max_value=20, key=f"golcasa_{idx}", value=gol_casa,
-                    disabled=row['Valida']
+                    "Gol Casa",
+                    min_value=0, max_value=20,
+                    key=f"golcasa_{idx}",
+                    value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
+                    disabled=row['Valida'],
+                    label_visibility="hidden"
                 )
-            with col_spazio:
-                st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-                st.markdown("🆚")
-            with col_ospite:
-                st.markdown(f"**🛫 {row['Ospite']}**")
+            with c_score2:
                 st.number_input(
-                    "Gol Ospite", min_value=0, max_value=20, key=f"golospite_{idx}", value=gol_ospite,
-                    disabled=row['Valida']
+                    "Gol Ospite",
+                    min_value=0, max_value=20,
+                    key=f"golospite_{idx}",
+                    value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
+                    disabled=row['Valida'],
+                    label_visibility="hidden"
                 )
-            with col_valida:
-                st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-                st.checkbox("✅ Valida", key=f"valida_{idx}", value=row['Valida'])
 
-            if st.session_state.get(f"valida_{idx}", False):
-                st.markdown("<hr>", unsafe_allow_html=True)
+            # Checkbox di validazione e messaggi di stato
+            st.divider()
+            st.checkbox(
+                "✅ Valida",
+                key=f"valida_{idx}",
+                value=bool(row['Valida']) if pd.notna(row['Valida']) else False
+            )
+            
+            is_valid = st.session_state.get(f"valida_{idx}", False)
+            if is_valid:
+                st.success("✅ Partita validata!")
             else:
-                st.markdown('<div style="color:#e63946; margin-bottom: 15px;">Partita non ancora validata ❌</div>', unsafe_allow_html=True)
+                st.warning("⚠️ Partita non ancora validata.")
 
 # Modifica la funzione esistente
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
@@ -457,13 +482,20 @@ def main():
 
     inject_css()
 
+
     # Connessioni (senza messaggi verdi)
     players_collection = init_mongo_connection(st.secrets["MONGO_URI"], "giocatori_subbuteo", "superba_players", show_ok=False)
     tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], "TorneiSubbuteo", "Superba", show_ok=False)
     
-    # --- Auto-load from URL param (es. ?torneo=nome_torneo) ---
-    
 
+    # Carica i dati dei giocatori e delle squadre da MongoDB
+    # Questo viene fatto all'avvio per assicurare che i dati siano sempre disponibili
+    df_squadre_db = carica_giocatori_da_db(players_collection)
+    if not df_squadre_db.empty:
+        st.session_state['df_squadre'] = df_squadre_db
+    else:
+        st.session_state['df_squadre'] = pd.DataFrame(columns=['Giocatore', 'Squadra', 'Potenziale'])
+    # --- Auto-load from URL param (es. ?torneo=nome_torneo) ---
     # usa experimental_get_query_params per compatibilità
     # usa st.query_params (nuova API stabile)
     q = st.query_params
@@ -778,6 +810,12 @@ def main():
                     st.session_state['gioc_info'][gioc]["Potenziale"] = potenziale_nuovo
 
                 if st.button("✅ Conferma Squadre e Potenziali", use_container_width=True):
+                    # Nuovo codice da aggiungere dopo la conferma di squadre e potenziali
+                    squadre_dati = [
+                        {"Giocatore": giocatore, "Squadra": info["Squadra"], "Potenziale": info["Potenziale"]}
+                        for giocatore, info in st.session_state['gioc_info'].items()
+                    ]
+                    st.session_state['df_squadre'] = pd.DataFrame(squadre_dati)
                     st.session_state['mostra_gironi'] = True
                     st.toast("✅ Squadre e potenziali confermati")
                     st.rerun()
