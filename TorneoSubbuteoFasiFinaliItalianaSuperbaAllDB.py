@@ -810,6 +810,22 @@ def salva_risultati_ko():
             autoplay_audio(response.content)
         except requests.exceptions.RequestException as e:
             st.error(f"Errore durante lo scaricamento dell'audio: {e}")
+
+        # Crea un contenitore vuoto per i messaggi
+        placeholder = st.empty()
+
+        # Lancia i palloncini in un ciclo per 3 secondi
+        with placeholder.container():
+            st.balloons()
+            time.sleep(1) # Aspetta 1 secondo
+        
+        with placeholder.container():
+            st.balloons()
+            time.sleep(1) # Aspetta 1 secondo
+        
+        with placeholder.container():
+            st.balloons()
+            time.sleep(1) # Aspetta 1 secondo
         
         
         if not st.session_state['tournament_name'].startswith('finito_'):
