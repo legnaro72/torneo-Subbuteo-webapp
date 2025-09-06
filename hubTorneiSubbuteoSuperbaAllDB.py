@@ -142,3 +142,7 @@ with st.container():
         )
     except Exception as e:
         st.warning("Errore nel caricamento del PDF. Controlla la connessione o l'URL.")
+
+# Footer leggero
+st.markdown("---")
+st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
