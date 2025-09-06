@@ -1307,5 +1307,9 @@ def main():
                              </div>
                              """, unsafe_allow_html=True)                        
                         st.balloons()
+    # Footer leggero
+    st.markdown("---")
+    st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
+    
 if __name__ == "__main__":
     main()
