@@ -543,9 +543,19 @@ def main():
 
     # Titolo con stile personalizzato
     if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
-        st.markdown(f"<div class='big-title'>🏆 {st.session_state['nome_torneo']}</div>", unsafe_allow_html=True)
+        #st.markdown(f"<div class='big-title'>🏆 {st.session_state['nome_torneo']}</div>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div style='text-align:center; padding:20px; border-radius:12px; background: linear-gradient(to right, #ffefba, #ffffff);'>
+            <h1 style='color:#0B5FFF;'>⚽ {st.session_state['nome_torneo']} 🏆</h1>
+        </div>
+        """, unsafe_allow_html=True)
     else:
-        st.markdown("<div class='big-title'>🏆 Torneo Superba – Gestione Gironi</div>", unsafe_allow_html=True)
+        #st.markdown("<div class='big-title'>🏆 Torneo Superba – Gestione Gironi</div>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div style='text-align:center; padding:20px; border-radius:12px; background: linear-gradient(to right, #ffefba, #ffffff);'>
+            <h1 style='color:#0B5FFF;'>⚽ Torneo Superba – Gestione Gironi 🏆</h1>
+        </div>
+        """, unsafe_allow_html=True)
 
     # Banner vincitori
     if st.session_state.get('torneo_completato', False) and st.session_state.get('classifica_finale') is not None:
@@ -554,7 +564,25 @@ def main():
         for girone in df_classifica['Girone'].unique():
             primo = df_classifica[df_classifica['Girone'] == girone].iloc[0]['Squadra']
             vincitori.append(f"🏅 {girone}: {primo}")
-        st.success("🎉 Torneo Completato! Vincitori → " + ", ".join(vincitori))
+            
+        vincitori_stringa = ", ".join(vincitori)
+
+        # Visualizza il banner personalizzato con i vincitori
+        st.markdown(
+            f"""
+            <div style='background:linear-gradient(90deg, gold, orange);
+                        padding:20px;
+                        border-radius:12px;
+                        text-align:center;
+                        color:black;
+                        font-size:28px;
+                        font-weight:bold;
+                        margin-top:20px;'>
+                🎉 Torneo Completato! Vincitori → {vincitori_stringa}
+            </div>
+            """, unsafe_allow_html=True)
+        
+        #st.success("🎉 Torneo Completato! Vincitori → " + ", ".join(vincitori))
         # Nuovo blocco di codice per il reindirizzamento
         if st.session_state.get('show_redirect_button', False):
             st.markdown("---")
