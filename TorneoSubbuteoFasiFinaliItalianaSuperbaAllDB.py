@@ -800,7 +800,7 @@ def salva_risultati_ko():
     
     elif len(winners) == 1:
         st.balloons()
-        #st.success(f"🏆 Il torneo è finito! Il vincitore è: **{winners[0]}**")
+        #st.success(f"🏆 Il torneo è finito! Il vincitore è: {winners[0]}")
         st.markdown(
             f"""
             <div style='background:linear-gradient(90deg, gold, orange); 
