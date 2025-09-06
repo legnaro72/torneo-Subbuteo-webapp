@@ -9,6 +9,9 @@ from pymongo.server_api import ServerApi
 from bson.objectid import ObjectId
 import json
 import urllib.parse
+import requests
+import base64
+import time
 
 # -------------------------------------------------
 # CONFIG PAGINA (deve essere la prima chiamata st.*)
@@ -75,6 +78,14 @@ def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
 # -------------------------
 # UTILITY
 # -------------------------
+def autoplay_audio(audio_data: bytes):
+    b64 = base64.b64encode(audio_data).decode("utf-8")
+    md = f"""
+        <audio autoplay="true">
+        <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+        </audio>
+        """
+    st.markdown(md, unsafe_allow_html=True)
 
 def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
     col1, col2, col3 = st.columns([1, 3, 1])
@@ -953,7 +964,37 @@ def main():
             </div>
             """, unsafe_allow_html=True)
         
-        #st.success("🎉 Torneo Completato! Vincitori → " + ", ".join(vincitori))
+        
+        # Aggiungi questo controllo per lanciare i palloncini musica solo se il torneo ha un solo girone
+        if st.session_state.get('num_gironi') == 1:
+            st.balloons()
+            # we are the champions
+            # Codice corretto per scaricare l'audio dall'URL
+            audio_url = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3"
+            try:
+                response = requests.get(audio_url, timeout=10) # Imposta un timeout
+                response.raise_for_status() # Lancia un'eccezione per risposte HTTP errate
+                autoplay_audio(response.content)
+            except requests.exceptions.RequestException as e:
+                st.error(f"Errore durante lo scaricamento dell'audio: {e}")
+    
+            # Crea un contenitore vuoto per i messaggi
+            placeholder = st.empty()
+    
+            # Lancia i palloncini in un ciclo per 3 secondi
+            with placeholder.container():
+                st.balloons()
+                time.sleep(1) # Aspetta 1 secondo
+            
+            with placeholder.container():
+                st.balloons()
+                time.sleep(1) # Aspetta 1 secondo
+            
+            with placeholder.container():
+                st.balloons()
+                time.sleep(1) # Aspetta 1 secondo
+
+        
         # Nuovo blocco di codice per il reindirizzamento
         if st.session_state.get('show_redirect_button', False):
             st.markdown("---")
