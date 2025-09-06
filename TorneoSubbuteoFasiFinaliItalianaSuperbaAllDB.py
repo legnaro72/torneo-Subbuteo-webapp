@@ -792,6 +792,8 @@ def salva_risultati_ko():
     elif len(winners) == 1:
         st.balloons()
         st.success(f"🏆 Il torneo è finito! Il vincitore è: **{winners[0]}**")
+        # we are the champions
+        st.audio("https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3", format="audio/mp3")
         
         if not st.session_state['tournament_name'].startswith('finito_'):
             nuovo_nome = f"finito_{st.session_state['tournament_name']}"
