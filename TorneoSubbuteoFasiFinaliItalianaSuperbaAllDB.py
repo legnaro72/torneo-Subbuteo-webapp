@@ -800,7 +800,20 @@ def salva_risultati_ko():
     
     elif len(winners) == 1:
         st.balloons()
-        st.success(f"🏆 Il torneo è finito! Il vincitore è: **{winners[0]}**")
+        #st.success(f"🏆 Il torneo è finito! Il vincitore è: **{winners[0]}**")
+        st.markdown(
+            f"""
+            <div style='background:linear-gradient(90deg, gold, orange); 
+                         padding:20px; 
+                         border-radius:12px; 
+                         text-align:center; 
+                         color:black; 
+                         font-size:28px; 
+                         font-weight:bold;
+                         margin-top:20px;'>
+                🏆 Il vincitore del torneo **{winners[0]}** è {vincitore}! 🎉
+             </div>
+             """, unsafe_allow_html=True)
         # we are the champions
         # Codice corretto per scaricare l'audio dall'URL
         audio_url = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3"
