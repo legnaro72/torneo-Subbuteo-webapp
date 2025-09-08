@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import random
@@ -12,6 +11,7 @@ import urllib.parse
 import requests
 import base64
 import time
+import re
 
 # -------------------------------------------------
 # CONFIG PAGINA (deve essere la prima chiamata st.*)
@@ -40,7 +40,8 @@ DEFAULT_STATE = {
     'giocatori_selezionati_definitivi': [],
     'gioc_info': {},
     'usa_bottoni': False,
-    'filtro_attivo': 'Nessuno'  # stato per i filtri
+    'filtro_attivo': 'Nessuno',  # stato per i filtri
+    'giocatori_ritirati': []
 }
 
 for key, value in DEFAULT_STATE.items():
@@ -170,6 +171,7 @@ def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
     except Exception as e:
         st.error(f"❌ Errore aggiornamento torneo: {e}")
         return False
+        
 def redirect_to_final_phase(torneo_nome):
     """Reindirizza l'utente allo script delle fasi finali."""
     redirect_url = f"https://torneo-subbuteo-ff-superba-ita-all-db.streamlit.app/?torneo={urllib.parse.quote(torneo_nome)}"
@@ -247,6 +249,11 @@ def aggiorna_classifica(df):
     if not classifiche:
         return pd.DataFrame()
     df_classifica = pd.concat(classifiche, ignore_index=True)
+    
+    # Aggiungi una colonna 'Ritirato'
+    giocatori_ritirati = st.session_state.get('giocatori_ritirati', [])
+    df_classifica['Ritirato'] = df_classifica['Squadra'].apply(lambda x: x in giocatori_ritirati)
+    
     df_classifica = df_classifica.sort_values(by=['Girone', 'Punti', 'DR'], ascending=[True, False, False])
     return df_classifica
 
@@ -313,35 +320,34 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizza
             st.markdown(f"<p style='text-align:center; font-weight:bold;'>⚽ Partita</p>", unsafe_allow_html=True)
             st.markdown(f"<p style='text-align:center; font-weight:bold;'>{stringa_partita}</p>", unsafe_allow_html=True)
             
-            c_score1, c_vs, c_score2 = st.columns([1, 0.2, 1])
+            c_score1, c_score2 = st.columns(2)
             with c_score1:
-                # Chiave unica con i nomi delle squadre
-                key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{squadra_casa.replace(' ', '')}_{squadra_ospite.replace(' ', '')}"
+                # Chiave unica che usa i valori originali del DataFrame, garantendo la coerenza
+                key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
                 st.number_input(
                     "Gol Casa",
                     min_value=0, max_value=20,
                     key=key_golcasa,
                     value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
                     disabled=row['Valida'],
-                    label_visibility="hidden"
+                    #label_visibility="hidden"
                 )
-            with c_vs:
-                st.markdown(f"<p style='text-align:center; font-size:1.5rem; font-weight:bold; margin-top: -10px;'>-</p>", unsafe_allow_html=True)
+          
             with c_score2:
-                # Chiave unica con i nomi delle squadre
-                key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{squadra_casa.replace(' ', '')}_{squadra_ospite.replace(' ', '')}"
+                # Chiave unica che usa i valori originali del DataFrame, garantendo la coerenza
+                key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
                 st.number_input(
                     "Gol Ospite",
                     min_value=0, max_value=20,
                     key=key_golospite,
                     value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
                     disabled=row['Valida'],
-                    label_visibility="hidden"
+                    #label_visibility="hidden"
                 )
             
             st.divider()
-            # Chiave unica con i nomi delle squadre
-            key_valida = f"valida_{girone_sel}_{giornata_sel}_{squadra_casa.replace(' ', '')}_{squadra_ospite.replace(' ', '')}"
+            # Chiave unica che usa i valori originali del DataFrame, garantendo la coerenza
+            key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
             st.checkbox(
                 "✅ Valida",
                 key=key_valida,
@@ -353,18 +359,28 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizza
                 st.success("✅ Partita validata!")
             else:
                 st.warning("⚠️ Partita non ancora validata.")
-# Modifica la funzione esistente
+                
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     df = st.session_state['df_torneo']
-    df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
+    df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)]
 
     for idx, row in df_giornata.iterrows():
-        gol_casa = st.session_state.get(f"golcasa_{idx}")
-        gol_ospite = st.session_state.get(f"golospite_{idx}")
-        df.at[idx, 'GolCasa'] = gol_casa if gol_casa is not None else 0
-        df.at[idx, 'GolOspite'] = gol_ospite if gol_ospite is not None else 0
-        df.at[idx, 'Valida'] = st.session_state.get(f"valida_{idx}", False)
+        # Le chiavi devono corrispondere esattamente a quelle create nella UI
+        key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+        key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+        key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+        
+        # Recupera i valori dallo stato della sessione e gestisci i casi mancanti
+        gol_casa = st.session_state.get(key_golcasa)
+        gol_ospite = st.session_state.get(key_golospite)
+        valida = st.session_state.get(key_valida, False)
+        
+        # Aggiorna il DataFrame con i valori corretti
+        df.loc[idx, 'GolCasa'] = int(gol_casa) if gol_casa is not None else 0
+        df.loc[idx, 'GolOspite'] = int(gol_ospite) if gol_ospite is not None else 0
+        df.loc[idx, 'Valida'] = bool(valida)
 
+    # Assicurati che le colonne siano del tipo corretto prima di salvare
     df['GolCasa'] = pd.to_numeric(df['GolCasa'], errors='coerce').fillna(0).astype('Int64')
     df['GolOspite'] = pd.to_numeric(df['GolOspite'], errors='coerce').fillna(0).astype('Int64')
 
@@ -388,14 +404,94 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
         # Aggiungi questa nuova variabile di stato
         st.session_state['show_redirect_button'] = True 
         st.toast(f"🏁 Torneo completato e salvato come {nome_completato} ✅")
+        
+def gestisci_abbandoni(df_torneo, giocatori_da_ritirare, tournaments_collection):
+    df = df_torneo.copy()
+    
+    # Aggiungi a session state la lista dei giocatori che hanno abbandonato
+    if 'giocatori_ritirati' not in st.session_state:
+        st.session_state['giocatori_ritirati'] = []
+    
+    for giocatore in giocatori_da_ritirare:
+        squadra_ritirata = ""
+        # Cerca la squadra del giocatore nel df_squadre
+        if 'df_squadre' in st.session_state:
+            squadra_info = st.session_state['df_squadre'][st.session_state['df_squadre']['Giocatore'] == giocatore]
+            if not squadra_info.empty:
+                squadra_ritirata = squadra_info.iloc[0]['Squadra']
+        
+        # Aggiungi la squadra e/o il giocatore alla lista dei ritirati
+        if squadra_ritirata:
+            st.session_state['giocatori_ritirati'].append(f"{squadra_ritirata}-{giocatore}")
+        st.session_state['giocatori_ritirati'].append(giocatore)
+    
+    st.session_state['giocatori_ritirati'] = list(set(st.session_state['giocatori_ritirati'])) # Rimuove duplicati
+    
+    # Estrai le squadre corrispondenti ai giocatori che si ritirano
+    squadre_da_ritirare = st.session_state['giocatori_ritirati']
+    
+    if not squadre_da_ritirare:
+        st.warning("⚠️ Nessun giocatore selezionato per l'abbandono.")
+        return df_torneo
+
+    st.info(f"🔄 Gestione abbandono per i seguenti giocatori: {', '.join(giocatori_da_ritirare)}")
+    
+    matches_to_update = 0
+    # Aggiorna il DataFrame
+    for idx, row in df.iterrows():
+        casa_ritirato = any(ritirato in row['Casa'] for ritirato in squadre_da_ritirare)
+        ospite_ritirato = any(ritirato in row['Ospite'] for ritirato in squadre_da_ritirare)
+
+        # Caso: giocatore ritirato contro giocatore attivo
+        if casa_ritirato and not ospite_ritirato:
+            df.loc[idx, 'GolCasa'] = 0
+            df.loc[idx, 'GolOspite'] = 3
+            df.loc[idx, 'Valida'] = True
+            matches_to_update += 1
+        elif ospite_ritirato and not casa_ritirato:
+            df.loc[idx, 'GolCasa'] = 3
+            df.loc[idx, 'GolOspite'] = 0
+            df.loc[idx, 'Valida'] = True
+            matches_to_update += 1
+        # Caso: due giocatori ritirati (risultato 0-0)
+        elif casa_ritirato and ospite_ritirato:
+            df.loc[idx, 'GolCasa'] = 0
+            df.loc[idx, 'GolOspite'] = 0
+            df.loc[idx, 'Valida'] = True
+            matches_to_update += 1
+
+    st.session_state['df_torneo'] = df
+    
+    # Salva su DB
+    if 'tournament_id' in st.session_state:
+        ok = aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
+        if ok:
+            st.toast(f"✅ Aggiornati {matches_to_update} incontri. Modifiche salvate su MongoDB!")
+        else:
+            st.error("❌ Errore durante il salvataggio su MongoDB.")
+    else:
+        st.error("❌ ID del torneo non trovato. Impossibile salvare.")
+    return df
 
 # --- CLASSIFICA ---
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
     if df_classifica is None or df_classifica.empty:
         st.info("⚽ Nessuna partita validata")
         return
-    df_girone = df_classifica[df_classifica['Girone'] == girone_sel].reset_index(drop=True)
-    st.dataframe(df_girone, use_container_width=True)
+    df_girone = df_classifica[df_classifica['Girone'] == girone_sel].copy()
+
+    # Rimuovi la colonna 'Ritirato' per la visualizzazione, ma usala per lo stile
+    df_to_show = df_girone.drop(columns=['Ritirato'])
+
+    # Stile delle righe in base alla colonna 'Ritirato'
+    def highlight_withdrawn(s):
+        is_withdrawn = s['Ritirato']
+        return ['background-color: lightgray'] * len(s) if is_withdrawn else [''] * len(s)
+
+    # Usa la colonna 'Squadra' per applicare lo stile
+    styled_df = df_girone.style.apply(highlight_withdrawn, axis=1)
+
+    st.dataframe(styled_df, use_container_width=True, hide_index=True)
 
 # -------------------------
 #  export PDF (NON MODIFICARE)
@@ -655,6 +751,29 @@ def main():
             st.markdown(f"<meta http-equiv='refresh' content='0; url={redirect_url}'>", unsafe_allow_html=True)
             st.markdown(f"<p style='text-align:center;'>Reindirizzamento in corso...</p>", unsafe_allow_html=True)
             st.stop()
+            
+        # Funzionalità per la gestione dell'abbandono dei giocatori
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("🏃‍♂️ Gestione Abbandoni")
+        
+        # Estrai la lista di tutti i giocatori presenti nel torneo
+        giocatori_attivi = sorted(list(set(df['Casa'].unique().tolist() + df['Ospite'].unique().tolist())))
+        
+        # Aggiungi un multiselect per scegliere i giocatori da ritirare
+        giocatori_selezionati = st.sidebar.multiselect(
+            "Seleziona i giocatori che si ritirano",
+            options=giocatori_attivi,
+            key='ritiro_giocatori_multiselect'
+        )
+
+        # Bottone per confermare l'abbandono
+        if st.sidebar.button("⚠️ Confermami l'abbandono!", key="btn_abbandono", use_container_width=True):
+            if giocatori_selezionati:
+                # Richiama la funzione di gestione dell'abbandono
+                gestisci_abbandoni(st.session_state['df_torneo'], giocatori_selezionati, tournaments_collection)
+                st.rerun()
+            else:
+                st.sidebar.warning("❌ Seleziona almeno un giocatore per gestire l'abbandono.")
         #fine buttond
         # Classifica dalla sidebar
         st.sidebar.markdown("---")
@@ -738,26 +857,52 @@ def main():
                     st.info("🎉 Nessuna partita trovata per questo girone.")
 
         # Calendario (nessun filtro)
+        # Calendario (nessun filtro)
         st.markdown("---")
         if st.session_state['filtro_attivo'] == 'Nessuno':
             st.subheader("🗺️ Navigazione Calendario")
-            gironi = sorted(df['Girone'].dropna().unique().tolist())
-            giornate_correnti = sorted(
-                df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist()
-            )
+            df = st.session_state['df_torneo']
 
+            gironi = sorted(df['Girone'].dropna().unique().tolist())
+            
+            # Controlla se il girone selezionato esiste, altrimenti imposta il primo
+            if st.session_state.get('girone_sel') not in gironi:
+                st.session_state['girone_sel'] = gironi[0] if gironi else None
+
+            # Definisci le giornate correnti per il girone selezionato
+            if st.session_state['girone_sel']:
+                giornate_correnti = sorted(
+                    df[df['Girone'] == st.session_state['girone_sel']]['Giornata'].dropna().unique().tolist()
+                )
+            else:
+                giornate_correnti = []
+
+            # Imposta la giornata di default alla prima utile o alla prima disponibile
+            if 'giornata_sel_initialized' not in st.session_state or st.session_state.get('nuovo_girone_selezionato', False):
+                if giornate_correnti:
+                    df_da_validare = df[(df['Valida'] == False) & (df['Girone'] == st.session_state['girone_sel'])]
+                    if not df_da_validare.empty:
+                        prima_giornata_utile = df_da_validare['Giornata'].min()
+                        st.session_state['giornata_sel'] = prima_giornata_utile
+                    else:
+                        st.session_state['giornata_sel'] = giornate_correnti[0]
+                else:
+                    st.session_state['giornata_sel'] = 1
+                st.session_state['giornata_sel_initialized'] = True
+                st.session_state['nuovo_girone_selezionato'] = False
+
+            # Selettore del Girone
             nuovo_girone = st.selectbox("📁 Seleziona Girone", gironi, index=gironi.index(st.session_state['girone_sel']))
             if nuovo_girone != st.session_state['girone_sel']:
                 st.session_state['girone_sel'] = nuovo_girone
-                st.session_state['giornata_sel'] = 1
+                st.session_state['nuovo_girone_selezionato'] = True
                 st.rerun()
 
-            
-            # Nuovo selettore per la modalità di visualizzazione della partita
             # Nuovo selettore per la modalità di visualizzazione della partita
             modalita_visualizzazione = st.radio(
                 "👁️ Modalità di visualizzazione partita",
                 ("Completa", "Solo squadre", "Solo giocatori"),
+                index=1,
                 key="modalita_visualizzazione_radio",
                 horizontal=True
             )
@@ -775,26 +920,36 @@ def main():
 
             # Logica di visualizzazione basata sulla checkbox
             if modalita_bottoni:
-                navigation_buttons("Giornata", 'giornata_sel', 1, len(giornate_correnti))
+                if giornate_correnti:
+                    navigation_buttons("Giornata", 'giornata_sel', giornate_correnti[0], giornate_correnti[-1])
+                else:
+                    st.info("Nessuna giornata disponibile per la navigazione.")
             else:
-                try:
-                    current_index = giornate_correnti.index(st.session_state['giornata_sel'])
-                except ValueError:
-                    current_index = 0
-                    st.session_state['giornata_sel'] = giornate_correnti[0]
-                nuova_giornata = st.selectbox("📅 Seleziona Giornata", giornate_correnti, index=current_index)
-                if nuova_giornata != st.session_state['giornata_sel']:
-                    st.session_state['giornata_sel'] = nuova_giornata
-                    st.rerun()
+                if giornate_correnti:
+                    try:
+                        current_index = giornate_correnti.index(st.session_state['giornata_sel'])
+                    except ValueError:
+                        current_index = 0
+                        st.session_state['giornata_sel'] = giornate_correnti[0]
+                    nuova_giornata = st.selectbox("📅 Seleziona Giornata", giornate_correnti, index=current_index)
+                    if nuova_giornata != st.session_state['giornata_sel']:
+                        st.session_state['giornata_sel'] = nuova_giornata
+                        st.rerun()
+                else:
+                    st.info("Nessuna giornata disponibile.")
 
             # Richiama la funzione con il parametro di visualizzazione corretto
-            mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
+            if giornate_correnti:
+                mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
+            else:
+                st.info("Seleziona un girone per visualizzare il calendario.")
 
             st.button(
                 "💾 Salva Risultati Giornata",
                 on_click=salva_risultati_giornata,
                 args=(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel'])
             )
+        # Fine Calendario 
 
     else:
         st.subheader("📁 Carica un torneo o crea uno nuovo")
