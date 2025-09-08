@@ -253,13 +253,27 @@ def aggiorna_classifica(df):
 # -------------------------
 # FUNZIONI DI VISUALIZZAZIONE & EVENTI
 # -------------------------
-def mostra_calendario_giornata(df, girone_sel, giornata_sel):
+import streamlit as st
+import pandas as pd
+import random
+from fpdf import FPDF
+from datetime import datetime
+from pymongo import MongoClient
+from pymongo.server_api import ServerApi
+from bson.objectid import ObjectId
+import json
+import urllib.parse
+import requests
+import base64
+import time
+import re # Aggiungi la libreria 're' per le espressioni regolari
+
+def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizzazione):
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         st.info("📅 Nessuna partita per questa giornata.")
         return
 
-    # Crea una mappa di squadre-giocatori per una ricerca efficiente e sicura
     giocatore_map = {}
     if 'df_squadre' in st.session_state and not st.session_state.df_squadre.empty:
         giocatore_map = dict(zip(st.session_state.df_squadre['Squadra'], st.session_state.df_squadre['Giocatore']))
@@ -268,53 +282,77 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel):
         st.warning("⚠️ Dati delle squadre non trovati. Assicurati che il torneo sia stato inizializzato correttamente.")
     
     for idx, row in df_giornata.iterrows():
-        with st.container(border=True):
-            squadra_casa = row['Casa']
-            squadra_ospite = row['Ospite']
-
-            # Recupera i nomi dei giocatori in modo sicuro dalla mappa
+        # Logica per analizzare la stringa "Squadra(Giocatore)"
+        squadra_casa_str = row['Casa']
+        squadra_ospite_str = row['Ospite']
+        
+        # Analizza la stringa per estrarre la squadra e il giocatore
+        if '(' in squadra_casa_str and squadra_casa_str.endswith(')'):
+            squadra_casa = squadra_casa_str.split('(')[0].strip()
+            giocatore_casa = squadra_casa_str.split('(')[1].replace(')', '').strip()
+        else:
+            squadra_casa = squadra_casa_str
             giocatore_casa = giocatore_map.get(squadra_casa, "")
+
+        if '(' in squadra_ospite_str and squadra_ospite_str.endswith(')'):
+            squadra_ospite = squadra_ospite_str.split('(')[0].strip()
+            giocatore_ospite = squadra_ospite_str.split('(')[1].replace(')', '').strip()
+        else:
+            squadra_ospite = squadra_ospite_str
             giocatore_ospite = giocatore_map.get(squadra_ospite, "")
+        
+        with st.container(border=True):
+            stringa_partita = ""
+            if modalita_visualizzazione == 'completa':
+                stringa_partita = f"🏠{squadra_casa} ({giocatore_casa}) 🆚 {squadra_ospite} ({giocatore_ospite})🛫"
+            elif modalita_visualizzazione == 'squadre':
+                stringa_partita = f"🏠{squadra_casa} 🆚 {squadra_ospite}🛫"
+            elif modalita_visualizzazione == 'giocatori':
+                stringa_partita = f"🏠{giocatore_casa} 🆚 {giocatore_ospite}🛫"
             
-            # Titolo della partita con il formato e le emoji desiderate
             st.markdown(f"<p style='text-align:center; font-weight:bold;'>⚽ Partita</p>", unsafe_allow_html=True)
-            st.markdown(f"<p style='text-align:center; font-weight:bold;'>🏠{squadra_casa} {giocatore_casa} 🆚 {squadra_ospite} {giocatore_ospite}🛫</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align:center; font-weight:bold;'>{stringa_partita}</p>", unsafe_allow_html=True)
             
-            # Campi per i gol
-            c_score1, c_score2 = st.columns(2)
+            c_score1, c_vs, c_score2 = st.columns([1, 0.2, 1])
             with c_score1:
+                # Chiave unica con i nomi delle squadre
+                key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{squadra_casa.replace(' ', '')}_{squadra_ospite.replace(' ', '')}"
                 st.number_input(
                     "Gol Casa",
                     min_value=0, max_value=20,
-                    key=f"golcasa_{idx}",
+                    key=key_golcasa,
                     value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
                     disabled=row['Valida'],
                     label_visibility="hidden"
                 )
+            with c_vs:
+                st.markdown(f"<p style='text-align:center; font-size:1.5rem; font-weight:bold; margin-top: -10px;'>-</p>", unsafe_allow_html=True)
             with c_score2:
+                # Chiave unica con i nomi delle squadre
+                key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{squadra_casa.replace(' ', '')}_{squadra_ospite.replace(' ', '')}"
                 st.number_input(
                     "Gol Ospite",
                     min_value=0, max_value=20,
-                    key=f"golospite_{idx}",
+                    key=key_golospite,
                     value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
                     disabled=row['Valida'],
                     label_visibility="hidden"
                 )
-
-            # Checkbox di validazione e messaggi di stato
+            
             st.divider()
+            # Chiave unica con i nomi delle squadre
+            key_valida = f"valida_{girone_sel}_{giornata_sel}_{squadra_casa.replace(' ', '')}_{squadra_ospite.replace(' ', '')}"
             st.checkbox(
                 "✅ Valida",
-                key=f"valida_{idx}",
+                key=key_valida,
                 value=bool(row['Valida']) if pd.notna(row['Valida']) else False
             )
             
-            is_valid = st.session_state.get(f"valida_{idx}", False)
+            is_valid = st.session_state.get(key_valida, False)
             if is_valid:
                 st.success("✅ Partita validata!")
             else:
                 st.warning("⚠️ Partita non ancora validata.")
-
 # Modifica la funzione esistente
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     df = st.session_state['df_torneo']
@@ -594,7 +632,30 @@ def main():
                 )
         else:
             st.sidebar.info("ℹ️ Nessuna partita valida. Compila e valida i risultati per generare la classifica.")
+        #inizio buttons
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("🕹️ Gestione Rapida")
+        if st.sidebar.button("💾 Salva Torneo", key="save_tournament", use_container_width=True):
+            if st.session_state.get('tournament_id'):
+                ok = aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
+                if ok:
+                    st.sidebar.success("✅ Torneo salvato con successo!")
+                else:
+                    st.sidebar.error("❌ Errore durante il salvataggio.")
+            else:
+                st.sidebar.warning("⚠️ Impossibile salvare, ID torneo non trovato.")
+        
+        if st.sidebar.button("🏠 Termina Torneo", key="reset_app", use_container_width=True):
+            st.session_state['sidebar_state_reset'] = True
+            st.rerun()
 
+        st.sidebar.markdown("---")
+        if st.sidebar.button("🔗 Vai a Hub Tornei", key="go_to_hub", use_container_width=True):
+            redirect_url = "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/"
+            st.markdown(f"<meta http-equiv='refresh' content='0; url={redirect_url}'>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align:center;'>Reindirizzamento in corso...</p>", unsafe_allow_html=True)
+            st.stop()
+        #fine buttond
         # Classifica dalla sidebar
         st.sidebar.markdown("---")
         st.sidebar.subheader("📊 Visualizza Classifica")
@@ -614,58 +675,67 @@ def main():
                 st.info("Seleziona un girone per visualizzare la classifica.")
 
         # Navigazione/filtri
-        st.sidebar.markdown("---")
+        # --- Nuovo blocco per i filtri (versione corretta) ---
         st.sidebar.subheader("🔎 Filtra partite")
-        filtro_opzione = st.sidebar.radio("Scegli un filtro", ('Nessuno', 'Giocatore', 'Girone'), key='filtro_selettore')
+        df = st.session_state['df_torneo'].copy()
+        
+        filtro_principale = st.sidebar.radio(
+            "Visualizza:",
+            ('Nessuno', 'Stato partite', 'Giocatore', 'Girone'),
+            key='filtro_principale_selettore'
+        )
 
-        if filtro_opzione != st.session_state['filtro_attivo']:
-            st.session_state['filtro_attivo'] = filtro_opzione
-            st.rerun()
+        df_filtrato = pd.DataFrame() # Inizializza un DataFrame vuoto
 
-        if st.session_state['filtro_attivo'] == 'Giocatore':
+        if filtro_principale == 'Nessuno':
+            # Non mostrare nessun dataframe qui, la navigazione del calendario si occuperà di questo
+            pass
+
+        elif filtro_principale == 'Stato partite':
+            stato = st.sidebar.radio(
+                "Scegli lo stato:",
+                ('Giocate', 'Da Giocare'),
+                key='stato_selettore'
+            )
+            st.subheader(f"🗓️ Partite {stato.lower()}")
+            
+            if stato == 'Giocate':
+                df_filtrato = df[df['Valida'] == True]
+            else: # 'Da Giocare'
+                df_filtrato = df[df['Valida'] == False]
+            
+            if not df_filtrato.empty:
+                st.dataframe(df_filtrato[['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']].reset_index(drop=True), use_container_width=True)
+            else:
+                st.info(f"🎉 Nessuna partita {stato.lower()} trovata.")
+        
+        elif filtro_principale == 'Giocatore':
             st.sidebar.markdown("#### 🧑‍💼 Filtra per Giocatore")
             giocatori = sorted(list(set(df['Casa'].unique().tolist() + df['Ospite'].unique().tolist())))
             giocatore_scelto = st.sidebar.selectbox("Seleziona un giocatore", [''] + giocatori, key='filtro_giocatore_sel')
-            tipo_andata_ritorno = st.sidebar.radio("Andata/Ritorno", ["Entrambe", "Andata", "Ritorno"], key='tipo_giocatore')
-
+            
             if giocatore_scelto:
-                st.subheader(f"🗓️ Partite da giocare per {giocatore_scelto}")
-                df_filtrato = df[(df['Valida'] == False) & ((df['Casa'] == giocatore_scelto) | (df['Ospite'] == giocatore_scelto))]
-
-                if tipo_andata_ritorno == "Andata":
-                    n_squadre_girone = len(df.groupby('Girone').first().index)
-                    df_filtrato = df_filtrato[df_filtrato['Giornata'] <= n_squadre_girone - 1]
-                elif tipo_andata_ritorno == "Ritorno":
-                    n_squadre_girone = len(df.groupby('Girone').first().index)
-                    df_filtrato = df_filtrato[df_filtrato['Giornata'] > n_squadre_girone - 1]
-
+                st.subheader(f"🗓️ Partite per {giocatore_scelto}")
+                df_filtrato = df[(df['Casa'] == giocatore_scelto) | (df['Ospite'] == giocatore_scelto)]
+                
                 if not df_filtrato.empty:
-                    df_filtrato_show = df_filtrato[['Girone', 'Giornata', 'Casa', 'Ospite']]
-                    st.dataframe(df_filtrato_show.reset_index(drop=True), use_container_width=True)
+                    st.dataframe(df_filtrato[['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']].reset_index(drop=True), use_container_width=True)
                 else:
-                    st.info("🎉 Nessuna partita da giocare trovata per questo giocatore.")
-
-        elif st.session_state['filtro_attivo'] == 'Girone':
+                    st.info("🎉 Nessuna partita trovata per questo giocatore.")
+        
+        elif filtro_principale == 'Girone':
             st.sidebar.markdown("#### 🧩 Filtra per Girone")
             gironi_disponibili = sorted(df['Girone'].unique().tolist())
             girone_scelto = st.sidebar.selectbox("Seleziona un girone", gironi_disponibili, key='filtro_girone_sel')
-            tipo_andata_ritorno = st.sidebar.radio("Andata/Ritorno", ["Entrambe", "Andata", "Ritorno"], key='tipo_girone')
-
-            st.subheader(f"🗓️ Partite da giocare nel {girone_scelto}")
-            df_filtrato = df[(df['Valida'] == False) & (df['Girone'] == girone_scelto)]
-
-            if tipo_andata_ritorno == "Andata":
-                n_squadre_girone = len(df[df['Girone'] == girone_scelto]['Casa'].unique())
-                df_filtrato = df_filtrato[df_filtrato['Giornata'] <= n_squadre_girone - 1]
-            elif tipo_andata_ritorno == "Ritorno":
-                n_squadre_girone = len(df[df['Girone'] == girone_scelto]['Casa'].unique())
-                df_filtrato = df_filtrato[df_filtrato['Giornata'] > n_squadre_girone - 1]
-
-            if not df_filtrato.empty:
-                df_filtrato_show = df_filtrato[['Giornata', 'Casa', 'Ospite']]
-                st.dataframe(df_filtrato_show.reset_index(drop=True), use_container_width=True)
-            else:
-                st.info("🎉 Tutte le partite di questo girone sono state giocate.")
+            
+            if girone_scelto:
+                st.subheader(f"🗓️ Partite nel {girone_scelto}")
+                df_filtrato = df[df['Girone'] == girone_scelto]
+                
+                if not df_filtrato.empty:
+                    st.dataframe(df_filtrato[['Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']].reset_index(drop=True), use_container_width=True)
+                else:
+                    st.info("🎉 Nessuna partita trovata per questo girone.")
 
         # Calendario (nessun filtro)
         st.markdown("---")
@@ -682,9 +752,29 @@ def main():
                 st.session_state['giornata_sel'] = 1
                 st.rerun()
 
-            modalita_nav = st.radio("🎛️ Modalità navigazione giornata", ["Menu a tendina", "Bottoni"], index=0, key="modalita_navigazione")
+            
+            # Nuovo selettore per la modalità di visualizzazione della partita
+            # Nuovo selettore per la modalità di visualizzazione della partita
+            modalita_visualizzazione = st.radio(
+                "👁️ Modalità di visualizzazione partita",
+                ("Completa", "Solo squadre", "Solo giocatori"),
+                key="modalita_visualizzazione_radio",
+                horizontal=True
+            )
 
-            if modalita_nav == "Bottoni":
+            # Mappa il valore del radio button a una stringa usata nella funzione
+            mappa_modalita = {
+                "Completa": "completa",
+                "Solo squadre": "squadre",
+                "Solo giocatori": "giocatori"
+            }
+            modalita_scelta = mappa_modalita[modalita_visualizzazione]
+
+            # Sposta la checkbox della modalità di navigazione a questo livello
+            modalita_bottoni = st.checkbox("🎛️ Usa bottoni di navigazione", key="modalita_navigazione_checkbox")
+
+            # Logica di visualizzazione basata sulla checkbox
+            if modalita_bottoni:
                 navigation_buttons("Giornata", 'giornata_sel', 1, len(giornate_correnti))
             else:
                 try:
@@ -692,13 +782,14 @@ def main():
                 except ValueError:
                     current_index = 0
                     st.session_state['giornata_sel'] = giornate_correnti[0]
-
                 nuova_giornata = st.selectbox("📅 Seleziona Giornata", giornate_correnti, index=current_index)
                 if nuova_giornata != st.session_state['giornata_sel']:
                     st.session_state['giornata_sel'] = nuova_giornata
                     st.rerun()
 
-            mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'])
+            # Richiama la funzione con il parametro di visualizzazione corretto
+            mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
+
             st.button(
                 "💾 Salva Risultati Giornata",
                 on_click=salva_risultati_giornata,
