@@ -383,7 +383,8 @@ def generate_pdf_ko(rounds_ko: list[pd.DataFrame]) -> bytes:
             pdf.cell(0, 7, f"Partita {int(match['Match'])}: {match['SquadraA']} vs {match['SquadraB']} ({res})", 0, 1)
 
     pdf.set_text_color(0, 0, 0)
-    return pdf.output(dest='S').encode('latin1')
+    #return pdf.output(dest='S').encode('latin1')
+    return bytes(pdf.output(dest='S'))
 
 def render_round(df_round, round_idx):
     st.markdown(f"### {df_round['Round'].iloc[0]}")
@@ -759,8 +760,23 @@ def salva_risultati_ko():
     df_ko_da_salvare['Girone'] = 'Eliminazione Diretta'
     df_ko_da_salvare['Giornata'] = len(st.session_state['rounds_ko'])
 
-    df_final_torneo = st.session_state.get('df_torneo_preliminare', pd.DataFrame())
-    df_final_torneo = pd.concat([df_final_torneo, df_ko_da_salvare], ignore_index=True)
+    df_final_torneo = st.session_state.get('df_torneo_preliminare', pd.DataFrame()).copy()
+
+    # Aggiorna solo le righe KO già presenti (Girone, Giornata, Casa, Ospite)
+    for idx, row in df_ko_da_salvare.iterrows():
+        mask = (
+            (df_final_torneo['Girone'] == row['Girone']) &
+            (df_final_torneo['Giornata'] == row['Giornata']) &
+            (df_final_torneo['Casa'] == row['Casa']) &
+            (df_final_torneo['Ospite'] == row['Ospite'])
+        )
+        if mask.any():
+            # Aggiorna la riga esistente
+            for col in ['GolCasa', 'GolOspite', 'Valida', 'GiocatoreCasa', 'GiocatoreOspite', 'Vincitore']:
+                df_final_torneo.loc[mask, col] = row[col]
+        else:
+            # Se non esiste, aggiungi la riga (caso raro)
+            df_final_torneo = pd.concat([df_final_torneo, pd.DataFrame([row])], ignore_index=True)
     
     if aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_final_torneo):
         st.toast("✅ Risultati salvati su DB!")
@@ -1035,6 +1051,7 @@ def main():
                                 
                                 is_ko_tournament = (df_torneo_completo['Girone'].astype(str) == 'Eliminazione Diretta').any()
                                 
+                                #if is_ko_tournament:
                                 if is_ko_tournament:
                                     st.session_state['ko_setup_complete'] = True
                                     df_ko_esistente = df_torneo_completo[df_torneo_completo['Girone'] == 'Eliminazione Diretta'].copy()
@@ -1043,45 +1060,48 @@ def main():
                                     df_ko_esistente['GiocatoreCasa'] = df_ko_esistente['Casa'].map(st.session_state['player_map'])
                                     df_ko_esistente['GiocatoreOspite'] = df_ko_esistente['Ospite'].map(st.session_state['player_map'])
 
+                                    # Ricostruzione rounds_ko senza duplicati
                                     rounds_list = []
+                                    accoppiamenti_visti = set()
                                     for r in sorted(df_ko_esistente['Giornata'].unique()):
                                         df_round = df_ko_esistente[df_ko_esistente['Giornata'] == r].copy()
                                         df_round.rename(columns={'Casa': 'SquadraA', 'Ospite': 'SquadraB', 'GolCasa': 'GolA', 'GolOspite': 'GolB', 'GiocatoreCasa': 'GiocatoreA', 'GiocatoreOspite': 'GiocatoreB'}, inplace=True)
-                                        df_round['Round'] = f"Round {int(r)}"
-                                        df_round['Match'] = df_round.index + 1
+                                        # Crea una tupla ordinata degli accoppiamenti per questo round
+                                        accoppiamenti = tuple(sorted((row['SquadraA'], row['SquadraB']) for _, row in df_round.iterrows()))
+                                        if accoppiamenti in accoppiamenti_visti:
+                                            continue  # Salta round duplicato
+                                        accoppiamenti_visti.add(accoppiamenti)
+                                        # Determine round name based on the number of matches
+                                        num_matches = len(df_round)
+                                        if num_matches == 8: round_name = "Ottavi di finale"
+                                        elif num_matches == 4: round_name = "Quarti di finale"
+                                        elif num_matches == 2: round_name = "Semifinali"
+                                        elif num_matches == 1: round_name = "Finale"
+                                        else: round_name = f"Round {int(r)}"
+                                        df_round['Round'] = round_name
+                                        df_round['Match'] = range(1, len(df_round) + 1)
                                         df_round['Vincitore'] = df_round.apply(lambda row: row['SquadraA'] if pd.notna(row['GolA']) and row['GolA'] > row['GolB'] else row['SquadraB'] if pd.notna(row['GolB']) and row['GolB'] > row['GolA'] else None, axis=1)
                                         rounds_list.append(df_round)
+
+                                    # Ricostruisci la lista completa dei round KO senza duplicati
+                                    st.session_state['rounds_ko'] = rounds_list
                                     
-                                    rounds_filtrati = []
-                                    for _df_round in rounds_list:
-                                        rounds_filtrati.append(_df_round)
-                                        if 'Valida' in _df_round.columns and not _df_round['Valida'].fillna(False).all():
-                                            break
+                                    # Trova l'ultimo turno non validato, o l'ultimissimo turno se tutti sono validati
+                                    last_unvalidated_round = None
+                                    if rounds_list:
+                                        for _df_round in reversed(rounds_list):
+                                            if not _df_round['Valida'].fillna(False).all():
+                                                last_unvalidated_round = _df_round
+                                                break
+                                        if last_unvalidated_round is None:
+                                            last_unvalidated_round = rounds_list[-1]
                                     
-                                    if rounds_filtrati and ('Valida' in rounds_filtrati[-1].columns) and rounds_filtrati[-1]['Valida'].fillna(False).all():
-                                        winners = rounds_filtrati[-1].get('Vincitore')
-                                        if winners is None or winners.isna().all():
-                                            last_round = rounds_filtrati[-1]
-                                            winners = last_round.apply(lambda row: row['SquadraA'] if pd.notna(row.get('GolA')) and pd.notna(row.get('GolB')) and row.get('GolA') > row.get('GolB') else (row['SquadraB'] if pd.notna(row.get('GolA')) and pd.notna(row.get('GolB')) and row.get('GolB') > row.get('GolA') else None), axis=1)
-                                        winners = [w for w in winners.tolist() if pd.notna(w)]
-                                        if len(winners) > 1:
-                                            next_round_name = 'Semifinali' if len(winners) == 4 else ('Finale' if len(winners) == 2 else 'Quarti di finale')
-                                            next_matches = []
-                                            for i in range(0, len(winners), 2):
-                                                if i+1 < len(winners):
-                                                    next_matches.append({
-                                                        'Round': next_round_name,
-                                                        'Match': (i//2) + 1,
-                                                        'SquadraA': winners[i],
-                                                        'GiocatoreA': st.session_state['player_map'].get(winners[i], ''),
-                                                        'SquadraB': winners[i+1],
-                                                        'GiocatoreB': st.session_state['player_map'].get(winners[i+1], ''),
-                                                        'GolA': None, 'GolB': None, 'Valida': False, 'Vincitore': None
-                                                    })
-                                            if next_matches:
-                                                rounds_filtrati.append(pd.DataFrame(next_matches))
-            
-                                    st.session_state['rounds_ko'] = rounds_filtrati
+                                    # Ricostruisci la lista completa dei round KO
+                                    if rounds_list:
+                                        st.session_state['rounds_ko'] = rounds_list
+                                    else:
+                                        st.session_state['rounds_ko'] = []
+                                    
                                     st.session_state['giornate_mode'] = 'ko'
                                     st.session_state['fase_modalita'] = "Eliminazione diretta"
                                     st.session_state['ui_show_pre'] = False
