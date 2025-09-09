@@ -290,23 +290,15 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizza
     
     for idx, row in df_giornata.iterrows():
         # Logica per analizzare la stringa "Squadra(Giocatore)"
-        squadra_casa_str = row['Casa']
-        squadra_ospite_str = row['Ospite']
-        
-        # Analizza la stringa per estrarre la squadra e il giocatore
-        if '(' in squadra_casa_str and squadra_casa_str.endswith(')'):
-            squadra_casa = squadra_casa_str.split('(')[0].strip()
-            giocatore_casa = squadra_casa_str.split('(')[1].replace(')', '').strip()
-        else:
-            squadra_casa = squadra_casa_str
-            giocatore_casa = giocatore_map.get(squadra_casa, "")
+        # Parsing locale per "Squadra-Giocatore"
+        def parse_team_player(val):
+            if isinstance(val, str) and "-" in val:
+                squadra, giocatore = val.split("-", 1)
+                return squadra.strip(), giocatore.strip()
+            return val, ""
 
-        if '(' in squadra_ospite_str and squadra_ospite_str.endswith(')'):
-            squadra_ospite = squadra_ospite_str.split('(')[0].strip()
-            giocatore_ospite = squadra_ospite_str.split('(')[1].replace(')', '').strip()
-        else:
-            squadra_ospite = squadra_ospite_str
-            giocatore_ospite = giocatore_map.get(squadra_ospite, "")
+        squadra_casa, giocatore_casa = parse_team_player(row['Casa'])
+        squadra_ospite, giocatore_ospite = parse_team_player(row['Ospite'])
         
         with st.container(border=True):
             stringa_partita = ""
