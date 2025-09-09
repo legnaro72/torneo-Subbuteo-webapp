@@ -738,11 +738,8 @@ def main():
             st.rerun()
 
         st.sidebar.markdown("---")
-        if st.sidebar.button("🔗 Vai a Hub Tornei", key="go_to_hub", use_container_width=True):
-            redirect_url = "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/"
-            st.markdown(f"<meta http-equiv='refresh' content='0; url={redirect_url}'>", unsafe_allow_html=True)
-            st.markdown(f"<p style='text-align:center;'>Reindirizzamento in corso...</p>", unsafe_allow_html=True)
-            st.stop()
+        st.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/", use_container_width=True)
+        st.markdown("---")
             
         # Funzionalità per la gestione dell'abbandono dei giocatori
         st.sidebar.markdown("---")
