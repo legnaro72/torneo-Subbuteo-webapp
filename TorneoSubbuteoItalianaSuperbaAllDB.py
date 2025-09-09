@@ -723,8 +723,9 @@ def main():
         #inizio buttons
         st.sidebar.markdown("---")
         st.sidebar.subheader("🕹️ Gestione Rapida")
+        
         st.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/", use_container_width=True)
-        st.markdown("---")
+        
         if st.sidebar.button("💾 Salva Torneo", key="save_tournament", use_container_width=True):
             if st.session_state.get('tournament_id'):
                 ok = aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
