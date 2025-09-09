@@ -386,36 +386,46 @@ def generate_pdf_ko(rounds_ko: list[pd.DataFrame]) -> bytes:
     #return pdf.output(dest='S').encode('latin1')
     return bytes(pdf.output(dest='S'))
 
-def render_round(df_round, round_idx):
+def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
     st.markdown(f"### {df_round['Round'].iloc[0]}")
     st.markdown("---")
-    
-    # Crea una copia per lavorare senza il SettingWithCopyWarning
     df_temp = df_round.copy()
 
+    def parse_team_player(val):
+        # Divide "Squadra-Giocatore" in due parti
+        if isinstance(val, str) and "-" in val:
+            squadra, giocatore = val.split("-", 1)
+            return squadra.strip(), giocatore.strip()
+        return val, ""
+
     for idx, match in df_temp.iterrows():
-        # Utilizza un container per raggruppare visivamente gli elementi di una singola partita
         with st.container(border=True):
-            # Utilizzo le session_state per i valori
             key_gol_a = f"ko_gola_{round_idx}_{idx}"
             key_gol_b = f"ko_golb_{round_idx}_{idx}"
             key_valida = f"ko_valida_{round_idx}_{idx}"
-            
-            # Inizializza i valori in session_state se non esistono
+
             if key_gol_a not in st.session_state:
                 st.session_state[key_gol_a] = int(match['GolA']) if pd.notna(match['GolA']) else 0
             if key_gol_b not in st.session_state:
                 st.session_state[key_gol_b] = int(match['GolB']) if pd.notna(match['GolB']) else 0
             if key_valida not in st.session_state:
                 st.session_state[key_valida] = bool(match['Valida']) if pd.notna(match['Valida']) else False
-            
-            # Intestazione della partita con il formato aggiornato
+
+            # --- Parsing locale ---
+            squadra_a, giocatore_a = parse_team_player(match['SquadraA'])
+            squadra_b, giocatore_b = parse_team_player(match['SquadraB'])
+
+            # --- Visualizzazione dinamica ---
+            if modalita_visualizzazione == "completa":
+                stringa_incontro = f"🏠{squadra_a} ({giocatore_a}) 🆚 {squadra_b} ({giocatore_b})🛫"
+            elif modalita_visualizzazione == "giocatori":
+                stringa_incontro = f"🏠{giocatore_a} 🆚 {giocatore_b}🛫"
+            else:  # "squadre" o default
+                stringa_incontro = f"🏠{squadra_a} 🆚 {squadra_b}🛫"
+
             st.markdown(f"<h3 style='text-align:center;'>⚽ Partita</h3>", unsafe_allow_html=True)
-            st.markdown(f"<p style='text-align:center; font-weight:bold;'>🏠{match['SquadraA']} {match.get('GiocatoreA', '')} 🆚 {match['SquadraB']} {match.get('GiocatoreB', '')}🛫</p>", unsafe_allow_html=True)
-            #st.markdown(f"<p style='text-align:center; font-weight:bold;'>🏠{match['SquadraA']} ({match.get('GiocatoreA')}) 🆚 {match['SquadraB']} ({match.get('GiocatoreB')})🛫</p>", unsafe_allow_html=True)
-            #st.markdown(f"<p style='text-align:center; font-weight:bold;'>🏠{casa} ({giocatore_casa}) 🆚 {ospite} ({giocatore_ospite})🛫</p>", unsafe_allow_html=True)
-            
-            # Campi per i gol
+            st.markdown(f"<p style='text-align:center; font-weight:bold;'>{stringa_incontro}</p>", unsafe_allow_html=True)
+
             c_score1, c_score2 = st.columns(2)
             with c_score1:
                 st.number_input(
@@ -434,14 +444,12 @@ def render_round(df_round, round_idx):
                     label_visibility="hidden"
                 )
 
-            # Checkbox di validazione
             st.markdown("---")
             st.checkbox(
                 "✅ Valida Risultato",
                 key=key_valida,
             )
-            
-            # Aggiorna il DataFrame e mostra il messaggio di stato
+
             df_round.loc[idx, 'GolA'] = st.session_state[key_gol_a]
             df_round.loc[idx, 'GolB'] = st.session_state[key_gol_b]
             df_round.loc[idx, 'Valida'] = st.session_state[key_valida]
@@ -451,7 +459,6 @@ def render_round(df_round, round_idx):
             else:
                 st.warning("⚠️ Partita non ancora validata.")
 
-    # Aggiorna lo stato di sessione con il DataFrame modificato
     st.session_state['rounds_ko'][round_idx] = df_round.copy()
 # ==============================================================================
 # 🧠 FUNZIONI DI GESTIONE STATO E INTERAZIONE CON DB
@@ -619,7 +626,7 @@ def handle_query_param_load():
         # rerun per applicare stato
         try:
             if hasattr(st, "experimental_rerun"):
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.rerun()
         except Exception:
@@ -874,6 +881,9 @@ def main():
     if 'player_map' not in st.session_state: st.session_state['player_map'] = {}
     if 'ko_setup_complete' not in st.session_state: st.session_state['ko_setup_complete'] = False
     
+    if 'show_all_ko_matches' not in st.session_state:
+        st.session_state['show_all_ko_matches'] = False
+    
     # Header dinamico
     tournament_name = st.session_state.get("tournament_name")
     
@@ -904,31 +914,37 @@ def main():
             if st.button("⬅️ Torna a classifica e scelta fase finale"):
                 reset_to_setup()
                 st.rerun()
+            # --- Pulsante per mostrare tutti gli incontri disputati KO ---
+            if st.button("📋 Mostra tutti gli incontri disputati"):
+                st.session_state['show_all_ko_matches'] = True
+                st.rerun()
+                
             st.divider()
-            st.subheader("📤 Esportazione")
-            if st.session_state.get('giornate_mode') == "gironi" and 'df_finale_gironi' in st.session_state:
-                st.download_button(
-                    "📥 Esporta calendario gironi (CSV)",
-                    data=st.session_state['df_finale_gironi'].to_csv(index=False).encode('utf-8'),
-                    file_name="fase_finale_gironi_calendario.csv",
-                    mime="text/csv",
-                )
-                st.download_button(
-                    "📄 Esporta PDF calendario e classifica",
-                    data=generate_pdf_gironi(st.session_state['df_finale_gironi']),
-                    file_name="fase_finale_gironi.pdf",
-                    mime="application/pdf",
-                )
+            st.subheader("Visualizzazione incontri KO")
+            modalita_visualizzazione = st.radio(
+                "Formato incontri tabellone:",
+                options=["squadre", "completa", "giocatori"],
+                index=0,
+                format_func=lambda x: {
+                    "squadre": "Solo squadre",
+                    "completa": "Squadra + Giocatore",
+                    "giocatori": "Solo giocatori"
+                }[x],
+                key="modalita_visualizzazione_ko"
+            )
+                        
+            st.sidebar.markdown("---")
+            st.sidebar.subheader("🕹️ Gestione Rapida")
+            # --- Nuovi pulsanti richiesti ---
+            st.button("💾 Salva DB", on_click=salva_risultati_ko)
+            st.button("🏁 Termina Torneo", on_click=lambda: st.session_state.update({"vincitore_torneo": "Torneo terminato manualmente"}))
+            if st.button("🏠 Vai a Hub Tornei"):
+                st.experimental_open_url("https://farm-tornei-subbuteo-superba-all-db.streamlit.app/")
+            st.subheader("📤 Esportazione")           
             if st.session_state.get('giornate_mode') == "ko" and 'rounds_ko' in st.session_state:
-                all_rounds_df = pd.concat(st.session_state['rounds_ko'], ignore_index=True)
+                # CSV RIMOSSO
                 st.download_button(
-                    "📥 Esporta tabellone (CSV)",
-                    data=all_rounds_df.to_csv(index=False).encode('utf-8'),
-                    file_name="fase_finale_tabellone.csv",
-                    mime="text/csv",
-                )
-                st.download_button(
-                    "📄 Esporta PDF tabellone KO",
+                    "📄 Esporta PDF tabellone Eliminazione Diretta",
                     data=generate_pdf_ko(st.session_state['rounds_ko']),
                     file_name="fase_finale_tabellone_ko.pdf",
                     mime="application/pdf",
@@ -1298,11 +1314,68 @@ def main():
                         st.button("Torna indietro", on_click=reset_to_setup)
                         st.stop()
                     
-                    if st.session_state['rounds_ko']:
-                        current_round_df = st.session_state['rounds_ko'][-1]
-                        render_round(current_round_df, len(st.session_state['rounds_ko']) - 1)
-                        
-                        st.button("💾 Salva risultati e genera prossimo round", on_click=salva_risultati_ko)
+                    #inizio
+                    if st.session_state.get('show_all_ko_matches', False):
+                        # --- SOLO la tabella incontri disputati ---
+                        st.markdown("## 🏟️ Tutti gli incontri disputati")
+                        records = []
+                        rounds_ko = st.session_state.get('rounds_ko', [])
+                        rounds_to_show = rounds_ko[:-1] if rounds_ko and not rounds_ko[-1]['Valida'].all() else rounds_ko
+
+                        round_emoji = {
+                            "Ottavi di finale": "🟢",
+                            "Quarti di finale": "🔵",
+                            "Semifinali": "🟣",
+                            "Finale": "🏆"
+                        }
+
+                        for df_round in rounds_to_show:
+                            round_name = df_round['Round'].iloc[0]
+                            emoji = round_emoji.get(round_name, "⚽️")
+                            df_giocati = df_round[df_round['Valida'] == True]
+                            for _, match in df_giocati.iterrows():
+                                squadra_a = str(match['SquadraA'])
+                                gol_a = int(match['GolA']) if pd.notna(match['GolA']) else ""
+                                gol_b = int(match['GolB']) if pd.notna(match['GolB']) else ""
+                                squadra_b = str(match['SquadraB'])
+                                records.append({
+                                    "Turno": f"{emoji} {round_name}",
+                                    "Squadra A": f"🏠 {squadra_a}",
+                                    "Gol A": f"{gol_a} ⚽️",
+                                    "Gol B": f"⚽️ {gol_b}",
+                                    "Squadra B": f"{squadra_b} 🛫"
+                                })
+                        if records:
+                            st.markdown("""
+                            <style>
+                            .emoji-table td, .emoji-table th {padding: 0.5em 0.7em;}
+                            .emoji-table th {background: #f1faee;}
+                            </style>
+                            """, unsafe_allow_html=True)
+                            st.markdown("<h4 style='margin-bottom:0.5em;'>Tabellone incontri:</h4>", unsafe_allow_html=True)
+                            df_disp = pd.DataFrame(records)
+                            table_html = "<table class='emoji-table'><thead><tr>"
+                            for col in df_disp.columns:
+                                table_html += f"<th>{col}</th>"
+                            table_html += "</tr></thead><tbody>"
+                            for _, row in df_disp.iterrows():
+                                table_html += "<tr>"
+                                for val in row:
+                                    table_html += f"<td style='font-size:1.1em'>{val}</td>"
+                                table_html += "</tr>"
+                            table_html += "</tbody></table>"
+                            st.markdown(table_html, unsafe_allow_html=True)
+                        else:
+                            st.info("Nessun incontro KO validato finora.")
+                        if st.button("Nascondi incontri disputati"):
+                            st.session_state['show_all_ko_matches'] = False
+                            st.rerun()
+                    else:
+                        # --- SOLO round attivo ---
+                        if st.session_state['rounds_ko']:
+                            current_round_df = st.session_state['rounds_ko'][-1]
+                            render_round(current_round_df, len(st.session_state['rounds_ko']) - 1, st.session_state.get("modalita_visualizzazione_ko", "squadre"))
+                            st.button("💾 Salva risultati e genera prossimo round", on_click=salva_risultati_ko)
                         
                     if st.session_state['giornate_mode'] == 'ko':
                         st.markdown("<style>#root > div:nth-child(1) > div > div > div > div:nth-child(1) > div > div:nth-child(2) > div:nth-child(1) > div:nth-child(1), #root > div:nth-child(1) > div > div > div > div:nth-child(1) > div > div:nth-child(3) > div:nth-child(1) > div:nth-child(1){display:none;}</style>", unsafe_allow_html=True)
