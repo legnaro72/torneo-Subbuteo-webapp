@@ -618,7 +618,7 @@ def main():
         st.rerun()
 
     st.sidebar.subheader("🕹️ Gestione Rapida")
-    st.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/", use_container_width=True)
+    st.sidebar.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/", use_container_width=True)
     
     inject_css()
 
