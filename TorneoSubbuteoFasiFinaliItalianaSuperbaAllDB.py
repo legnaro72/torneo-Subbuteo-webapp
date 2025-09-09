@@ -922,7 +922,7 @@ def main():
                 st.rerun()
                 
             st.divider()
-            st.subheader("Visualizzazione incontri KO")
+            st.subheader("🔍 Visualizzazione incontri")
             modalita_visualizzazione = st.radio(
                 "Formato incontri tabellone:",
                 options=["squadre", "completa", "giocatori"],
