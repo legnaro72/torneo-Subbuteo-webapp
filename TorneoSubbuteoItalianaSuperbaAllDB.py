@@ -737,7 +737,7 @@ def main():
             st.session_state['sidebar_state_reset'] = True
             st.rerun()
 
-        st.sidebar.markdown("---")
+        #st.sidebar.markdown("---")
         st.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/", use_container_width=True)
         st.markdown("---")
             
