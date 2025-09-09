@@ -940,8 +940,9 @@ def main():
             # --- Nuovi pulsanti richiesti ---
             st.button("💾 Salva DB", on_click=salva_risultati_ko)
             st.button("🏁 Termina Torneo", on_click=lambda: st.session_state.update({"vincitore_torneo": "Torneo terminato manualmente"}))
-            if st.button("🏠 Vai a Hub Tornei"):
-                st.experimental_open_url("https://farm-tornei-subbuteo-superba-all-db.streamlit.app/")
+            st.sidebar.markdown("---")
+            st.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/", use_container_width=True)
+            st.markdown("---")
             st.subheader("📤 Esportazione")           
             if st.session_state.get('giornate_mode') == "ko" and 'rounds_ko' in st.session_state:
                 # CSV RIMOSSO
