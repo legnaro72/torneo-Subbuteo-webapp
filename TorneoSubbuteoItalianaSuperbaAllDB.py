@@ -816,7 +816,27 @@ def main():
                 df_filtrato = df[df['Valida'] == False]
             
             if not df_filtrato.empty:
-                st.dataframe(df_filtrato[['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']].reset_index(drop=True), use_container_width=True)
+                editable_cols = ['GolCasa', 'GolOspite', 'Valida']
+                df_edit = st.data_editor(
+                    df_filtrato[['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']].reset_index(),
+                    use_container_width=True,
+                    num_rows="dynamic",
+                    column_config={
+                        "GolCasa": st.column_config.NumberColumn("Gol Casa", min_value=0, max_value=20),
+                        "GolOspite": st.column_config.NumberColumn("Gol Ospite", min_value=0, max_value=20),
+                        "Valida": st.column_config.CheckboxColumn("Valida")
+                    }
+                )
+                if st.button("💾 Salva modifiche tabella"):
+                    # Applica le modifiche al df_torneo originale
+                    for _, row in df_edit.iterrows():
+                        idx = row['index']
+                        for col in editable_cols:
+                            st.session_state['df_torneo'].at[idx, col] = row[col]
+                    # Salva su DB se vuoi
+                    if st.session_state.get('tournament_id'):
+                        aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
+                    st.success("Modifiche salvate!")
             else:
                 st.info(f"🎉 Nessuna partita {stato.lower()} trovata.")
         
@@ -824,27 +844,119 @@ def main():
             st.sidebar.markdown("#### 🧑‍💼 Filtra per Giocatore")
             giocatori = sorted(list(set(df['Casa'].unique().tolist() + df['Ospite'].unique().tolist())))
             giocatore_scelto = st.sidebar.selectbox("Seleziona un giocatore", [''] + giocatori, key='filtro_giocatore_sel')
-            
             if giocatore_scelto:
+                # Filtro stato partita
+                stato_gioc = st.sidebar.radio(
+                    "Stato partita:",
+                    ('Tutte', 'Giocate', 'Da Giocare'),
+                    key='stato_giocatore_radio'
+                )
+                # Filtro andata/ritorno
+                tipo_gioc = st.sidebar.radio(
+                    "Tipo:",
+                    ('Entrambe', 'Andata', 'Ritorno'),
+                    key='tipo_giocatore_radio'
+                )
                 st.subheader(f"🗓️ Partite per {giocatore_scelto}")
+
                 df_filtrato = df[(df['Casa'] == giocatore_scelto) | (df['Ospite'] == giocatore_scelto)]
-                
+
+                # Applica filtro stato
+                if stato_gioc == 'Giocate':
+                    df_filtrato = df_filtrato[df_filtrato['Valida'] == True]
+                elif stato_gioc == 'Da Giocare':
+                    df_filtrato = df_filtrato[df_filtrato['Valida'] == False]
+
+                # Applica filtro andata/ritorno
+                if tipo_gioc != 'Entrambe':
+                    max_giornata = df_filtrato['Giornata'].max() if not df_filtrato.empty else 0
+                    if max_giornata > 0:
+                        n_giornate = max_giornata // 2 if tipo_gioc == 'Andata' else max_giornata - (max_giornata // 2)
+                        if tipo_gioc == 'Andata':
+                            df_filtrato = df_filtrato[df_filtrato['Giornata'] <= n_giornate]
+                        else:  # 'Ritorno'
+                            df_filtrato = df_filtrato[df_filtrato['Giornata'] > max_giornata // 2]
+
                 if not df_filtrato.empty:
-                    st.dataframe(df_filtrato[['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']].reset_index(drop=True), use_container_width=True)
+                    editable_cols = ['GolCasa', 'GolOspite', 'Valida']
+                    df_edit = st.data_editor(
+                        df_filtrato[['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']].reset_index(),
+                        use_container_width=True,
+                        num_rows="dynamic",
+                        column_config={
+                            "GolCasa": st.column_config.NumberColumn("Gol Casa", min_value=0, max_value=20),
+                            "GolOspite": st.column_config.NumberColumn("Gol Ospite", min_value=0, max_value=20),
+                            "Valida": st.column_config.CheckboxColumn("Valida")
+                        }
+                    )
+                    if st.button("💾 Salva modifiche tabella (Giocatore)"):
+                        for _, row in df_edit.iterrows():
+                            idx = row['index']
+                            for col in editable_cols:
+                                st.session_state['df_torneo'].at[idx, col] = row[col]
+                        if st.session_state.get('tournament_id'):
+                            aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
+                        st.success("Modifiche salvate!")
                 else:
                     st.info("🎉 Nessuna partita trovata per questo giocatore.")
-        
+
         elif filtro_principale == 'Girone':
             st.sidebar.markdown("#### 🧩 Filtra per Girone")
             gironi_disponibili = sorted(df['Girone'].unique().tolist())
             girone_scelto = st.sidebar.selectbox("Seleziona un girone", gironi_disponibili, key='filtro_girone_sel')
-            
             if girone_scelto:
+                # Filtro stato partita
+                stato_gir = st.sidebar.radio(
+                    "Stato partita:",
+                    ('Tutte', 'Giocate', 'Da Giocare'),
+                    key='stato_girone_radio'
+                )
+                # Filtro andata/ritorno
+                tipo_gir = st.sidebar.radio(
+                    "Tipo:",
+                    ('Entrambe', 'Andata', 'Ritorno'),
+                    key='tipo_girone_radio'
+                )
                 st.subheader(f"🗓️ Partite nel {girone_scelto}")
+
                 df_filtrato = df[df['Girone'] == girone_scelto]
-                
+
+                # Applica filtro stato
+                if stato_gir == 'Giocate':
+                    df_filtrato = df_filtrato[df_filtrato['Valida'] == True]
+                elif stato_gir == 'Da Giocare':
+                    df_filtrato = df_filtrato[df_filtrato['Valida'] == False]
+
+                # Applica filtro andata/ritorno
+                if tipo_gir != 'Entrambe':
+                    max_giornata = df_filtrato['Giornata'].max() if not df_filtrato.empty else 0
+                    if max_giornata > 0:
+                        n_giornate = max_giornata // 2 if tipo_gir == 'Andata' else max_giornata - (max_giornata // 2)
+                        if tipo_gir == 'Andata':
+                            df_filtrato = df_filtrato[df_filtrato['Giornata'] <= n_giornate]
+                        else:  # 'Ritorno'
+                            df_filtrato = df_filtrato[df_filtrato['Giornata'] > max_giornata // 2]
+
                 if not df_filtrato.empty:
-                    st.dataframe(df_filtrato[['Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']].reset_index(drop=True), use_container_width=True)
+                    editable_cols = ['GolCasa', 'GolOspite', 'Valida']
+                    df_edit = st.data_editor(
+                        df_filtrato[['Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite', 'Valida']].reset_index(),
+                        use_container_width=True,
+                        num_rows="dynamic",
+                        column_config={
+                            "GolCasa": st.column_config.NumberColumn("Gol Casa", min_value=0, max_value=20),
+                            "GolOspite": st.column_config.NumberColumn("Gol Ospite", min_value=0, max_value=20),
+                            "Valida": st.column_config.CheckboxColumn("Valida")
+                        }
+                    )
+                    if st.button("💾 Salva modifiche tabella (Girone)"):
+                        for _, row in df_edit.iterrows():
+                            idx = row['index']
+                            for col in editable_cols:
+                                st.session_state['df_torneo'].at[idx, col] = row[col]
+                        if st.session_state.get('tournament_id'):
+                            aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
+                        st.success("Modifiche salvate!")
                 else:
                     st.info("🎉 Nessuna partita trovata per questo girone.")
 
