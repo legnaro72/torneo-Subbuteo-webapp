@@ -356,7 +356,8 @@ def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
         pdf.set_text_color(0, 0, 0)
         pdf.ln(5)
 
-    return bytes(pdf.output(dest='S'))
+    #return bytes(pdf.output(dest='S'))
+    return pdf.output(dest='S').encode('latin-1')
 
 def generate_pdf_ko(rounds_ko: list[pd.DataFrame]) -> bytes:
     """Genera un PDF con il tabellone a eliminazione diretta."""
@@ -384,7 +385,8 @@ def generate_pdf_ko(rounds_ko: list[pd.DataFrame]) -> bytes:
 
     pdf.set_text_color(0, 0, 0)
     #return pdf.output(dest='S').encode('latin1')
-    return bytes(pdf.output(dest='S'))
+    #return bytes(pdf.output(dest='S'))
+    return pdf.output(dest='S').encode('latin-1')
 
 def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
     st.markdown(f"### {df_round['Round'].iloc[0]}")
