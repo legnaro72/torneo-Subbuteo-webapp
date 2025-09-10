@@ -609,16 +609,14 @@ def inject_css():
         }
 
         /* --- Sidebar subheaders --- */
-        /* Default: tema chiaro → nero */
+        /* Tema chiaro: nero */
         [data-testid="stSidebar"] h3 {
             color: black !important;
         }
 
-        /* Solo in tema scuro → bianco */
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] h3,
-        html[data-theme="dark"] [data-testid="stSidebar"] h3,
-        body[data-theme="dark"] [data-testid="stSidebar"] h3 {
-            color: white !important;
+        /* Tema scuro: forzo bianco con blend */
+        [data-testid="stSidebar"] h3 {
+            mix-blend-mode: difference !important;
         }
         </style>
     """, unsafe_allow_html=True)
