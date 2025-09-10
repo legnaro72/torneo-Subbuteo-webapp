@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import random
@@ -670,16 +671,14 @@ def inject_css():
             color: white !important;
         }
         
-        /* Selettori per il tema scuro */
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] h3,
-        .stApp[data-theme="dark"] .css-1d391kg h3 {
+        /* Selettori per il tema scuro: forza il bianco */
+        .stApp[data-theme="dark"] [data-testid="stSidebar"] h3 {
             color: #ffffff !important;
         }
 
-        /* Selettori per il tema chiaro */
-        .stApp[data-theme="light"] [data-testid="stSidebar"] h3,
-        .stApp[data-theme="light"] .css-1d391kg h3 {
-            color: #1d3557 !important; /* Questo è un blu scuro, puoi cambiarlo */
+        /* Selettori per il tema chiaro: forza il nero */
+        .stApp[data-theme="light"] [data-testid="stSidebar"] h3 {
+            color: #000000 !important;
         }
 
         /* Forza il colore bianco usando JavaScript per i subheader */
