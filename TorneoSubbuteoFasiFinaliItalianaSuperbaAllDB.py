@@ -22,7 +22,7 @@ warnings.filterwarnings(
     message=".*st.experimental_get_query_params.*",
     category=DeprecationWarning
 )
-
+#
 # ==============================================================================
 # ✨ Configurazione e stile di pagina (con nuove emoji e colori)
 # ==============================================================================
