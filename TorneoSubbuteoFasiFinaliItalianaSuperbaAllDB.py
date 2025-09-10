@@ -22,7 +22,7 @@ warnings.filterwarnings(
     message=".*st.experimental_get_query_params.*",
     category=DeprecationWarning
 )
-#
+
 # ==============================================================================
 # ✨ Configurazione e stile di pagina (con nuove emoji e colori)
 # ==============================================================================
@@ -138,6 +138,104 @@ hr { margin: 0.6rem 0 1rem 0; }
 }
 .validation-status-ok { color: green; font-weight: bold; }
 .validation-status-nok { color: red; font-weight: bold; }
+
+/* Sidebar h3 styling - mantiene stile normale */
+.css-1d391kg h3, [data-testid="stSidebar"] h3 {
+    color: #1d3557;
+    font-weight: 700;
+    background: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    text-align: left !important;
+}
+
+/* Tema scuro - sidebar subheaders bianchi con selettori più specifici */
+@media (prefers-color-scheme: dark) {
+    [data-testid="stSidebar"] h3,
+    .css-1d391kg h3,
+    [data-testid="stSidebar"] .element-container h3,
+    .css-1d391kg .element-container h3 {
+        color: #ffffff !important;
+        background: none !important;
+    }
+}
+
+/* Streamlit dark theme - sidebar subheaders bianchi con priorità massima */
+.stApp[data-theme="dark"] [data-testid="stSidebar"] h3,
+.stApp[data-theme="dark"] .css-1d391kg h3,
+.stApp[data-theme="dark"] [data-testid="stSidebar"] .element-container h3,
+.stApp[data-theme="dark"] .css-1d391kg .element-container h3,
+.stApp[data-theme="dark"] [data-testid="stSidebar"] div h3,
+.stApp[data-theme="dark"] .css-1d391kg div h3 {
+    color: #ffffff !important;
+    background: none !important;
+}
+
+/* Selettori ancora più specifici per forzare il bianco sui subheader */
+html[data-theme="dark"] [data-testid="stSidebar"] h3,
+html[data-theme="dark"] .css-1d391kg h3,
+body[data-theme="dark"] [data-testid="stSidebar"] h3,
+body[data-theme="dark"] .css-1d391kg h3 {
+    color: #ffffff !important;
+}
+
+/* Override per tutti i possibili selettori di subheader nella sidebar */
+[data-testid="stSidebar"] h3[class*="css"],
+.css-1d391kg h3[class*="css"] {
+    color: #ffffff !important;
+}
+
+/* CSS con massima specificità per tema scuro */
+.stApp[data-theme="dark"] [data-testid="stSidebar"] * h3,
+.stApp[data-theme="dark"] .css-1d391kg * h3 {
+    color: #ffffff !important;
+}
+
+/* Approccio universale - forza bianco su TUTTI gli h3 della sidebar nel tema scuro */
+@media (prefers-color-scheme: dark) {
+    [data-testid="stSidebar"] h3 {
+        color: white !important;
+    }
+}
+
+.stApp[data-theme="dark"] [data-testid="stSidebar"] h3 {
+    color: white !important;
+}
+
+/* Selettore CSS universale per tutti gli elementi h3 nella sidebar */
+[data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] .stMarkdown h3,
+[data-testid="stSidebar"] div h3 {
+    color: white !important;
+}
+
+/* Forza il colore bianco usando JavaScript per i subheader */
+</style>
+<script>
+// Funzione per forzare il colore bianco sui subheader della sidebar
+function forceWhiteSubheaders() {
+    const sidebar = document.querySelector('[data-testid="stSidebar"]');
+    if (sidebar) {
+        const h3Elements = sidebar.querySelectorAll('h3');
+        h3Elements.forEach(h3 => {
+            h3.style.color = 'white';
+            h3.style.setProperty('color', 'white', 'important');
+        });
+    }
+}
+
+// Esegui la funzione quando la pagina è caricata
+document.addEventListener('DOMContentLoaded', forceWhiteSubheaders);
+
+// Esegui la funzione ogni volta che Streamlit aggiorna il DOM
+const observer = new MutationObserver(forceWhiteSubheaders);
+observer.observe(document.body, { childList: true, subtree: true });
+
+// Esegui immediatamente
+forceWhiteSubheaders();
+</script>
+<style>
 </style>
 """, unsafe_allow_html=True)
 
@@ -952,20 +1050,20 @@ def main():
         cleaned_name = re.sub(r'\(.*\)', '', tournament_name).strip()
         st.markdown(f"""
         <div style='text-align:center; padding:20px; border-radius:10px; background: linear-gradient(90deg, #457b9d, #1d3557); box-shadow: 0 4px 14px #00000022;'>
-            <h1 style='color:white; font-weight:700;'>⚽ {cleaned_name} 🏆</h1>
+            <h1 style='color:white; font-weight:700;'>🇮🇹⚽ {cleaned_name} 🏆🇮🇹</h1>
         </div>
         """, unsafe_allow_html=True)
     elif tournament_name and st.session_state['ui_show_pre']:
         st.markdown(f"""
         <div style='text-align:center; padding:20px; border-radius:10px; background: linear-gradient(90deg, #457b9d, #1d3557); box-shadow: 0 4px 14px #00000022;'>
-            <h1 style='color:white; font-weight:700;'>⚽ {tournament_name} 🏆</h1>
+            <h1 style='color:white; font-weight:700;'>🇮🇹⚽ {tournament_name} 🏆🇮🇹</h1>
         </div>
         """, unsafe_allow_html=True)
     else:
         # Questo blocco viene eseguito all'avvio o quando il nome non è impostato
         st.markdown(f"""
         <div style='text-align:center; padding:20px; border-radius:10px; background: linear-gradient(90deg, #457b9d, #1d3557); box-shadow: 0 4px 14px #00000022;'>
-            <h1 style='color:white; font-weight:700;'>⚽ Fase Finale Torneo Subbuteo 🏆</h1>
+            <h1 style='color:white; font-weight:700;'>🇮🇹⚽ Fase Finale Torneo Subbuteo 🏆🇮🇹</h1>
         </div>
         """, unsafe_allow_html=True)
     # Sidebar (tutti i pulsanti qui)
