@@ -1170,31 +1170,49 @@ def main():
         # Fine Calendario 
 
     else:
-        st.subheader("📁 Carica un torneo o crea uno nuovo")
-        col1, col2 = st.columns(2)
-        with col1:
-            tornei_disponibili = carica_tornei_da_db(tournaments_collection)
-            if tornei_disponibili:
-                tornei_map = {t['nome_torneo']: str(t['_id']) for t in tornei_disponibili}
-                nome_sel = st.selectbox("📦 Seleziona torneo esistente", list(tornei_map.keys()))
-                if st.button("📂 Carica Torneo Selezionato", use_container_width=True):
-                    st.session_state['tournament_id'] = tornei_map[nome_sel]
-                    st.session_state['nome_torneo'] = nome_sel
-                    torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
-                    if torneo_data and 'calendario' in torneo_data:
-                        st.session_state['calendario_generato'] = True
-                        st.toast("✅ Torneo caricato con successo")
-                        st.rerun()
-                    else:
-                        st.error("❌ Errore durante il caricamento del torneo. Riprova.")
-            else:
-                st.info("ℹ️ Nessun torneo salvato trovato su MongoDB.")
+        st.markdown("### Scegli azione 📝")
+        c1, c2 = st.columns([1,1])
+        
+        with c1:
+            with st.container(border=True):
+                st.markdown(
+                    """<div style='text-align:center'>
+                    <h2>📂 Carica torneo esistente</h2>
+                    <p style='margin:0.2rem 0 1rem 0'>Riprendi un torneo salvato (MongoDB)</p>
+                    </div>""",
+                    unsafe_allow_html=True,
+                )
+                tornei_disponibili = carica_tornei_da_db(tournaments_collection)
+                if tornei_disponibili:
+                    tornei_map = {t['nome_torneo']: str(t['_id']) for t in tornei_disponibili}
+                    nome_sel = st.selectbox("📦 Seleziona torneo esistente", list(tornei_map.keys()))
+                    if st.button("Carica torneo (MongoDB) 📂", key="btn_carica", use_container_width=True):
+                        st.session_state['tournament_id'] = tornei_map[nome_sel]
+                        st.session_state['nome_torneo'] = nome_sel
+                        torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
+                        if torneo_data and 'calendario' in torneo_data:
+                            st.session_state['calendario_generato'] = True
+                            st.toast("✅ Torneo caricato con successo")
+                            st.rerun()
+                        else:
+                            st.error("❌ Errore durante il caricamento del torneo. Riprova.")
+                else:
+                    st.info("ℹ️ Nessun torneo salvato trovato su MongoDB.")
 
-        with col2:
-            st.markdown("---")
-            if st.button("➕ Crea Nuovo Torneo", use_container_width=True):
-                st.session_state['mostra_form_creazione'] = True
-                st.rerun()
+        with c2:
+            with st.container(border=True):
+                st.markdown(
+                    """<div style='text-align:center'>
+                    <h2>✨ Crea nuovo torneo</h2>
+                    <p style='margin:0.2rem 0 1rem 0'>Genera primo turno scegliendo giocatori del Club Superba</p>
+                    </div>""",
+                    unsafe_allow_html=True,
+                )
+                if st.button("Nuovo torneo ✨", key="btn_nuovo", use_container_width=True):
+                    st.session_state['mostra_form_creazione'] = True
+                    st.rerun()
+        
+        st.markdown("---")
 
         if st.session_state.get('mostra_form_creazione', False):
             st.markdown("---")
