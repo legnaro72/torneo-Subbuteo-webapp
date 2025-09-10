@@ -590,9 +590,9 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
 # APP UI: stile e layout
 # -------------------------
 def inject_css():
-    st.markdown(r"""
+    st.markdown("""
         <style>
-        /* --- STILI ESISTENTI --- */
+        /* --- STILI ESISTENTI (bottoni, pill, ecc.) --- */
         ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
         .big-title { text-align: center; font-size: clamp(22px, 4vw, 42px); font-weight: 800; margin: 15px 0 10px; color: #e63946; text-shadow: 0 1px 2px #0002; }
         .sub-title { font-size: 20px; font-weight: 700; margin-top: 10px; color: #1d3557; }
@@ -608,56 +608,14 @@ def inject_css():
             .st-emotion-cache-1f84s9j > div, .st-emotion-cache-1j0n4k > div { flex: 1; padding: 0 5px; }
         }
 
-        /* Default per evitare flash */
-        [data-testid="stSidebar"] h3 { color: black !important; }
+        /* --- Sidebar subheaders --- */
+        /* FORZA IL COLORE BLU DI STREAMLIT INDIPENDENTEMENTE DAL TEMA */
+        [data-testid="stSidebar"] h3 {
+            color: #0078D4 !important;
+        }
+        
         </style>
-
-        <script>
-        (function() {
-            function effectiveBackgroundColor(elem) {
-                var el = elem;
-                while (el && el !== document.documentElement) {
-                    var cs = window.getComputedStyle(el);
-                    var bg = cs.backgroundColor;
-                    if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return bg;
-                    el = el.parentElement;
-                }
-                return window.getComputedStyle(document.body).backgroundColor || 'rgb(255,255,255)';
-            }
-
-            function parseRGB(cssColor) {
-                if (!cssColor) return [255,255,255];
-                var m = cssColor.match(/rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
-                if (m) return [parseInt(m[1],10), parseInt(m[2],10), parseInt(m[3],10)];
-                return [255,255,255];
-            }
-
-            function setSidebarHeaderColors() {
-                var sidebar = document.querySelector('[data-testid="stSidebar"]');
-                if (!sidebar) return;
-                var bg = effectiveBackgroundColor(sidebar);
-                var rgb = parseRGB(bg);
-                var brightness = (rgb[0]*299 + rgb[1]*587 + rgb[2]*114) / 1000;
-                var useWhite = brightness < 128; // soglia
-                var color = useWhite ? '#ffffff' : '#000000';
-                var h3s = sidebar.querySelectorAll('h3');
-                h3s.forEach(function(h3){
-                    h3.style.setProperty('color', color, 'important');
-                    h3.querySelectorAll('*').forEach(function(ch){
-                        ch.style.setProperty('color', color, 'important');
-                    });
-                });
-            }
-
-            document.addEventListener('DOMContentLoaded', setSidebarHeaderColors);
-            var observer = new MutationObserver(setSidebarHeaderColors);
-            observer.observe(document.body, { childList: true, subtree: true });
-            setSidebarHeaderColors();
-        })();
-        </script>
     """, unsafe_allow_html=True)
-
-
 # -------------------------
 # APP
 # -------------------------
