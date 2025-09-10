@@ -40,35 +40,94 @@ st.markdown("""
 <style>
 
 ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; margin: 0 !important; padding: 0 !important; }
-.big-title { text-align: center; font-size: clamp(22px, 4vw, 42px); font-weight: 800; margin: 15px 0 10px; color: #e63946; text-shadow: 0 1px 2px #0002; }
-.sub-title { font-size: 20px; font-weight: 700; margin-top: 10px; color: #1d3557; }
-.stButton>button { background: linear-gradient(90deg, #457b9d, #1d3557); color: white; border-radius: 10px; padding: 0.55em 1.0em; font-weight: 700; border: 0; }
-.stButton>button:hover { transform: translateY(-1px); box-shadow: 0 4px 14px #00000022; }
-.stDownloadButton>button { background: linear-gradient(90deg, #2a9d8f, #21867a); color: white; border-radius: 10px; font-weight: 700; border: 0; }
-.stDownloadButton>button:hover { transform: translateY(-1px); box-shadow: 0 4px 14px #00000022; }
+.big-title { 
+    text-align: center; 
+    font-size: clamp(22px, 4vw, 42px); 
+    font-weight: 700; 
+    margin: 15px 0 10px; 
+    color: white; 
+    background: linear-gradient(90deg, #457b9d, #1d3557);
+    border-radius: 10px;
+    box-shadow: 0 4px 14px #00000022;
+    padding: 15px;
+    text-shadow: 0 1px 2px #0002; 
+}
+.sub-title { 
+    font-size: 20px; 
+    font-weight: 700; 
+    margin-top: 10px; 
+    color: white;
+    background: linear-gradient(90deg, #457b9d, #1d3557);
+    border-radius: 10px;
+    box-shadow: 0 4px 14px #00000022;
+    padding: 10px;
+    text-align: center;
+}
+.stButton>button { 
+    background: linear-gradient(90deg, #457b9d, #1d3557); 
+    color: white; 
+    border-radius: 10px; 
+    padding: 0.55em 1.0em; 
+    font-weight: 700; 
+    border: 0; 
+    box-shadow: 0 4px 14px #00000022;
+}
+.stButton>button:hover { 
+    transform: translateY(-1px); 
+    box-shadow: 0 6px 18px #00000033; 
+}
+.stDownloadButton>button { 
+    background: linear-gradient(90deg, #457b9d, #1d3557); 
+    color: white; 
+    border-radius: 10px; 
+    font-weight: 700; 
+    border: 0; 
+    box-shadow: 0 4px 14px #00000022;
+}
+.stDownloadButton>button:hover { 
+    transform: translateY(-1px); 
+    box-shadow: 0 6px 18px #00000033; 
+}
 .stDataFrame { border: 2px solid #f4a261; border-radius: 10px; }
 .pill { display:inline-block; padding: 4px 10px; border-radius: 999px; background:#f1faee; color:#1d3557; font-weight:700; border:1px solid #a8dadc; }
 .small-muted { font-size: 0.9rem; opacity: 0.8; }
 hr { margin: 0.6rem 0 1rem 0; }
 .main-title {
-    font-size: 2.5rem; font-weight: bold; text-align: center; margin-bottom: 2rem;
+    font-size: 2.5rem; 
+    font-weight: 700; 
+    text-align: center; 
+    margin-bottom: 2rem;
+    color: white;
+    background: linear-gradient(90deg, #457b9d, #1d3557);
+    border-radius: 10px;
+    box-shadow: 0 4px 14px #00000022;
+    padding: 20px;
     animation: bounce 1s ease-in-out infinite alternate;
 }
 @keyframes bounce {
   from { transform: translateY(0px); }
   to { transform: translateY(-5px); }
 }
-h3 { color: #008080; font-weight: bold; }
-.stButton>button {
-    background-color: #4CAF50; color: white; font-weight: bold; border-radius: 12px;
-    padding: 10px 20px; border: 2px solid #4CAF50; transition: all 0.3s ease;
+/* Main content h3 styling */
+.main .block-container h3 { 
+    color: white; 
+    font-weight: 700;
+    background: linear-gradient(90deg, #457b9d, #1d3557);
+    border-radius: 10px;
+    box-shadow: 0 4px 14px #00000022;
+    padding: 10px;
+    text-align: center;
 }
-.stButton>button:hover { background-color: #45a049; border-color: #45a049; transform: scale(1.05); }
-.stDownloadButton>button {
-    background-color: #007BFF; color: white; font-weight: bold; border-radius: 12px;
-    padding: 10px 20px; border: 2px solid #007BFF; transition: all 0.3s ease;
+/* Sidebar h3 styling - keep default */
+.css-1d391kg h3, [data-testid="stSidebar"] h3 {
+    color: #1d3557;
+    font-weight: 700;
+    background: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    text-align: left !important;
 }
-.stDownloadButton>button:hover { background-color: #0056b3; border-color: #0056b3; transform: scale(1.05); }
 .match-card {
     border: 1px solid #ddd;
     border-radius: 10px;
@@ -892,37 +951,50 @@ def main():
     if tournament_name and not st.session_state['ui_show_pre']:
         cleaned_name = re.sub(r'\(.*\)', '', tournament_name).strip()
         st.markdown(f"""
-        <div style='text-align:center; padding:20px; border-radius:12px; background: linear-gradient(to right, #ffefba, #ffffff);'>
-            <h1 style='color:#0B5FFF;'>⚽ {cleaned_name} 🏆</h1>
+        <div style='text-align:center; padding:20px; border-radius:10px; background: linear-gradient(90deg, #457b9d, #1d3557); box-shadow: 0 4px 14px #00000022;'>
+            <h1 style='color:white; font-weight:700;'>⚽ {cleaned_name} 🏆</h1>
         </div>
         """, unsafe_allow_html=True)
     elif tournament_name and st.session_state['ui_show_pre']:
         st.markdown(f"""
-        <div style='text-align:center; padding:20px; border-radius:12px; background: linear-gradient(to right, #ffefba, #ffffff);'>
-            <h1 style='color:#0B5FFF;'>⚽ {tournament_name} 🏆</h1>
+        <div style='text-align:center; padding:20px; border-radius:10px; background: linear-gradient(90deg, #457b9d, #1d3557); box-shadow: 0 4px 14px #00000022;'>
+            <h1 style='color:white; font-weight:700;'>⚽ {tournament_name} 🏆</h1>
         </div>
         """, unsafe_allow_html=True)
     else:
         # Questo blocco viene eseguito all'avvio o quando il nome non è impostato
         st.markdown(f"""
-        <div style='text-align:center; padding:20px; border-radius:12px; background: linear-gradient(to right, #ffefba, #ffffff);'>
-            <h1 style='color:#0B5FFF;'>⚽ Fase Finale Torneo Subbuteo 🏆</h1>
+        <div style='text-align:center; padding:20px; border-radius:10px; background: linear-gradient(90deg, #457b9d, #1d3557); box-shadow: 0 4px 14px #00000022;'>
+            <h1 style='color:white; font-weight:700;'>⚽ Fase Finale Torneo Subbuteo 🏆</h1>
         </div>
         """, unsafe_allow_html=True)
     # Sidebar (tutti i pulsanti qui)
-    with st.sidebar:
-        st.header("Opzioni 🚀")
-        if not st.session_state['ui_show_pre']:
-            if st.button("⬅️ Torna a classifica e scelta fase finale"):
-                reset_to_setup()
-                st.rerun()
-            # --- Pulsante per mostrare tutti gli incontri disputati KO ---
-            if st.button("📋 Mostra tutti gli incontri disputati"):
-                st.session_state['show_all_ko_matches'] = True
-                st.rerun()
-                
-            st.divider()
-            st.subheader("🔍 Visualizzazione incontri")
+    if not st.session_state['ui_show_pre']:
+        # ✅ 1. 🕹️ Gestione Rapida (in cima)
+        st.sidebar.subheader("🕹️ Gestione Rapida")
+        st.sidebar.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/", use_container_width=True)
+        
+        st.sidebar.markdown("---")
+        
+        # ✅ 2. ⚙️ Opzioni Torneo
+        st.sidebar.subheader("⚙️ Opzioni Torneo")
+        if st.sidebar.button("💾 Salva Torneo", key="save_tournament_ko", use_container_width=True):
+            salva_risultati_ko()
+        
+        if st.sidebar.button("🏁 Termina Torneo", key="terminate_tournament_ko", use_container_width=True):
+            st.session_state.update({"vincitore_torneo": "Torneo terminato manualmente"})
+        
+        if st.sidebar.button("⬅️ Torna a classifica e scelta fase finale", key="back_to_setup", use_container_width=True):
+            reset_to_setup()
+            st.rerun()
+        
+        st.sidebar.markdown("---")
+        
+        # ✅ 3. 🔧 Utility (sezione principale con sottosezioni)
+        st.sidebar.subheader("🔧 Utility")
+        
+        # 🔎 Visualizzazione incontri
+        with st.sidebar.expander("🔎 Visualizzazione incontri", expanded=False):
             modalita_visualizzazione = st.radio(
                 "Formato incontri tabellone:",
                 options=["squadre", "completa", "giocatori"],
@@ -934,24 +1006,29 @@ def main():
                 }[x],
                 key="modalita_visualizzazione_ko"
             )
-                        
-            st.sidebar.markdown("---")
-            st.sidebar.subheader("🕹️ Gestione Rapida")
-            # --- Nuovi pulsanti richiesti ---
-            st.button("💾 Salva DB", on_click=salva_risultati_ko)
-            st.button("🏁 Termina Torneo", on_click=lambda: st.session_state.update({"vincitore_torneo": "Torneo terminato manualmente"}))
-            st.sidebar.markdown("---")
-            st.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/", use_container_width=True)
-            st.markdown("---")
-            st.subheader("📤 Esportazione")           
-            if st.session_state.get('giornate_mode') == "ko" and 'rounds_ko' in st.session_state:
-                # CSV RIMOSSO
-                st.download_button(
-                    "📄 Esporta PDF tabellone Eliminazione Diretta",
-                    data=generate_pdf_ko(st.session_state['rounds_ko']),
+        
+        # 📅 Visualizzazione incontri giocati
+        with st.sidebar.expander("📅 Visualizzazione incontri giocati", expanded=False):
+            if st.button("📋 Mostra tutti gli incontri disputati", key="show_all_matches", use_container_width=True):
+                st.session_state['show_all_ko_matches'] = True
+                st.rerun()
+        
+        st.sidebar.markdown("---")
+        
+        # ✅ 4. 📤 Esportazione (in fondo)
+        st.sidebar.subheader("📤 Esportazione")           
+        if st.session_state.get('giornate_mode') == "ko" and 'rounds_ko' in st.session_state:
+            if st.sidebar.button("📄 Prepara PDF", key="prepare_pdf", use_container_width=True):
+                pdf_bytes = generate_pdf_ko(st.session_state['rounds_ko'])
+                st.sidebar.download_button(
+                    label="📥 Scarica PDF Torneo",
+                    data=pdf_bytes,
                     file_name="fase_finale_tabellone_ko.pdf",
                     mime="application/pdf",
+                    use_container_width=True
                 )
+        else:
+            st.sidebar.info("ℹ️ Nessun torneo KO attivo. Completa le partite per generare il PDF.")
 
     if st.session_state['ui_show_pre']:
         st.header("1. Scegli il torneo")
