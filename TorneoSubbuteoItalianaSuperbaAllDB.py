@@ -592,6 +592,7 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
 def inject_css():
     st.markdown("""
         <style>
+        /* --- STILI ESISTENTI (bottoni, pill, ecc.) --- */
         ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
         .big-title { text-align: center; font-size: clamp(22px, 4vw, 42px); font-weight: 800; margin: 15px 0 10px; color: #e63946; text-shadow: 0 1px 2px #0002; }
         .sub-title { font-size: 20px; font-weight: 700; margin-top: 10px; color: #1d3557; }
@@ -601,6 +602,7 @@ def inject_css():
         .stDownloadButton>button:hover { transform: translateY(-1px); box-shadow: 0 4px 14px #00000022; }
         .stDataFrame { border: 2px solid #f4a261; border-radius: 10px; }
         .pill { display:inline-block; padding: 4px 10px; border-radius: 999px; background:#f1faee; color:#1d3557; font-weight:700; border:1px solid #a8dadc; }
+
         @media (max-width: 768px) {
             .st-emotion-cache-1f84s9j, .st-emotion-cache-1j0n4k { flex-direction: row; justify-content: center; }
             .st-emotion-cache-1f84s9j > div, .st-emotion-cache-1j0n4k > div { flex: 1; padding: 0 5px; }
@@ -610,14 +612,14 @@ def inject_css():
         /* Default (tema chiaro) */
         [data-testid="stSidebar"] h3 {
             color: black !important;
-            background: none !important;
-            font-weight: 700 !important;
         }
 
-        /* Tema scuro - forza bianco con massima specificità */
+        /* Tema scuro - forzo bianco ovunque */
         html[data-theme="dark"] [data-testid="stSidebar"] h3,
         body[data-theme="dark"] [data-testid="stSidebar"] h3,
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] h3 {
+        .stApp[data-theme="dark"] [data-testid="stSidebar"] h3,
+        [data-testid="stSidebar"] h3, 
+        [data-testid="stSidebar"] h3 * {
             color: white !important;
         }
         </style>
