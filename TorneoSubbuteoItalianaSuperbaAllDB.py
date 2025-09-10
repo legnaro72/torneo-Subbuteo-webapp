@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import random
@@ -593,6 +592,128 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
 def inject_css():
     st.markdown("""
         <style>
+        /* Selettori CSS per i vari elementi dell'interfaccia */
+
+        /* Pulsanti principali (Genera Torneo, Genera Calendario, etc.) */
+        div.stButton > button {
+            background-color: #4CAF50; /* Sfondo verde */
+            color: white; /* Testo bianco */
+            border-radius: 12px;
+            border: 2px solid #4CAF50;
+            padding: 10px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            transition-duration: 0.4s;
+            cursor: pointer;
+            box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+        }
+        div.stButton > button:hover {
+            background-color: white; 
+            color: #4CAF50;
+            border: 2px solid #4CAF50;
+        }
+
+        /* Pulsanti più piccoli (calcola risultati, ripristina, etc.) */
+        .st-emotion-cache-19rxjry, .st-emotion-cache-121p65q {
+            background-color: #1d3557 !important; /* Blu scuro */
+            color: white !important;
+            border-radius: 12px !important;
+            border: 2px solid #1d3557 !important;
+            box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2) !important;
+            font-size: 14px !important;
+            font-weight: bold !important;
+        }
+
+        /* Cambia il colore del testo per le intestazioni e gli `h3` nella sidebar */
+        /* Questo risolve il problema del colore nel tema chiaro/scuro */
+        .stApp[data-theme="light"] [data-testid="stSidebar"] h3 {
+            color: #000000 !important; /* Forza il nero nel tema chiaro */
+        }
+
+        .stApp[data-theme="dark"] [data-testid="stSidebar"] h3 {
+            color: #ffffff !important; /* Forza il bianco nel tema scuro */
+        }
+        
+        /* Stile per i vari contenitori ed elementi */
+        div.stAlert.st-emotion-cache-1j02495.e101v0475 {
+            background-color: #e6f7ff;
+            color: #004085;
+            border-left: 5px solid #0059b3;
+        }
+        div.stAlert.st-emotion-cache-1j02495.e101v0475 p {
+            font-size: 16px;
+        }
+        
+        /* Stile per il riquadro di selezione del girone */
+        div.stRadio > label {
+            background-color: #f0f2f6;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        div.stRadio > label:hover {
+            background-color: #e0e2e6;
+        }
+        div.stRadio > label.st-emotion-cache-b5w4x0 {
+            background-color: #0078d4 !important;
+            color: white !important;
+        }
+        div.stRadio > label > div > p {
+            color: #333; /* Colore testo etichetta */
+        }
+        
+        /* Selettore per nascondere il bottone del menu */
+        [data-testid="stSidebarNav"] > button {
+            display: none;
+        }
+        
+        /* Colore del testo per il subheader */
+        h2 {
+            color: #1d3557 !important;
+        }
+        
+        /* Stile generale del corpo e delle intestazioni */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+        
+        h1, h2, h3, h4, h5, h6 {
+            color: #1d3557;
+        }
+        
+        /* Aumenta la dimensione del testo in st.info */
+        .st-emotion-cache-19rxjry p {
+            font-size: 18px !important;
+        }
+        
+        /* Stile per il "Giocatore Vincente" */
+        .st-emotion-cache-v0655s h4 {
+            color: #1d3557 !important;
+        }
+        
+        /* Stile per l'info box della data di salvataggio */
+        .st-emotion-cache-1d391kg p {
+            font-size: 16px !important;
+        }
+        
+        /* Selettore per l'alert verde */
+        .st-emotion-cache-13ln4j2 p {
+            font-size: 18px;
+        }
+        
+        /* Regola specifica per la barra laterale */
+        [data-testid="stSidebar"] {
+            background-color: #f0f2f6; /* Colore sfondo della sidebar */
+            border-right: 1px solid #e0e0e0;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    st.markdown("""
+        <style>
         ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
         .big-title { text-align: center; font-size: clamp(22px, 4vw, 42px); font-weight: 800; margin: 15px 0 10px; color: #e63946; text-shadow: 0 1px 2px #0002; }
         .sub-title { font-size: 20px; font-weight: 700; margin-top: 10px; color: #1d3557; }
@@ -607,79 +728,6 @@ def inject_css():
             .st-emotion-cache-1f84s9j > div, .st-emotion-cache-1j0n4k > div { flex: 1; padding: 0 5px; }
         }
 
-        /* Sidebar h3 styling - mantiene stile normale */
-        .css-1d391kg h3, [data-testid="stSidebar"] h3 {
-            color: #1d3557;
-            font-weight: 700;
-            background: none !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            padding: 0 !important;
-            text-align: left !important;
-        }
-
-        /* Tema scuro - sidebar subheaders bianchi con selettori più specifici */
-        @media (prefers-color-scheme: dark) {
-            [data-testid="stSidebar"] h3,
-            .css-1d391kg h3,
-            [data-testid="stSidebar"] .element-container h3,
-            .css-1d391kg .element-container h3 {
-                color: #ffffff !important;
-                background: none !important;
-            }
-        }
-
-        /* Streamlit dark theme - sidebar subheaders bianchi con priorità massima */
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] h3,
-        .stApp[data-theme="dark"] .css-1d391kg h3,
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] .element-container h3,
-        .stApp[data-theme="dark"] .css-1d391kg .element-container h3,
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] div h3,
-        .stApp[data-theme="dark"] .css-1d391kg div h3 {
-            color: #ffffff !important;
-            background: none !important;
-        }
-
-        /* Selettori ancora più specifici per forzare il bianco sui subheader */
-        html[data-theme="dark"] [data-testid="stSidebar"] h3,
-        html[data-theme="dark"] .css-1d391kg h3,
-        body[data-theme="dark"] [data-testid="stSidebar"] h3,
-        body[data-theme="dark"] .css-1d391kg h3 {
-            color: #ffffff !important;
-        }
-
-        /* Override per tutti i possibili selettori di subheader nella sidebar */
-        [data-testid="stSidebar"] h3[class*="css"],
-        .css-1d391kg h3[class*="css"] {
-            color: #ffffff !important;
-        }
-
-        /* CSS con massima specificità per tema scuro */
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] * h3,
-        .stApp[data-theme="dark"] .css-1d391kg * h3 {
-            color: #ffffff !important;
-        }
-
-        /* Approccio universale - forza bianco su TUTTI gli h3 della sidebar nel tema scuro */
-        @media (prefers-color-scheme: dark) {
-            [data-testid="stSidebar"] h3 {
-                color: white !important;
-            }
-        }
-
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] h3 {
-            color: white !important;
-        }
-        
-        /* Selettori per il tema scuro: forza il bianco */
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] h3 {
-            color: #ffffff !important;
-        }
-
-        /* Selettori per il tema chiaro: forza il nero */
-        .stApp[data-theme="light"] [data-testid="stSidebar"] h3 {
-            color: #000000 !important;
-        }
 
         /* Forza il colore bianco usando JavaScript per i subheader */
         </style>
