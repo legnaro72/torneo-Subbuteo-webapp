@@ -614,8 +614,175 @@ def inject_css():
             color: #0078D4 !important;
         }
         
+        /* Stile per i pulsanti di collegamento nella sidebar */
+        [data-testid="stSidebar"] .stLinkButton,
+        [data-testid="stSidebar"] .stLinkButton a,
+        [data-testid="stSidebar"] .stLinkButton a:visited,
+        [data-testid="stSidebar"] .stLinkButton a:hover,
+        [data-testid="stSidebar"] .stLinkButton a:active {
+            background: linear-gradient(90deg, #457b9d, #1d3557) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 10px !important;
+            padding: 0.5rem 1rem !important;
+            font-weight: 700 !important;
+            text-align: center !important;
+            text-decoration: none !important;
+            display: inline-block !important;
+            transition: all 0.3s ease !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+            width: 100% !important;
+            margin: 5px 0 !important;
+        }
+
+        /* Stile al passaggio del mouse */
+        [data-testid="stSidebar"] .stLinkButton:hover,
+        [data-testid="stSidebar"] .stLinkButton a:hover {
+            transform: translateY(-1px) !important;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15) !important;
+        }
+
+        /* Stile al click */
+        [data-testid="stSidebar"] .stLinkButton:active,
+        [data-testid="stSidebar"] .stLinkButton a:active {
+            transform: translateY(0) !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+        }
+
+        /* Stile per il tema scuro */
+        [data-testid="stSidebar"][data-baseweb="dark"] .stLinkButton,
+        [data-testid="stSidebar"][data-baseweb="dark"] .stLinkButton a,
+        .stApp[data-theme="dark"] [data-testid="stSidebar"] .stLinkButton,
+        .stApp[data-theme="dark"] [data-testid="stSidebar"] .stLinkButton a {
+            background: linear-gradient(90deg, #1d3557, #457b9d) !important;
+            color: white !important;
+        }
+
+        /* Stile per il tema scuro al passaggio del mouse */
+        [data-testid="stSidebar"][data-baseweb="dark"] .stLinkButton:hover,
+        [data-testid="stSidebar"][data-baseweb="dark"] .stLinkButton a:hover,
+        .stApp[data-theme="dark"] [data-testid="stSidebar"] .stLinkButton:hover,
+        .stApp[data-theme="dark"] [data-testid="stSidebar"] .stLinkButton a:hover {
+            background: linear-gradient(90deg, #1d3557, #3a6ea5) !important;
+        }
         </style>
     """, unsafe_allow_html=True)
+    st.markdown("""
+        <style>
+        ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
+        .big-title { text-align: center; font-size: clamp(22px, 4vw, 42px); font-weight: 800; margin: 15px 0 10px; color: #e63946; text-shadow: 0 1px 2px #0002; }
+        .sub-title { font-size: 20px; font-weight: 700; margin-top: 10px; color: #1d3557; }
+        .stButton>button { background: linear-gradient(90deg, #457b9d, #1d3557); color: white; border-radius: 10px; padding: 0.55em 1.0em; font-weight: 700; border: 0; }
+        .stButton>button:hover { transform: translateY(-1px); box-shadow: 0 4px 14px #00000022; }
+        .stDownloadButton>button { background: linear-gradient(90deg, #2a9d8f, #21867a); color: white; border-radius: 10px; font-weight: 700; border: 0; }
+        .stDownloadButton>button:hover { transform: translateY(-1px); box-shadow: 0 4px 14px #00000022; }
+        .stDataFrame { border: 2px solid #f4a261; border-radius: 10px; }
+        .pill { display:inline-block; padding: 4px 10px; border-radius: 999px; background:#f1faee; color:#1d3557; font-weight:700; border:1px solid #a8dadc; }
+        @media (max-width: 768px) {
+            .st-emotion-cache-1f84s9j, .st-emotion-cache-1j0n4k { flex-direction: row; justify-content: center; }
+            .st-emotion-cache-1f84s9j > div, .st-emotion-cache-1j0n4k > div { flex: 1; padding: 0 5px; }
+        }
+
+        /* Sidebar h3 styling - mantiene stile normale */
+        .css-1d391kg h3, [data-testid="stSidebar"] h3 {
+            color: #1d3557;
+            font-weight: 700;
+            background: none !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            text-align: left !important;
+        }
+
+        /* Tema scuro - sidebar subheaders bianchi con selettori più specifici */
+        @media (prefers-color-scheme: dark) {
+            [data-testid="stSidebar"] h3,
+            .css-1d391kg h3,
+            [data-testid="stSidebar"] .element-container h3,
+            .css-1d391kg .element-container h3 {
+                color: #ffffff !important;
+                background: none !important;
+            }
+        }
+
+        /* Streamlit dark theme - sidebar subheaders bianchi con priorità massima */
+        .stApp[data-theme="dark"] [data-testid="stSidebar"] h3,
+        .stApp[data-theme="dark"] .css-1d391kg h3,
+        .stApp[data-theme="dark"] [data-testid="stSidebar"] .element-container h3,
+        .stApp[data-theme="dark"] .css-1d391kg .element-container h3,
+        .stApp[data-theme="dark"] [data-testid="stSidebar"] div h3,
+        .stApp[data-theme="dark"] .css-1d391kg div h3 {
+            color: #ffffff !important;
+            background: none !important;
+        }
+
+        /* Selettori ancora più specifici per forzare il bianco sui subheader */
+        html[data-theme="dark"] [data-testid="stSidebar"] h3,
+        html[data-theme="dark"] .css-1d391kg h3,
+        body[data-theme="dark"] [data-testid="stSidebar"] h3,
+        body[data-theme="dark"] .css-1d391kg h3 {
+            color: #ffffff !important;
+        }
+
+        /* Override per tutti i possibili selettori di subheader nella sidebar */
+        [data-testid="stSidebar"] h3[class*="css"],
+        .css-1d391kg h3[class*="css"] {
+            color: #ffffff !important;
+        }
+
+        /* CSS con massima specificità per tema scuro */
+        .stApp[data-theme="dark"] [data-testid="stSidebar"] * h3,
+        .stApp[data-theme="dark"] .css-1d391kg * h3 {
+            color: #ffffff !important;
+        }
+
+        /* Approccio universale - forza bianco su TUTTI gli h3 della sidebar nel tema scuro */
+        @media (prefers-color-scheme: dark) {
+            [data-testid="stSidebar"] h3 {
+                color: white !important;
+            }
+        }
+
+        .stApp[data-theme="dark"] [data-testid="stSidebar"] h3 {
+            color: white !important;
+        }
+
+        /* Selettore CSS universale per tutti gli elementi h3 nella sidebar */
+        [data-testid="stSidebar"] h3,
+        [data-testid="stSidebar"] .stMarkdown h3,
+        [data-testid="stSidebar"] div h3 {
+            color: white !important;
+        }
+
+        /* Forza il colore bianco usando JavaScript per i subheader */
+        </style>
+        <script>
+        // Funzione per forzare il colore bianco sui subheader della sidebar
+        function forceWhiteSubheaders() {
+            const sidebar = document.querySelector('[data-testid="stSidebar"]');
+            if (sidebar) {
+                const h3Elements = sidebar.querySelectorAll('h3');
+                h3Elements.forEach(h3 => {
+                    h3.style.color = 'white';
+                    h3.style.setProperty('color', 'white', 'important');
+                });
+            }
+        }
+
+        // Esegui la funzione quando la pagina è caricata
+        document.addEventListener('DOMContentLoaded', forceWhiteSubheaders);
+
+        // Esegui la funzione ogni volta che Streamlit aggiorna il DOM
+        const observer = new MutationObserver(forceWhiteSubheaders);
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        // Esegui immediatamente
+        forceWhiteSubheaders();
+        </script>
+        <style>
+        </style>
+    """, unsafe_allow_html=True)
+
 # -------------------------
 # APP
 # -------------------------
@@ -708,15 +875,14 @@ def main():
         return
 
     # Sidebar / Pagina
+    # ✅ 1. 🕹 Gestione Rapida (sempre in cima)
+    st.sidebar.subheader("🕹️ Gestione Rapida")
+    st.sidebar.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/", use_container_width=True)
+    st.sidebar.markdown("---")
+    
     if st.session_state.get('calendario_generato', False):
         df = st.session_state['df_torneo']
         classifica = aggiorna_classifica(df)
-        
-        # ✅ 1. 🕹 Gestione Rapida (in cima)
-        st.sidebar.subheader("🕹️ Gestione Rapida")
-        st.sidebar.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/", use_container_width=True)
-        
-        st.sidebar.markdown("---")
         
         # ✅ 2. ⚙ Opzioni Torneo
         st.sidebar.subheader("⚙️ Opzioni Torneo")
@@ -1055,16 +1221,25 @@ def main():
                 else:
                     st.info("Nessuna giornata disponibile.")
 
-            # Mostra classifica se richiesta dalla sidebar
+            # Se stiamo mostrando la classifica
             if st.session_state.get('mostra_classifica_girone'):
-                st.subheader(f"📊 Classifica {st.session_state['mostra_classifica_girone']}")
+                girone = st.session_state['mostra_classifica_girone']
+                
+                # Mostra la classifica
+                st.markdown(f"# 📊 Classifica {girone}")
                 classifica = aggiorna_classifica(df)
                 if classifica is not None and not classifica.empty:
-                    mostra_classifica_stilizzata(classifica, st.session_state['mostra_classifica_girone'])
-                    # Reset dopo la visualizzazione
-                    st.session_state['mostra_classifica_girone'] = None
+                    mostra_classifica_stilizzata(classifica, girone)
                 else:
                     st.info("⚽ Nessuna partita validata per questo girone.")
+                
+                # Bottone per tornare indietro
+                if st.button("🔙 Torna al calendario"):
+                    st.session_state['mostra_classifica_girone'] = None
+                    st.rerun()
+                
+                # Non mostrare il resto
+                st.stop()
             
             # Richiama la funzione con il parametro di visualizzazione corretto
             if giornate_correnti:
