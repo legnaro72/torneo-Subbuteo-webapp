@@ -617,9 +617,6 @@ def main():
         st.session_state['sidebar_state_reset'] = False
         st.rerun()
 
-    st.sidebar.subheader("🕹️ Gestione Rapida")
-    st.sidebar.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/", use_container_width=True)
-    
     inject_css()
 
 
@@ -683,17 +680,15 @@ def main():
 
     # Titolo con stile personalizzato
     if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
-        #st.markdown(f"<div class='big-title'>🏆 {st.session_state['nome_torneo']}</div>", unsafe_allow_html=True)
         st.markdown(f"""
-        <div style='text-align:center; padding:20px; border-radius:12px; background: linear-gradient(to right, #ffefba, #ffffff);'>
-            <h1 style='color:#0B5FFF;'>⚽ {st.session_state['nome_torneo']} 🏆</h1>
+        <div style='text-align:center; padding:20px; border-radius:10px; background: linear-gradient(90deg, #457b9d, #1d3557); box-shadow: 0 4px 14px #00000022;'>
+            <h1 style='color:white; margin:0; font-weight:700;'>⚽ {st.session_state['nome_torneo']} 🏆</h1>
         </div>
         """, unsafe_allow_html=True)
     else:
-        #st.markdown("<div class='big-title'>🏆 Torneo Superba – Gestione Gironi</div>", unsafe_allow_html=True)
         st.markdown(f"""
-        <div style='text-align:center; padding:20px; border-radius:12px; background: linear-gradient(to right, #ffefba, #ffffff);'>
-            <h1 style='color:#0B5FFF;'>⚽ Torneo Superba – Gestione Gironi 🏆</h1>
+        <div style='text-align:center; padding:20px; border-radius:10px; background: linear-gradient(90deg, #457b9d, #1d3557); box-shadow: 0 4px 14px #00000022;'>
+            <h1 style='color:white; margin:0; font-weight:700;'>⚽ Torneo Superba – Gestione Gironi 🏆</h1>
         </div>
         """, unsafe_allow_html=True)
 
@@ -706,29 +701,17 @@ def main():
 
     # Sidebar / Pagina
     if st.session_state.get('calendario_generato', False):
-        st.sidebar.header("⚙️ Opzioni Torneo")
         df = st.session_state['df_torneo']
         classifica = aggiorna_classifica(df)
-
-        # PDF
-        if classifica is not None and not classifica.empty:
-            if st.sidebar.button("📄 Prepara PDF", use_container_width=True):
-                pdf_bytes = esporta_pdf(df, classifica, st.session_state['nome_torneo'])
-                st.sidebar.download_button(
-                    label="📥 Scarica PDF",
-                    data=pdf_bytes,
-                    file_name=f"torneo_{st.session_state['nome_torneo']}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True
-                )
-        else:
-            st.sidebar.info("ℹ️ Nessuna partita valida. Compila e valida i risultati per generare la classifica.")
-        #inizio buttons
-        st.sidebar.markdown("---")
+        
+        # ✅ 1. 🕹 Gestione Rapida (in cima)
         st.sidebar.subheader("🕹️ Gestione Rapida")
+        st.sidebar.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/", use_container_width=True)
         
-        st.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/", use_container_width=True)
+        st.sidebar.markdown("---")
         
+        # ✅ 2. ⚙ Opzioni Torneo
+        st.sidebar.subheader("⚙️ Opzioni Torneo")
         if st.sidebar.button("💾 Salva Torneo", key="save_tournament", use_container_width=True):
             if st.session_state.get('tournament_id'):
                 ok = aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
@@ -742,52 +725,73 @@ def main():
         if st.sidebar.button("🏠 Termina Torneo", key="reset_app", use_container_width=True):
             st.session_state['sidebar_state_reset'] = True
             st.rerun()
-
-                    
-        # Funzionalità per la gestione dell'abbandono dei giocatori
-        st.sidebar.markdown("---")
-        st.sidebar.subheader("🏃‍♂️ Gestione Abbandoni")
         
-        # Estrai la lista di tutti i giocatori presenti nel torneo
-        giocatori_attivi = sorted(list(set(df['Casa'].unique().tolist() + df['Ospite'].unique().tolist())))
-        
-        # Aggiungi un multiselect per scegliere i giocatori da ritirare
-        giocatori_selezionati = st.sidebar.multiselect(
-            "Seleziona i giocatori che si ritirano",
-            options=giocatori_attivi,
-            key='ritiro_giocatori_multiselect'
-        )
-
-        # Bottone per confermare l'abbandono
-        if st.sidebar.button("⚠️ Confermami l'abbandono!", key="btn_abbandono", use_container_width=True):
-            if giocatori_selezionati:
-                # Richiama la funzione di gestione dell'abbandono
-                gestisci_abbandoni(st.session_state['df_torneo'], giocatori_selezionati, tournaments_collection)
-                st.rerun()
-            else:
-                st.sidebar.warning("❌ Seleziona almeno un giocatore per gestire l'abbandono.")
-        #fine buttond
-        # Classifica dalla sidebar
         st.sidebar.markdown("---")
-        st.sidebar.subheader("📊 Visualizza Classifica")
-        gironi_sidebar = sorted(df['Girone'].dropna().unique().tolist())
-        gironi_sidebar.insert(0, 'Nessuno')
-        girone_class_sel = st.sidebar.selectbox("Seleziona Girone", gironi_sidebar, key="sidebar_classifica_girone")
+        
+        # ✅ 3. 🔧 Utility (sezione principale con sottosezioni)
+        st.sidebar.subheader("🔧 Utility")
+        
+        # 🔎 Visualizzazione incontri
+        with st.sidebar.expander("🔎 Visualizzazione incontri", expanded=False):
+            # Radio button per formato incontri
+            modalita_visualizzazione_sidebar = st.radio(
+                "Formato incontri:",
+                ("Completa", "Solo squadre", "Solo giocatori"),
+                index=1,
+                key="modalita_visualizzazione_sidebar",
+                horizontal=False
+            )
+            # Mappa il valore del radio button
+            mappa_modalita = {
+                "Completa": "completa",
+                "Solo squadre": "squadre",
+                "Solo giocatori": "giocatori"
+            }
+            st.session_state['modalita_scelta_sidebar'] = mappa_modalita[modalita_visualizzazione_sidebar]
+            
+            # Checkbox "Navigazione giornate con bottoni"
+            st.session_state['usa_bottoni_sidebar'] = st.checkbox(
+                "🎛️ Navigazione giornate con bottoni", 
+                key="modalita_navigazione_sidebar"
+            )
+        
+        # 🏃‍♂ Gestione abbandoni
+        with st.sidebar.expander("🏃‍♂️ Gestione abbandoni", expanded=False):
+            # Estrai la lista di tutti i giocatori presenti nel torneo
+            giocatori_attivi = sorted(list(set(df['Casa'].unique().tolist() + df['Ospite'].unique().tolist())))
+            
+            # Multiselect per giocatori che si ritirano
+            giocatori_selezionati = st.multiselect(
+                "Seleziona i giocatori che si ritirano",
+                options=giocatori_attivi,
+                key='ritiro_giocatori_multiselect'
+            )
 
-        if st.sidebar.button("👀 Mostra Classifica", key="btn_classifica_sidebar", use_container_width=True):
-            if girone_class_sel != 'Nessuno':
-                st.subheader(f"📊 Classifica {girone_class_sel}")
-                classifica = aggiorna_classifica(df)
-                if classifica is not None and not classifica.empty:
-                    mostra_classifica_stilizzata(classifica, girone_class_sel)
+            # Bottone conferma abbandono
+            if st.button("⚠️ Confermami l'abbandono!", key="btn_abbandono", use_container_width=True):
+                if giocatori_selezionati:
+                    gestisci_abbandoni(st.session_state['df_torneo'], giocatori_selezionati, tournaments_collection)
+                    st.rerun()
                 else:
-                    st.info("⚽ Nessuna partita validata per questo girone.")
-            else:
-                st.info("Seleziona un girone per visualizzare la classifica.")
+                    st.warning("❌ Seleziona almeno un giocatore per gestire l'abbandono.")
+        
+        
+        # 💬 Visualizzazione Classifica per girone
+        with st.sidebar.expander("💬 Visualizzazione Classifica per girone", expanded=False):
+            gironi_sidebar = sorted(df['Girone'].dropna().unique().tolist())
+            gironi_sidebar.insert(0, 'Nessuno')
+            girone_class_sel = st.selectbox("Seleziona Girone", gironi_sidebar, key="sidebar_classifica_girone")
 
-        # Navigazione/filtri
-        # --- Nuovo blocco per i filtri (versione corretta) ---
-        st.sidebar.subheader("🔎 Filtra partite")
+            if st.button("📱 Apri Classifica", key="btn_classifica_sidebar", use_container_width=True):
+                if girone_class_sel != 'Nessuno':
+                    st.session_state['mostra_classifica_girone'] = girone_class_sel
+                else:
+                    st.info("Seleziona un girone per visualizzare la classifica.")
+        
+        st.sidebar.markdown("---")
+
+        # ✅ 4. 🔍 Filtra Partite
+        st.sidebar.subheader("🔍 Filtra Partite")
         df = st.session_state['df_torneo'].copy()
         
         filtro_principale = st.sidebar.radio(
@@ -960,6 +964,23 @@ def main():
                 else:
                     st.info("🎉 Nessuna partita trovata per questo girone.")
 
+        st.sidebar.markdown("---")
+        
+        # ✅ 5. 📤 Esportazione (in fondo)
+        st.sidebar.subheader("📤 Esportazione")
+        if classifica is not None and not classifica.empty:
+            if st.sidebar.button("📄 Prepara PDF", use_container_width=True):
+                pdf_bytes = esporta_pdf(df, classifica, st.session_state['nome_torneo'])
+                st.sidebar.download_button(
+                    label="📥 Scarica PDF torneo",
+                    data=pdf_bytes,
+                    file_name=f"torneo_{st.session_state['nome_torneo']}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+        else:
+            st.sidebar.info("ℹ️ Nessuna partita valida. Compila e valida i risultati per generare la classifica.")
+
         # Calendario (nessun filtro)
         # Calendario (nessun filtro)
         st.markdown("---")
@@ -1002,25 +1023,9 @@ def main():
                 st.session_state['nuovo_girone_selezionato'] = True
                 st.rerun()
 
-            # Nuovo selettore per la modalità di visualizzazione della partita
-            modalita_visualizzazione = st.radio(
-                "👁️ Modalità di visualizzazione partita",
-                ("Completa", "Solo squadre", "Solo giocatori"),
-                index=1,
-                key="modalita_visualizzazione_radio",
-                horizontal=True
-            )
-
-            # Mappa il valore del radio button a una stringa usata nella funzione
-            mappa_modalita = {
-                "Completa": "completa",
-                "Solo squadre": "squadre",
-                "Solo giocatori": "giocatori"
-            }
-            modalita_scelta = mappa_modalita[modalita_visualizzazione]
-
-            # Sposta la checkbox della modalità di navigazione a questo livello
-            modalita_bottoni = st.checkbox("🎛️ Usa bottoni di navigazione", key="modalita_navigazione_checkbox")
+            # Utilizza le impostazioni dalla sidebar
+            modalita_scelta = st.session_state.get('modalita_scelta_sidebar', 'squadre')
+            modalita_bottoni = st.session_state.get('usa_bottoni_sidebar', False)
 
             # Logica di visualizzazione basata sulla checkbox
             if modalita_bottoni:
@@ -1042,6 +1047,17 @@ def main():
                 else:
                     st.info("Nessuna giornata disponibile.")
 
+            # Mostra classifica se richiesta dalla sidebar
+            if st.session_state.get('mostra_classifica_girone'):
+                st.subheader(f"📊 Classifica {st.session_state['mostra_classifica_girone']}")
+                classifica = aggiorna_classifica(df)
+                if classifica is not None and not classifica.empty:
+                    mostra_classifica_stilizzata(classifica, st.session_state['mostra_classifica_girone'])
+                    # Reset dopo la visualizzazione
+                    st.session_state['mostra_classifica_girone'] = None
+                else:
+                    st.info("⚽ Nessuna partita validata per questo girone.")
+            
             # Richiama la funzione con il parametro di visualizzazione corretto
             if giornate_correnti:
                 mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
