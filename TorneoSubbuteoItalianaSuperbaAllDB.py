@@ -669,12 +669,17 @@ def inject_css():
         .stApp[data-theme="dark"] [data-testid="stSidebar"] h3 {
             color: white !important;
         }
+        
+        /* Selettori per il tema scuro */
+        .stApp[data-theme="dark"] [data-testid="stSidebar"] h3,
+        .stApp[data-theme="dark"] .css-1d391kg h3 {
+            color: #ffffff !important;
+        }
 
-        /* Selettore CSS universale per tutti gli elementi h3 nella sidebar */
-        [data-testid="stSidebar"] h3,
-        [data-testid="stSidebar"] .stMarkdown h3,
-        [data-testid="stSidebar"] div h3 {
-            color: white !important;
+        /* Selettori per il tema chiaro */
+        .stApp[data-theme="light"] [data-testid="stSidebar"] h3,
+        .stApp[data-theme="light"] .css-1d391kg h3 {
+            color: #1d3557 !important; /* Questo è un blu scuro, puoi cambiarlo */
         }
 
         /* Forza il colore bianco usando JavaScript per i subheader */
