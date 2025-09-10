@@ -1129,17 +1129,44 @@ def main():
             st.sidebar.info("ℹ️ Nessun torneo KO attivo. Completa le partite per generare il PDF.")
 
     if st.session_state['ui_show_pre']:
-        st.header("1. Scegli il torneo")
+        st.markdown("### Scegli azione 📝")
+        c1, c2 = st.columns([1,1])
         
         uri = os.environ.get("MONGO_URI_TOURNEMENTS")
         if not uri:
-            st.error("Variabile d'ambiente MONGO_URI_TOURNEMENTS non impostata.")
-            return
-
+            uri = st.secrets["MONGO_URI_TOURNEMENTS"]
         tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name, show_ok=False)
         
         if tournaments_collection is not None:
-            opzione_selezione = st.radio("Cosa vuoi fare?", ["Creare una nuova fase finale", "Continuare una fase finale esistente"])
+            with c1:
+                with st.container(border=True):
+                    st.markdown(
+                        """<div style='text-align:center'>
+                        <h2>📂 Continua fase finale esistente</h2>
+                        <p style='margin:0.2rem 0 1rem 0'>Riprendi una fase finale salvata (MongoDB)</p>
+                        </div>""",
+                        unsafe_allow_html=True,
+                    )
+                    if st.button("Carica fase finale (MongoDB) 📂", key="btn_carica_fase", use_container_width=True):
+                        st.session_state['opzione_selezione'] = "Continuare una fase finale esistente"
+                        st.rerun()
+
+            with c2:
+                with st.container(border=True):
+                    st.markdown(
+                        """<div style='text-align:center'>
+                        <h2>✨ Crea nuova fase finale</h2>
+                        <p style='margin:0.2rem 0 1rem 0'>Genera fase finale da torneo preliminare completato</p>
+                        </div>""",
+                        unsafe_allow_html=True,
+                    )
+                    if st.button("Nuova fase finale ✨", key="btn_nuova_fase", use_container_width=True):
+                        st.session_state['opzione_selezione'] = "Creare una nuova fase finale"
+                        st.rerun()
+            
+            st.markdown("---")
+            
+            opzione_selezione = st.session_state.get('opzione_selezione', None)
             
             if opzione_selezione == "Creare una nuova fase finale":
                 tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix=["completato_"])
