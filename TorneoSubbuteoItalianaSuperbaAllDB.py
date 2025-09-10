@@ -606,19 +606,23 @@ def inject_css():
             .st-emotion-cache-1f84s9j > div, .st-emotion-cache-1j0n4k > div { flex: 1; padding: 0 5px; }
         }
 
-        /* Sidebar subheaders */
+        /* --- Sidebar subheaders --- */
+        /* Default (tema chiaro) */
         [data-testid="stSidebar"] h3 {
-            color: black !important;   /* default: tema chiaro */
+            color: black !important;
             background: none !important;
             font-weight: 700 !important;
         }
+
+        /* Tema scuro - forza bianco con massima specificità */
+        html[data-theme="dark"] [data-testid="stSidebar"] h3,
+        body[data-theme="dark"] [data-testid="stSidebar"] h3,
         .stApp[data-theme="dark"] [data-testid="stSidebar"] h3 {
-            color: white !important;   /* tema scuro */
-            background: none !important;
-            font-weight: 700 !important;
+            color: white !important;
         }
         </style>
     """, unsafe_allow_html=True)
+
 
 # -------------------------
 # APP
