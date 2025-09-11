@@ -1061,7 +1061,8 @@ def salva_risultati_ko():
         try:
             response = requests.get(audio_url, timeout=10) # Imposta un timeout
             response.raise_for_status() # Lancia un'eccezione per risposte HTTP errate
-            autoplay_audio(response.content)
+            # Aggiungi questa riga per riprodurre l'audio
+            st.audio(audio_bytes, format='audio/mp3')
         except requests.exceptions.RequestException as e:
             st.error(f"Errore durante lo scaricamento dell'audio: {e}")
 
