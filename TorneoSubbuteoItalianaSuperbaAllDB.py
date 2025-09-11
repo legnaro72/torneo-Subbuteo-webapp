@@ -1691,7 +1691,8 @@ def main():
             st.balloons()
             # we are the champions
             # Codice corretto per scaricare l'audio dall'URL
-            audio_url = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3"
+            #audio_url = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3"
+            audio_url = "./wearethechamp.mp3"
             try:
                 response = requests.get(audio_url, timeout=10) # Imposta un timeout
                 response.raise_for_status() # Lancia un'eccezione per risposte HTTP errate
