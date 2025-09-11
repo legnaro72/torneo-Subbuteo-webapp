@@ -47,13 +47,14 @@ st.markdown('''
         color: #ddd;
     }
 
-    /* Pulsanti blu con gradiente (scritta bianca) */
+    /* Pulsanti blu con gradiente */
     .card-link {
         display: inline-block;
-        padding: 10px 18px;
+        padding: 12px 20px;
         font-size: 16px;
         font-weight: bold;
-        color: white; /* scritta bianca */
+        color: #ffffff !important; /* testo bianco sempre */
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.6);
         background: linear-gradient(135deg, #1E90FF, #4682B4);
         border-radius: 10px;
         text-decoration: none;
@@ -64,10 +65,11 @@ st.markdown('''
         transform: scale(1.05);
     }
 
-    /* Pulsante rosso con gradiente e scritta blu */
+    /* Pulsante rosso con testo bianco leggibile */
     .card-link-red {
         background: linear-gradient(135deg, #FF6347, #B22222);
-        color: #001F54; /* Blu scuro per il testo */
+        color: #ffffff !important; /* bianco leggibile */
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
     }
     .card-link-red:hover {
         background: linear-gradient(135deg, #B22222, #FF6347);
