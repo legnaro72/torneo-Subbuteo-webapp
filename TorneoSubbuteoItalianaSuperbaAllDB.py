@@ -1037,7 +1037,9 @@ def main():
             #if not df_filtrato.empty:
             # --- visuale tabella per "Stato partite" ---
             if not df_filtrato.empty:
-                st.image("mobile.png")
+                col1, col2, col3 = st.columns([1, 6, 1])
+                with col2:
+                    st.image("mobile.png")
 
                 # copia con indice originale, poi useremo idx_map per aggiornare il df principale
                 df_show = df_filtrato.reset_index().copy()
@@ -1138,7 +1140,9 @@ def main():
                 #if not df_filtrato.empty:
                 # --- visuale tabella per "Giocatore" ---
                 if not df_filtrato.empty:
-                    st.image("mobile.png")
+                    col1, col2, col3 = st.columns([1, 6, 1])
+                    with col2:
+                        st.image("mobile.png")
 
                     df_show = df_filtrato.reset_index().copy()
                     idx_map = df_show['index'].tolist()
@@ -1230,7 +1234,9 @@ def main():
                 #if not df_filtrato.empty:
                 # --- visuale tabella per "Girone" ---
                 if not df_filtrato.empty:
-                    st.image("mobile.png")
+                    col1, col2, col3 = st.columns([1, 6, 1])
+                    with col2:
+                        st.image("mobile.png")
 
                     df_show = df_filtrato.reset_index().copy()
                     idx_map = df_show['index'].tolist()
