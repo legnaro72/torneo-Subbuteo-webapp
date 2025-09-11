@@ -53,7 +53,7 @@ st.markdown('''
         padding: 12px 20px;
         font-size: 16px;
         font-weight: bold;
-        color: #ffffff !important; /* testo bianco sempre */
+        color: #ffffff !important; /* testo bianco */
         text-shadow: 1px 1px 2px rgba(0,0,0,0.6);
         background: linear-gradient(135deg, #1E90FF, #4682B4);
         border-radius: 10px;
@@ -65,10 +65,10 @@ st.markdown('''
         transform: scale(1.05);
     }
 
-    /* Pulsante rosso con testo bianco leggibile */
+    /* Pulsante rosso con gradiente e testo bianco */
     .card-link-red {
         background: linear-gradient(135deg, #FF6347, #B22222);
-        color: #ffffff !important; /* bianco leggibile */
+        color: #ffffff !important;
         text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
     }
     .card-link-red:hover {
