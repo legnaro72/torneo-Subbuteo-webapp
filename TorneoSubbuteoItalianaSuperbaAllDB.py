@@ -141,19 +141,32 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
             df_torneo['GolCasa'] = df_torneo['GolCasa'].astype('Int64')
             df_torneo['GolOspite'] = df_torneo['GolOspite'].astype('Int64')
             st.session_state['df_torneo'] = df_torneo
+            # Salva l'ID del torneo nella sessione
+            st.session_state['tournament_id'] = str(torneo_data['_id'])
+            st.session_state['nome_torneo'] = torneo_data.get('nome_torneo', 'Torneo senza nome')
         return torneo_data
     except Exception as e:
         st.error(f"❌ Errore caricamento torneo: {e}")
         return None
 
-def salva_torneo_su_db(tournaments_collection, df_torneo, nome_torneo):
+def salva_torneo_su_db(tournaments_collection, df_torneo, nome_torneo, tournament_id=None):
     if tournaments_collection is None:
         return None
     try:
         df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
         data = {"nome_torneo": nome_torneo, "calendario": df_torneo_pulito.to_dict('records')}
-        result = tournaments_collection.insert_one(data)
-        return result.inserted_id
+        
+        # Se abbiamo un ID torneo, aggiorniamo il torneo esistente
+        if tournament_id:
+            tournaments_collection.update_one(
+                {"_id": ObjectId(tournament_id)},
+                {"$set": data}
+            )
+            return tournament_id
+        else:
+            # Altrimenti creiamo un nuovo torneo
+            result = tournaments_collection.insert_one(data)
+            return result.inserted_id
     except Exception as e:
         st.error(f"❌ Errore salvataggio torneo: {e}")
         return None
@@ -1314,7 +1327,22 @@ def main():
 
             st.markdown("### 👥 Seleziona Giocatori")
             amici = df_master['Giocatore'].tolist() if not df_master.empty else []
-            amici_selezionati = st.multiselect("Seleziona giocatori dal database", amici, default=st.session_state.get("amici_selezionati", []), key="amici_multiselect")
+            
+            # Aggiungi checkbox per importare tutti i giocatori
+            importa_tutti = st.checkbox("Importa tutti i giocatori del Club", key="importa_tutti_giocatori")
+            
+            # Se il checkbox è selezionato, seleziona automaticamente tutti i giocatori
+            if importa_tutti:
+                amici_selezionati = amici
+                st.session_state["n_giocatori"] = len(amici)  # Aggiorna automaticamente il numero di partecipanti
+                st.session_state["amici_selezionati"] = amici  # Salva la selezione
+            else:
+                amici_selezionati = st.multiselect(
+                    "Seleziona giocatori dal database", 
+                    amici, 
+                    default=st.session_state.get("amici_selezionati", []), 
+                    key="amici_multiselect"
+                )
 
             num_supplementari = st.session_state["n_giocatori"] - len(amici_selezionati)
             if num_supplementari < 0:
@@ -1469,42 +1497,31 @@ def main():
                             'messaggio': "Debug salvato correttamente."
                         }
 
-                        if tid:
-                            st.session_state['df_torneo'] = df_torneo
-                            st.session_state['tournament_id'] = str(tid)
-                            st.session_state['calendario_generato'] = True
-                            st.session_state['debug_message']['tid_valore'] = str(tid)
-                            st.toast("✅ Calendario generato e salvato su MongoDB")
-                            st.rerun()
-
-                        tid = salva_torneo_su_db(tournaments_collection, df_torneo, st.session_state['nome_torneo'])
-
-                        st.session_state['debug_message'] = {
-                            'tid': str(tid),
-                            'df_info': df_torneo.dtypes.to_dict()
-                        }
-
-                        st.write("--- DEBUG: Valore di tid dopo il salvataggio ---")
-                        st.write(tid)
-
-                        st.session_state['debug_message'] = {
-                            'tid_valore': str(tid),
-                            'df_colonne': list(df_torneo.columns),
-                            'df_dtypes': df_torneo.dtypes.to_dict(),
-                            'messaggio': "Debug salvato correttamente."
-                        }
+                        # Salva il torneo su MongoDB
+                        tid = salva_torneo_su_db(
+                            tournaments_collection, 
+                            df_torneo, 
+                            st.session_state['nome_torneo'],
+                            tournament_id=st.session_state.get('tournament_id')
+                        )
 
                         if tid:
                             st.session_state['df_torneo'] = df_torneo
                             st.session_state['tournament_id'] = str(tid)
                             st.session_state['calendario_generato'] = True
+                            st.session_state['debug_message'] = {
+                                'tid_valore': str(tid),
+                                'df_colonne': list(df_torneo.columns),
+                                'df_dtypes': df_torneo.dtypes.to_dict(),
+                                'messaggio': "Torneo salvato correttamente."
+                            }
                             st.toast("✅ Calendario generato e salvato su MongoDB")
                             st.rerun()
                         else:
-                            st.error("❌ Il salvataggio su MongoDB è fallito. Controlla la connessione al database.")
+                            st.error("❌ Errore durante il salvataggio del torneo. Controlla la connessione al database.")
                     except Exception as e:
                         st.error(f"❌ Errore critico durante il salvataggio: {e}")
-                    st.rerun()
+                        st.rerun()
                     
     # Banner vincitori
     if st.session_state.get('torneo_completato', False) and st.session_state.get('classifica_finale') is not None:

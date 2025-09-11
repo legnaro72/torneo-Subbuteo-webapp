@@ -881,6 +881,8 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
     try:
         torneo_data = tournaments_collection.find_one({"_id": ObjectId(tournament_id)})
         if torneo_data and 'calendario' in torneo_data:
+            # Assicurati che l'ID del torneo sia incluso nei dati restituiti
+            torneo_data['_id'] = str(torneo_data['_id'])  # Converti ObjectId in stringa
             df_torneo = pd.DataFrame(torneo_data['calendario'])
             df_torneo['Valida'] = to_bool_series(df_torneo['Valida'])
             df_torneo['GolCasa'] = pd.to_numeric(df_torneo['GolCasa'], errors='coerce').astype('Int64')
@@ -1307,11 +1309,15 @@ def main():
                     )
                     if scelta_torneo:
                         st.session_state['tournament_name'] = scelta_torneo
-                        st.session_state['tournament_id'] = tornei_opzioni[scelta_torneo]
+                        tournament_id = tornei_opzioni[scelta_torneo]
+                        st.session_state['tournament_id'] = tournament_id
                         if st.button("Continua con questo torneo"):
-                            torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
+                            torneo_data = carica_torneo_da_db(tournaments_collection, tournament_id)
                             
                             if torneo_data:
+                                # Assicurati che l'ID del torneo sia salvato nella sessione
+                                st.session_state['tournament_id'] = str(torneo_data.get('_id', tournament_id))
+                                st.session_state['tournament_name'] = torneo_data.get('nome_torneo', scelta_torneo)
                                 df_torneo_completo = pd.DataFrame(torneo_data['calendario'])
                                 st.session_state['df_torneo_preliminare'] = df_torneo_completo
                                 
@@ -1593,16 +1599,16 @@ def main():
                         rounds_ko = st.session_state.get('rounds_ko', [])
                         rounds_to_show = rounds_ko[:-1] if rounds_ko and not rounds_ko[-1]['Valida'].all() else rounds_ko
 
-                        round_emoji = {
-                            "Ottavi di finale": "🟢",
-                            "Quarti di finale": "🔵",
-                            "Semifinali": "🟣",
+                        round_abbr = {
+                            "Ottavi di finale": "8️⃣",
+                            "Quarti di finale": "4️⃣",
+                            "Semifinali": "2️⃣",
                             "Finale": "🏆"
                         }
 
                         for df_round in rounds_to_show:
                             round_name = df_round['Round'].iloc[0]
-                            emoji = round_emoji.get(round_name, "⚽️")
+                            abbr = round_abbr.get(round_name, "⚽️")
                             df_giocati = df_round[df_round['Valida'] == True]
                             for _, match in df_giocati.iterrows():
                                 squadra_a = str(match['SquadraA'])
@@ -1610,30 +1616,77 @@ def main():
                                 gol_b = int(match['GolB']) if pd.notna(match['GolB']) else ""
                                 squadra_b = str(match['SquadraB'])
                                 records.append({
-                                    "Turno": f"{emoji} {round_name}",
-                                    "Squadra A": f"🏠 {squadra_a}",
-                                    "Gol A": f"{gol_a} ⚽️",
-                                    "Gol B": f"⚽️ {gol_b}",
-                                    "Squadra B": f"{squadra_b} 🛫"
+                                    "T": abbr,
+                                    "🏠": squadra_a,
+                                    "home_goals": gol_a,
+                                    "away_goals": gol_b,
+                                    "🛫": squadra_b
                                 })
+                        
                         if records:
                             st.markdown("""
                             <style>
-                            .emoji-table td, .emoji-table th {padding: 0.5em 0.7em;}
-                            .emoji-table th {background: #f1faee;}
+                            .compact-table {
+                                font-size: 0.9em;
+                                width: auto !important;
+                                border-collapse: collapse;
+                                margin: 0 auto;
+                            }
+                            .compact-table th, .compact-table td {
+                                padding: 2px 6px !important;
+                                text-align: center !important;
+                                white-space: nowrap;
+                                border: none;
+                            }
+                            .compact-table th {
+                                color: #333 !important;
+                                font-weight: bold;
+                                border-bottom: 1px solid #ddd;
+                            }
+                            .compact-table tr {
+                                border-bottom: 1px solid #eee;
+                            }
                             </style>
                             """, unsafe_allow_html=True)
-                            st.markdown("<h4 style='margin-bottom:0.5em;'>Tabellone incontri:</h4>", unsafe_allow_html=True)
+                            
                             df_disp = pd.DataFrame(records)
-                            table_html = "<table class='emoji-table'><thead><tr>"
-                            for col in df_disp.columns:
-                                table_html += f"<th>{col}</th>"
+                            # Remove duplicate column names by adding a small suffix to duplicates
+                            df_disp.columns = [f"{col}_{i}" if list(df_disp.columns).count(col) > 1 and list(df_disp.columns).index(col) != i else col 
+                                            for i, col in enumerate(df_disp.columns)]
+                            
+                            # Generate the HTML table with proper headers and data mapping
+                            table_html = "<table class='compact-table'><thead><tr>"
+                            headers = ["📅", "🏠", "⚽️", "⚽️", "🛫"]
+                            for header in headers:
+                                table_html += f"<th>{header}</th>"
                             table_html += "</tr></thead><tbody>"
-                            for _, row in df_disp.iterrows():
+                            
+                            # Table rows - map the data to the correct columns
+                            for record in records:
                                 table_html += "<tr>"
-                                for val in row:
-                                    table_html += f"<td style='font-size:1.1em'>{val}</td>"
+                                
+                                # Column 1: Turno (T)
+                                val = record['T']
+                                table_html += f"<td style='font-weight: bold; text-align: center;'>{val}</td>"
+                                
+                                # Column 2: Home team (🏠)
+                                val = record['🏠']
+                                table_html += f"<td style='text-align: right;'>{val}</td>"
+                                
+                                # Column 3: Home goals (first ⚽️)
+                                val = record['home_goals']
+                                table_html += f"<td style='font-weight: bold; text-align: center;'>{val if val != '' else '-'}</td>"
+                                
+                                # Column 4: Away goals (second ⚽️)
+                                val = record['away_goals']
+                                table_html += f"<td style='font-weight: bold; text-align: center;'>{val if val != '' else '-'}</td>"
+                                
+                                # Column 5: Away team (🛫)
+                                val = record['🛫']
+                                table_html += f"<td style='text-align: left;'>{val}</td>"
+                                
                                 table_html += "</tr>"
+                                
                             table_html += "</tbody></table>"
                             st.markdown(table_html, unsafe_allow_html=True)
                         else:
