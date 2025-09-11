@@ -47,13 +47,13 @@ st.markdown('''
         color: #ddd;
     }
 
-    /* Pulsanti blu con gradiente */
+    /* Pulsanti blu con gradiente (scritta bianca) */
     .card-link {
         display: inline-block;
         padding: 10px 18px;
         font-size: 16px;
         font-weight: bold;
-        color: white;
+        color: white; /* scritta bianca */
         background: linear-gradient(135deg, #1E90FF, #4682B4);
         border-radius: 10px;
         text-decoration: none;
@@ -72,6 +72,17 @@ st.markdown('''
     .card-link-red:hover {
         background: linear-gradient(135deg, #B22222, #FF6347);
         transform: scale(1.05);
+    }
+
+    /* Box manuale utente con gradiente blu */
+    .manual-box {
+        background: linear-gradient(135deg, #1E90FF, #4682B4);
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
+        text-align: center;
+        color: white;
+        margin-bottom: 20px;
     }
     </style>
 ''', unsafe_allow_html=True)
@@ -143,9 +154,9 @@ st.markdown("---")
 # Container separato per il Manuale Utente
 with st.container():
     st.markdown('''
-        <div class="card" style="background-color:#0B5FFF;">
+        <div class="manual-box">
             <div class="card-title">📖 Manuale Utente</div>
-            <div class="card-desc">
+            <div class="card-desc" style="color:#f0f0f0;">
                 Consulta il manuale completo per usare al meglio tutte le funzionalità dell'Hub Tornei Subbuteo.
             </div>
         </div>
