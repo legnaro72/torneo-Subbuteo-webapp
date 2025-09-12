@@ -821,7 +821,6 @@ def inject_css():
         // Esegui immediatamente
         forceWhiteSubheaders();
         </script>
-        <style>
         </style>
     """, unsafe_allow_html=True)
 
