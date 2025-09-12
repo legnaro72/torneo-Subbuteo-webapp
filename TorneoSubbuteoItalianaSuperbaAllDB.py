@@ -1050,8 +1050,23 @@ def main():
 
                 # pulizie richieste
                 df_show['Girone'] = df_show['Girone'].astype(str).str.replace("Girone ", "", regex=False)
-                df_show['Casa'] = df_show['Casa'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) else x)
-                df_show['Ospite'] = df_show['Ospite'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) else x)
+                
+                # Gestione visualizzazione nomi in base alla selezione dell'utente
+                modalita_visualizzazione = st.session_state.get('modalita_visualizzazione_sidebar', 'Solo squadre')
+                
+                if modalita_visualizzazione == 'Solo squadre':
+                    # Prende la parte prima del trattino
+                    df_show['Casa'] = df_show['Casa'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) and "-" in str(x) else x)
+                    df_show['Ospite'] = df_show['Ospite'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) and "-" in str(x) else x)
+                elif modalita_visualizzazione == 'Solo giocatori':
+                    # Prende la parte dopo il trattino, se esiste
+                    df_show['Casa'] = df_show['Casa'].apply(
+                        lambda x: str(x).split("-")[1].strip() if pd.notna(x) and "-" in str(x) and len(str(x).split("-")) > 1 else x
+                    )
+                    df_show['Ospite'] = df_show['Ospite'].apply(
+                        lambda x: str(x).split("-")[1].strip() if pd.notna(x) and "-" in str(x) and len(str(x).split("-")) > 1 else x
+                    )
+                # Se è 'Completa' non facciamo nulla, manteniamo il testo così com'è
 
                 # numero di gironi totali (usiamo il df principale)
                 num_gironi = df['Girone'].nunique() if 'Girone' in df.columns else 1
@@ -1149,8 +1164,20 @@ def main():
                     df_show.insert(0, 'Sel', False)
 
                     df_show['Girone'] = df_show['Girone'].astype(str).str.replace("Girone ", "", regex=False)
-                    df_show['Casa'] = df_show['Casa'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) else x)
-                    df_show['Ospite'] = df_show['Ospite'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) else x)
+                    
+                    # Gestione visualizzazione nomi in base alla selezione dell'utente
+                    modalita_visualizzazione = st.session_state.get('modalita_visualizzazione_sidebar', 'Solo squadre')
+                    
+                    if modalita_visualizzazione == 'Solo squadre':
+                        df_show['Casa'] = df_show['Casa'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) and "-" in str(x) else x)
+                        df_show['Ospite'] = df_show['Ospite'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) and "-" in str(x) else x)
+                    elif modalita_visualizzazione == 'Solo giocatori':
+                        df_show['Casa'] = df_show['Casa'].apply(
+                            lambda x: str(x).split("-")[1].strip() if pd.notna(x) and "-" in str(x) and len(str(x).split("-")) > 1 else x
+                        )
+                        df_show['Ospite'] = df_show['Ospite'].apply(
+                            lambda x: str(x).split("-")[1].strip() if pd.notna(x) and "-" in str(x) and len(str(x).split("-")) > 1 else x
+                        )
 
                     num_gironi = df['Girone'].nunique() if 'Girone' in df.columns else 1
 
@@ -1243,8 +1270,20 @@ def main():
                     df_show.insert(0, 'Sel', False)
 
                     df_show['Girone'] = df_show['Girone'].astype(str).str.replace("Girone ", "", regex=False)
-                    df_show['Casa'] = df_show['Casa'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) else x)
-                    df_show['Ospite'] = df_show['Ospite'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) else x)
+                    
+                    # Gestione visualizzazione nomi in base alla selezione dell'utente
+                    modalita_visualizzazione = st.session_state.get('modalita_visualizzazione_sidebar', 'Solo squadre')
+                    
+                    if modalita_visualizzazione == 'Solo squadre':
+                        df_show['Casa'] = df_show['Casa'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) and "-" in str(x) else x)
+                        df_show['Ospite'] = df_show['Ospite'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) and "-" in str(x) else x)
+                    elif modalita_visualizzazione == 'Solo giocatori':
+                        df_show['Casa'] = df_show['Casa'].apply(
+                            lambda x: str(x).split("-")[1].strip() if pd.notna(x) and "-" in str(x) and len(str(x).split("-")) > 1 else x
+                        )
+                        df_show['Ospite'] = df_show['Ospite'].apply(
+                            lambda x: str(x).split("-")[1].strip() if pd.notna(x) and "-" in str(x) and len(str(x).split("-")) > 1 else x
+                        )
 
                     num_gironi = df['Girone'].nunique() if 'Girone' in df.columns else 1
 
