@@ -1504,21 +1504,101 @@ def main():
                     
                     andata_ritorno = st.checkbox("📅 Partite di andata e ritorno?", value=False)
                     
-                    if st.button("Genera gironi e continua"):
+                    # Ottieni le squadre qualificate in ordine di classifica
+                    qualificati = list(df_classifica.head(num_partecipanti_gironi)['Squadra'])
+                    
+                    # Calcola quante squadre per girone (arrotondando per eccesso)
+                    squadre_per_girone = (num_partecipanti_gironi + num_gironi - 1) // num_gironi
+                    
+                    # Inizializza i gironi
+                    gironi_auto = {f'Girone {i+1}': [] for i in range(num_gironi)}
+                    
+                    # Distribuisci le squadre in ordine di classifica
+                    # Le prime squadre vanno tutte nel primo girone, le successive nel secondo, ecc.
+                    squadre_per_girone = num_partecipanti_gironi // num_gironi
+                    squadre_rimanenti = num_partecipanti_gironi % num_gironi
+                    
+                    idx_squadra = 0
+                    for girone_idx in range(num_gironi):
+                        # Calcola quante squadre vanno in questo girone
+                        num_in_girone = squadre_per_girone + (1 if girone_idx < squadre_rimanenti else 0)
+                        
+                        # Aggiungi le squadre al girone corrente
+                        for _ in range(num_in_girone):
+                            if idx_squadra < len(qualificati):
+                                gironi_auto[f'Girone {girone_idx + 1}'].append(qualificati[idx_squadra])
+                                idx_squadra += 1
+                    
+                    # Inizializza i gironi nella sessione se non esistono o se è cambiato il numero di gironi
+                    if 'gironi_manuali' not in st.session_state or len(st.session_state.gironi_manuali) != num_gironi:
+                        st.session_state.gironi_manuali = gironi_auto
+                    
+                    # Mostra le multi-select box per ogni girone
+                    st.subheader("👥Composizione gironi")
+                    st.info("Modifica la composizione dei gironi se necessario")
+                    
+                    # Crea due colonne per mostrare i gironi in modo più ordinato
+                    col1, col2 = st.columns(2)
+                    
+                    # Mostra i gironi in due colonne
+                    for i, (girone, squadre) in enumerate(st.session_state.gironi_manuali.items()):
+                        with (col1 if i % 2 == 0 else col2):
+                            st.markdown(f"#### {girone}")
+                            
+                            # Mostra le squadre già nel girone
+                            for squadra in squadre:
+                                st.markdown(f"- {squadra}")
+                            
+                            # Mostra le squadre disponibili per l'aggiunta
+                            altre_squadre = [s for s in qualificati 
+                                          if s not in [sq for g, sqs in st.session_state.gironi_manuali.items() 
+                                                     for sq in sqs] or s in squadre]
+                            
+                            # Seleziona le squadre da aggiungere/rimuovere
+                            squadre_selezionate = st.multiselect(
+                                f"Modifica {girone}",
+                                options=altre_squadre,
+                                default=squadre,
+                                key=f"girone_{i}",
+                                format_func=lambda x: f"{x} (già in altro girone)" 
+                                                   if x not in squadre and x in [sq for g, sqs in st.session_state.gironi_manuali.items() 
+                                                                              for sq in sqs] 
+                                                   else x
+                            )
+                            
+                            # Aggiorna il girone con le squadre selezionate
+                            st.session_state.gironi_manuali[girone] = squadre_selezionate
+                            
+                            # Mostra il numero di squadre nel girone
+                            st.caption(f"{len(squadre_selezionate)} squadre selezionate")
+                    
+                    # Pulsante per generare i gironi con la configurazione attuale
+                    if st.button("🔄 Genera calendario gironi"):
                         st.session_state['giornate_mode'] = 'gironi'
                         st.session_state['gironi_num'] = num_gironi
                         st.session_state['gironi_ar'] = andata_ritorno
                         
-                        qualificati = list(df_classifica.head(num_partecipanti_gironi)['Squadra'])
-                        
-                        gironi_assegnati = serpentino_seed(qualificati, num_gironi)
-                        
+                        # Crea il calendario in base alla configurazione dei gironi
                         df_final_gironi = pd.DataFrame()
-                        for i, girone in enumerate(gironi_assegnati, 1):
-                            df_girone_calendar = round_robin(girone, andata_ritorno)
-                            if not df_girone_calendar.empty:
-                                df_girone_calendar.insert(0, 'Girone', f"Girone {i}")
-                                df_final_gironi = pd.concat([df_final_gironi, df_girone_calendar], ignore_index=True)
+                        
+                        # Verifica che tutte le squadre siano assegnate a un girone
+                        squadre_assegnate = [s for squadre in st.session_state.gironi_manuali.values() for s in squadre]
+                        squadre_mancanti = [s for s in qualificati if s not in squadre_assegnate]
+                        
+                        if squadre_mancanti:
+                            st.warning(f"Attenzione: le seguenti squadre non sono assegnate a nessun girone: {', '.join(squadre_mancanti)}")
+                            st.stop()
+                        
+                        # Genera il calendario per ogni girone
+                        for girone_nome, squadre in st.session_state.gironi_manuali.items():
+                            if not squadre:  # Salta i gironi vuoti
+                                continue
+                                
+                            # Genera il calendario per il girone
+                            df_girone = round_robin(squadre, andata_ritorno)
+                            if not df_girone.empty:
+                                df_girone.insert(0, 'Girone', girone_nome)
+                                df_final_gironi = pd.concat([df_final_gironi, df_girone], ignore_index=True)
                         
                         df_to_save = df_final_gironi.copy()
                         df_to_save['GolCasa'] = None
