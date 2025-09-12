@@ -1056,15 +1056,14 @@ def salva_risultati_ko():
         
         # we are the champions
         # Codice corretto per scaricare l'audio dall'URL
-        audio_url = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3"
-        #audio_url = "./wearethechamp.mp3"
+        #audio_url = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3"
+        audio_url = "./wearethechamp.mp3"
         try:
             response = requests.get(audio_url, timeout=10) # Imposta un timeout
             response.raise_for_status() # Lancia un'eccezione per risposte HTTP errate
             autoplay_audio(response.content)
         except requests.exceptions.RequestException as e:
             st.error(f"Errore durante lo scaricamento dell'audio: {e}")
-    
 
         # Crea un contenitore vuoto per i messaggi
         placeholder = st.empty()
@@ -1199,25 +1198,39 @@ def main():
             st.sidebar.info("ℹ️ Nessun torneo KO attivo. Completa le partite per generare il PDF.")
 
     if st.session_state['ui_show_pre']:
-        st.markdown("### Scegli azione 📝")
-        c1, c2 = st.columns([1,1])
-        
+        # Inizializza la connessione al database
         uri = os.environ.get("MONGO_URI_TOURNEMENTS")
         if not uri:
             uri = st.secrets["MONGO_URI_TOURNEMENTS"]
-        tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name, show_ok=False)
+        tournaments_collection = init_mongo_connection(uri, db_name, col_name, show_ok=False)
         
-        if tournaments_collection is not None:
+        # Se non c'è una connessione al database, mostra un messaggio di errore
+        if tournaments_collection is None:
+            st.error("❌ Impossibile connettersi al database. Verifica la connessione e riprova.")
+            st.markdown("---")
+            if st.button("🔄 Ricarica la pagina", key="reload_page"):
+                st.rerun()
+            return
+            
+        # Seleziona l'opzione corrente o imposta quella predefinita
+        if 'opzione_selezione' not in st.session_state:
+            st.session_state['opzione_selezione'] = None
+        
+        # Se non è stata ancora fatta una selezione, mostra le due opzioni
+        if st.session_state['opzione_selezione'] is None:
+            st.markdown("### Scegli azione 📝")
+            c1, c2 = st.columns([1,1])
+            
             with c1:
                 with st.container(border=True):
                     st.markdown(
                         """<div style='text-align:center'>
-                        <h2>📂 Continua fase finale esistente</h2>
+                        <h2>📂 Carica fase finale esistente</h2>
                         <p style='margin:0.2rem 0 1rem 0'>Riprendi una fase finale salvata (MongoDB)</p>
                         </div>""",
                         unsafe_allow_html=True,
                     )
-                    if st.button("Carica fase finale (MongoDB) 📂", key="btn_carica_fase", use_container_width=True):
+                    if st.button("Carica fase finale esistente 📂", key="btn_carica_fase", use_container_width=True):
                         st.session_state['opzione_selezione'] = "Continuare una fase finale esistente"
                         st.rerun()
 
@@ -1230,19 +1243,37 @@ def main():
                         </div>""",
                         unsafe_allow_html=True,
                     )
-                    if st.button("Nuova fase finale ✨", key="btn_nuova_fase", use_container_width=True):
+                    if st.button("Crea nuova fase finale ✨", key="btn_nuova_fase", use_container_width=True):
                         st.session_state['opzione_selezione'] = "Creare una nuova fase finale"
                         st.rerun()
             
             st.markdown("---")
+            return
+        
+        # Se è stata fatta una selezione, mostra il form appropriato
+        opzione_selezione = st.session_state['opzione_selezione']
+        
+        st.markdown("---")
+        
+        # Pulsante per tornare indietro alla selezione iniziale
+        if st.button("⬅️ Torna alla selezione iniziale", key="back_to_selection"):
+            st.session_state['opzione_selezione'] = None
+            st.rerun()
             
-            opzione_selezione = st.session_state.get('opzione_selezione', None)
-            
-            if opzione_selezione == "Creare una nuova fase finale":
+        st.markdown("---")
+        
+        # Mostra il form appropriato in base alla selezione
+        if opzione_selezione == "Creare una nuova fase finale":
                 tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix=["completato_"])
                 st.subheader("Seleziona un torneo preliminare completato")
                 if not tornei_trovati:
-                    st.info("⚠️ Nessun torneo 'COMPLETATO' trovato nel database.")
+                    st.warning("⚠️ Nessun torneo 'COMPLETATO' trovato nel database.")
+                    st.markdown("---")
+                    st.markdown("### Crea un nuovo torneo")
+                    st.markdown("Per creare una nuova fase finale, è necessario prima completare un torneo preliminare.")
+                    if st.button("🏠 Vai alla gestione tornei", key="go_to_tournament_manager"):
+                        st.switch_page("https://farm-tornei-subbuteo-superba-all-db.streamlit.app/")
+                    return
                 else:
                     tornei_opzioni = {t['nome_torneo']: str(t['_id']) for t in tornei_trovati}
                     scelta_torneo = st.selectbox(
@@ -1297,17 +1328,28 @@ def main():
                                 st.error("❌ Errore nel caricamento del torneo. Riprova.")
 
             #elif opzione_selezione == "Continuare una fase finale esistente":
-            elif opzione_selezione == "Continuare una fase finale esistente":
-                tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
-                tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix=["fasefinaleEliminazionediretta", "finito_Eliminazionediretta"])
-                st.subheader("Seleziona una fase finale esistente")
-                if not tornei_trovati:
-                    st.info("⚠️ Nessuna fase finale esistente trovata nel database.")
-                else:
+        elif opzione_selezione == "Continuare una fase finale esistente":
+            tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix=["fasefinaleEliminazionediretta", "finito_Eliminazionediretta"])
+            st.subheader("Seleziona una fase finale esistente")
+            if not tornei_trovati:
+                st.warning("⚠️ Nessuna fase finale esistente trovata nel database.")
+                st.markdown("---")
+                st.markdown("### Crea una nuova fase finale")
+                st.markdown("Per creare una nuova fase finale, seleziona l'opzione 'Crea nuova fase finale' dal menu principale.")
+                col1, col2 = st.columns([1, 1])
+                with col1:
+                    if st.button("🔄 Ricarica la pagina", key="reload_page_empty", use_container_width=True):
+                        st.rerun()
+                with col2:
+                    if st.button("🏠 Vai alla gestione tornei", key="go_to_tournament_manager_2", use_container_width=True):
+                        st.switch_page("https://farm-tornei-subbuteo-superba-all-db.streamlit.app/")
+                return
+            else:
                     tornei_opzioni = {t['nome_torneo']: str(t['_id']) for t in tornei_trovati}
                     scelta_torneo = st.selectbox(
                         "Seleziona la fase finale da continuare:",
-                        options=list(tornei_opzioni.keys())
+                        options=list(tornei_opzioni.keys()),
+                        key="select_torneo_esistente"
                     )
                     if scelta_torneo:
                         st.session_state['tournament_name'] = scelta_torneo
@@ -1428,7 +1470,7 @@ def main():
                 st.dataframe(df_classifica, use_container_width=True)
                 st.divider()
 
-                st.header("2. Scegli la fase finale")
+                st.header("🎲 Scegli la fase finale")
                 
                 fase_finale_scelta = st.radio(
                     "Seleziona la modalità della fase finale:",
@@ -1439,7 +1481,7 @@ def main():
                     st.session_state['fase_scelta'] = "gironi"
                     st.session_state['fase_modalita'] = "Gironi"
 
-                    st.subheader("Configura i gironi")
+                    st.subheader("🗂️ Configura i gironi")
                     num_partecipanti_gironi = st.number_input(
                         "Quante squadre partecipano a questa fase finale?",
                         min_value=4,
@@ -1460,7 +1502,7 @@ def main():
                         st.warning("⚠️ Il numero di partecipanti deve essere divisibile per il numero di gironi per una distribuzione equa.")
                         st.stop()
                     
-                    andata_ritorno = st.checkbox("Partite di andata e ritorno?", value=False)
+                    andata_ritorno = st.checkbox("📅 Partite di andata e ritorno?", value=False)
                     
                     if st.button("Genera gironi e continua"):
                         st.session_state['giornate_mode'] = 'gironi'
