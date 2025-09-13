@@ -1533,11 +1533,13 @@ def main():
             else:
                 st.info("Seleziona un girone per visualizzare il calendario.")
 
-            st.button(
+            if st.button(
                 "💾 Salva Risultati Giornata",
-                on_click=salva_risultati_giornata,
-                args=(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel'])
-            )
+                disabled=st.session_state.get('read_only', True),
+                help="Accesso in scrittura richiesto" if st.session_state.get('read_only', True) else "Salva i risultati della giornata"
+            ):
+                if verifica_permessi_scrittura():
+                    salva_risultati_giornata(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel'])
         # Fine Calendario 
 
     else:
