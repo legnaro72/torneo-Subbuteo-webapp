@@ -5,6 +5,7 @@ pymongo
 python-dotenv
 streamlit-extras
 streamlit-authenticator
+streamlit-modal
 plotly
 seaborn
 python-dateutil
