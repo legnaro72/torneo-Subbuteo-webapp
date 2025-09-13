@@ -10,3 +10,4 @@ plotly
 seaborn
 python-dateutil
 pytz
+fpdf
