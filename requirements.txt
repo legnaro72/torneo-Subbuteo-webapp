@@ -1,6 +1,13 @@
 streamlit
 pandas
-fpdf
-requests
-matplotlib
+numpy
 pymongo
+certifi
+streamlit-authenticator
+streamlit-modal
+plotly
+matplotlib
+seaborn
+Pillow
+requests
+urllib3
