@@ -1623,23 +1623,35 @@ def main():
                     st.session_state['mostra_gironi'] = True
                     st.session_state['gironi_manuali_completi'] = False
                     
-                    # Genera automaticamente i gironi bilanciati
+                    # Prepara i dati dei giocatori con squadra e potenziale
+                    giocatori_con_dati = []
+                    for giocatore, info in st.session_state['gioc_info'].items():
+                        giocatori_con_dati.append({
+                            'nome': giocatore,
+                            'squadra': info['Squadra'],
+                            'potenziale': info['Potenziale'],
+                            'coppia': f"{info['Squadra']} - {giocatore}"
+                        })
+                    
+                    # Ordina per potenziale (dal più alto al più basso)
                     giocatori_ordinati = sorted(
-                        st.session_state['gioc_info'].items(),
-                        key=lambda x: x[1]['Potenziale'],
+                        giocatori_con_dati,
+                        key=lambda x: x['potenziale'],
                         reverse=True
                     )
                     
                     num_gironi = st.session_state.get('num_gironi', 1)
                     gironi = {f'Girone {i+1}': [] for i in range(num_gironi)}
                     
-                    # Distribuisci i giocatori nei gironi in modo bilanciato
-                    for i, (giocatore, _) in enumerate(giocatori_ordinati):
+                    # Distribuisci le coppie squadra-giocatore nei gironi in modo bilanciato
+                    for i, giocatore in enumerate(giocatori_ordinati):
                         girone_idx = i % num_gironi
                         girone_nome = f'Girone {girone_idx + 1}'
-                        gironi[girone_nome].append(giocatore)
+                        gironi[girone_nome].append(giocatore['coppia'])
                     
+                    # Salva sia le coppie che i dati completi per riferimento
                     st.session_state['gironi_auto_generati'] = gironi
+                    st.session_state['dettagli_giocatori'] = {g['coppia']: g for g in giocatori_con_dati}
                     
                     # Inizializza i gironi manuali con la proposta automatica
                     for i, (girone, giocatori) in enumerate(gironi.items(), 1):
@@ -1654,10 +1666,20 @@ def main():
                 
                 # Genera automaticamente i gironi bilanciati per potenziale
                 if 'gironi_auto_generati' not in st.session_state:
-                    # Ordina i giocatori per potenziale (dal più alto al più basso)
+                    # Prepara i dati dei giocatori con squadra e potenziale
+                    giocatori_con_dati = []
+                    for giocatore, info in st.session_state['gioc_info'].items():
+                        giocatori_con_dati.append({
+                            'nome': giocatore,
+                            'squadra': info['Squadra'],
+                            'potenziale': info['Potenziale'],
+                            'coppia': f"{info['Squadra']} - {giocatore}"
+                        })
+                    
+                    # Ordina per potenziale (dal più alto al più basso)
                     giocatori_ordinati = sorted(
-                        st.session_state['gioc_info'].items(),
-                        key=lambda x: x[1]['Potenziale'],
+                        giocatori_con_dati,
+                        key=lambda x: x['potenziale'],
                         reverse=True
                     )
                     
@@ -1665,13 +1687,15 @@ def main():
                     num_gironi = st.session_state.get('num_gironi', 1)
                     gironi = {f'Girone {i+1}': [] for i in range(num_gironi)}
                     
-                    # Distribuisci i giocatori nei gironi in modo bilanciato
-                    for i, (giocatore, _) in enumerate(giocatori_ordinati):
+                    # Distribuisci le coppie squadra-giocatore nei gironi in modo bilanciato
+                    for i, giocatore in enumerate(giocatori_ordinati):
                         girone_idx = i % num_gironi
                         girone_nome = f'Girone {girone_idx + 1}'
-                        gironi[girone_nome].append(giocatore)
+                        gironi[girone_nome].append(giocatore['coppia'])
                     
+                    # Salva sia le coppie che i dati completi per riferimento
                     st.session_state['gironi_auto_generati'] = gironi
+                    st.session_state['dettagli_giocatori'] = {g['coppia']: g for g in giocatori_con_dati}
                 
                 # Mostra anteprima gironi automatici
                 st.markdown("### 📊 Anteprima Gironi Automatici")
@@ -1681,12 +1705,16 @@ def main():
                 num_colonne = min(3, st.session_state.get('num_gironi', 1))
                 colonne = st.columns(num_colonne)
                 
-                for idx, (girone, giocatori) in enumerate(st.session_state['gironi_auto_generati'].items()):
+                for idx, (girone, coppie) in enumerate(st.session_state['gironi_auto_generati'].items()):
                     with colonne[idx % num_colonne]:
-                        with st.expander(f"{girone} (Pot. medio: {sum(st.session_state['gioc_info'][g]['Potenziale'] for g in giocatori)/len(giocatori):.1f}⭐)", expanded=True):
-                            for gioc in giocatori:
-                                pot = st.session_state['gioc_info'][gioc]['Potenziale']
-                                st.markdown(f"- {gioc} ({st.session_state['gioc_info'][gioc]['Squadra']}) - {pot}⭐")
+                        # Calcola il potenziale medio del girone
+                        potenziali = [st.session_state['dettagli_giocatori'][coppia]['potenziale'] for coppia in coppie]
+                        pot_medio = sum(potenziali) / len(potenziali) if potenziali else 0
+                        
+                        with st.expander(f"{girone} (Pot. medio: {pot_medio:.1f}⭐)", expanded=True):
+                            for coppia in coppie:
+                                dettagli = st.session_state['dettagli_giocatori'][coppia]
+                                st.markdown(f"- {coppia} - {dettagli['potenziale']}⭐")
                 
                 st.markdown("---")
                 modalita_gironi = st.radio(
@@ -1698,52 +1726,90 @@ def main():
                 if modalita_gironi == "Popola Gironi Manualmente":
                     st.warning("⚠️ Se hai modificato il numero di giocatori, assicurati che i gironi manuali siano coerenti prima di generare il calendario.")
                     gironi_manuali = {}
-                    giocatori_disponibili = st.session_state['giocatori_selezionati_definitivi']
-
+                    
+                    # Prepara l'elenco delle coppie squadra-giocatore disponibili
+                    giocatori_con_dati = []
+                    for giocatore, info in st.session_state['gioc_info'].items():
+                        coppia = f"{info['Squadra']} - {giocatore}"
+                        giocatori_con_dati.append(coppia)
+                    
+                    # Inizializza i gironi manuali se non esistono
                     for i in range(st.session_state['num_gironi']):
-                        st.markdown(f"**📦 Girone {i+1}**")
-                        giocatori_assegnati_in_questo_girone = st.session_state.get(f"manual_girone_{i+1}", [])
-                        giocatori_disponibili_per_selezione = [g for g in giocatori_disponibili if g not in sum(gironi_manuali.values(), [])] + giocatori_assegnati_in_questo_girone
+                        girone_key = f'Girone {i+1}'
+                        st.markdown(f"**📦 {girone_key}**")
+                        
+                        # Recupera i giocatori già assegnati a questo girone
+                        giocatori_assegnati = st.session_state.get(f"manual_girone_{i+1}", [])
+                        
+                        # Filtra i giocatori già assegnati ad altri gironi
+                        giocatori_disponibili = [g for g in giocatori_con_dati 
+                                              if g not in sum(gironi_manuali.values(), []) 
+                                              or g in giocatori_assegnati]
+                        
+                        # Seleziona i giocatori per questo girone
                         giocatori_selezionati = st.multiselect(
-                            f"Seleziona giocatori per Girone {i+1}",
-                            options=sorted(list(set(giocatori_disponibili_per_selezione))),
-                            default=giocatori_assegnati_in_questo_girone,
-                            key=f"manual_girone_{i+1}"
+                            f"Seleziona i giocatori per {girone_key}",
+                            options=giocatori_disponibili,
+                            default=giocatori_assegnati,
+                            key=f"manual_girone_select_{i}",
+                            format_func=lambda x: x
                         )
-                        gironi_manuali[f"Girone {i+1}"] = giocatori_selezionati
+                        
+                        # Aggiorna lo stato con i giocatori selezionati
+                        st.session_state[f'manual_girone_{i+1}'] = giocatori_selezionati
+                        gironi_manuali[girone_key] = giocatori_selezionati
 
-                    if st.button("✅ Valida e Assegna Gironi Manuali", use_container_width=True):
-                        tutti_i_giocatori_assegnati = sum(gironi_manuali.values(), [])
-                        if sorted(tutti_i_giocatori_assegnati) == sorted(st.session_state['giocatori_selezionati_definitivi']):
+                    if st.button("✅ Conferma Gironi Manuali", use_container_width=True):
+                        # Verifica che tutti i giocatori siano stati assegnati
+                        giocatori_assegnati = [g for girone in gironi_manuali.values() for g in girone]
+                        
+                        # Verifica duplicati
+                        if len(giocatori_assegnati) != len(set(giocatori_assegnati)):
+                            st.error("⚠️ Alcuni giocatori sono stati assegnati più volte!")
+                        # Verifica che il numero di giocatori corrisponda
+                        elif len(giocatori_assegnati) != len(st.session_state['giocatori_selezionati_definitivi']):
+                            st.error(f"⚠️ Devi assegnare tutti i {len(st.session_state['giocatori_selezionati_definitivi'])} giocatori!")
+                        # Verifica che i gironi non siano vuoti
+                        elif any(len(girone) == 0 for girone in gironi_manuali.values()):
+                            st.error("⚠️ Tutti i gironi devono contenere almeno un giocatore!")
+                        else:
+                            # Salva i gironi manuali
                             st.session_state['gironi_manuali'] = gironi_manuali
                             st.session_state['gironi_manuali_completi'] = True
-                            st.toast("✅ Gironi manuali assegnati")
+                            
+                            # Prepara i dettagli per la visualizzazione
+                            dettagli_giocatori = {}
+                            for giocatore, info in st.session_state['gioc_info'].items():
+                                coppia = f"{info['Squadra']} - {giocatore}"
+                                dettagli_giocatori[coppia] = {
+                                    'nome': giocatore,
+                                    'squadra': info['Squadra'],
+                                    'potenziale': info['Potenziale'],
+                                    'coppia': coppia
+                                }
+                            st.session_state['dettagli_giocatori'] = dettagli_giocatori
+                            
+                            st.toast("✅ Gironi manuali confermati")
                             st.rerun()
-                        else:
-                            st.error("❌ Assicurati di assegnare tutti i giocatori e che ogni giocatore sia in un solo girone.")
 
                 if st.button("🏁 Genera Calendario", use_container_width=True):
                     if modalita_gironi == "Popola Gironi Manualmente" and not st.session_state.get('gironi_manuali_completi', False):
-                        st.error("❌ Per generare il calendario manualmente, clicca prima su 'Valida e Assegna Gironi Manuali'.")
+                        st.error("❌ Per generare il calendario manualmente, clicca prima su 'Conferma Gironi Manuali'.")
                         return
 
-                    giocatori_formattati = []
-                    for gioc in st.session_state['giocatori_selezionati_definitivi']:
-                        info_giocatore = st.session_state['gioc_info'].get(gioc)
-                        if info_giocatore and 'Squadra' in info_giocatore and info_giocatore['Squadra'] is not None:
-                            giocatori_formattati.append(f"{info_giocatore['Squadra']}-{gioc}")
-                        else:
-                            st.warning(f"⚠️ Informazioni squadra mancanti o nulle per il giocatore: {gioc}. Non verrà inserito nel calendario.")
-
-                    #st.write(":blue[Segnale 1: Inizio generazione calendario]")
-
+                    # Prepara i gironi finali in base alla modalità selezionata
                     if modalita_gironi == "Popola Gironi Automaticamente":
-                        gironi_finali = [[] for _ in range(st.session_state['num_gironi'])]
-                        random.shuffle(giocatori_formattati)
-                        for i, g in enumerate(giocatori_formattati):
-                            gironi_finali[i % st.session_state['num_gironi']].append(g)
+                        gironi_finali = [list(girone) for girone in st.session_state['gironi_auto_generati'].values()]
+                        giocatori_formattati = [gioc for girone in gironi_finali for gioc in girone]
                     else:
-                        gironi_finali = list(st.session_state['gironi_manuali'].values())
+                        gironi_finali = [list(girone) for girone in st.session_state['gironi_manuali'].values()]
+                        giocatori_formattati = [gioc for girone in gironi_finali for gioc in girone]
+                        
+                        # Verifica che tutte le coppie abbiano il formato corretto
+                        for coppia in giocatori_formattati:
+                            if ' - ' not in coppia:
+                                st.error(f"⚠️ Formato non valido per la coppia: {coppia}")
+                                return
 
                     #st.write(":blue[Segnale 2: Gironi finali creati, sto per generare il calendario]")
 
