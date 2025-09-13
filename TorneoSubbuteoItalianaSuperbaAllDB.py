@@ -608,7 +608,14 @@ def inject_css():
         <style>
         /* --- STILI ESISTENTI (bottoni, pill, ecc.) --- */
         ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
-        .big-title { text-align: center; font-size: clamp(22px, 4vw, 42px); font-weight: 800; margin: 15px 0 10px; color: #e63946; text-shadow: 0 1px 2px #0002; }
+        .big-title { 
+            text-align: center; 
+            font-size: calc(22px + (42 - 22) * ((100vw - 300px) / (1600 - 300)));
+            font-weight: 800; 
+            margin: 15px 0 10px; 
+            color: #e63946; 
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); 
+        }
         .sub-title { font-size: 20px; font-weight: 700; margin-top: 10px; color: #1d3557; }
         .stButton>button { background: linear-gradient(90deg, #457b9d, #1d3557); color: white; border-radius: 10px; padding: 0.55em 1.0em; font-weight: 700; border: 0; }
         .stButton>button:hover { transform: translateY(-1px); box-shadow: 0 4px 14px #00000022; }
@@ -702,17 +709,19 @@ def inject_css():
         div[data-testid="stDataFrame"] th:first-child div {
             display: none !important;
         }
-        #</style>
-        #st.markdown("""
-#""", unsafe_allow_html=True)
-
-        
         </style>
     """, unsafe_allow_html=True)
     st.markdown("""
         <style>
         ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
-        .big-title { text-align: center; font-size: clamp(22px, 4vw, 42px); font-weight: 800; margin: 15px 0 10px; color: #e63946; text-shadow: 0 1px 2px #0002; }
+        .big-title { 
+            text-align: center; 
+            font-size: calc(22px + (42 - 22) * ((100vw - 300px) / (1600 - 300)));
+            font-weight: 800; 
+            margin: 15px 0 10px; 
+            color: #e63946; 
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); 
+        }
         .sub-title { font-size: 20px; font-weight: 700; margin-top: 10px; color: #1d3557; }
         .stButton>button { background: linear-gradient(90deg, #457b9d, #1d3557); color: white; border-radius: 10px; padding: 0.55em 1.0em; font-weight: 700; border: 0; }
         .stButton>button:hover { transform: translateY(-1px); box-shadow: 0 4px 14px #00000022; }
