@@ -16,12 +16,18 @@ import time
 import requests
 import warnings
 
+# Import auth utilities
+from auth_utils import show_auth_screen, verify_write_access
+
 # Silenzia solo il warning di deprecazione relativo a st.experimental_get_query_params
 warnings.filterwarnings(
     "ignore",
     message=".*st.experimental_get_query_params.*",
     category=DeprecationWarning
 )
+
+# Mostra la schermata di autenticazione all'avvio
+show_auth_screen()
 
 # ==============================================================================
 # ✨ Configurazione e stile di pagina (con nuove emoji e colori)
