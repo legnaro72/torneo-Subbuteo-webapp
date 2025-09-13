@@ -1584,9 +1584,14 @@ def main():
             if st.session_state.get('mostra_assegnazione_squadre', False):
                 st.markdown("---")
                 st.markdown("### ⚽ Modifica Squadra e Potenziale")
+                st.markdown("Assegna una squadra e un valore di potenziale a ciascun giocatore.")
+                
+                # Inizializza gioc_info se non esiste
+                if 'gioc_info' not in st.session_state:
+                    st.session_state['gioc_info'] = {}
+                
+                # Mostra i controlli per ogni giocatore
                 for gioc in st.session_state['giocatori_selezionati_definitivi']:
-                    if 'gioc_info' not in st.session_state:
-                        st.session_state['gioc_info'] = {}
                     if gioc not in st.session_state['gioc_info']:
                         if not df_master.empty and gioc in df_master['Giocatore'].values:
                             row = df_master[df_master['Giocatore'] == gioc].iloc[0]
@@ -1606,20 +1611,89 @@ def main():
                     st.session_state['gioc_info'][gioc]["Potenziale"] = potenziale_nuovo
 
                 if st.button("✅ Conferma Squadre e Potenziali", use_container_width=True):
-                    # Nuovo codice da aggiungere dopo la conferma di squadre e potenziali
+                    # Salva i dati delle squadre
                     squadre_dati = [
                         {"Giocatore": giocatore, "Squadra": info["Squadra"], "Potenziale": info["Potenziale"]}
                         for giocatore, info in st.session_state['gioc_info'].items()
                     ]
                     st.session_state['df_squadre'] = pd.DataFrame(squadre_dati)
+                    
+                    # Nascondi il form corrente e mostra il successivo
+                    st.session_state['mostra_assegnazione_squadre'] = False
                     st.session_state['mostra_gironi'] = True
+                    st.session_state['gironi_manuali_completi'] = False
+                    
+                    # Genera automaticamente i gironi bilanciati
+                    giocatori_ordinati = sorted(
+                        st.session_state['gioc_info'].items(),
+                        key=lambda x: x[1]['Potenziale'],
+                        reverse=True
+                    )
+                    
+                    num_gironi = st.session_state.get('num_gironi', 1)
+                    gironi = {f'Girone {i+1}': [] for i in range(num_gironi)}
+                    
+                    # Distribuisci i giocatori nei gironi in modo bilanciato
+                    for i, (giocatore, _) in enumerate(giocatori_ordinati):
+                        girone_idx = i % num_gironi
+                        girone_nome = f'Girone {girone_idx + 1}'
+                        gironi[girone_nome].append(giocatore)
+                    
+                    st.session_state['gironi_auto_generati'] = gironi
+                    
+                    # Inizializza i gironi manuali con la proposta automatica
+                    for i, (girone, giocatori) in enumerate(gironi.items(), 1):
+                        st.session_state[f'manual_girone_{i}'] = giocatori
+                    
                     st.toast("✅ Squadre e potenziali confermati")
                     st.rerun()
 
             if st.session_state.get('mostra_gironi', False):
                 st.markdown("---")
                 st.markdown("### 🧩 Modalità di creazione dei gironi")
-                modalita_gironi = st.radio("Scegli come popolare i gironi", ["Popola Gironi Automaticamente", "Popola Gironi Manualmente"], key="modo_gironi_radio")
+                
+                # Genera automaticamente i gironi bilanciati per potenziale
+                if 'gironi_auto_generati' not in st.session_state:
+                    # Ordina i giocatori per potenziale (dal più alto al più basso)
+                    giocatori_ordinati = sorted(
+                        st.session_state['gioc_info'].items(),
+                        key=lambda x: x[1]['Potenziale'],
+                        reverse=True
+                    )
+                    
+                    # Crea i gironi bilanciati
+                    num_gironi = st.session_state.get('num_gironi', 1)
+                    gironi = {f'Girone {i+1}': [] for i in range(num_gironi)}
+                    
+                    # Distribuisci i giocatori nei gironi in modo bilanciato
+                    for i, (giocatore, _) in enumerate(giocatori_ordinati):
+                        girone_idx = i % num_gironi
+                        girone_nome = f'Girone {girone_idx + 1}'
+                        gironi[girone_nome].append(giocatore)
+                    
+                    st.session_state['gironi_auto_generati'] = gironi
+                
+                # Mostra anteprima gironi automatici
+                st.markdown("### 📊 Anteprima Gironi Automatici")
+                st.markdown("Ecco come verrebbero suddivisi i giocatori nei gironi con la modalità automatica:")
+                
+                # Crea una tabella HTML per visualizzare i gironi in modo ordinato
+                num_colonne = min(3, st.session_state.get('num_gironi', 1))
+                colonne = st.columns(num_colonne)
+                
+                for idx, (girone, giocatori) in enumerate(st.session_state['gironi_auto_generati'].items()):
+                    with colonne[idx % num_colonne]:
+                        with st.expander(f"{girone} (Pot. medio: {sum(st.session_state['gioc_info'][g]['Potenziale'] for g in giocatori)/len(giocatori):.1f}⭐)", expanded=True):
+                            for gioc in giocatori:
+                                pot = st.session_state['gioc_info'][gioc]['Potenziale']
+                                st.markdown(f"- {gioc} ({st.session_state['gioc_info'][gioc]['Squadra']}) - {pot}⭐")
+                
+                st.markdown("---")
+                modalita_gironi = st.radio(
+                    "Scegli come popolare i gironi", 
+                    ["Popola Gironi Automaticamente", "Popola Gironi Manualmente"], 
+                    key="modo_gironi_radio"
+                )
 
                 if modalita_gironi == "Popola Gironi Manualmente":
                     st.warning("⚠️ Se hai modificato il numero di giocatori, assicurati che i gironi manuali siano coerenti prima di generare il calendario.")
@@ -1661,7 +1735,7 @@ def main():
                         else:
                             st.warning(f"⚠️ Informazioni squadra mancanti o nulle per il giocatore: {gioc}. Non verrà inserito nel calendario.")
 
-                    st.write(":blue[Segnale 1: Inizio generazione calendario]")
+                    #st.write(":blue[Segnale 1: Inizio generazione calendario]")
 
                     if modalita_gironi == "Popola Gironi Automaticamente":
                         gironi_finali = [[] for _ in range(st.session_state['num_gironi'])]
@@ -1671,7 +1745,7 @@ def main():
                     else:
                         gironi_finali = list(st.session_state['gironi_manuali'].values())
 
-                    st.write(":blue[Segnale 2: Gironi finali creati, sto per generare il calendario]")
+                    #st.write(":blue[Segnale 2: Gironi finali creati, sto per generare il calendario]")
 
                     for girone in gironi_finali:
                         if len(girone) < 2:
@@ -1686,7 +1760,7 @@ def main():
                         df_torneo['Casa'] = df_torneo['Casa'].astype('string')
                         df_torneo['Ospite'] = df_torneo['Ospite'].astype('string')
 
-                        st.write(":blue[Segnale 3: Calendario generato, sto per salvare su MongoDB]")
+                        #st.write(":blue[Segnale 3: Calendario generato, sto per salvare su MongoDB]")
 
                         st.session_state['debug_message'] = {
                             'tid_valore': "Non ancora salvato.",
