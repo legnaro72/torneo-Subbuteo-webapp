@@ -1694,9 +1694,9 @@ def main():
                         <script>
                             window.location.href = "{redirect_url}";
                         </script>
-                        <p style="text-align:center; font-size:1.1rem;">
+                        <p style="text-align:center; font-size:1.2rem;">
                             ⏳ Reindirizzamento in corso...<br>
-                            Se non parte entro pochi secondi <a href="{redirect_url}">clicca qui</a>.
+                            Se non parte entro pochi secondi <a href="{redirect_url}" style="font-size:1.5em; font-weight:bold;">clicca qui 👈</a>
                         </p>
                         """,
                         unsafe_allow_html=True
