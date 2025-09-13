@@ -194,9 +194,9 @@ def redirect_to_final_phase(torneo_nome):
         <script>
             window.location.href = "{redirect_url}";
         </script>
-        <p style="text-align:center; font-size:1.1rem;">
+        <p style="text-align:center; font-size:1.2rem;">
             ⏳ Reindirizzamento in corso...<br>
-            Se non parte entro pochi secondi <a href="{redirect_url}">clicca qui</a>.
+            Se non parte entro pochi secondi <a href="{redirect_url}" style="font-size:1.5em; font-weight:bold;">clicca qui 👈</a>
         </p>
         """,
         unsafe_allow_html=True
@@ -702,6 +702,11 @@ def inject_css():
         div[data-testid="stDataFrame"] th:first-child div {
             display: none !important;
         }
+        #</style>
+        st.markdown("""
+""", unsafe_allow_html=True)
+
+        
         </style>
     """, unsafe_allow_html=True)
     st.markdown("""
