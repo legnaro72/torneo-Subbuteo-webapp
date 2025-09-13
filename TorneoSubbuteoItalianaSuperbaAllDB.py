@@ -1,27 +1,111 @@
 import streamlit as st
 import pandas as pd
-import random
-from fpdf import FPDF
-from datetime import datetime
-from pymongo import MongoClient
-from pymongo.server_api import ServerApi
-from bson.objectid import ObjectId
+import numpy as np
 import json
-import urllib.parse
-import requests
-import base64
+import os
 import time
-import re
+import datetime
+import pytz
+from datetime import datetime, timedelta
+import pymongo
+from pymongo import MongoClient
+import certifi
+import random
+import string
+import hashlib
+import hmac
+import base64
+import urllib.parse
+import urllib3
+import requests
+import io
+from PIL import Image
+import base64
+from io import BytesIO
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+import matplotlib.patches as patches
+from matplotlib.colors import LinearSegmentedColormap
+import matplotlib as mpl
+import seaborn as sns
+from bson import ObjectId
+from streamlit_modal import Modal
+import streamlit.components.v1 as components
+import plotly.express as px
+import plotly.graph_objects as go
+from streamlit_extras.switch_page_button import switch_page
+import pytz
+from streamlit_modal import Modal
+import streamlit_authenticator as stauth
+import seaborn as sns
 
-# -------------------------------------------------
-# CONFIG PAGINA (deve essere la prima chiamata st.*)
-# -------------------------------------------------
+# Configurazione della pagina
 st.set_page_config(
-    page_title="🇮🇹⚽ Torneo Subbuteo – Gestione Gironi",
-    page_icon="🏆🇮🇹",
+    page_title="Torneo Subbuteo",
+    page_icon="⚽",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Password per l'accesso in scrittura
+PASSWORD_CORRETTA = "Sup3rb4"
+
+# Inizializza lo stato della sessione per l'autenticazione
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+    st.session_state.read_only = True
+
+def verifica_password(password):
+    """Verifica se la password è corretta"""
+    return password == PASSWORD_CORRETTA
+
+def mostra_schermata_autenticazione():
+    """Mostra la schermata di autenticazione"""
+    st.title("🔐 Accesso Torneo Subbuteo")
+    
+    # Opzioni di accesso
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("🔓 Accesso in sola lettura", use_container_width=True, type="primary"):
+            st.session_state.authenticated = True
+            st.session_state.read_only = True
+            st.rerun()
+            
+    with col2:
+        if st.button("✏️ Accesso in scrittura", use_container_width=True, type="secondary"):
+            st.session_state.show_password_field = True
+            
+        if st.session_state.get('show_password_field', False):
+            with st.form("login_form"):
+                password = st.text_input("Inserisci la password", type="password")
+                if st.form_submit_button("Accedi"):
+                    if verifica_password(password):
+                        st.session_state.authenticated = True
+                        st.session_state.read_only = False
+                        st.session_state.show_password_field = False
+                        st.success("Accesso in scrittura consentito!")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error("Password non valida. Riprova o accedi in sola lettura.")
+    
+    st.markdown("---")
+    st.info("💡 Seleziona 'Accesso in sola lettura' per visualizzare i tornei o 'Accesso in scrittura' per effettuare modifiche.")
+    
+    st.stop()  # Ferma l'esecuzione del resto dell'app finché non si è autenticati
+
+# Mostra la schermata di autenticazione se non si è già autenticati
+if not st.session_state.get('authenticated', False):
+    mostra_schermata_autenticazione()
+
+# Funzione per mostrare un messaggio di errore se si tenta di modificare in modalità sola lettura
+def verifica_permessi_scrittura():
+    if st.session_state.get('read_only', True):
+        st.error("⛔ Accesso negato. Per modificare i dati è necessario accedere in modalità scrittura.")
+        return False
+    return True
 
 # -------------------------
 # GESTIONE DELLO STATO E FUNZIONI INIZIALI
@@ -936,7 +1020,11 @@ def main():
         
         # ✅ 2. ⚙ Opzioni Torneo
         st.sidebar.subheader("⚙️ Opzioni Torneo")
-        if st.sidebar.button("💾 Salva Torneo", key="save_tournament", use_container_width=True):
+        if st.sidebar.button("Crea Nuovo Torneo", disabled=st.session_state.get('read_only', True)):
+            if not verifica_permessi_scrittura():
+                st.sidebar.error("⛔ Accesso in sola lettura. Non puoi creare nuovi tornei.")
+                st.stop()
+        if st.sidebar.button("💾 Salva Torneo", key="save_tournament", use_container_width=True, disabled=st.session_state.get('read_only', True)):
             if st.session_state.get('tournament_id'):
                 ok = aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
                 if ok:
@@ -1558,7 +1646,9 @@ def main():
                 if nome_ospite:
                     giocatori_supplementari.append(nome_ospite.strip())
 
-            if st.button("✅ Conferma Giocatori", use_container_width=True):
+            if st.button("✅ Conferma Giocatori", use_container_width=True, disabled=st.session_state.get('read_only', True)):
+                if not verifica_permessi_scrittura():
+                    return
                 giocatori_scelti = amici_selezionati + [g for g in giocatori_supplementari if g]
                 if len(set(giocatori_scelti)) < 3:
                     st.warning("⚠️ Inserisci almeno 3 giocatori diversi.")
@@ -1610,7 +1700,9 @@ def main():
                     st.session_state['gioc_info'][gioc]["Squadra"] = squadra_nuova
                     st.session_state['gioc_info'][gioc]["Potenziale"] = potenziale_nuovo
 
-                if st.button("✅ Conferma Squadre e Potenziali", use_container_width=True):
+                if st.button("✅ Conferma Squadre e Potenziali", use_container_width=True, disabled=st.session_state.get('read_only', True)):
+                    if not verifica_permessi_scrittura():
+                        return
                     # Salva i dati delle squadre
                     squadre_dati = [
                         {"Giocatore": giocatore, "Squadra": info["Squadra"], "Potenziale": info["Potenziale"]}
@@ -1759,7 +1851,9 @@ def main():
                         st.session_state[f'manual_girone_{i+1}'] = giocatori_selezionati
                         gironi_manuali[girone_key] = giocatori_selezionati
 
-                    if st.button("✅ Conferma Gironi Manuali", use_container_width=True):
+                    if st.button("✅ Conferma Gironi Manuali", use_container_width=True, disabled=st.session_state.get('read_only', True)):
+                        if not verifica_permessi_scrittura():
+                            return
                         # Verifica che tutti i giocatori siano stati assegnati
                         giocatori_assegnati = [g for girone in gironi_manuali.values() for g in girone]
                         
@@ -1792,7 +1886,9 @@ def main():
                             st.toast("✅ Gironi manuali confermati")
                             st.rerun()
 
-                if st.button("🏁 Genera Calendario", use_container_width=True):
+                if st.button("🏁 Genera Calendario", use_container_width=True, disabled=st.session_state.get('read_only', True)):
+                    if not verifica_permessi_scrittura():
+                        return
                     if modalita_gironi == "Popola Gironi Manualmente" and not st.session_state.get('gironi_manuali_completi', False):
                         st.error("❌ Per generare il calendario manualmente, clicca prima su 'Conferma Gironi Manuali'.")
                         return
