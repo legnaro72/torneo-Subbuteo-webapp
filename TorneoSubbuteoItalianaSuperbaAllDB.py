@@ -1,3 +1,4 @@
+from tkinter import N
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -111,20 +112,46 @@ def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
 def autoplay_audio(audio_data: bytes):
     b64 = base64.b64encode(audio_data).decode("utf-8")
     md = f"""
-        <audio autoplay="true" controls style="display:none">
+    <audio id="torneoAudio" preload="auto">
         <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
         Il tuo browser non supporta l'elemento audio.
-        </audio>
-        <script>
-        document.addEventListener('DOMContentLoaded', function() {{
-            var audio = document.querySelector('audio');
-            if(audio) {{
-                audio.play().catch(e => console.log('Errore riproduzione audio:', e));
+    </audio>
+    <script>
+    function playAudio() {{
+        const audio = document.getElementById('torneoAudio');
+        if (audio) {{
+            // Forza il caricamento dell'audio
+            audio.load();
+            
+            // Prova a riprodurre l'audio
+            const playPromise = audio.play();
+            
+            // Gestisci il caso in cui il browser blocchi la riproduzione automatica
+            if (playPromise !== undefined) {{
+                playPromise.catch(error => {{
+                    console.log('Errore riproduzione audio:', error);
+                    // Mostra un pulsante per attivare la riproduzione manuale
+                    const div = document.createElement('div');
+                    div.innerHTML = 
+                        '<button style="background-color: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;" ' +
+                        'onclick="document.getElementById(\\'torneoAudio\\').play().catch(e => console.log(e))">' +
+                        '🎵 Riproduci audio</button>';
+                    document.body.appendChild(div);
+                }});
             }}
-        }});
-        </script>
-        """
-    components.html(md, height=0)
+        }}
+    }}
+    
+    // Prova a riprodurre quando la pagina è pronta
+    if (document.readyState === 'complete') {{
+        playAudio();
+    }} else {{
+        window.addEventListener('load', playAudio);
+        document.addEventListener('DOMContentLoaded', playAudio);
+    }}
+    </script>
+    """
+    st.components.v1.html(md, height=0)
 
 def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
     col1, col2, col3 = st.columns([1, 3, 1])
@@ -1902,36 +1929,41 @@ def main():
             </div>
             """, unsafe_allow_html=True)
         
+        # Calcola il numero di gironi in base alla classifica finale
+        num_gironi = len(df_classifica['Girone'].unique()) if 'Girone' in df_classifica.columns else 0
+        st.write("Numero di gironi rilevati:", num_gironi)
         
-        # Aggiungi questo controllo per lanciare i palloncini musica solo se il torneo ha un solo girone
-        if st.session_state.get('num_gironi') == 1:
-            st.balloons()
-            # we are the champions
-            # Codice corretto per scaricare l'audio dall'URL
-            #audio_url = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3"
-            audio_url = "./wearethechamp.mp3"
+        # Esegui l'animazione e la musica solo se c'è almeno un girone
+        if num_gironi > 0:
             try:
-                response = requests.get(audio_url, timeout=10) # Imposta un timeout
-                response.raise_for_status() # Lancia un'eccezione per risposte HTTP errate
-                autoplay_audio(response.content)
+                # Riproduci l'audio della vittoria
+                try:
+                    audio_url = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3"
+                    response = requests.get(audio_url, timeout=10)
+                    response.raise_for_status()
+                    autoplay_audio(response.content)
+                except Exception as e:
+                    st.warning(f"Impossibile caricare l'audio: {str(e)}")
+                    st.warning("La riproduzione dell'audio non è disponibile")
+                
+                # Crea un contenitore vuoto per i messaggi
+                placeholder = st.empty()
+                
+                # Lancia i palloncini in un ciclo per 3 secondi
+                with placeholder.container():
+                    st.balloons()
+                    time.sleep(1)
+                
+                with placeholder.container():
+                    st.balloons()
+                    time.sleep(1)
+                
+                with placeholder.container():
+                    st.balloons()
+                    time.sleep(1)
+                    
             except requests.exceptions.RequestException as e:
-                st.error(f"Errore durante lo scaricamento dell'audio: {e}")
-    
-            # Crea un contenitore vuoto per i messaggi
-            placeholder = st.empty()
-    
-            # Lancia i palloncini in un ciclo per 3 secondi
-            with placeholder.container():
-                st.balloons()
-                time.sleep(1) # Aspetta 1 secondo
-            
-            with placeholder.container():
-                st.balloons
-                time.sleep(1) # Aspetta 1 secondo
-            
-            with placeholder.container():
-                st.balloons()
-                time.sleep(1) # Aspetta 1 secondo
+                st.error(f"Errore durante il caricamento dell'audio: {e}")
 
         
         # Nuovo blocco di codice per il reindirizzamento
