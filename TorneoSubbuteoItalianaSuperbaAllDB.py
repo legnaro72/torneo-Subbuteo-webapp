@@ -37,8 +37,10 @@ import plotly.graph_objects as go
 from streamlit_extras.switch_page_button import switch_page
 import pytz
 from streamlit_modal import Modal
-import streamlit_authenticator as stauth
 import seaborn as sns
+
+# Importa il modulo di autenticazione centralizzato
+import auth_utils as auth
 
 # Configurazione della pagina
 st.set_page_config(
@@ -47,65 +49,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
-# Password per l'accesso in scrittura
-PASSWORD_CORRETTA = "Sup3rb4"
-
-# Inizializza lo stato della sessione per l'autenticazione
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
-    st.session_state.read_only = True
-
-def verifica_password(password):
-    """Verifica se la password è corretta"""
-    return password == PASSWORD_CORRETTA
-
-def mostra_schermata_autenticazione():
-    """Mostra la schermata di autenticazione"""
-    st.title("🔐 Accesso Torneo Subbuteo")
-    
-    # Opzioni di accesso
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if st.button("🔓 Accesso in sola lettura", use_container_width=True, type="primary"):
-            st.session_state.authenticated = True
-            st.session_state.read_only = True
-            st.rerun()
-            
-    with col2:
-        if st.button("✏️ Accesso in scrittura", use_container_width=True, type="secondary"):
-            st.session_state.show_password_field = True
-            
-        if st.session_state.get('show_password_field', False):
-            with st.form("login_form"):
-                password = st.text_input("Inserisci la password", type="password")
-                if st.form_submit_button("Accedi"):
-                    if verifica_password(password):
-                        st.session_state.authenticated = True
-                        st.session_state.read_only = False
-                        st.session_state.show_password_field = False
-                        st.success("Accesso in scrittura consentito!")
-                        time.sleep(1)
-                        st.rerun()
-                    else:
-                        st.error("Password non valida. Riprova o accedi in sola lettura.")
-    
-    st.markdown("---")
-    st.info("💡 Seleziona 'Accesso in sola lettura' per visualizzare i tornei o 'Accesso in scrittura' per effettuare modifiche.")
-    
-    st.stop()  # Ferma l'esecuzione del resto dell'app finché non si è autenticati
-
-# Mostra la schermata di autenticazione se non si è già autenticati
-if not st.session_state.get('authenticated', False):
-    mostra_schermata_autenticazione()
-
-# Funzione per mostrare un messaggio di errore se si tenta di modificare in modalità sola lettura
-def verifica_permessi_scrittura():
-    if st.session_state.get('read_only', True):
-        st.error("⛔ Accesso negato. Per modificare i dati è necessario accedere in modalità scrittura.")
-        return False
-    return True
 
 # -------------------------
 # GESTIONE DELLO STATO E FUNZIONI INIZIALI
@@ -715,8 +658,12 @@ def inject_css():
 
         /* --- Sidebar subheaders --- */
         /* FORZA IL COLORE BLU DI STREAMLIT INDIPENDENTEMENTE DAL TEMA */
-        [data-testid="stSidebar"] h3 {
-            color: #0078D4 !important;
+        [data-testid="stSidebar"] h3,
+        [data-testid="stSidebar"] .st-emotion-cache-1oe5cao,
+        [data-testid="stSidebar"] .st-emotion-cache-1oe5cao h3,
+        [data-testid="stSidebar"] .st-emotion-cache-1oe5cao .st-emotion-cache-1oe5cao {
+            color: #1E88E5 !important;
+            font-weight: 600 !important;
         }
         
         /* Stile per i pulsanti di collegamento nella sidebar */
@@ -851,69 +798,25 @@ def inject_css():
             background: none !important;
         }
 
-        /* Selettori ancora più specifici per forzare il bianco sui subheader */
-        html[data-theme="dark"] [data-testid="stSidebar"] h3,
-        html[data-theme="dark"] .css-1d391kg h3,
-        body[data-theme="dark"] [data-testid="stSidebar"] h3,
-        body[data-theme="dark"] .css-1d391kg h3 {
-            color: #ffffff !important;
-        }
-
-        /* Override per tutti i possibili selettori di subheader nella sidebar */
-        [data-testid="stSidebar"] h3[class*="css"],
-        .css-1d391kg h3[class*="css"] {
-            color: #ffffff !important;
-        }
-
-        /* CSS con massima specificità per tema scuro */
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] * h3,
-        .stApp[data-theme="dark"] .css-1d391kg * h3 {
-            color: #ffffff !important;
-        }
-
-        /* Approccio universale - forza bianco su TUTTI gli h3 della sidebar nel tema scuro */
-        @media (prefers-color-scheme: dark) {
-            [data-testid="stSidebar"] h3 {
-                color: white !important;
-            }
-        }
-
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] h3 {
-            color: white !important;
-        }
-
-        /* Selettore CSS universale per tutti gli elementi h3 nella sidebar */
+        /* Stili per i subheader nella sidebar - SEMPRE BLU */
         [data-testid="stSidebar"] h3,
         [data-testid="stSidebar"] .stMarkdown h3,
-        [data-testid="stSidebar"] div h3 {
-            color: white !important;
+        [data-testid="stSidebar"] div h3,
+        [data-testid="stSidebar"] .st-emotion-cache-1oe5cao,
+        [data-testid="stSidebar"] .st-emotion-cache-1oe5cao h3,
+        [data-testid="stSidebar"] .st-emotion-cache-1oe5cao .st-emotion-cache-1oe5cao,
+        [data-testid="stSidebar"] h3[class*="css"],
+        .css-1d391kg h3,
+        .stApp[data-testid="stSidebar"] h3,
+        .stApp[data-theme="dark"] [data-testid="stSidebar"] h3,
+        .stApp[data-theme="dark"] .css-1d391kg h3,
+        html[data-theme="dark"] [data-testid="stSidebar"] h3,
+        body[data-theme="dark"] [data-testid="stSidebar"] h3,
+        .stApp[data-theme="dark"] [data-testid="stSidebar"] * h3,
+        .stApp[data-theme="dark"] .css-1d391kg * h3 {
+            color: #1E88E5 !important;
+            font-weight: 600 !important;
         }
-
-        /* Forza il colore bianco usando JavaScript per i subheader */
-        </style>
-        <script>
-        // Funzione per forzare il colore bianco sui subheader della sidebar
-        function forceWhiteSubheaders() {
-            const sidebar = document.querySelector('[data-testid="stSidebar"]');
-            if (sidebar) {
-                const h3Elements = sidebar.querySelectorAll('h3');
-                h3Elements.forEach(h3 => {
-                    h3.style.color = 'white';
-                    h3.style.setProperty('color', 'white', 'important');
-                });
-            }
-        }
-
-        // Esegui la funzione quando la pagina è caricata
-        document.addEventListener('DOMContentLoaded', forceWhiteSubheaders);
-
-        // Esegui la funzione ogni volta che Streamlit aggiorna il DOM
-        const observer = new MutationObserver(forceWhiteSubheaders);
-        observer.observe(document.body, { childList: true, subtree: true });
-
-        // Esegui immediatamente
-        forceWhiteSubheaders();
-        </script>
         </style>
     """, unsafe_allow_html=True)
 
@@ -921,6 +824,11 @@ def inject_css():
 # APP
 # -------------------------
 def main():
+    # Mostra la schermata di autenticazione se non si è già autenticati
+    if not st.session_state.get('authenticated', False):
+        auth.show_auth_screen()
+        return
+        
     if st.session_state.get('sidebar_state_reset', False):
         reset_app_state()
         st.session_state['sidebar_state_reset'] = False
