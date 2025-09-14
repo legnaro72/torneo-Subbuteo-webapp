@@ -7,12 +7,23 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🎯 Hub Tornei Subbuteo")
-st.write("Benvenuto! Seleziona la modalità di torneo che vuoi gestire:")
-
-# --- CSS per cards ---
+# --- CSS personalizzato ---
 st.markdown('''
     <style>
+    /* Titolo con rettangolo blu gradiente */
+    .main-title {
+        background: linear-gradient(135deg, #1E90FF, #4682B4);
+        padding: 20px;
+        border-radius: 15px;
+        text-align: center;
+        font-size: 36px;
+        font-weight: bold;
+        color: white;
+        margin-bottom: 30px;
+        box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
+    }
+
+    /* Cards */
     .card {
         background-color: #262730;
         padding: 20px;
@@ -35,27 +46,53 @@ st.markdown('''
         margin-bottom: 20px;
         color: #ddd;
     }
+
+    /* Pulsanti blu con gradiente */
     .card-link {
         display: inline-block;
-        padding: 10px 18px;
+        padding: 12px 20px;
         font-size: 16px;
         font-weight: bold;
-        color: white;
-        background-color: #4CAF50;
+        color: #ffffff !important; /* testo bianco */
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.6);
+        background: linear-gradient(135deg, #1E90FF, #4682B4);
         border-radius: 10px;
         text-decoration: none;
+        transition: all 0.3s ease;
     }
     .card-link:hover {
-        background-color: #45a049;
+        background: linear-gradient(135deg, #4682B4, #1E90FF);
+        transform: scale(1.05);
     }
+
+    /* Pulsante rosso con gradiente e testo bianco */
     .card-link-red {
-        background-color: #f44336;
+        background: linear-gradient(135deg, #FF6347, #B22222);
+        color: #ffffff !important;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
     }
     .card-link-red:hover {
-        background-color: #d32f2f;
+        background: linear-gradient(135deg, #B22222, #FF6347);
+        transform: scale(1.05);
+    }
+
+    /* Box manuale utente con gradiente blu */
+    .manual-box {
+        background: linear-gradient(135deg, #1E90FF, #4682B4);
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
+        text-align: center;
+        color: white;
+        margin-bottom: 20px;
     }
     </style>
 ''', unsafe_allow_html=True)
+
+# --- Titolo in rettangolo blu gradiente ---
+st.markdown('<div class="main-title">🎯 Hub Tornei Subbuteo</div>', unsafe_allow_html=True)
+
+st.write("Benvenuto! Seleziona la modalità di torneo che vuoi gestire:")
 
 # --- Layout in due righe e due colonne per le 4 carte principali ---
 
@@ -86,7 +123,7 @@ with col2:
         </div>
     ''', unsafe_allow_html=True)
 
-st.markdown("<br><br>", unsafe_allow_html=True) # Aggiunta per distanziare le righe
+st.markdown("<br><br>", unsafe_allow_html=True)  # Spazio tra righe
 
 # Seconda riga di carte
 col3, col4 = st.columns(2)
@@ -110,7 +147,7 @@ with col4:
             <div class="card-desc">
                 Permette di inserire, modificare e cancellare i giocatori affiliati al club. Cancellare Tornei.
             </div>
-            <a class="card-link card-link-red" href=https://edit-piercrew-club-all-db.streamlit.app/" target="_blank">Apri App</a>
+            <a class="card-link card-link-red" href="https://edit-piercrew-club-all-db.streamlit.app/" target="_blank">Apri App</a>
         </div>
     ''', unsafe_allow_html=True)
 
@@ -119,9 +156,9 @@ st.markdown("---")
 # Container separato per il Manuale Utente
 with st.container():
     st.markdown('''
-        <div class="card" style="background-color:#0B5FFF;">
+        <div class="manual-box">
             <div class="card-title">📖 Manuale Utente</div>
-            <div class="card-desc">
+            <div class="card-desc" style="color:#f0f0f0;">
                 Consulta il manuale completo per usare al meglio tutte le funzionalità dell'Hub Tornei Subbuteo.
             </div>
         </div>
@@ -142,3 +179,7 @@ with st.container():
         )
     except Exception as e:
         st.warning("Errore nel caricamento del PDF. Controlla la connessione o l'URL.")
+
+# Footer leggero
+st.markdown("---")
+st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
