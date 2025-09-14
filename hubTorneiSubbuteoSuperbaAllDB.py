@@ -7,6 +7,13 @@ st.set_page_config(
     layout="wide"
 )
 
+# Mostra il logo e il titolo affiancati
+col1, col2 = st.columns([1, 5])
+with col1:
+    st.image("logo_superba.jpg", width=100)
+with col2:
+    st.markdown('<div class="main-title">🎯Hub Tornei Subbuteo</div>', unsafe_allow_html=True)
+
 # --- CSS personalizzato ---
 st.markdown('''
     <style>
@@ -21,6 +28,7 @@ st.markdown('''
         color: white;
         margin-bottom: 30px;
         box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
+        width: 100%;
     }
 
     /* Cards */
@@ -90,8 +98,8 @@ st.markdown('''
 ''', unsafe_allow_html=True)
 
 # --- Titolo in rettangolo blu gradiente ---
-st.markdown('<div class="main-title">🎯 Hub Tornei Subbuteo</div>', unsafe_allow_html=True)
-st.image('logo_superba.jpg')
+#st.markdown('<div class="main-title">🎯 Hub Tornei Subbuteo</div>', unsafe_allow_html=True)
+#st.image("logo_superba.jpg")
 
 st.write("Benvenuto! Seleziona la modalità di torneo che vuoi gestire:")
 
