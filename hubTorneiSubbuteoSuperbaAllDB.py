@@ -91,6 +91,7 @@ st.markdown('''
 
 # --- Titolo in rettangolo blu gradiente ---
 st.markdown('<div class="main-title">🎯 Hub Tornei Subbuteo</div>', unsafe_allow_html=True)
+st.image('logo_superba.jpg')
 
 st.write("Benvenuto! Seleziona la modalità di torneo che vuoi gestire:")
 
