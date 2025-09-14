@@ -41,6 +41,7 @@ import seaborn as sns
 
 # Importa il modulo di autenticazione centralizzato
 import auth_utils as auth
+from auth_utils import verify_write_access
 
 # Configurazione della pagina
 st.set_page_config(
@@ -110,11 +111,20 @@ def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
 def autoplay_audio(audio_data: bytes):
     b64 = base64.b64encode(audio_data).decode("utf-8")
     md = f"""
-        <audio autoplay="true">
+        <audio autoplay="true" controls style="display:none">
         <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+        Il tuo browser non supporta l'elemento audio.
         </audio>
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {{
+            var audio = document.querySelector('audio');
+            if(audio) {{
+                audio.play().catch(e => console.log('Errore riproduzione audio:', e));
+            }}
+        }});
+        </script>
         """
-    st.markdown(md, unsafe_allow_html=True)
+    components.html(md, height=0)
 
 def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
     col1, col2, col3 = st.columns([1, 3, 1])
@@ -929,7 +939,7 @@ def main():
         # ✅ 2. ⚙ Opzioni Torneo
         st.sidebar.subheader("⚙️ Opzioni Torneo")
         if st.sidebar.button("Crea Nuovo Torneo", disabled=st.session_state.get('read_only', True)):
-            if not verifica_permessi_scrittura():
+            if not verify_write_access():
                 st.sidebar.error("⛔ Accesso in sola lettura. Non puoi creare nuovi tornei.")
                 st.stop()
         if st.sidebar.button("💾 Salva Torneo", key="save_tournament", use_container_width=True, disabled=st.session_state.get('read_only', True)):
@@ -1446,7 +1456,7 @@ def main():
                 disabled=st.session_state.get('read_only', True),
                 help="Accesso in scrittura richiesto" if st.session_state.get('read_only', True) else "Salva i risultati della giornata"
             ):
-                if verifica_permessi_scrittura():
+                if verify_write_access():
                     salva_risultati_giornata(tournaments_collection, st.session_state['girone_sel'], st.session_state['giornata_sel'])
         # Fine Calendario 
 
@@ -1557,7 +1567,7 @@ def main():
                     giocatori_supplementari.append(nome_ospite.strip())
 
             if st.button("✅ Conferma Giocatori", use_container_width=True, disabled=st.session_state.get('read_only', True)):
-                if not verifica_permessi_scrittura():
+                if not verify_write_access():
                     return
                 giocatori_scelti = amici_selezionati + [g for g in giocatori_supplementari if g]
                 if len(set(giocatori_scelti)) < 3:
@@ -1611,7 +1621,7 @@ def main():
                     st.session_state['gioc_info'][gioc]["Potenziale"] = potenziale_nuovo
 
                 if st.button("✅ Conferma Squadre e Potenziali", use_container_width=True, disabled=st.session_state.get('read_only', True)):
-                    if not verifica_permessi_scrittura():
+                    if not verify_write_access():
                         return
                     # Salva i dati delle squadre
                     squadre_dati = [
@@ -1762,7 +1772,7 @@ def main():
                         gironi_manuali[girone_key] = giocatori_selezionati
 
                     if st.button("✅ Conferma Gironi Manuali", use_container_width=True, disabled=st.session_state.get('read_only', True)):
-                        if not verifica_permessi_scrittura():
+                        if not verify_write_access():
                             return
                         # Verifica che tutti i giocatori siano stati assegnati
                         giocatori_assegnati = [g for girone in gironi_manuali.values() for g in girone]
@@ -1797,7 +1807,7 @@ def main():
                             st.rerun()
 
                 if st.button("🏁 Genera Calendario", use_container_width=True, disabled=st.session_state.get('read_only', True)):
-                    if not verifica_permessi_scrittura():
+                    if not verify_write_access():
                         return
                     if modalita_gironi == "Popola Gironi Manualmente" and not st.session_state.get('gironi_manuali_completi', False):
                         st.error("❌ Per generare il calendario manualmente, clicca prima su 'Conferma Gironi Manuali'.")

@@ -56,6 +56,35 @@ def reset_app_state():
 # -------------------------
 st.markdown("""
 <style>
+    .stLinkButton {
+        width: 100% !important;
+        margin: 10px 0;
+    }
+    .stLinkButton a {
+        width: 100%;
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important;
+        color: white !important;
+        padding: 10px 20px !important;
+        border: none !important;
+        border-radius: 8px !important;
+        text-align: center !important;
+        text-decoration: none !important;
+        display: inline-block !important;
+        font-size: 16px !important;
+        margin: 4px 2px !important;
+        cursor: pointer !important;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+    .stLinkButton a:hover {
+        background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+</style>
+""", unsafe_allow_html=True)
+st.markdown("""
+<style>
 
 ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; margin: 0 !important; padding: 0 !important; }
 .big-title { 
@@ -1299,8 +1328,8 @@ def main():
                     st.markdown("---")
                     st.markdown("### Crea un nuovo torneo")
                     st.markdown("Per creare una nuova fase finale, è necessario prima completare un torneo preliminare.")
-                    if st.button("🏠 Vai alla gestione tornei", key="go_to_tournament_manager"):
-                        st.switch_page("https://farm-tornei-subbuteo-superba-all-db.streamlit.app/")
+                    # Lo stile CSS è già stato aggiunto in precedenza
+                    st.link_button("🏠 Vai alla gestione tornei", "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/", use_container_width=True)
                     return
                 else:
                     tornei_opzioni = {t['nome_torneo']: str(t['_id']) for t in tornei_trovati}
@@ -1364,13 +1393,9 @@ def main():
                 st.markdown("---")
                 st.markdown("### Crea una nuova fase finale")
                 st.markdown("Per creare una nuova fase finale, seleziona l'opzione 'Crea nuova fase finale' dal menu principale.")
-                col1, col2 = st.columns([1, 1])
-                with col1:
-                    if st.button("🔄 Ricarica la pagina", key="reload_page_empty", use_container_width=True):
-                        st.rerun()
-                with col2:
-                    if st.button("🏠 Vai alla gestione tornei", key="go_to_tournament_manager_2", use_container_width=True):
-                        st.switch_page("https://farm-tornei-subbuteo-superba-all-db.streamlit.app/")
+                # Lo stile CSS è stato spostato all'inizio del file per essere applicato globalmente
+                
+                st.link_button("🏠 Vai alla gestione tornei", "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/", use_container_width=True)
                 return
             else:
                     tornei_opzioni = {t['nome_torneo']: str(t['_id']) for t in tornei_trovati}
@@ -1876,6 +1901,7 @@ def main():
                              </div>
                              """, unsafe_allow_html=True)                        
                         st.balloons()
+                        st.link_button("🏠 Vai alla gestione tornei", "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/")
     # Footer leggero
     st.markdown("---")
     st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
