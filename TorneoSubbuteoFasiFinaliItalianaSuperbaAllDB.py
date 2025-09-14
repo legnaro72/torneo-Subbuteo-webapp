@@ -15,9 +15,10 @@ import urllib.parse
 import time
 import requests
 import warnings
+import certifi
 
 # Import auth utilities
-from auth_utils import show_auth_screen, verify_write_access
+import auth_utils as auth
 
 # Silenzia solo il warning di deprecazione relativo a st.experimental_get_query_params
 warnings.filterwarnings(
@@ -26,17 +27,28 @@ warnings.filterwarnings(
     category=DeprecationWarning
 )
 
-# Mostra la schermata di autenticazione all'avvio
-show_auth_screen()
-
 # ==============================================================================
 # ✨ Configurazione e stile di pagina (con nuove emoji e colori)
 # ==============================================================================
 st.set_page_config(
     page_title="⚽ Fase Finale Torneo Subbuteo",
     layout="wide",
-    page_icon="🏆"
+    page_icon="🏆",
+    initial_sidebar_state="expanded"
 )
+
+def reset_app_state():
+    """Resetta lo stato dell'applicazione"""
+    keys_to_reset = [
+        "df_torneo", "df_squadre", "turno_attivo", "risultati_temp",
+        "nuovo_torneo_step", "club_scelto", "giocatori_selezionati_db",
+        "giocatori_ospiti", "giocatori_totali", "torneo_iniziato",
+        "setup_mode", "torneo_finito", "edited_df_squadre",
+        "gioc_info", "modalita_visualizzazione"
+    ]
+    for key in keys_to_reset:
+        if key in st.session_state:
+            del st.session_state[key]
 
 #ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
 # -------------------------
@@ -1100,6 +1112,16 @@ def salva_risultati_ko():
 # 🚀 LOGICA APPLICAZIONE PRINCIPALE
 # ==============================================================================
 def main():
+    # Mostra la schermata di autenticazione se non si è già autenticati
+    if not st.session_state.get('authenticated', False):
+        auth.show_auth_screen()
+        return
+        
+    if st.session_state.get('sidebar_state_reset', False):
+        reset_app_state()
+        st.session_state['sidebar_state_reset'] = False
+        st.rerun()
+
     # Inizializzazione stato
     # chiamata per gestire ?torneo=... in query string
     handle_query_param_load()
