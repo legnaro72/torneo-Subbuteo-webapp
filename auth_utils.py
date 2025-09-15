@@ -288,51 +288,71 @@ def get_current_user() -> Optional[Dict[str, Any]]:
 
 def show_auth_screen():
     """Mostra la schermata di autenticazione con opzione di sola lettura"""
-    st.title("🔐 Accesso")
-    
     # Inizializza lo stato
     if 'authenticated' not in st.session_state:
         st.session_state.authenticated = False
-        st.session_state.read_only = True
+        st.session_state.read_only = False  # Di default non in sola lettura
     
     # Se già autenticato, esci
     if st.session_state.authenticated:
         return True
-        
-    # Se in modalità sola lettura, mostra solo il pulsante di accesso
-    if st.session_state.get("read_only"):
-        if st.button("🔓 Accedi per modificare"):
+    
+    # Titolo e descrizione
+    st.title("🔐 Accesso al Torneo Subbuteo")
+    
+    # Seleziona la modalità di accesso
+    st.write("### Seleziona la modalità di accesso")
+    
+    # Creazione di due colonne per i pulsanti
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        # Pulsante per la modalità completa
+        if st.button("🔓 Accesso completo", use_container_width=True, type="primary"):
             st.session_state["read_only"] = False
             st.rerun()
-        return False
     
-    # Form di login
-    with st.form("auth_form"):
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        submitted = st.form_submit_button("Accedi")
-        
-        if submitted:
-            if not username:
-                st.error("Inserisci il tuo username")
-                return False
-                
-            auth_result = check_credentials(username, password)
-            if auth_result['success']:
-                st.session_state["authenticated"] = True
-                st.session_state["read_only"] = False
-                st.session_state["user"] = auth_result['user']
-                st.success(f"Accesso riuscito come {auth_result['user']['username']}!")
-                st.rerun()
-            else:
-                st.error(auth_result['message'] or "Autenticazione fallita")
-    
-    # Se non autenticato, mostra il pulsante per la modalità sola lettura
-    if not st.session_state.get("authenticated"):
-        if st.button("👁️ Accedi in modalità sola lettura"):
+    with col2:
+        # Pulsante per la modalità sola lettura
+        if st.button("👁️ Solo lettura", use_container_width=True, type="secondary"):
             st.session_state["read_only"] = True
-            st.session_state["authenticated"] = False
+            st.session_state["authenticated"] = True
+            st.session_state["user"] = {"username": "guest", "role": "readonly"}
             st.rerun()
+    
+    # Spiegazione delle modalità
+    st.markdown("---")
+    st.info("""
+    **Modalità di accesso disponibili:**
+    - **Accesso completo**: Inserisci le tue credenziali per modificare i dati del torneo
+    - **Solo lettura**: Visualizza i dati del torneo senza effettuare modifiche
+    """)
+    
+    # Se l'utente ha scelto la modalità completa, mostra il form di accesso
+    if not st.session_state.get("read_only", False):
+        with st.container():
+            st.markdown("---")
+            st.write("### Inserisci le tue credenziali")
+            
+            with st.form("auth_form"):
+                username = st.text_input("Username")
+                password = st.text_input("Password", type="password")
+                submitted = st.form_submit_button("Accedi")
+                
+                if submitted:
+                    if not username:
+                        st.error("Inserisci il tuo username")
+                        return False
+                        
+                    auth_result = check_credentials(username, password)
+                    if auth_result['success']:
+                        st.session_state["authenticated"] = True
+                        st.session_state["read_only"] = False
+                        st.session_state["user"] = auth_result['user']
+                        st.success(f"Accesso riuscito come {auth_result['user']['username']}!")
+                        st.rerun()
+                    else:
+                        st.error(auth_result['message'] or "Autenticazione fallita")
     
     return st.session_state.get("authenticated", False)
 
