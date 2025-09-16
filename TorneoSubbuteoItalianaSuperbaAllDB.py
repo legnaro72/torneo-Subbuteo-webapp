@@ -861,11 +861,44 @@ def inject_css():
 # APP
 # -------------------------
 def main():
+    # Mostra la schermata di autenticazione
+    #authenticated = auth.show_auth_screen()
+    #if not authenticated:
+    #    st.stop()   # blocca tutto finché non sei loggato
+    
     # Mostra la schermata di autenticazione se non si è già autenticati
     if not st.session_state.get('authenticated', False):
         auth.show_auth_screen()
-        return
+
+    # Debug: mostra utente autenticato e ruolo
+    if st.session_state.get("authenticated"):
+        user = st.session_state.get("user", {})
+        st.sidebar.markdown(f"**👤 Utente:** {user.get('username', '??')}")
+        st.sidebar.markdown(f"**🔑 Ruolo:** {user.get('role', '??')}")
+
+    # downgrade automatico per Campionati
+    #if st.session_state.get("authenticated") and "nome_torneo" in st.session_state:
+    #    if "Campionato" in st.session_state["nome_torneo"]:
+    #        user = st.session_state.get("user", {})
+    #        if user.get("role") != "A":
+    #            st.session_state.read_only = True
+    #            st.warning("⛔ Accesso in sola lettura: solo un amministratore può modificare i Campionati")
+    #    return
+    
+    # Downgrade automatico per Campionati
+    if st.session_state.get("authenticated"):
+        # Verifica che la chiave 'nome_torneo' esista nello stato della sessione
+        nome_torneo = st.session_state.get("nome_torneo")
         
+        # Se il nome del torneo è presente e contiene il tag "Campionato"
+        if nome_torneo and "Campionato" in nome_torneo:
+            user = st.session_state.get("user", {})
+            
+            # Se l'utente non è un amministratore, imposta la modalità di sola lettura
+            if user.get("role") != "A":
+                st.session_state.read_only = True
+                st.warning("⛔ Accesso in sola lettura: solo un amministratore può modificare i Campionati.")
+            
     if st.session_state.get('sidebar_state_reset', False):
         reset_app_state()
         st.session_state['sidebar_state_reset'] = False
