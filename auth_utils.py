@@ -67,7 +67,22 @@ def show_auth_screen():
     if st.session_state.auth_phase == "username":
         with st.form(key="auth_form_username"):
             username = st.text_input("Username", key="auth_username")
-            submitted = st.form_submit_button("Accedi", help="Verifica esistenza username")
+            col1, col2 = st.columns([1, 2])
+            with col1:
+                submitted = st.form_submit_button("Accedi", help="Verifica esistenza username")
+            with col2:
+                guest_submitted = st.form_submit_button("Accedi come ospite", help="Accedi in modalità sola lettura")
+                
+            if guest_submitted:
+                st.session_state.authenticated = True
+                st.session_state.read_only = True
+                st.session_state.user = {
+                    "username": "Ospite",
+                    "role": "G",  # G per Guest
+                    "collection": "guests",
+                    "id": None
+                }
+                st.rerun()
         if submitted:
             if not username:
                 st.error("Inserisci lo username")
