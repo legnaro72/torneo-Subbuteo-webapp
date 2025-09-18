@@ -1206,7 +1206,7 @@ def main():
         st.session_state['user']['role'] = 'ospite'  # Default a ospite se manca il ruolo
         
     if not st.session_state.get('authenticated', False):
-        auth.show_auth_screen()
+        auth.show_auth_screen(club="Superba")
         return
         
     if st.session_state.get('sidebar_state_reset', False):

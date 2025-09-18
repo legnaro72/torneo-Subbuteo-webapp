@@ -868,7 +868,7 @@ def main():
     
     # Mostra la schermata di autenticazione se non si è già autenticati
     if not st.session_state.get('authenticated', False):
-        auth.show_auth_screen()
+        auth.show_auth_screen(club="Superba")
 
     # Debug: mostra utente autenticato e ruolo
     if st.session_state.get("authenticated"):
@@ -998,10 +998,10 @@ def main():
         
         # ✅ 2. ⚙ Opzioni Torneo
         st.sidebar.subheader("⚙️ Opzioni Torneo")
-        #if st.sidebar.button("Crea Nuovo Torneo", disabled=st.session_state.get('read_only', True)):
-        #    if not verify_write_access():
-        #        st.sidebar.error("⛔ Accesso in sola lettura. Non puoi creare nuovi tornei.")
-        #        st.stop()
+        if st.sidebar.button("Crea Nuovo Torneo", disabled=st.session_state.get('read_only', True)):
+            if not verify_write_access():
+                st.sidebar.error("⛔ Accesso in sola lettura. Non puoi creare nuovi tornei.")
+                st.stop()
         if st.sidebar.button("💾 Salva Torneo", key="save_tournament", use_container_width=True, disabled=st.session_state.get('read_only', True)):
             if st.session_state.get('tournament_id'):
                 ok = aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
@@ -1012,8 +1012,7 @@ def main():
             else:
                 st.sidebar.warning("⚠️ Impossibile salvare, ID torneo non trovato.")
         
-        if st.sidebar.button("🏠 Termina Torneo", key="reset_app", use_container_width=True, disabled=st.session_state.get('read_only', True)):
-        #if st.sidebar.button("🏠 Termina Torneo", key="reset_app", use_container_width=True):
+        if st.sidebar.button("🏠 Termina Torneo", key="reset_app", use_container_width=True):
             st.session_state['sidebar_state_reset'] = True
             st.rerun()
         
@@ -1059,8 +1058,7 @@ def main():
             )
 
             # Bottone conferma abbandono
-            if st.sidebar.button("⚠️ Confermami l'abbandono!", key="btn_abbandono", use_container_width=True, disabled=st.session_state.get('read_only', True)):
-            #if st.button("⚠️ Confermami l'abbandono!", key="btn_abbandono", use_container_width=True):
+            if st.button("⚠️ Confermami l'abbandono!", key="btn_abbandono", use_container_width=True):
                 if giocatori_selezionati:
                     gestisci_abbandoni(st.session_state['df_torneo'], giocatori_selezionati, tournaments_collection)
                     st.rerun()
