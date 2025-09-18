@@ -1,21 +1,29 @@
+
 import streamlit as st
-import pandas as pd
-import math
+import base64
+import datetime
+import io
+import json
 import os
 import re
-import uuid
-from fpdf import FPDF
-import base64
-from io import BytesIO
-import json
-from pymongo import MongoClient
-from pymongo.server_api import ServerApi
-from bson.objectid import ObjectId
-import urllib.parse
 import time
+import uuid
+from datetime import datetime, timedelta
+from io import BytesIO
+
+import numpy as np
+import pandas as pd
+import pymongo
+import pytz
 import requests
+from bson import ObjectId
+from bson.json_util import dumps, loads
+from pymongo import MongoClient, server_api
+import urllib.parse
+from fpdf import FPDF
 import warnings
 import certifi
+import math
 
 # Import auth utilities
 import auth_utils as auth
@@ -360,13 +368,35 @@ db_name = "TorneiSubbuteo"
 col_name = "PierCrew"
 
 def autoplay_audio(audio_data: bytes):
-    b64 = base64.b64encode(audio_data).decode("utf-8")
-    md = f"""
-        <audio autoplay="true">
-        <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
-        </audio>
-        """
-    st.markdown(md, unsafe_allow_html=True)
+    try:
+        # Salva l'audio in un file temporaneo
+        with open("temp_audio.mp3", "wb") as f:
+            f.write(audio_data)
+        
+        # Usa il componente audio di Streamlit con autoplay
+        audio_file = open("temp_audio.mp3", 'rb')
+        audio_bytes = audio_file.read()
+        st.audio(audio_bytes, format='audio/mp3', start_time=0, autoplay=True)
+        
+        # Pulisci il file temporaneo
+        try:
+            os.remove("temp_audio.mp3")
+        except:
+            pass
+            
+    except Exception as e:
+        st.error(f"Errore nella riproduzione dell'audio: {e}")
+        # Fallback al metodo precedente
+        try:
+            b64 = base64.b64encode(audio_data).decode("utf-8")
+            md = f"""
+            <audio autoplay controls style="display:none">
+            <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+            </audio>
+            """
+            st.markdown(md, unsafe_allow_html=True)
+        except:
+            st.warning("Impossibile riprodurre l'audio")
 
 def check_csv_structure(df: pd.DataFrame) -> tuple[bool, str]:
     """Controlla che le colonne necessarie siano presenti nel DataFrame."""
@@ -659,8 +689,16 @@ def generate_pdf_ko(rounds_ko: list[pd.DataFrame]) -> bytes:
     return pdf.output(dest='S').encode('latin-1')
 
 def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
+    # Check if user has write access
+    has_write_access = st.session_state.get("user", {}).get("role") not in ["ospite", "lettura"]
+    
     st.markdown(f"### {df_round['Round'].iloc[0]}")
     st.markdown("---")
+    
+    # Show read-only warning if in read-only mode
+    if not has_write_access:
+        st.warning("🔒 Modalità di sola lettura. Non è possibile modificare i risultati.")
+    
     df_temp = df_round.copy()
 
     def parse_team_player(val):
@@ -704,7 +742,7 @@ def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
                     "Gol Casa",
                     min_value=0, max_value=20,
                     key=key_gol_a,
-                    disabled=st.session_state[key_valida],
+                    disabled=st.session_state[key_valida] or not has_write_access,  # Disable if validated or read-only
                     label_visibility="hidden"
                 )
             with c_score2:
@@ -712,26 +750,40 @@ def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
                     "Gol Ospite",
                     min_value=0, max_value=20,
                     key=key_gol_b,
-                    disabled=st.session_state[key_valida],
+                    disabled=st.session_state[key_valida] or not has_write_access,  # Disable if validated or read-only
                     label_visibility="hidden"
                 )
 
             st.markdown("---")
-            st.checkbox(
-                "✅ Valida Risultato",
-                key=key_valida,
-            )
+            
+            # Show validation checkbox only if user has write access
+            if has_write_access:
+                st.checkbox(
+                    "✅ Valida Risultato",
+                    key=key_valida,
+                    disabled=not has_write_access
+                )
+            else:
+                # Show a message if the match is validated in read-only mode
+                if st.session_state.get(key_valida, False):
+                    st.success("✅ Partita validata")
+                else:
+                    st.info("⏳ Partita in corso...")
 
+            # Update the round data with current state
             df_round.loc[idx, 'GolA'] = st.session_state[key_gol_a]
             df_round.loc[idx, 'GolB'] = st.session_state[key_gol_b]
-            df_round.loc[idx, 'Valida'] = st.session_state[key_valida]
+            df_round.loc[idx, 'Valida'] = st.session_state.get(key_valida, False)
 
-            if st.session_state[key_valida]:
+            # Show validation status
+            if st.session_state.get(key_valida, False):
                 st.success("✅ Partita validata!")
             else:
                 st.warning("⚠️ Partita non ancora validata.")
 
-    st.session_state['rounds_ko'][round_idx] = df_round.copy()
+    # Only update the round data if user has write access
+    if has_write_access:
+        st.session_state['rounds_ko'][round_idx] = df_round.copy()
 # ==============================================================================
 # 🧠 FUNZIONI DI GESTIONE STATO E INTERAZIONE CON DB
 # ==============================================================================
@@ -772,7 +824,7 @@ def get_base_name(name):
 def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
     """Inizializza la connessione a MongoDB."""
     try:
-        client = MongoClient(uri, server_api=ServerApi('1'))
+        client = MongoClient(uri, server_api=server_api.ServerApi('1'))
         db = client.get_database(db_name)
         col = db.get_collection(collection_name)
         _ = col.find_one({})
@@ -1141,9 +1193,21 @@ def salva_risultati_ko():
 # 🚀 LOGICA APPLICAZIONE PRINCIPALE
 # ==============================================================================
 def main():
-    # Mostra la schermata di autenticazione se non si è già autenticati
+    # Forza l'aggiornamento dello stato di autenticazione
+    if 'user' not in st.session_state:
+        st.session_state['user'] = {}
+    
+    # Gestione del ruolo utente
+    user_role = st.session_state['user'].get('role')
+    if user_role == 'G':
+        st.session_state['user']['role'] = 'ospite'  # Converti 'G' in 'ospite'
+    elif user_role == 'R':
+        st.session_state['user']['role'] = 'lettura'  # Converti 'R' in 'lettura'
+    elif not user_role:
+        st.session_state['user']['role'] = 'ospite'  # Default a ospite se manca il ruolo
+        
     if not st.session_state.get('authenticated', False):
-        auth.show_auth_screen()
+        auth.show_auth_screen(club="PierCrew")
         return
         
     if st.session_state.get('sidebar_state_reset', False):
@@ -1193,7 +1257,15 @@ def main():
         </div>
         """, unsafe_allow_html=True)
     # Sidebar (tutti i pulsanti qui)
+    # Debug: mostra utente autenticato e ruolo
+    if st.session_state.get("authenticated"):
+        user = st.session_state.get("user", {})
+        st.sidebar.markdown("---")
+        st.sidebar.markdown(f"**👤 Utente:** {user.get('username', '??')}")
+        st.sidebar.markdown(f"**🔑 Ruolo:** {user.get('role', '??')}")
+    
     # ✅ 1. 🕹️ Gestione Rapida (sempre in cima)
+    st.sidebar.markdown("---")
     st.sidebar.subheader("🕹️ Gestione Rapida")
     st.sidebar.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-piercrew-all-db.streamlit.app/", use_container_width=True)
     st.sidebar.markdown("---")
@@ -1202,12 +1274,37 @@ def main():
         
         # ✅ 2. ⚙️ Opzioni Torneo
         st.sidebar.subheader("⚙️ Opzioni Torneo")
-        if st.sidebar.button("💾 Salva Torneo", key="save_tournament_ko", use_container_width=True):
-            salva_risultati_ko()
         
-        if st.sidebar.button("🏁 Termina Torneo", key="terminate_tournament_ko", use_container_width=True):
-            st.session_state.update({"vincitore_torneo": "Torneo terminato manualmente"})
+        # Check if user has write access
+        has_write_access = st.session_state.get("user", {}).get("role") not in ["ospite", "lettura"]
         
+        # Save Tournament button - disabled in read-only mode
+        if st.sidebar.button(
+            "💾 Salva Torneo", 
+            key="save_tournament_ko", 
+            use_container_width=True,
+            disabled=not has_write_access,
+            help="Salva i risultati del torneo" + ("" if has_write_access else " (accesso in sola lettura)")
+        ):
+            if has_write_access:
+                salva_risultati_ko()
+            else:
+                st.error("⛔ Accesso in sola lettura. Non è possibile salvare le modifiche.")
+        
+        # Terminate Tournament button - disabled in read-only mode
+        if st.sidebar.button(
+            "🏁 Termina Torneo", 
+            key="terminate_tournament_ko", 
+            use_container_width=True,
+            disabled=not has_write_access,
+            help="Termina il torneo corrente" + ("" if has_write_access else " (accesso in sola lettura)")
+        ):
+            if has_write_access:
+                st.session_state.update({"vincitore_torneo": "Torneo terminato manualmente"})
+            else:
+                st.error("⛔ Accesso in sola lettura. Non è possibile terminare il torneo.")
+        
+        # Back to setup button - always enabled
         if st.sidebar.button("⬅️ Torna a classifica e scelta fase finale", key="back_to_setup", use_container_width=True):
             reset_to_setup()
             st.rerun()
@@ -1300,9 +1397,22 @@ def main():
                         </div>""",
                         unsafe_allow_html=True,
                     )
-                    if st.button("Crea nuova fase finale ✨", key="btn_nuova_fase", use_container_width=True):
-                        st.session_state['opzione_selezione'] = "Creare una nuova fase finale"
-                        st.rerun()
+                    # Check if user has write access for creating new phase
+                    has_write_access = st.session_state.get("user", {}).get("role") not in ["ospite", "lettura"]
+                    
+                    if st.button(
+                        "Crea nuova fase finale ✨", 
+                        key="btn_nuova_fase", 
+                        use_container_width=True,
+                        disabled=not has_write_access,
+                        help="Non disponibile in modalità ospite/lettura" if not has_write_access else "Crea una nuova fase finale da un torneo preliminare",
+                        on_click=lambda: st.error("⛔ Accesso negato. Solo gli utenti con permessi di scrittura possono creare nuove fasi finali.") if not has_write_access else None
+                    ):
+                        if has_write_access:
+                            st.session_state['opzione_selezione'] = "Creare una nuova fase finale"
+                            st.rerun()
+                        else:
+                            st.error("⛔ Accesso in sola lettura. Non è possibile creare una nuova fase finale.")
             
             st.markdown("---")
             return
@@ -1340,13 +1450,20 @@ def main():
                     if scelta_torneo:
                         st.session_state['tournament_name'] = scelta_torneo
                         st.session_state['tournament_id'] = tornei_opzioni[scelta_torneo]
-                        #if st.button("Continua con questo torneo (Nuova Fase Finale)"):
-                        if st.button("Continua con questo torneo (Nuova Fase Finale)"):
-                            torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
-                            if torneo_data:
-                                df_torneo = pd.DataFrame(torneo_data['calendario'])
-                                
-                                is_complete, msg = tournament_is_complete(df_torneo)
+                        # Check if user has write access for creating new phase
+                        has_write_access = st.session_state.get("user", {}).get("role") not in ["ospite", "lettura"]
+                        
+                        if st.button(
+                            "Continua con questo torneo (Nuova Fase Finale)",
+                            disabled=not has_write_access,
+                            help="Crea una nuova fase finale" + ("" if has_write_access else " (accesso in sola lettura)")
+                        ):
+                            if has_write_access:
+                                torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
+                                if torneo_data:
+                                    df_torneo = pd.DataFrame(torneo_data['calendario'])
+                                    
+                                    is_complete, msg = tournament_is_complete(df_torneo)
                                 if not is_complete:
                                     st.error(f"❌ Il torneo preliminare selezionato non è completo: {msg}")
                                     problematic_rows = df_torneo[
@@ -1716,11 +1833,19 @@ def main():
                     
                         df_final_torneo = pd.concat([pd.DataFrame(), df_to_save_initial], ignore_index=True)
                         tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
+                        
+                        if tournaments_collection is None:
+                            st.error("❌ Impossibile stabilire una connessione al database. Verifica la connessione e riprova.")
+                            st.stop()
                     
-                        tournaments_collection.update_one(
-                            {"_id": ObjectId(st.session_state["tournament_id"])},
-                            {"$set": {"phase_metadata": {"phase_id": phase_id, "phase_mode": "KO"}, "calendario": df_final_torneo.to_dict('records')}}
-                        )
+                        try:
+                            tournaments_collection.update_one(
+                                {"_id": ObjectId(st.session_state["tournament_id"])},
+                                {"$set": {"phase_metadata": {"phase_id": phase_id, "phase_mode": "KO"}, "calendario": df_final_torneo.to_dict('records')}}
+                            )
+                        except Exception as e:
+                            st.error(f"❌ Errore durante l'aggiornamento del torneo: {e}")
+                            st.stop()
                     
                         nuovo_nome = f"fasefinaleEliminazionediretta_{get_base_name(st.session_state['tournament_name'])}"
                         rinomina_torneo_su_db(tournaments_collection, st.session_state["tournament_id"], nuovo_nome)
@@ -1876,7 +2001,18 @@ def main():
                         if st.session_state['rounds_ko']:
                             current_round_df = st.session_state['rounds_ko'][-1]
                             render_round(current_round_df, len(st.session_state['rounds_ko']) - 1, st.session_state.get("modalita_visualizzazione_ko", "squadre"))
-                            st.button("💾 Salva risultati e genera prossimo round", on_click=salva_risultati_ko)
+                            
+                            # Check if user has write access
+                            has_write_access = st.session_state.get("user", {}).get("role") not in ["ospite", "lettura"]
+                            
+                            if st.button(
+                                "💾 Salva risultati e genera prossimo round", 
+                                on_click=salva_risultati_ko if has_write_access else None,
+                                disabled=not has_write_access,
+                                help="Salva i risultati e genera il prossimo round" + ("" if has_write_access else " (accesso in sola lettura)")
+                            ):
+                                if not has_write_access:
+                                    st.error("⛔ Accesso in sola lettura. Non è possibile salvare i risultati o generare il prossimo round.")
                         
                     if st.session_state['giornate_mode'] == 'ko':
                         st.markdown("<style>#root > div:nth-child(1) > div > div > div > div:nth-child(1) > div > div:nth-child(2) > div:nth-child(1) > div:nth-child(1), #root > div:nth-child(1) > div > div > div > div:nth-child(1) > div > div:nth-child(3) > div:nth-child(1) > div:nth-child(1){display:none;}</style>", unsafe_allow_html=True)
