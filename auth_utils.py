@@ -4,6 +4,7 @@ from pymongo.server_api import ServerApi
 from bson.objectid import ObjectId
 import os
 from datetime import datetime
+import certifi
 
 # Configurazione connessione MongoDB
 MONGO_URI = os.getenv("MONGO_URI_AUTH", "mongodb+srv://massimilianoferrando:Legnaro21!$@cluster0.t3750lc.mongodb.net/")
@@ -14,19 +15,45 @@ PLAYERS_COLLECTION1 = "superba_players"
 PLAYERS_COLLECTION2 = "piercrew_players"
 
 def get_mongo_client():
-    return MongoClient(MONGO_URI, server_api=ServerApi('1'), connectTimeoutMS=5000, serverSelectionTimeoutMS=5000)
+    return MongoClient(MONGO_URI, 
+                     server_api=ServerApi('1'), 
+                     connectTimeoutMS=5000, 
+                     serverSelectionTimeoutMS=5000,
+                     tlsCAFile=certifi.where())
 
-def find_user(username: str):
+def find_user(username: str, club: str = None):
+    """
+    Cerca un utente nel database.
+    
+    Args:
+        username: Nome utente da cercare
+        club: Se specificato, cerca solo nella collection del club specificato.
+             'Superba' -> superba_players
+             'PierCrew' -> piercrew_players
+             Se None o altro valore, cerca in entrambe le collections
+    """
     client = get_mongo_client()
     db_players = client[DB_NAME_PLAYERS]
-    for coll in [PLAYERS_COLLECTION1, PLAYERS_COLLECTION2]:
+    
+    # Determina in quali collections cercare in base al parametro club
+    collections = []
+    if club == 'Superba':
+        collections = [PLAYERS_COLLECTION1]
+    elif club == 'PierCrew':
+        collections = [PLAYERS_COLLECTION2]
+    else:
+        # Se non specificato o valore non valido, cerca in entrambe
+        collections = [PLAYERS_COLLECTION1, PLAYERS_COLLECTION2]
+    
+    for coll in collections:
         try:
             player = db_players[coll].find_one({"Giocatore": {'$regex': f'^{username}$', '$options': 'i'}})
-        except Exception:
-            player = None
-        if player:
-            player["_collection"] = coll
-            return player
+            if player:
+                player["_collection"] = coll
+                return player
+        except Exception as e:
+            print(f"Errore durante la ricerca nella collection {coll}: {e}")
+    
     return None
 
 def validate_system_password(pwd: str) -> bool:
@@ -46,7 +73,15 @@ def update_user_password(player, new_pwd: str):
         {"$set": {"Password": new_pwd, "SetPwd": 1}}
     )
 
-def show_auth_screen():
+def show_auth_screen(club: str = "Superba"):
+    """
+    Mostra la schermata di autenticazione.
+    
+    Args:
+        club: Nome del club per cui effettuare l'autenticazione.
+             Determina in quale collection cercare l'utente.
+             Valori accettati: 'Superba' o 'PierCrew'. Default: 'Superba'
+    """
     # Inizializza stato
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
@@ -56,6 +91,8 @@ def show_auth_screen():
         st.session_state.auth_phase = "username"  # username / password / set_password
     if "player" not in st.session_state:
         st.session_state.player = None
+    if "club" not in st.session_state:
+        st.session_state.club = club
 
     # Se già autenticato, esci
     if st.session_state.authenticated:
@@ -87,9 +124,10 @@ def show_auth_screen():
             if not username:
                 st.error("Inserisci lo username")
                 return False
-            player = find_user(username)
+            # Cerca l'utente nella collection specificata dal parametro club
+            player = find_user(username, st.session_state.club)
             if not player:
-                st.error("Utente non trovato")
+                st.error(f"Utente non trovato nel club {st.session_state.club}")
                 return False
             st.session_state.player = player
             ruolo = player.get("Ruolo", "R")
