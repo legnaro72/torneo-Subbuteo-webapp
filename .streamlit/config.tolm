@@ -1,0 +1,6 @@
+[browser]
+gatherUsageStats = false
+
+[server]
+# Timeout in secondi prima che una sessione inattiva venga chiusa
+cookie_expiry = 86400   # ad esempio: 24 ore
