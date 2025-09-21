@@ -421,7 +421,8 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizza
             st.checkbox(
                 "✅ Valida",
                 key=key_valida,
-                value=bool(row['Valida']) if pd.notna(row['Valida']) else False
+                value=bool(row['Valida']) if pd.notna(row['Valida']) else False,
+                disabled=st.session_state.get('read_only', False)
             )
             
             is_valid = st.session_state.get(key_valida, False)
@@ -897,7 +898,7 @@ def main():
             # Se l'utente non è un amministratore, imposta la modalità di sola lettura
             if user.get("role") != "A":
                 st.session_state.read_only = True
-                st.warning("⛔ Accesso in sola lettura: solo un amministratore può modificare i Campionati.")
+                st.sidebar.warning("⛔ Accesso in sola lettura: solo un amministratore può modificare i Campionati.")
             
     if st.session_state.get('sidebar_state_reset', False):
         reset_app_state()
@@ -998,10 +999,6 @@ def main():
         
         # ✅ 2. ⚙ Opzioni Torneo
         st.sidebar.subheader("⚙️ Opzioni Torneo")
-        if st.sidebar.button("Crea Nuovo Torneo", disabled=st.session_state.get('read_only', True)):
-            if not verify_write_access():
-                st.sidebar.error("⛔ Accesso in sola lettura. Non puoi creare nuovi tornei.")
-                st.stop()
         if st.sidebar.button("💾 Salva Torneo", key="save_tournament", use_container_width=True, disabled=st.session_state.get('read_only', True)):
             if st.session_state.get('tournament_id'):
                 ok = aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
