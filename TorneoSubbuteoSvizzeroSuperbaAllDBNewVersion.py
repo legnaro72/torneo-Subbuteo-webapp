@@ -1,5 +1,23 @@
 
 import streamlit as st
+# Ora importiamo le altre dipendenze
+import pandas as pd
+from datetime import datetime
+import io
+from fpdf import FPDF
+import numpy as np
+from pymongo import MongoClient
+from pymongo.server_api import ServerApi
+from bson.objectid import ObjectId
+import requests
+import base64
+import time
+import urllib.parse
+import os
+
+# Import auth utilities
+import auth_utils as auth
+from auth_utils import verify_write_access
 
 # Configurazione della pagina DEVE essere la PRIMA operazione Streamlit
 st.set_page_config(
@@ -9,12 +27,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Ora importiamo le altre dipendenze
-import pandas as pd
-from datetime import datetime
-import io
-from fpdf import FPDF
-import numpy as np
+
 
 # Aggiungi lo script JavaScript per il keep-alive
 def add_keep_alive():
@@ -42,18 +55,7 @@ def add_keep_alive():
 add_keep_alive()
 
 
-from pymongo import MongoClient
-from pymongo.server_api import ServerApi
-from bson.objectid import ObjectId
-import requests
-import base64
-import time
-import urllib.parse
-import os
 
-# Import auth utilities
-import auth_utils as auth
-from auth_utils import verify_write_access
 
 # Mostra la schermata di autenticazione se non si è già autenticati
 if not st.session_state.get('authenticated', False):
