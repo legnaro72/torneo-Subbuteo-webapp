@@ -21,8 +21,8 @@ from auth_utils import verify_write_access
 
 st.markdown("""
 <style>
-/* Rimuove i margini e i padding dal body e dai contenitori principali */
-body, .stApp, .appview-container, .main, .block-container {
+/* Rimuove i margini e i padding da tutti gli elementi */
+* {
     margin: 0 !important;
     padding: 0 !important;
 }
