@@ -1763,6 +1763,6 @@ st.markdown("---")
 st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
 
 # Inizializza il keep-alive
-add_keep_alive()
+#add_keep_alive()
 
 # Non è necessario il blocco if __name__ == "__main__" in un'app Streamlit
