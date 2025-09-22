@@ -1,5 +1,3 @@
-
-
 import streamlit as st
 
 # Configurazione della pagina DEVE essere la PRIMA operazione Streamlit
@@ -419,6 +417,8 @@ def salva_torneo_su_db():
         "turno_attivo": st.session_state.turno_attivo,
         "torneo_iniziato": st.session_state.torneo_iniziato,
         "torneo_finito": st.session_state.get('torneo_finito', False),
+        "modalita_turni": st.session_state.get('modalita_turni', 'illimitati'),
+        "max_turni": st.session_state.get('max_turni'),
     }
 
     try:
@@ -482,6 +482,25 @@ def carica_torneo_da_db(nome_torneo):
         st.session_state.torneo_iniziato = torneo['torneo_iniziato']
         st.session_state.torneo_finito = torneo.get('torneo_finito', False)
         st.session_state.tournament_id = str(torneo['_id'])
+        
+        # Ripristina le impostazioni dei turni
+        st.session_state.modalita_turni = torneo.get('modalita_turni', 'illimitati')
+        st.session_state.max_turni = torneo.get('max_turni')
+        
+        # Inizializza i risultati temporanei per tutte le partite del turno corrente
+        if 'risultati_temp' not in st.session_state:
+            st.session_state.risultati_temp = {}
+            
+        # Carica i risultati delle partite del turno corrente
+        df_turno_corrente = st.session_state.df_torneo[st.session_state.df_torneo['Turno'] == st.session_state.turno_attivo]
+        for _, row in df_turno_corrente.iterrows():
+            key_gc = f"gc_{st.session_state.turno_attivo}_{row['Casa']}_{row['Ospite']}"
+            key_go = f"go_{st.session_state.turno_attivo}_{row['Casa']}_{row['Ospite']}"
+            key_val = f"val_{st.session_state.turno_attivo}_{row['Casa']}_{row['Ospite']}"
+            
+            st.session_state.risultati_temp[key_gc] = int(row.get('GolCasa', 0))
+            st.session_state.risultati_temp[key_go] = int(row.get('GolOspite', 0))
+            st.session_state.risultati_temp[key_val] = bool(row.get('Validata', False))
         
         # Assicurati che le colonne necessarie esistano e siano del tipo corretto
         if 'GolCasa' not in st.session_state.df_torneo.columns:
@@ -744,8 +763,54 @@ def aggiorna_classifica(df):
     
     return df_classifica
 
-@st.cache_data
 def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
+    accoppiamenti = []
+    gia_abbinati = set()
+
+    # Copia locale della classifica
+    classifica = classifica.copy()
+
+    # Primo turno: usa i potenziali
+    if primo_turno:
+        classifica['Potenziale'] = pd.to_numeric(classifica['Potenziale'], errors='coerce').fillna(0)
+        classifica = classifica.sort_values(by='Potenziale', ascending=False).reset_index(drop=True)
+
+    else:
+        # Dal secondo turno in poi: ricalcola l'ordine con aggiorna_classifica
+        classifica = aggiorna_classifica(st.session_state.df_torneo)
+
+    # Se dispari → riposo dell’ultima squadra
+    if len(classifica) % 2 != 0:
+        riposa = classifica.iloc[-1]['Squadra']
+        st.warning(f"Numero dispari di squadre – {riposa} riposa in questo turno")
+        classifica = classifica.iloc[:-1]
+
+    # Ciclo accoppiamenti
+    for i in range(len(classifica)):
+        s1 = classifica.iloc[i]['Squadra']
+        if s1 in gia_abbinati:
+            continue
+
+        # cerca la prossima squadra libera con cui non ha già giocato
+        for j in range(i + 1, len(classifica)):
+            s2 = classifica.iloc[j]['Squadra']
+            if s2 in gia_abbinati:
+                continue
+            if (s1, s2) not in precedenti and (s2, s1) not in precedenti:
+                accoppiamenti.append((s1, s2))
+                gia_abbinati.update([s1, s2])
+                break
+
+    # Controllo finale
+    squadre_non_abbinate = [s for s in classifica['Squadra'] if s not in gia_abbinati]
+    if squadre_non_abbinate:
+        st.warning(f"Non è stato possibile accoppiare: {', '.join(squadre_non_abbinate)}")
+
+    # Crea DataFrame degli incontri
+    df = pd.DataFrame([{"Casa": c, "Ospite": o, "GolCasa": 0, "GolOspite": 0, "Validata": False}
+                       for c, o in accoppiamenti])
+    return df
+
     accoppiamenti = []
     gia_abbinati = set()
     
@@ -764,18 +829,9 @@ def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
         # Assicuriamoci che 'Potenziale' sia numerico
         if 'Potenziale' in classifica.columns:
             classifica['Potenziale'] = pd.to_numeric(classifica['Potenziale'], errors='coerce').fillna(0)
-
-        # Definiamo chiavi di ordinamento: potenziale (desc), poi posizione (asc) se presente, poi nome squadra (asc)
-        sort_by = ['Potenziale']
-        ascending = [False]
-        if 'Pos.' in classifica.columns:
-            sort_by.append('Pos.')
-            ascending.append(True)
-        if 'Squadra' in classifica.columns:
-            sort_by.append('Squadra')
-            ascending.append(True)
-
-        classifica = classifica.sort_values(by=sort_by, ascending=ascending).reset_index(drop=True)
+        
+        # Ordinamento per potenziale (decrescente)
+        classifica = classifica.sort_values(by='Potenziale', ascending=False).reset_index(drop=True)
 
         # Se dispari → ultima squadra riposa
         if len(classifica) % 2 != 0:
@@ -788,136 +844,89 @@ def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
             if i + 1 < len(classifica):
                 s1 = classifica.iloc[i]['Squadra']
                 s2 = classifica.iloc[i + 1]['Squadra']
+                pot1 = classifica.iloc[i]['Potenziale']
+                pot2 = classifica.iloc[i + 1]['Potenziale']
                 accoppiamenti.append((s1, s2))
                 gia_abbinati.add(s1)
                 gia_abbinati.add(s2)
-                st.write(f"Accoppiamento primo turno: {s1} vs {s2}")
+                st.write(f"Accoppiamento primo turno: {s1} (Pot: {pot1}) vs {s2} (Pot: {pot2})")
 
     else:
-        # Per i turni successivi, crea un punteggio combinato basato su:
-        # - 70% potenziale iniziale (se disponibile)
-        # - 30% posizione in classifica (se disponibile)
-        # Se manca uno dei due, usa solo quello disponibile
-        
-        max_pos = len(classifica)
-        
-        # Se entrambe le colonne esistono, usa il punteggio combinato
-        if 'Potenziale' in classifica.columns and 'Pos.' in classifica.columns:
-            max_potenziale = classifica['Potenziale'].max()
-            # Calcola un punteggio combinato per ogni squadra
-            if turno_corrente >= 3:
-                # Dal 3° turno in poi: 0% potenziale, 100% posizione
-                classifica['Punteggio_Combinato'] = 1 - (classifica['Pos.'] - 1) / (max_pos - 1)
-            else:
-                # Al 2° turno: 50% potenziale, 50% posizione
-                classifica['Punteggio_Combinato'] = (
-                    0.5 * (classifica['Potenziale'] / max_potenziale) +
-                    0.5 * (1 - (classifica['Pos.'] - 1) / (max_pos - 1))  # Inverti la posizione (1° è il migliore)
-                )
-        elif 'Potenziale' in classifica.columns:
-            # Se c'è solo il potenziale, usa quello
-            max_potenziale = classifica['Potenziale'].max()
-            classifica['Punteggio_Combinato'] = classifica['Potenziale'] / max_potenziale
-        elif 'Pos.' in classifica.columns:
-            # Se c'è solo la posizione, usa quella
-            classifica['Punteggio_Combinato'] = 1 - (classifica['Pos.'] - 1) / (max_pos - 1)
+        # Dal secondo turno in poi, accoppia in base alla classifica (1° vs 2°, 3° vs 4°, ecc.)
+        # Assicurati che la classifica sia ordinata correttamente
+        if 'Pos.' in classifica.columns:
+            # Usa la posizione in classifica (1° è il migliore)
+            classifica = classifica.sort_values('Pos.').reset_index(drop=True)
         else:
-            # Se non c'è nessuno dei due, usa un ordine casuale
-            classifica['Punteggio_Combinato'] = np.random.random(size=len(classifica))
+            # Se non c'è la colonna Pos., usa un ordine casuale (caso di fallback)
+            classifica = classifica.sample(frac=1).reset_index(drop=True)
         
-        # Ordina in base al punggio combinato
-        classifica = classifica.sort_values('Punteggio_Combinato', ascending=False)
+        # Crea una lista di indici delle squadre da accoppiare
+        indici_da_accoppiare = [i for i in range(len(classifica)) 
+                              if classifica.iloc[i]['Squadra'] not in gia_abbinati]
         
-        # Crea una lista di giocatori non ancora accoppiati
-        giocatori_liberi = [s for s in classifica['Squadra'] if s not in gia_abbinati]
+        # Funzione per verificare se due squadre possono giocare tra loro
+        def possono_giocare(s1, s2):
+            return ((s1, s2) not in precedenti and 
+                   (s2, s1) not in precedenti and
+                   s1 != s2)
         
-        # Contatore per evitare loop infiniti
-        tentativi_massimi = len(giocatori_liberi) * 2  # Massimo 2 tentativi per squadra
-        tentativi = 0
-        
-        while len(giocatori_liberi) > 1 and tentativi < tentativi_massimi:
-            tentativi += 1
-            # Prendi il primo giocatore disponibile
-            s1 = giocatori_liberi.pop(0)
-            s1_pot = classifica[classifica['Squadra'] == s1]['Potenziale'].iloc[0]
+        # Prova ad accoppiare in ordine di classifica
+        i = 0
+        while i < len(indici_da_accoppiare):
+            idx1 = indici_da_accoppiare[i]
+            s1 = classifica.iloc[idx1]['Squadra']
             
-            # Trova il miglior avversario tra i prossimi 5 in classifica
-            avversari_potenziali = []
-            for i, s2 in enumerate(giocatori_liberi[:5]):
-                if (s1 != s2 and 
-                    (s1, s2) not in precedenti and 
-                    (s2, s1) not in precedenti):
+            # Se la squadra è già stata accoppiata, passa alla successiva
+            if s1 in gia_abbinati:
+                i += 1
+                continue
+                
+            # Cerca il prossimo avversario disponibile nella classifica
+            for j in range(i + 1, len(indici_da_accoppiare)):
+                idx2 = indici_da_accoppiare[j]
+                s2 = classifica.iloc[idx2]['Squadra']
+                
+                # Verifica se le squadre possono giocare tra loro
+                if possono_giocare(s1, s2):
+                    # Trovato un avversario valido, crea l'accoppiamento
+                    accoppiamenti.append((s1, s2))
+                    gia_abbinati.add(s1)
+                    gia_abbinati.add(s2)
                     
-                    # Calcola lo score in base ai dati disponibili
-                    if 'Potenziale' in classifica.columns and 'Pos.' in classifica.columns:
-                        # Usa sia potenziale che posizione
-                        s2_pot = classifica[classifica['Squadra'] == s2]['Potenziale'].iloc[0]
-                        diff_pot = abs(s1_pot - s2_pot) / max_potenziale
-                        diff_pos = i / 5  # Normalizza la differenza di posizione tra 0 e 1
-                        # Dal 3° turno in poi: 0% potenziale, 100% posizione
-                        if turno_corrente >= 3:
-                            score = diff_pos
-                        else:
-                            # Al 2° turno: 50% potenziale, 50% posizione
-                            score = 0.5 * diff_pot + 0.5 * diff_pos
-                    elif 'Potenziale' in classifica.columns:
-                        # Usa solo il potenziale
-                        s2_pot = classifica[classifica['Squadra'] == s2]['Potenziale'].iloc[0]
-                        score = abs(s1_pot - s2_pot) / max_potenziale
-                    else:
-                        # Usa solo la posizione o un valore casuale se non c'è niente
-                        score = i / 5
-                    avversari_potenziali.append((score, i, s2))
+                    # Rimuovi entrambi gli indici dalla lista
+                    indici_da_accoppiare.pop(j)
+                    indici_da_accoppiare.pop(i)
+                    
+                    # Riparti dall'inizio per evitare problemi con gli indici
+                    i = -1  # Verrà incrementato a 0 alla fine del ciclo
+                    break
             
-            if avversari_potenziali:
-                # Scegli l'avversario con lo score migliore (più basso)
-                _, idx, s2 = min(avversari_potenziali, key=lambda x: x[0])
-                giocatori_liberi.pop(idx)
-                accoppiamenti.append((s1, s2))
-                gia_abbinati.add(s1)
-                gia_abbinati.add(s2)
-            else:
-                    # Se non ci sono avversari validi tra i primi 5, prova a trovare il primo con cui non ha ancora giocato
-                avversario_trovato = False
-                for i, s2 in enumerate(giocatori_liberi):
-                    if (s1, s2) not in precedenti and (s2, s1) not in precedenti:
-                        giocatori_liberi.pop(i)
+            i += 1
+        
+        # Se ci sono squadre rimaste senza accoppiamento, prova a trovare un accoppiamento alternativo
+        squadre_rimaste = [classifica.iloc[idx]['Squadra'] for idx in indici_da_accoppiare 
+                          if classifica.iloc[idx]['Squadra'] not in gia_abbinati]
+        
+        if squadre_rimaste:
+            st.warning(f"Squadre rimaste senza accoppiamento diretto: {', '.join(squadre_rimaste)}")
+            st.warning("Tentativo di accoppiamento alternativo...")
+            
+            # Prova a trovare accoppiamenti alternativi per le squadre rimaste
+            for s1 in squadre_rimaste[:]:
+                if s1 in gia_abbinati:
+                    continue
+                    
+                # Cerca un avversario tra tutte le squadre
+                for s2 in classifica['Squadra']:
+                    if (s1 != s2 and s2 not in gia_abbinati and 
+                        possono_giocare(s1, s2)):
+                        # Trovato un avversario valido
                         accoppiamenti.append((s1, s2))
                         gia_abbinati.add(s1)
                         gia_abbinati.add(s2)
-                        avversario_trovato = True
                         break
-                
-                # Se non è stato trovato nessun avversario valido
-                if not avversario_trovato:
-                    # Se è l'ultima squadra rimasta, non possiamo fare nulla
-                    if len(giocatori_liberi) <= 1:
-                        break
-                    # Se ci sono ancora squadre, prova a scambiare con un accoppiamento esistente
-                    for i, (c, o) in enumerate(accoppiamenti):
-                        # Se s1 può giocare con uno dei due in questo accoppiamento
-                        if ((s1, c) not in precedenti and (c, s1) not in precedenti and 
-                            (o, giocatori_liberi[0]) not in precedenti and (giocatori_liberi[0], o) not in precedenti):
-                            # Sostituisci l'accoppiamento esistente
-                            accoppiamenti[i] = (c, s1)
-                            accoppiamenti.append((o, giocatori_liberi[0]))
-                            gia_abbinati.add(s1)
-                            gia_abbinati.add(giocatori_liberi[0])
-                            giocatori_liberi.pop(0)
-                            avversario_trovato = True
-                            break
-                        
-                    if not avversario_trovato:
-                        # Se non è stato possibile trovare uno scambio, riprova con la prossima squadra
-                        if len(giocatori_liberi) > 1:
-                            giocatori_liberi.append(s1)
-                            continue
-                        else:
-                            break
         
-        # Rimuovi la colonna temporanea
-        classifica = classifica.drop('Punteggio_Combinato', axis=1)
-    
     # Se ci sono giocatori rimasti senza accoppiamento
     if len(gia_abbinati) < len(classifica):
         squadre_rimaste = [s for s in classifica['Squadra'] if s not in gia_abbinati]
@@ -1577,21 +1586,24 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
                     help="Genera il prossimo turno" + ("" if verify_write_access() else " (accesso in sola lettura)")):
                     
                     if verify_write_access():
-                        # 🔹 Stop automatico se raggiunto limite turni
-                        if (
-                            st.session_state.modalita_turni == "fisso" and 
-                            st.session_state.turno_attivo >= st.session_state.max_turni
-                        ):
-                            st.info(f"✅ Torneo terminato: raggiunto il limite di {st.session_state.max_turni} round.")
-                            st.session_state.torneo_finito = True
-                            st.rerun()
-
+                        # Controlla se abbiamo raggiunto il numero massimo di turni
+                        if st.session_state.modalita_turni == "fisso" and st.session_state.max_turni is not None:
+                            if st.session_state.turno_attivo >= st.session_state.max_turni:
+                                st.info(f"✅ Torneo terminato: raggiunto il limite di {st.session_state.max_turni} round.")
+                                st.session_state.torneo_finito = True
+                                salva_torneo_su_db()
+                                st.rerun()
+                        
+                        # Incrementa il contatore del turno
+                        nuovo_turno = st.session_state.turno_attivo + 1
+                        
                         # Salva i risultati del turno corrente
                         if not salva_torneo_su_db():
                             st.error("❌ Errore durante il salvataggio del turno corrente")
                             st.stop()
                         
-                        st.session_state.turno_attivo += 1
+                        # Aggiorna il numero del turno e genera il prossimo
+                        st.session_state.turno_attivo = nuovo_turno
                         df_turno_prossimo["Turno"] = st.session_state.turno_attivo
                         st.session_state.df_torneo = pd.concat([st.session_state.df_torneo, df_turno_prossimo], ignore_index=True)
                         st.session_state.risultati_temp = {}
@@ -1670,4 +1682,3 @@ st.markdown("---")
 st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
 
 # Non è necessario il blocco if __name__ == "__main__" in un'app Streamlit
-
