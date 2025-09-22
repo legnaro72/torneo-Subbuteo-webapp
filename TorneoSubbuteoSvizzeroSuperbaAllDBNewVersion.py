@@ -1418,6 +1418,7 @@ st.session_state.modalita_selezione_giocatori = st.sidebar.radio(
     ["Multiselect", "Checkbox singole"],
     index=["Multiselect", "Checkbox singole"].index(st.session_state.modalita_selezione_giocatori)
 )
+st.rerun()
 
 if st.session_state.torneo_iniziato:
     #st.sidebar.info(f"Torneo in corso: **{st.session_state.nome_torneo}**")
