@@ -64,11 +64,6 @@ def add_keep_alive():
     """
     st.components.v1.html(js, height=0, width=0)
 
-# Inizializza il keep-alive
-#add_keep_alive()
-
-
-
 
 # Mostra la schermata di autenticazione se non si è già autenticati
 if not st.session_state.get('authenticated', False):
@@ -1766,5 +1761,8 @@ if st.session_state.torneo_finito:
 # Footer leggero
 st.markdown("---")
 st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
+
+# Inizializza il keep-alive
+add_keep_alive()
 
 # Non è necessario il blocco if __name__ == "__main__" in un'app Streamlit
