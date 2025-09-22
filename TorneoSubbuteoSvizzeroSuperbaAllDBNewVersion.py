@@ -19,6 +19,19 @@ import os
 import auth_utils as auth
 from auth_utils import verify_write_access
 
+# Aggiunge uno stile CSS personalizzato
+# Rimuove il padding in alto e sui lati
+st.markdown("""
+<style>
+.appview-container .main .block-container {
+    padding-top: 0rem;
+    padding-right: 1rem;
+    padding-left: 1rem;
+    padding-bottom: 0rem;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # Configurazione della pagina DEVE essere la PRIMA operazione Streamlit
 st.set_page_config(
     page_title="Torneo Subbuteo - Svizzero",
