@@ -1411,17 +1411,24 @@ st.sidebar.subheader("🕹️ Gestione Rapida")
 st.sidebar.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/", use_container_width=True)
 st.sidebar.markdown("---")
 
-st.sidebar.subheader("👤 Mod Selezione Partedcipanti")
+st.sidebar.subheader("👤 Mod Selezione Partecipanti")
 
 # 🔀 Modalità selezione giocatori
 if "modalita_selezione_giocatori" not in st.session_state:
     st.session_state.modalita_selezione_giocatori = "Checkbox singole"
-st.session_state.modalita_selezione_giocatori = st.sidebar.radio(
-    "Modalità selezione giocatori:",
-    ["Multiselect", "Checkbox singole"],
-    index=["Multiselect", "Checkbox singole"].index(st.session_state.modalita_selezione_giocatori)
-    
+# Crea la checkbox per attivare la modalità Multiselect
+# Il valore di default è False, corrispondente a "Checkbox singole"
+use_multiselect = st.sidebar.checkbox(
+    "Utilizza 'Multiselect'",
+    value=(st.session_state.modalita_selezione_giocatori == "Multiselect")
 )
+
+# Aggiorna lo stato di sessione in base alla scelta della checkbox
+if use_multiselect:
+    st.session_state.modalita_selezione_giocatori = "Multiselect"
+else:
+    st.session_state.modalita_selezione_giocatori = "Checkbox singole"
+
 
 
 if st.session_state.torneo_iniziato:
