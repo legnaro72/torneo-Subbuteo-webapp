@@ -349,7 +349,7 @@ else:
                 tournaments_collection = db_tournaments.get_collection("SuperbaSvizzero")
                 _ = tournaments_collection.find_one()
                 
-                st.sidebar.success("✅ Connessione a MongoDB Atlas riuscita!")
+                #st.sidebar.success("✅ Connessione a MongoDB Atlas riuscita!")
                 
         except Exception as e:
             st.sidebar.error(f"❌ Errore di connessione a MongoDB: {e}")
@@ -431,7 +431,7 @@ def salva_torneo_su_db():
                 {"_id": ObjectId(st.session_state.tournament_id)},
                 {"$set": torneo_data}
             )
-            st.success(f"✅ Torneo '{st.session_state.nome_torneo}' aggiornato con successo!")
+            st.toast(f"✅ Torneo '{st.session_state.nome_torneo}' aggiornato con successo!")
         else:
             # Altrimenti cerchiamo un torneo esistente con lo stesso nome
             existing_doc = tournaments_collection.find_one({"nome_torneo": st.session_state.nome_torneo})
@@ -443,12 +443,12 @@ def salva_torneo_su_db():
                     {"$set": torneo_data}
                 )
                 st.session_state.tournament_id = str(existing_doc["_id"])
-                st.success(f"✅ Torneo esistente '{st.session_state.nome_torneo}' aggiornato con successo!")
+                st.toast(f"✅ Torneo esistente '{st.session_state.nome_torneo}' aggiornato con successo!")
             else:
                 # Crea un nuovo documento e salva l'ID nella sessione
                 result = tournaments_collection.insert_one(torneo_data)
                 st.session_state.tournament_id = str(result.inserted_id)
-                st.success(f"✅ Nuovo torneo '{st.session_state.nome_torneo}' salvato con successo!")
+                st.toast(f"✅ Nuovo torneo '{st.session_state.nome_torneo}' salvato con successo!")
         return True
     except Exception as e:
         st.error(f"❌ Errore durante il salvataggio del torneo: {e}")
@@ -1084,7 +1084,7 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
                     df_turno_corrente.loc[df_turno_corrente['Casa'] == casa, 'Validata'] = True
                     st.session_state.df_torneo.loc[df_turno_corrente.index, ['GolCasa', 'GolOspite', 'Validata']] = df_turno_corrente.loc[df_turno_corrente.index, ['GolCasa', 'GolOspite', 'Validata']]
                     if salva_torneo_su_db():
-                        st.success("✅ Risultato validato e salvato!")
+                        st.toast("✅ Risultato validato e salvato!")
                     else:
                         st.error("❌ Errore durante il salvataggio del risultato")
                 else:
@@ -1099,7 +1099,7 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
             
             # Mostra stato validazione
             if st.session_state.risultati_temp.get(key_val, False):
-                st.success("✅ Partita validata!")
+                st.toast("✅ Partita validata!")
             else:
                 st.warning("⚠️ Partita non ancora validata.")
 
@@ -1195,7 +1195,7 @@ if st.session_state.setup_mode == "carica_db":
                     if carica_torneo_da_db(torneo_scelto):
                         st.session_state.torneo_iniziato = True
                         st.session_state.setup_mode = None
-                        st.success(f"✅ Torneo '{torneo_scelto}' caricato con successo!")
+                        st.toast(f"✅ Torneo '{torneo_scelto}' caricato con successo!")
                         st.session_state.torneo_finito = False
                         st.rerun()
             
@@ -1682,7 +1682,7 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
                         
                         # Salva il nuovo turno
                         if salva_torneo_su_db():
-                            st.success("✅ Nuovo turno generato e salvato con successo!")
+                            st.toast("✅ Nuovo turno generato e salvato con successo!")
                             st.rerun()
                         else:
                             st.error("❌ Errore durante il salvataggio del nuovo turno")
