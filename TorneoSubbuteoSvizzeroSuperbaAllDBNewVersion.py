@@ -1407,6 +1407,15 @@ if st.session_state.get("authenticated"):
 st.sidebar.subheader("🕹️ Gestione Rapida")
 st.sidebar.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/", use_container_width=True)
 st.sidebar.markdown("---")
+st.sidebar.subheader("👤 Mod Selezione Partedcipanti")
+ # 🔀 Modalità selezione giocatori
+if "modalita_selezione_giocatori" not in st.session_state:
+        st.session_state.modalita_selezione_giocatori = "Multiselect"
+    st.session_state.modalita_selezione_giocatori = st.sidebar.radio(
+        "Modalità selezione giocatori:",
+        ["Multiselect", "Checkbox singole"],
+        index=["Multiselect", "Checkbox singole"].index(st.session_state.modalita_selezione_giocatori)
+    )
 
 if st.session_state.torneo_iniziato:
     #st.sidebar.info(f"Torneo in corso: **{st.session_state.nome_torneo}**")
@@ -1455,15 +1464,7 @@ if st.session_state.torneo_iniziato:
     # ✅ 3. 🔧 Utility (sezione principale con sottosezioni)
     st.sidebar.subheader("🔧 Utility")
     
-    # 🔀 Modalità selezione giocatori
-    if "modalita_selezione_giocatori" not in st.session_state:
-        st.session_state.modalita_selezione_giocatori = "Multiselect"
-
-    st.session_state.modalita_selezione_giocatori = st.sidebar.radio(
-        "Modalità selezione giocatori:",
-        ["Multiselect", "Checkbox singole"],
-        index=["Multiselect", "Checkbox singole"].index(st.session_state.modalita_selezione_giocatori)
-    )
+   
     
     
     # 🔎 Visualizzazione incontri
