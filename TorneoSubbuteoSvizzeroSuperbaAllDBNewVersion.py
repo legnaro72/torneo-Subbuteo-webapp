@@ -65,7 +65,7 @@ def add_keep_alive():
     st.components.v1.html(js, height=0, width=0)
 
 # Inizializza il keep-alive
-add_keep_alive()
+#add_keep_alive()
 
 
 
