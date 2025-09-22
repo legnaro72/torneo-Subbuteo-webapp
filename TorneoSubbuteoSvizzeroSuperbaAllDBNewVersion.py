@@ -41,6 +41,11 @@ def add_keep_alive():
 # Inizializza il keep-alive
 add_keep_alive()
 
+# Inserisci qui la funzione di callback `update_ui`
+def update_ui():
+    """Funzione di callback per l'aggiornamento dell'UI."""
+    pass
+
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 from bson.objectid import ObjectId
