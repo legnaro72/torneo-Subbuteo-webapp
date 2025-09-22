@@ -505,17 +505,17 @@ def carica_torneo_da_db(nome_torneo):
             st.session_state.risultati_temp[key_val] = bool(row.get('Validata', False))
         
         # Assicurati che le colonne necessarie esistano e siano del tipo corretto
-        if 'GolCasa' not in st.session_state.df_torneo.columns:
-            st.session_state.df_torneo['GolCasa'] = 0
-        if 'GolOspite' not in st.session_state.df_torneo.columns:
-            st.session_state.df_torneo['GolOspite'] = 0
-        if 'Validata' not in st.session_state.df_torneo.columns:
-            st.session_state.df_torneo['Validata'] = False
-            
-        # Converti esplicitamente i tipi di dati
-        st.session_state.df_torneo['GolCasa'] = st.session_state.df_torneo['GolCasa'].astype(int)
-        st.session_state.df_torneo['GolOspite'] = st.session_state.df_torneo['GolOspite'].astype(int)
-        st.session_state.df_torneo['Validata'] = st.session_state.df_torneo['Validata'].astype(bool)
+        # Assicurati che le colonne necessarie esistano prima di accedere
+        for col in ['GolCasa', 'GolOspite', 'Validata']:
+            if col not in st.session_state.df_torneo.columns:
+                st.session_state.df_torneo[col] = 0 if col.startswith('Gol') else False
+                
+        # Converti esplicitamente i tipi di dati in modo più sicuro
+        st.session_state.df_torneo['GolCasa'] = st.session_state.df_torneo['GolCasa'].fillna(0).astype(int)
+        st.session_state.df_torneo['GolOspite'] = st.session_state.df_torneo['GolOspite'].fillna(0).astype(int)
+        
+        # Gestione robusta del flag 'Validata' per ogni riga
+        st.session_state.df_torneo['Validata'] = st.session_state.df_torneo['Validata'].apply(lambda x: bool(x) if x is not None else False)
         
         # Inizializza i risultati temporanei
         init_results_temp_from_df(st.session_state.df_torneo)
@@ -785,15 +785,21 @@ def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
         classifica = classifica.iloc[:-1]
 
     # Accoppiamenti in ordine di classifica
-    for i in range(0, len(classifica), 2):
+    # Ciclo accoppiamenti
+    for i in range(len(classifica)):
         s1 = classifica.iloc[i]['Squadra']
-        s2 = classifica.iloc[i + 1]['Squadra']
+        if s1 in gia_abbinati:
+            continue
 
-        # Evita ripetizioni (controllo precedenti)
-        if (s1, s2) in precedenti or (s2, s1) in precedenti:
-            # Cerca un altro avversario disponibile
-            trovato = False
-            fo
+        # cerca la prossima squadra libera con cui non ha già giocato
+        for j in range(i + 1, len(classifica)):
+            s2 = classifica.iloc[j]['Squadra']
+            if s2 in gia_abbinati:
+                continue
+            if (s1, s2) not in precedenti and (s2, s1) not in precedenti:
+                accoppiamenti.append((s1, s2))
+                gia_abbinati.update([s1, s2])
+                break
 
     accoppiamenti = []
     gia_abbinati = set()
