@@ -19,15 +19,17 @@ import os
 import auth_utils as auth
 from auth_utils import verify_write_access
 
-# Aggiunge uno stile CSS personalizzato
-# Rimuove il padding in alto e sui lati
 st.markdown("""
 <style>
-.appview-container .main .block-container {
-    padding-top: 0rem;
-    padding-right: 1rem;
-    padding-left: 1rem;
-    padding-bottom: 0rem;
+/* Rimuove i margini e i padding dal body e dai contenitori principali */
+body, .stApp, .appview-container, .main, .block-container {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Rimuove il padding dalla sidebar, se necessario */
+.css-16986x3 {
+    padding-top: 0rem !important;
 }
 </style>
 """, unsafe_allow_html=True)
