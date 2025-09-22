@@ -70,6 +70,9 @@ if not st.session_state.get('authenticated', False):
     auth.show_auth_screen(club="Superba")
     st.stop()
 
+# Inizializza il keep-alive
+add_keep_alive()
+
 # Configurazione della pagina già impostata all'inizio
 
 def reset_app_state():
@@ -1759,8 +1762,7 @@ if st.session_state.torneo_finito:
             st.balloons()
             time.sleep(1) # Aspetta 1 secondo
 
-# Inizializza il keep-alive
-add_keep_alive()
+
 
 # Footer leggero
 st.markdown("---")
