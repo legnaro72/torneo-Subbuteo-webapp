@@ -83,6 +83,22 @@ st.markdown('''
         background: linear-gradient(135deg, #B22222, #FF6347);
         transform: scale(1.05);
     }
+    /* Stile per il nuovo pulsante Beta */
+    .card-link-beta {
+        background-color: #ff9900; /* Un arancione brillante */
+        border: 1px solid #ff9900;
+    }
+
+    .card-link-beta:hover {
+        background-color: #e68a00; /* Un arancione più scuro al passaggio del mouse */
+    }
+
+    .card-link-red {
+        background-color: #E60023;
+    }
+    .card-link-red:hover {
+        background-color: #a30017;
+    }
 
     /* Box manuale utente con gradiente blu */
     .manual-box {
@@ -140,12 +156,15 @@ col3, col4 = st.columns(2)
 with col3:
     st.markdown('''
         <div class="card">
-            <div class="card-title">🇨🇭 Torneo Svizzero x Club</div>
+            <div class="card-title">🏆 Torneo Svizzero</div>
             <div class="card-desc">
-                Torneo sviluppato con il <b>criterio svizzero</b>, perfetto per gestire 
-                competizioni equilibrate tra più squadre/club.
+                Permette di gestire un torneo con formula svizzera. <br>
+                Risultati, Classifiche, Accoppiamenti e Report finali.
             </div>
-            <a class="card-link" href="https://torneo-subbuteo-superba-svizzero-alldb.streamlit.app/" target="_blank">Apri App</a>
+            <div class="card-link-container">
+                <a class="card-link" href="https://torneo-subbuteo-superba-all-db.streamlit.app/" target="_blank">Apri App</a>
+                <a class="card-link card-link-beta" href="https://torneo-subbuteo-superba-new-version-svizzero-alldb.streamlit.app/" target="_blank">Apri Beta App</a>
+            </div>
         </div>
     ''', unsafe_allow_html=True)
 
