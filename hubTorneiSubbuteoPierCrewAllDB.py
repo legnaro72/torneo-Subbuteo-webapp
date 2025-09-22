@@ -73,6 +73,15 @@ st.markdown('''
         transform: scale(1.05);
     }
 
+    /* Stile per il nuovo pulsante Beta */
+    .card-link-beta {
+        background: linear-gradient(135deg, #FF9900, #E68A00); /* Gradiente arancione */
+    }
+
+    .card-link-beta:hover {
+        background: linear-gradient(135deg, #E68A00, #FF9900); /* Gradiente inverso al passaggio del mouse */
+    }
+
     /* Pulsante rosso con gradiente e testo bianco */
     .card-link-red {
         background: linear-gradient(135deg, #FF6347, #B22222);
@@ -145,7 +154,10 @@ with col3:
                 Torneo sviluppato con il <b>criterio svizzero</b>, perfetto per gestire 
                 competizioni equilibrate tra più squadre/club.
             </div>
-            <a class="card-link" href="https://torneo-subbuteo-piercrew-svizzero-alldb.streamlit.app/" target="_blank">Apri App</a>
+            <div class="card-link-container">
+                <a class="card-link" href="https://torneo-subbuteo-piercrew-svizzero-alldb.streamlit.app/" target="_blank">Apri App</a>
+                <a class="card-link card-link-beta" href="https://torneo-subbuteo-piercrew-new-version-svizzero-alldb.streamlit.app/" target="_blank">Apri App Beta ++</a>
+            </div>
         </div>
     ''', unsafe_allow_html=True)
 
