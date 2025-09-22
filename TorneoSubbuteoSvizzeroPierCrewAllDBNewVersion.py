@@ -1,3 +1,4 @@
+
 import streamlit as st
 
 # Configurazione della pagina DEVE essere la PRIMA operazione Streamlit
@@ -97,6 +98,7 @@ for key, default in {
     "nuovo_torneo_step": 1,
     "club_scelto": "PierCrew",
     "giocatori_selezionati_db": [],
+    "modalita_selezione_giocatori": "Checkbox singole",
     "giocatori_ospiti": [],
     "giocatori_totali": [],
     "torneo_iniziato": False,
@@ -767,6 +769,35 @@ def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
     accoppiamenti = []
     gia_abbinati = set()
 
+    if primo_turno:
+        # Ordina per Potenziale decrescente
+        classifica = classifica.copy()
+        classifica['Potenziale'] = pd.to_numeric(classifica['Potenziale'], errors='coerce').fillna(0)
+        classifica = classifica.sort_values(by='Potenziale', ascending=False).reset_index(drop=True)
+    else:
+        # Usa la classifica aggiornata
+        classifica = aggiorna_classifica(st.session_state.df_torneo)
+
+    # Se dispari → ultima squadra riposa
+    if len(classifica) % 2 != 0:
+        riposa = classifica.iloc[-1]['Squadra']
+        st.warning(f"Numero dispari di squadre – {riposa} riposa in questo turno")
+        classifica = classifica.iloc[:-1]
+
+    # Accoppiamenti in ordine di classifica
+    for i in range(0, len(classifica), 2):
+        s1 = classifica.iloc[i]['Squadra']
+        s2 = classifica.iloc[i + 1]['Squadra']
+
+        # Evita ripetizioni (controllo precedenti)
+        if (s1, s2) in precedenti or (s2, s1) in precedenti:
+            # Cerca un altro avversario disponibile
+            trovato = False
+            fo
+
+    accoppiamenti = []
+    gia_abbinati = set()
+
     # Copia locale della classifica
     classifica = classifica.copy()
 
@@ -1184,20 +1215,28 @@ if st.session_state.setup_mode == "nuovo":
         
         col_db, col_num = st.columns([2, 1])
         with col_db:
+            #df_gioc = carica_giocatori_da_db()
             df_gioc = carica_giocatori_da_db()
             if not df_gioc.empty:
-                # Aggiungi checkbox per selezionare tutti i giocatori
-                select_all = st.checkbox("Seleziona tutti i giocatori")
-                
-                # Se la checkbox è selezionata, mostra tutti i giocatori, altrimenti mostra quelli precedentemente selezionati
-                default_players = df_gioc['Giocatore'].tolist() if select_all else st.session_state.giocatori_selezionati_db
-                
-                st.session_state.giocatori_selezionati_db = st.multiselect(
-                    "Seleziona i giocatori che partecipano (dal database):",
-                    options=df_gioc['Giocatore'].tolist(),
-                    default=default_players,
-                    key="player_selector"
-                )
+                if st.session_state.modalita_selezione_giocatori == "Multiselect":
+                    # Modalità classica
+                    select_all = st.checkbox("Seleziona tutti i giocatori")
+                    default_players = df_gioc['Giocatore'].tolist() if select_all else st.session_state.giocatori_selezionati_db
+                    st.session_state.giocatori_selezionati_db = st.multiselect(
+                        "Seleziona i giocatori (DB):",
+                        options=df_gioc['Giocatore'].tolist(),
+                        default=default_players,
+                        key="player_selector"
+                    )
+                else:
+                    # Nuova modalità: checkbox singole
+                    st.markdown("### ✅ Seleziona i giocatori")
+                    selezionati = []
+                    for g in df_gioc['Giocatore'].tolist():
+                        if st.checkbox(g, value=(g in st.session_state.giocatori_selezionati_db), key=f"chk_{g}"):
+                            selezionati.append(g)
+                    st.session_state.giocatori_selezionati_db = selezionati
+
         with col_num:
             num_squadre = st.number_input("Numero totale di partecipanti:", min_value=2, max_value=100, value=max(8, len(st.session_state.giocatori_selezionati_db)), step=1, key="num_partecipanti")
 
@@ -1409,6 +1448,17 @@ if st.session_state.torneo_iniziato:
 
     # ✅ 3. 🔧 Utility (sezione principale con sottosezioni)
     st.sidebar.subheader("🔧 Utility")
+    
+    # 🔀 Modalità selezione giocatori
+    if "modalita_selezione_giocatori" not in st.session_state:
+        st.session_state.modalita_selezione_giocatori = "Multiselect"
+
+    st.session_state.modalita_selezione_giocatori = st.sidebar.radio(
+        "Modalità selezione giocatori:",
+        ["Multiselect", "Checkbox singole"],
+        index=["Multiselect", "Checkbox singole"].index(st.session_state.modalita_selezione_giocatori)
+    )
+    
     
     # 🔎 Visualizzazione incontri
     with st.sidebar.expander("🔎 Visualizzazione incontri", expanded=False):
