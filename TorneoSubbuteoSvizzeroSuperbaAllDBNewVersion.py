@@ -1416,9 +1416,10 @@ if "modalita_selezione_giocatori" not in st.session_state:
 st.session_state.modalita_selezione_giocatori = st.sidebar.radio(
     "Modalità selezione giocatori:",
     ["Multiselect", "Checkbox singole"],
-    index=["Multiselect", "Checkbox singole"].index(st.session_state.modalita_selezione_giocatori)
+    index=["Multiselect", "Checkbox singole"].index(st.session_state.modalita_selezione_giocatori),
+    on_change=update_ui
 )
-st.rerun()
+
 
 if st.session_state.torneo_iniziato:
     #st.sidebar.info(f"Torneo in corso: **{st.session_state.nome_torneo}**")
