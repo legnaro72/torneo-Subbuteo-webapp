@@ -1423,11 +1423,11 @@ use_multiselect = st.sidebar.checkbox(
     value=(st.session_state.modalita_selezione_giocatori == "Multiselect")
 )
 
-# Aggiorna lo stato di sessione in base alla scelta della checkbox
-if use_multiselect:
-    st.session_state.modalita_selezione_giocatori = "Multiselect"
-else:
-    st.session_state.modalita_selezione_giocatori = "Checkbox singole"
+# Se cambia rispetto allo stato salvato → aggiorna e forza rerun
+nuova_modalita = "Multiselect" if use_multiselect else "Checkbox singole"
+if nuova_modalita != st.session_state.modalita_selezione_giocatori:
+    st.session_state.modalita_selezione_giocatori = nuova_modalita
+    st.rerun()
 
 
 
