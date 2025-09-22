@@ -41,10 +41,6 @@ def add_keep_alive():
 # Inizializza il keep-alive
 add_keep_alive()
 
-# Inserisci qui la funzione di callback `update_ui`
-def update_ui():
-    """Funzione di callback per l'aggiornamento dell'UI."""
-    pass
 
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
@@ -1239,6 +1235,7 @@ if st.session_state.setup_mode == "nuovo":
                         default=default_players,
                         key="player_selector"
                     )
+                    pass
                 else:
                     # Nuova modalità: checkbox singole
                     st.markdown("### ✅ Seleziona i giocatori")
@@ -1247,6 +1244,7 @@ if st.session_state.setup_mode == "nuovo":
                         if st.checkbox(g, value=(g in st.session_state.giocatori_selezionati_db), key=f"chk_{g}"):
                             selezionati.append(g)
                     st.session_state.giocatori_selezionati_db = selezionati
+                    pass
 
         with col_num:
             num_squadre = st.number_input("Numero totale di partecipanti:", min_value=2, max_value=100, value=max(8, len(st.session_state.giocatori_selezionati_db)), step=1, key="num_partecipanti")
@@ -1417,12 +1415,12 @@ st.sidebar.subheader("👤 Mod Selezione Partedcipanti")
 
 # 🔀 Modalità selezione giocatori
 if "modalita_selezione_giocatori" not in st.session_state:
-    st.session_state.modalita_selezione_giocatori = "Multiselect"
+    st.session_state.modalita_selezione_giocatori = "Checkbox singole"
 st.session_state.modalita_selezione_giocatori = st.sidebar.radio(
     "Modalità selezione giocatori:",
     ["Multiselect", "Checkbox singole"],
-    index=["Multiselect", "Checkbox singole"].index(st.session_state.modalita_selezione_giocatori),
-    on_change=update_ui
+    index=["Multiselect", "Checkbox singole"].index(st.session_state.modalita_selezione_giocatori)
+    
 )
 
 
