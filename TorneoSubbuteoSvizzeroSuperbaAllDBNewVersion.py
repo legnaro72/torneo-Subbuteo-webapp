@@ -1529,11 +1529,10 @@ if st.session_state.torneo_iniziato:
                 )
             else:
                 st.sidebar.error("❌ Errore durante la generazione del PDF")
-#else:
-    #st.sidebar.info("ℹ️ Nessun torneo attivo. Avvia un torneo per generare il PDF.")
+
 
     # Inizializza il keep-alive
-    #add_keep_alive()
+    add_keep_alive()
 
 # -------------------------
 # Interfaccia Utente Torneo
