@@ -1,5 +1,4 @@
 
-
 import streamlit as st
 # Ora importiamo le altre dipendenze
 import pandas as pd
@@ -20,17 +19,15 @@ import os
 import auth_utils as auth
 from auth_utils import verify_write_access
 
+# Aggiunge uno stile CSS personalizzato
+# Rimuove il padding in alto e sui lati
 st.markdown("""
 <style>
-/* Rimuove i margini e i padding da tutti gli elementi */
-* {
-    margin: 0 !important;
-    padding: 0 !important;
-}
-
-/* Rimuove il padding dalla sidebar, se necessario */
-.css-16986x3 {
-    padding-top: 0rem !important;
+.appview-container .main .block-container {
+    padding-top: 0rem;
+    padding-right: 1rem;
+    padding-left: 1rem;
+    padding-bottom: 0rem;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -67,14 +64,16 @@ def add_keep_alive():
     """
     st.components.v1.html(js, height=0, width=0)
 
+# Inizializza il keep-alive
+#add_keep_alive()
+
+
+
 
 # Mostra la schermata di autenticazione se non si è già autenticati
 if not st.session_state.get('authenticated', False):
     auth.show_auth_screen(club="Superba")
     st.stop()
-
-# Inizializza il keep-alive
-add_keep_alive()
 
 # Configurazione della pagina già impostata all'inizio
 
@@ -1764,13 +1763,8 @@ if st.session_state.torneo_finito:
         with placeholder.container():
             st.balloons()
             time.sleep(1) # Aspetta 1 secondo
-
-
-
 # Footer leggero
 st.markdown("---")
 st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
-
-
 
 # Non è necessario il blocco if __name__ == "__main__" in un'app Streamlit
