@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Ora importiamo le altre dipendenze
+# Solo DOPO si possono importare le altre dipendenze
 import pandas as pd
 from datetime import datetime
 import io
@@ -27,19 +27,6 @@ import os
 # Import auth utilities
 import auth_utils as auth
 from auth_utils import verify_write_access
-
-# Aggiunge uno stile CSS personalizzato
-# Rimuove il padding in alto e sui lati
-st.markdown("""
-<style>
-.appview-container .main .block-container {
-    padding-top: 0rem;
-    padding-right: 1rem;
-    padding-left: 1rem;
-    padding-bottom: 0rem;
-}
-</style>
-""", unsafe_allow_html=True)
 
 
 
@@ -132,193 +119,129 @@ for key, default in {
 # Aggiornamento del nome del torneo se è finito
 if st.session_state.torneo_finito and not st.session_state.nome_torneo.startswith("finito_"):
     st.session_state.nome_torneo = f"finito_{st.session_state.nome_torneo}"
-
 # -------------------------
 # CSS personalizzato
 # -------------------------
 st.markdown("""
 <style>
-.stButton>button { 
-    background: linear-gradient(90deg, #457b9d, #1d3557); 
-    color: white; 
-    border-radius: 10px; 
-    padding: 0.55em 1.0em; 
-    font-weight: 700; 
-    border: 0; 
-    box-shadow: 0 4px 14px #00000022;
-}
-.stButton>button:hover { 
-    transform: translateY(-1px); 
-    box-shadow: 0 6px 18px #00000033; 
-}
-.stDownloadButton>button { 
-    background: linear-gradient(90deg, #457b9d, #1d3557); 
-    color: white; 
-    border-radius: 10px; 
-    font-weight: 700; 
-    border: 0; 
-    box-shadow: 0 4px 14px #00000022;
-}
-.stDownloadButton>button:hover { 
-    transform: translateY(-1px); 
-    box-shadow: 0 6px 18px #00000033; 
-}
-        
-        /* Stile per il link button nella sidebar sia per tema chiaro che scuro */
-        [data-testid="stSidebar"] .stLinkButton a {
-            color: white !important;
-            background: linear-gradient(90deg, #457b9d, #1d3557) !important;
-            border-radius: 10px !important;
-            padding: 0.55em 1.0em !important;
-            font-weight: 700 !important;
-            text-decoration: none !important;
-            transition: all 0.2s ease !important;
-            display: inline-block !important;
-            width: 100% !important;
-            text-align: center !important;
-            border: none !important;
-            box-shadow: 0 4px 14px #00000022 !important;
-        }
-        
-        [data-testid="stSidebar"] .stLinkButton a:hover {
-            transform: translateY(-1px) !important;
-            box-shadow: 0 6px 18px #00000033 !important;
-            color: white !important;
-        }
-        
-        [data-testid="stSidebar"] .stLinkButton a:active {
-            transform: translateY(0) !important;
-        }
-        
-        /* Override per il tema scuro */
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] .stLinkButton a,
-        html[data-theme="dark"] [data-testid="stSidebar"] .stLinkButton a,
-        body[data-theme="dark"] [data-testid="stSidebar"] .stLinkButton a {
-            color: white !important;
-        }
-/* Main content h3 styling - solo per contenuto principale */
-.main .block-container h3 { 
-    color: white; 
-    font-weight: 700;
-    background: linear-gradient(90deg, #457b9d, #1d3557);
-    border-radius: 10px;
-    box-shadow: 0 4px 14px #00000022;
-    padding: 10px;
-    text-align: center;
-}
-/* Sidebar h3 styling - mantiene stile normale */
-.css-1d391kg h3, [data-testid="stSidebar"] h3 {
-    color: #1d3557;
-    font-weight: 700;
-    background: none !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    text-align: left !important;
-}
-
-/* Tema scuro - sidebar subheaders bianchi con selettori più specifici */
-@media (prefers-color-scheme: dark) {
-    [data-testid="stSidebar"] h3,
-    .css-1d391kg h3,
-    [data-testid="stSidebar"] .element-container h3,
-    .css-1d391kg .element-container h3 {
-        color: #ffffff !important;
-        background: none !important;
+    /* Stili per il contenitore principale */
+    .appview-container .main .block-container {
+        padding-top: 0rem;
+        padding-right: 1rem;
+        padding-left: 1rem;
+        padding-bottom: 0rem;
     }
-}
 
-/* Streamlit dark theme - sidebar subheaders bianchi con priorità massima */
-.stApp[data-theme="dark"] [data-testid="stSidebar"] h3,
-.stApp[data-theme="dark"] .css-1d391kg h3,
-.stApp[data-theme="dark"] [data-testid="stSidebar"] .element-container h3,
-.stApp[data-theme="dark"] .css-1d391kg .element-container h3,
-.stApp[data-theme="dark"] [data-testid="stSidebar"] div h3,
-.stApp[data-theme="dark"] .css-1d391kg div h3 {
-    color: #ffffff !important;
-    background: none !important;
-}
+    /* Stili per i pulsanti */
+    .stButton>button, 
+    .stDownloadButton>button {
+        background: linear-gradient(90deg, #457b9d, #1d3557); 
+        color: white; 
+        border-radius: 10px; 
+        padding: 0.55em 1.0em; 
+        font-weight: 700; 
+        border: 0; 
+        box-shadow: 0 4px 14px #00000022;
+        transition: all 0.2s ease;
+    }
 
-/* Selettori ancora più specifici per forzare il bianco sui subheader */
-html[data-theme="dark"] [data-testid="stSidebar"] h3,
-html[data-theme="dark"] .css-1d391kg h3,
-body[data-theme="dark"] [data-testid="stSidebar"] h3,
-body[data-theme="dark"] .css-1d391kg h3 {
-    color: #ffffff !important;
-}
+    .stButton>button:hover,
+    .stDownloadButton>button:hover { 
+        transform: translateY(-1px); 
+        box-shadow: 0 6px 18px #00000033; 
+    }
 
-/* Override per tutti i possibili selettori di subheader nella sidebar */
-[data-testid="stSidebar"] h3[class*="css"],
-.css-1d391kg h3[class*="css"] {
-    color: #ffffff !important;
-}
-
-/* CSS con massima specificità per tema scuro */
-.stApp[data-theme="dark"] [data-testid="stSidebar"] * h3,
-.stApp[data-theme="dark"] .css-1d391kg * h3 {
-    color: #ffffff !important;
-}
-
-/* Approccio universale - forza bianco su TUTTI gli h3 della sidebar nel tema scuro */
-@media (prefers-color-scheme: dark) {
-    [data-testid="stSidebar"] h3 {
+    /* Stili per i link nella sidebar */
+    [data-testid="stSidebar"] .stLinkButton a {
         color: white !important;
+        background: linear-gradient(90deg, #457b9d, #1d3557) !important;
+        border-radius: 10px !important;
+        padding: 0.55em 1.0em !important;
+        font-weight: 700 !important;
+        text-decoration: none !important;
+        transition: all 0.2s ease !important;
+        display: inline-block !important;
+        width: 100% !important;
+        text-align: center !important;
+        border: none !important;
+        box-shadow: 0 4px 14px #00000022 !important;
     }
-}
 
-.stApp[data-theme="dark"] [data-testid="stSidebar"] h3 {
-    color: white !important;
-}
+    [data-testid="stSidebar"] .stLinkButton a:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 6px 18px #00000033 !important;
+    }
 
-/* Selettore CSS universale per tutti gli elementi h3 nella sidebar */
-[data-testid="stSidebar"] h3,
-[data-testid="stSidebar"] .stMarkdown h3,
-[data-testid="stSidebar"] div h3 {
-    color: white !important;
-}
+    [data-testid="stSidebar"] .stLinkButton a:active {
+        transform: translateY(0) !important;
+    }
 
-/* Forza il colore blu per i subheader della sidebar in entrambi i temi */
-[data-testid="stSidebar"] h3,
-[data-testid="stSidebar"] h3[class*="st-emotion-cache"],
-[data-testid="stSidebar"] h3[class*="css"],
-[data-testid="stSidebar"] h3[class*="element-container"],
-[data-testid="stSidebar"] h3[class*="stMarkdown"],
-[data-testid="stSidebar"] h3[class*="stSubheader"],
-[data-testid="stSidebar"] h3[class*="stHeadingContainer"],
-[data-testid="stSidebar"] h3[class*="stTitle"],
-[data-testid="stSidebar"] .stMarkdown h3,
-[data-testid="stSidebar"] .element-container h3,
-[data-testid="stSidebar"] .stSubheader h3,
-[data-testid="stSidebar"] .stHeadingContainer h3,
-[data-testid="stSidebar"] .stTitle h3,
-.stApp[data-theme="light"] [data-testid="stSidebar"] h3,
-.stApp[data-theme="dark"] [data-testid="stSidebar"] h3,
-html[data-theme="light"] [data-testid="stSidebar"] h3,
-html[data-theme="dark"] [data-testid="stSidebar"] h3,
-body[data-theme="light"] [data-testid="stSidebar"] h3,
-body[data-theme="dark"] [data-testid="stSidebar"] h3 {
-    color: #0078D4 !important;
-    font-weight: 700;
-    background: none !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    text-align: left !important;
-}
+    /* Stili per gli header */
+    .main .block-container h3 { 
+        color: white; 
+        font-weight: 700;
+        background: linear-gradient(90deg, #457b9d, #1d3557);
+        border-radius: 10px;
+        box-shadow: 0 4px 14px #00000022;
+        padding: 10px;
+        text-align: center;
+    }
 
-/* Rimuovi eventuali stili di hover o focus che potrebbero sovrascrivere */
-[data-testid="stSidebar"] h3:hover,
-[data-testid="stSidebar"] h3:focus,
-[data-testid="stSidebar"] h3:active {
-    color: #0078D4 !important;
-}
+    /* Stili per la sidebar */
+    .css-1d391kg h3, 
+    [data-testid="stSidebar"] h3 {
+        color: #1d3557;
+        font-weight: 700;
+        background: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        text-align: left !important;
+    }
 
-/* Forza il colore anche per i temi personalizzati */
-[data-testid="stSidebar"] h3[style*="color"],
-[data-testid="stSidebar"] h3[style*="color"]:hover,
-[data-testid="stSidebar"] h3[style*="color"]:focus {
-    color: #0078D4 !important;
-}
+    /* Gestione temi scuri */
+    @media (prefers-color-scheme: dark),
+           .stApp[data-theme="dark"],
+           html[data-theme="dark"],
+           body[data-theme="dark"] {
+        [data-testid="stSidebar"] h3,
+        .css-1d391kg h3,
+        [data-testid="stSidebar"] .element-container h3,
+        .css-1d391kg .element-container h3,
+        [data-testid="stSidebar"] div h3,
+        .css-1d391kg div h3,
+        [data-testid="stSidebar"] h3[class*="st-emotion-cache"],
+        [data-testid="stSidebar"] h3[class*="css"],
+        [data-testid="stSidebar"] h3[class*="element-container"],
+        [data-testid="stSidebar"] h3[class*="stMarkdown"],
+        [data-testid="stSidebar"] h3[class*="stSubheader"],
+        [data-testid="stSidebar"] h3[class*="stHeadingContainer"],
+        [data-testid="stSidebar"] h3[class*="stTitle"],
+        [data-testid="stSidebar"] .stMarkdown h3,
+        [data-testid="stSidebar"] .element-container h3,
+        [data-testid="stSidebar"] .stSubheader h3,
+        [data-testid="stSidebar"] .stHeadingContainer h3,
+        [data-testid="stSidebar"] .stTitle h3 {
+            color: #0078D4 !important;
+            font-weight: 700;
+            background: none !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            text-align: left !important;
+        }
+
+        /* Stili per hover/focus nella sidebar */
+        [data-testid="stSidebar"] h3:hover,
+        [data-testid="stSidebar"] h3:focus,
+        [data-testid="stSidebar"] h3:active,
+        [data-testid="stSidebar"] h3[style*="color"],
+        [data-testid="stSidebar"] h3[style*="color"]:hover,
+        [data-testid="stSidebar"] h3[style*="color"]:focus {
+            color: #0078D4 !important;
+        }
+    }
+</style>
 """, unsafe_allow_html=True)
 
 # -------------------------
@@ -687,29 +610,31 @@ def calcola_punti_scontro_diretto(squadra1, squadra2, df):
             
     return punti1, punti2
 
-
 def aggiorna_classifica(df):
     stats = {}
-
-    # Includi tutte le squadre iniziali + quelle apparse nelle partite
-    squadre_iniziali = set(st.session_state.df_squadre['Squadra'].tolist()) if 'df_squadre' in st.session_state else set()
-    squadre_partite = set(df['Casa'].unique()).union(set(df['Ospite'].unique()))
-    squadre = squadre_iniziali.union(squadre_partite)
-
+    
+    # Inizializza le statistiche per ogni squadra
+    squadre = set(df['Casa'].unique()).union(set(df['Ospite'].unique()))
     for squadra in squadre:
         stats[squadra] = {'Punti': 0, 'GF': 0, 'GS': 0, 'DR': 0, 'G': 0, 'V': 0, 'N': 0, 'P': 0}
-
+    
+    # Calcola le statistiche di base
     for _, r in df.iterrows():
         if not bool(r.get('Validata', False)):
             continue
+            
         casa, osp = r['Casa'], r['Ospite']
         gc, go = int(r['GolCasa']), int(r['GolOspite'])
+        
+        # Aggiorna statistiche generali
         stats[casa]['G'] += 1
         stats[osp]['G'] += 1
         stats[casa]['GF'] += gc
         stats[casa]['GS'] += go
         stats[osp]['GF'] += go
         stats[osp]['GS'] += gc
+        
+        # Aggiorna punteggi
         if gc > go:
             stats[casa]['Punti'] += 2
             stats[casa]['V'] += 1
@@ -723,109 +648,92 @@ def aggiorna_classifica(df):
             stats[osp]['Punti'] += 1
             stats[casa]['N'] += 1
             stats[osp]['N'] += 1
-
+    
+    # Calcola la differenza reti per ogni squadra
     for squadra in stats:
         stats[squadra]['DR'] = stats[squadra]['GF'] - stats[squadra]['GS']
-
-    df_classifica = pd.DataFrame(
-        [(k, v['Punti'], v['G'], v['V'], v['N'], v['P'], v['GF'], v['GS'], v['DR']) for k, v in stats.items()],
-        columns=['Squadra', 'Punti', 'G', 'V', 'N', 'P', 'GF', 'GS', 'DR']
-    )
-    df_classifica = df_classifica.sort_values(by=['Punti', 'DR', 'GF'], ascending=[False, False, False]).reset_index(drop=True)
-    return df_classifica
-
-    stats = {}
-    # Includi tutte le squadre iniziali + quelle apparse nelle partite
-    squadre_iniziali = set(st.session_state.df_squadre['Squadra'].tolist()) if 'df_squadre' in st.session_state else set()
-    squadre_partite = set(df['Casa'].unique()).union(set(df['Ospite'].unique()))
-    squadre = squadre_iniziali.union(squadre_partite)
-
-    for squadra in squadre:
-        stats[squadra] = {'Punti': 0, 'GF': 0, 'GS': 0, 'DR': 0, 'G': 0, 'V': 0, 'N': 0, 'P': 0}
-
-    for _, r in df.iterrows():
-        if not bool(r.get('Validata', False)):
-            continue
-        casa, osp = r['Casa'], r['Ospite']
-        gc, go = int(r['GolCasa']), int(r['GolOspite'])
-        stats[casa]['G'] += 1
-        stats[osp]['G'] += 1
-        stats[casa]['GF'] += gc
-        stats[casa]['GS'] += go
-        stats[osp]['GF'] += go
-        stats[osp]['GS'] += gc
-        if gc > go:
-            stats[casa]['Punti'] += 2
-            stats[casa]['V'] += 1
-            stats[osp]['P'] += 1
-        elif gc < go:
-            stats[osp]['Punti'] += 2
-            stats[osp]['V'] += 1
-            stats[casa]['P'] += 1
+    
+    # Crea il DataFrame
+    if not stats:
+        return pd.DataFrame(columns=['Squadra', 'Punti', 'G', 'V', 'N', 'P', 'GF', 'GS', 'DR'])
+    
+    df_classifica = pd.DataFrame([(k, v['Punti'], v['G'], v['V'], v['N'], v['P'], v['GF'], v['GS'], v['DR']) 
+                                for k, v in stats.items()],
+                              columns=['Squadra', 'Punti', 'G', 'V', 'N', 'P', 'GF', 'GS', 'DR'])
+    
+    # Ordina usando una chiave personalizzata che include il confronto diretto
+    def sort_key(row):
+        # Crea una tupla con i criteri di ordinamento
+        # 1. Punti (decrescente)
+        # 2. Punti negli scontri diretti (se ci sono)
+        # 3. Differenza reti (decrescente)
+        # 4. Gol fatti (decrescente)
+        # 5. Nome squadra (crescente)
+        
+        punti = -row['Punti']  # Moltiplicato per -1 per ordinamento decrescente
+        dr = -row['DR']
+        gf = -row['GF']
+        squadra = row['Squadra'].lower()  # Converti in minuscolo per ordinamento case-insensitive
+        
+        # Calcola i punti negli scontri diretti con le squadre con gli stessi punti
+        stesse_punti = df_classifica[df_classifica['Punti'] == row['Punti']]['Squadra'].tolist()
+        if len(stesse_punti) > 1 and row['Squadra'] in stesse_punti:
+            # Calcola la classifica parziale solo tra le squadre a pari punti
+            punteggi_scontri = {}
+            for s in stesse_punti:
+                punteggi_scontri[s] = 0
+                
+            for i, s1 in enumerate(stesse_punti):
+                for s2 in stesse_punti[i+1:]:
+                    p1, p2 = calcola_punti_scontro_diretto(s1, s2, df)
+                    punteggi_scontri[s1] += p1
+                    punteggi_scontri[s2] += p2
+            
+            # Usa il punteggio negli scontri diretti come secondo criterio
+            punti_scontri = -punteggi_scontri.get(row['Squadra'], 0)
         else:
-            stats[casa]['Punti'] += 1
-            stats[osp]['Punti'] += 1
-            stats[casa]['N'] += 1
-            stats[osp]['N'] += 1
-    for squadra in stats:
-        stats[squadra]['DR'] = stats[squadra]['GF'] - stats[squadra]['GS']
-
-    df_classifica = pd.DataFrame(
-        [(k, v['Punti'], v['G'], v['V'], v['N'], v['P'], v['GF'], v['GS'], v['DR']) for k, v in stats.items()],
-        columns=['Squadra', 'Punti', 'G', 'V', 'N', 'P', 'GF', 'GS', 'DR']
-    )
-    df_classifica = df_classifica.sort_values(by=['Punti', 'DR', 'GF'], ascending=[False, False, False]).reset_index(drop=True)
+            punti_scontri = 0
+            
+        # Aggiungi un log per debug
+        # st.write(f"{row['Squadra']}: Punti={-punti}, Scontri={-punti_scontri}, DR={-dr}, GF={-gf}")
+            
+        return (punti, punti_scontri, dr, gf, squadra)
+    
+    # Applica l'ordinamento personalizzato
+    indici_ordinati = sorted(df_classifica.index, key=lambda x: sort_key(df_classifica.loc[x]))
+    df_classifica = df_classifica.loc[indici_ordinati].reset_index(drop=True)
+    
     return df_classifica
-
-
 
 def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
-    """
-    Genera gli accoppiamenti:
-      - Se primo_turno=True ordina per 'Potenziale'
-      - Se numero dispari di squadre → assegna riposo a chi non ha ancora riposato
-      - Ogni squadra deve riposare al massimo una volta in tutto il torneo
-    """
     accoppiamenti = []
     gia_abbinati = set()
 
-    classifica = classifica.copy().reset_index(drop=True)
-
     if primo_turno:
-        if "Potenziale" in classifica.columns:
-            classifica["Potenziale"] = pd.to_numeric(classifica["Potenziale"], errors="coerce").fillna(0)
-            classifica = classifica.sort_values(by="Potenziale", ascending=False).reset_index(drop=True)
+        # Ordina per Potenziale decrescente
+        classifica = classifica.copy()
+        classifica['Potenziale'] = pd.to_numeric(classifica['Potenziale'], errors='coerce').fillna(0)
+        classifica = classifica.sort_values(by='Potenziale', ascending=False).reset_index(drop=True)
     else:
+        # Usa la classifica aggiornata
         classifica = aggiorna_classifica(st.session_state.df_torneo)
 
-    if "riposi" not in st.session_state:
-        st.session_state.riposi = set()
-
-    # Se dispari → assegna il riposo
+    # Se dispari → ultima squadra riposa
     if len(classifica) % 2 != 0:
-        squadre = classifica["Squadra"].tolist()
-
-        # Considera solo chi non ha ancora riposato
-        non_riposi = [s for s in squadre if s not in st.session_state.riposi]
-
-        if non_riposi:
-            riposa = non_riposi[-1]   # ultima in classifica tra i disponibili
-        else:
-            # caso limite: tutti hanno già riposato → ricomincia
-            riposa = squadre[-1]
-
+        riposa = classifica.iloc[-1]['Squadra']
         st.warning(f"Numero dispari di squadre – {riposa} riposa in questo turno")
+        classifica = classifica.iloc[:-1]
 
-        st.session_state.riposi.add(riposa)
-        classifica = classifica[classifica["Squadra"] != riposa].reset_index(drop=True)
-
-    # Genera gli accoppiamenti evitando ripetizioni
+    # Accoppiamenti in ordine di classifica
+    # Ciclo accoppiamenti
     for i in range(len(classifica)):
-        s1 = classifica.iloc[i]["Squadra"]
+        s1 = classifica.iloc[i]['Squadra']
         if s1 in gia_abbinati:
             continue
+
+        # cerca la prossima squadra libera con cui non ha già giocato
         for j in range(i + 1, len(classifica)):
-            s2 = classifica.iloc[j]["Squadra"]
+            s2 = classifica.iloc[j]['Squadra']
             if s2 in gia_abbinati:
                 continue
             if (s1, s2) not in precedenti and (s2, s1) not in precedenti:
@@ -833,141 +741,189 @@ def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
                 gia_abbinati.update([s1, s2])
                 break
 
-    squadre_non_abbinate = [s for s in classifica["Squadra"] if s not in gia_abbinati]
-    if squadre_non_abbinate:
-        st.warning(f"Non è stato possibile accoppiare: {', '.join(squadre_non_abbinate)}")
-
-    if not accoppiamenti:
-        st.warning("Non è stato possibile generare nuovi accoppiamenti senza ripetere partite già giocate.")
-        return None
-
-    df = pd.DataFrame(
-        [{"Casa": c, "Ospite": o, "GolCasa": 0, "GolOspite": 0, "Validata": False} for c, o in accoppiamenti]
-    )
-    return df
-
-    """
-    Genera gli accoppiamenti:
-      - Se primo_turno=True ordina per 'Potenziale'
-      - Se numero dispari di squadre → assegna riposo a chi non ha ancora riposato
-      - Ogni squadra deve riposare al massimo una volta in tutto il torneo
-    """
-    # Inizializza la lista dei riposi se non esiste
-    if 'squadre_riposate' not in st.session_state:
-        st.session_state.squadre_riposate = set()
-    
     accoppiamenti = []
     gia_abbinati = set()
-    classifica = classifica.copy().reset_index(drop=True)
 
-    # Ordina la classifica in base al contesto
+    # Copia locale della classifica
+    classifica = classifica.copy()
+
+    # Primo turno: usa i potenziali
     if primo_turno:
-        if "Potenziale" in classifica.columns:
-            classifica["Potenziale"] = pd.to_numeric(classifica["Potenziale"], errors="coerce").fillna(0)
-            classifica = classifica.sort_values(by="Potenziale", ascending=False).reset_index(drop=True)
+        classifica['Potenziale'] = pd.to_numeric(classifica['Potenziale'], errors='coerce').fillna(0)
+        classifica = classifica.sort_values(by='Potenziale', ascending=False).reset_index(drop=True)
+
     else:
+        # Dal secondo turno in poi: ricalcola l'ordine con aggiorna_classifica
         classifica = aggiorna_classifica(st.session_state.df_torneo)
-        if 'Pos.' in classifica.columns:
-            classifica = classifica.sort_values('Pos.').reset_index(drop=True)
 
-    # Gestione squadra che riposa (se numero dispari di squadre)
+    # Se dispari → riposo dell’ultima squadra
     if len(classifica) % 2 != 0:
-        # Cerca la prima squadra che non ha ancora riposato, partendo dal fondo
-        for i in range(len(classifica)-1, -1, -1):
-            squadra = classifica.iloc[i]["Squadra"]
-            if squadra not in st.session_state.squadre_riposate:
-                st.warning(f"Numero dispari di squadre – {squadra} riposa in questo turno")
-                st.session_state.squadre_riposate.add(squadra)
-                # Salva l'ultima squadra che ha riposato
-                st.session_state.ultima_riposata = squadra
-                classifica = classifica[classifica["Squadra"] != squadra].reset_index(drop=True)
-                break
-        else:
-            # Se tutte hanno già riposato, resetta e riprova
-            st.warning("Tutte le squadre hanno già riposato. Resetto i riposi.")
-            st.session_state.squadre_riposate = set()
-            squadra = classifica.iloc[-1]["Squadra"]
-            st.warning(f"{squadra} riposa in questo turno")
-            st.session_state.squadre_riposate.add(squadra)
-            st.session_state.ultima_riposata = squadra
-            classifica = classifica[classifica["Squadra"] != squadra].reset_index(drop=True)
+        riposa = classifica.iloc[-1]['Squadra']
+        st.warning(f"Numero dispari di squadre – {riposa} riposa in questo turno")
+        classifica = classifica.iloc[:-1]
 
-    # Funzione per verificare se due squadre possono giocare tra loro
-    def possono_giocare(s1, s2):
-        return ((s1, s2) not in precedenti and 
-               (s2, s1) not in precedenti and
-               s1 != s2)
-
-    # Se c'è una squadra che ha riposato nel turno precedente, assicurati che giochi
-    if 'ultima_riposata' in st.session_state and st.session_state.ultima_riposata in classifica['Squadra'].values:
-        # Trova la posizione della squadra che ha riposato
-        idx_riposata = classifica[classifica['Squadra'] == st.session_state.ultima_riposata].index[0]
-        # Scambia con la prima posizione per assicurarsi che giochi
-        if idx_riposata > 0:
-            classifica.iloc[0], classifica.iloc[idx_riposata] = classifica.iloc[idx_riposata].copy(), classifica.iloc[0].copy()
-    
-    # Prova a creare gli accoppiamenti
+    # Ciclo accoppiamenti
     for i in range(len(classifica)):
-        s1 = classifica.iloc[i]["Squadra"]
+        s1 = classifica.iloc[i]['Squadra']
         if s1 in gia_abbinati:
             continue
-            
-        # Cerca un avversario valido
+
+        # cerca la prossima squadra libera con cui non ha già giocato
         for j in range(i + 1, len(classifica)):
-            s2 = classifica.iloc[j]["Squadra"]
+            s2 = classifica.iloc[j]['Squadra']
             if s2 in gia_abbinati:
                 continue
-                
-            if possono_giocare(s1, s2):
+            if (s1, s2) not in precedenti and (s2, s1) not in precedenti:
                 accoppiamenti.append((s1, s2))
                 gia_abbinati.update([s1, s2])
                 break
 
-    # Gestione squadre non abbinate
-    squadre_non_abbinate = [s for s in classifica["Squadra"] if s not in gia_abbinati]
-    
-    # Se ci sono squadre non abbinate, prova a trovare accoppiamenti alternativi
+    # Controllo finale
+    squadre_non_abbinate = [s for s in classifica['Squadra'] if s not in gia_abbinati]
     if squadre_non_abbinate:
-        st.warning(f"Squadre non abbinate: {', '.join(squadre_non_abbinate)}. Tentativo di accoppiamento alternativo...")
+        st.warning(f"Non è stato possibile accoppiare: {', '.join(squadre_non_abbinate)}")
+
+    # Crea DataFrame degli incontri
+    df = pd.DataFrame([{"Casa": c, "Ospite": o, "GolCasa": 0, "GolOspite": 0, "Validata": False}
+                       for c, o in accoppiamenti])
+    return df
+
+    accoppiamenti = []
+    gia_abbinati = set()
+    
+    # Crea una copia della classifica per non modificare l'originale
+    classifica = classifica.copy()
+    
+    # Riaggiungi il potenziale dalle squadre se manca
+    if 'Potenziale' not in classifica.columns and not st.session_state.df_squadre.empty:
+        pot_map = st.session_state.df_squadre.set_index("Squadra")["Potenziale"].to_dict()
+        classifica["Potenziale"] = classifica["Squadra"].map(pot_map).fillna(0)
+    
+    # Determina il numero di turno corrente
+    turno_corrente = st.session_state.turno_attivo + 1  # +1 perché turno_attivo è 0-based
+    
+    if primo_turno:
+        # Assicuriamoci che 'Potenziale' sia numerico
+        if 'Potenziale' in classifica.columns:
+            classifica['Potenziale'] = pd.to_numeric(classifica['Potenziale'], errors='coerce').fillna(0)
         
-        for s1 in squadre_non_abbinate[:]:
+        # Ordinamento per potenziale (decrescente)
+        classifica = classifica.sort_values(by='Potenziale', ascending=False).reset_index(drop=True)
+
+        # Se dispari → ultima squadra riposa
+        if len(classifica) % 2 != 0:
+            riposa = classifica.iloc[-1]['Squadra']
+            st.warning(f"Numero dispari di squadre - {riposa} riposa nel primo turno")
+            classifica = classifica.iloc[:-1]
+
+        # Accoppiamento diretto: 1 vs 2, 3 vs 4, ecc.
+        for i in range(0, len(classifica), 2):
+            if i + 1 < len(classifica):
+                s1 = classifica.iloc[i]['Squadra']
+                s2 = classifica.iloc[i + 1]['Squadra']
+                pot1 = classifica.iloc[i]['Potenziale']
+                pot2 = classifica.iloc[i + 1]['Potenziale']
+                accoppiamenti.append((s1, s2))
+                gia_abbinati.add(s1)
+                gia_abbinati.add(s2)
+                st.write(f"Accoppiamento primo turno: {s1} (Pot: {pot1}) vs {s2} (Pot: {pot2})")
+
+    else:
+        # Dal secondo turno in poi, accoppia in base alla classifica (1° vs 2°, 3° vs 4°, ecc.)
+        # Assicurati che la classifica sia ordinata correttamente
+        if 'Pos.' in classifica.columns:
+            # Usa la posizione in classifica (1° è il migliore)
+            classifica = classifica.sort_values('Pos.').reset_index(drop=True)
+        else:
+            # Se non c'è la colonna Pos., usa un ordine casuale (caso di fallback)
+            classifica = classifica.sample(frac=1).reset_index(drop=True)
+        
+        # Crea una lista di indici delle squadre da accoppiare
+        indici_da_accoppiare = [i for i in range(len(classifica)) 
+                              if classifica.iloc[i]['Squadra'] not in gia_abbinati]
+        
+        # Funzione per verificare se due squadre possono giocare tra loro
+        def possono_giocare(s1, s2):
+            return ((s1, s2) not in precedenti and 
+                   (s2, s1) not in precedenti and
+                   s1 != s2)
+        
+        # Prova ad accoppiare in ordine di classifica
+        i = 0
+        while i < len(indici_da_accoppiare):
+            idx1 = indici_da_accoppiare[i]
+            s1 = classifica.iloc[idx1]['Squadra']
+            
+            # Se la squadra è già stata accoppiata, passa alla successiva
             if s1 in gia_abbinati:
+                i += 1
                 continue
                 
-            # Cerca un avversario tra tutte le squadre
-            for s2 in classifica["Squadra"]:
-                if (s2 != s1 and 
-                    s2 not in gia_abbinati and 
-                    possono_giocare(s1, s2)):
+            # Cerca il prossimo avversario disponibile nella classifica
+            for j in range(i + 1, len(indici_da_accoppiare)):
+                idx2 = indici_da_accoppiare[j]
+                s2 = classifica.iloc[idx2]['Squadra']
+                
+                # Verifica se le squadre possono giocare tra loro
+                if possono_giocare(s1, s2):
+                    # Trovato un avversario valido, crea l'accoppiamento
                     accoppiamenti.append((s1, s2))
-                    gia_abbinati.update([s1, s2])
+                    gia_abbinati.add(s1)
+                    gia_abbinati.add(s2)
+                    
+                    # Rimuovi entrambi gli indici dalla lista
+                    indici_da_accoppiare.pop(j)
+                    indici_da_accoppiare.pop(i)
+                    
+                    # Riparti dall'inizio per evitare problemi con gli indici
+                    i = -1  # Verrà incrementato a 0 alla fine del ciclo
                     break
-    
-    # Aggiorna le squadre non abbinate dopo il tentativo alternativo
-    squadre_non_abbinate = [s for s in classifica["Squadra"] if s not in gia_abbinati]
-    
-    # Se ci sono ancora squadre non abbinate
-    if squadre_non_abbinate:
-        if len(squadre_non_abbinate) == 1:
-            s = squadre_non_abbinate[0]
-            st.warning(f"{s} deve riposare in questo turno (nessun avversario disponibile)")
-            if s not in st.session_state.squadre_riposate:
-                st.session_state.squadre_riposate.add(s)
+            
+            i += 1
+        
+        # Se ci sono squadre rimaste senza accoppiamento, prova a trovare un accoppiamento alternativo
+        squadre_rimaste = [classifica.iloc[idx]['Squadra'] for idx in indici_da_accoppiare 
+                          if classifica.iloc[idx]['Squadra'] not in gia_abbinati]
+        
+        if squadre_rimaste:
+            st.warning(f"Squadre rimaste senza accoppiamento diretto: {', '.join(squadre_rimaste)}")
+            st.warning("Tentativo di accoppiamento alternativo...")
+            
+            # Prova a trovare accoppiamenti alternativi per le squadre rimaste
+            for s1 in squadre_rimaste[:]:
+                if s1 in gia_abbinati:
+                    continue
+                    
+                # Cerca un avversario tra tutte le squadre
+                for s2 in classifica['Squadra']:
+                    if (s1 != s2 and s2 not in gia_abbinati and 
+                        possono_giocare(s1, s2)):
+                        # Trovato un avversario valido
+                        accoppiamenti.append((s1, s2))
+                        gia_abbinati.add(s1)
+                        gia_abbinati.add(s2)
+                        break
+        
+    # Se ci sono giocatori rimasti senza accoppiamento
+    if len(gia_abbinati) < len(classifica):
+        squadre_rimaste = [s for s in classifica['Squadra'] if s not in gia_abbinati]
+        
+        # Se c'è una sola squadra rimasta, è un riposo forzato
+        if len(squadre_rimaste) == 1:
+            st.warning(f"{squadre_rimaste[0]} riposa in questo turno (nessun avversario disponibile)")
         else:
-            st.error(f"Non è stato possibile accoppiare le seguenti squadre: {', '.join(squadre_non_abbinate)}")
+            # Se ci sono squadre rimaste ma non è stato possibile accoppiarle
+            st.warning(f"Non è stato possibile trovare accoppiamenti validi per le squadre: {', '.join(squadre_rimaste)}")
+            st.warning("Il torneo è terminato perché non ci sono più accoppiamenti disponibili.")
             return None
     
     # Se non è stato creato nessun accoppiamento
     if not accoppiamenti:
-        st.error("Non è stato possibile generare accoppiamenti validi.")
+        st.warning("Non è stato possibile generare nuovi accoppiamenti senza ripetere partite già giocate.")
         return None
-
-    # Crea il DataFrame con gli accoppiamenti
-    df = pd.DataFrame(
-        [{"Casa": c, "Ospite": o, "GolCasa": 0, "GolOspite": 0, "Validata": False} 
-         for c, o in accoppiamenti]
-    )
-    
+        
+    df = pd.DataFrame([{"Casa": c, "Ospite": o, "GolCasa": 0, "GolOspite": 0, "Validata": False} 
+                      for c, o in accoppiamenti])
     return df
 
 def init_results_temp_from_df(df):
@@ -1057,27 +1013,41 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
                 # Controlla i permessi di scrittura prima di procedere
                 if validata_checkbox and not verify_write_access():
                     st.error("⛔ Accesso in sola lettura. Non è possibile validare la partita.")
-                    continue
+                    # Ripristina lo stato precedente della checkbox senza fare refresh
+                    st.session_state.risultati_temp[key_val] = False
+                    # Usa una chiave unica per forzare il refresh solo della checkbox
+                    st.session_state[f"{valida_key}_force_update"] = not st.session_state.get(f"{valida_key}_force_update", False)
+                    # Esci senza fare rerun()
+                    return
                     
+                # Aggiorna solo lo stato di questa partita
                 st.session_state.risultati_temp[key_val] = validata_checkbox
+                
+                # Trova l'indice esatto della partita corrente
+                partita_idx = df_turno_corrente[df_turno_corrente['Casa'] == casa].index
+                
                 if validata_checkbox:
                     # Salva i risultati nel DataFrame quando viene validato
-                    df_turno_corrente.loc[df_turno_corrente['Casa'] == casa, 'GolCasa'] = st.session_state.risultati_temp[key_gc]
-                    df_turno_corrente.loc[df_turno_corrente['Casa'] == casa, 'GolOspite'] = st.session_state.risultati_temp[key_go]
-                    df_turno_corrente.loc[df_turno_corrente['Casa'] == casa, 'Validata'] = True
-                    st.session_state.df_torneo.loc[df_turno_corrente.index, ['GolCasa', 'GolOspite', 'Validata']] = df_turno_corrente.loc[df_turno_corrente.index, ['GolCasa', 'GolOspite', 'Validata']]
+                    df_turno_corrente.loc[partita_idx, 'GolCasa'] = st.session_state.risultati_temp.get(key_gc, 0)
+                    df_turno_corrente.loc[partita_idx, 'GolOspite'] = st.session_state.risultati_temp.get(key_go, 0)
+                    df_turno_corrente.loc[partita_idx, 'Validata'] = True
+                    st.session_state.df_torneo.loc[partita_idx, ['GolCasa', 'GolOspite', 'Validata']] = df_turno_corrente.loc[partita_idx, ['GolCasa', 'GolOspite', 'Validata']]
+                    
                     if salva_torneo_su_db():
-                        st.toast("✅ Risultato validato e salvato!")
+                        st.toast(f"✅ Partita {casa} vs {ospite} validata e salvata!")
                     else:
                         st.error("❌ Errore durante il salvataggio del risultato")
                 else:
                     # Rimuovi la validazione se deselezionata
-                    df_turno_corrente.loc[df_turno_corrente['Casa'] == casa, 'Validata'] = False
-                    st.session_state.df_torneo.loc[df_turno_corrente.index, 'Validata'] = False
+                    df_turno_corrente.loc[partita_idx, 'Validata'] = False
+                    st.session_state.df_torneo.loc[partita_idx, 'Validata'] = False
+                    
                     if salva_torneo_su_db():
-                        st.info("⚠️ Validazione rimossa e modifiche salvate")
+                        st.info(f"⚠️ Validazione rimossa per {casa} vs {ospite}")
                     else:
                         st.error("❌ Errore durante il salvataggio delle modifiche")
+                
+                # Forza l'aggiornamento dell'interfaccia
                 st.rerun()
             
             # Mostra stato validazione
@@ -1230,7 +1200,16 @@ if st.session_state.setup_mode == "nuovo":
                     pass
 
         with col_num:
-            num_squadre = st.number_input("Numero totale di partecipanti:", min_value=2, max_value=100, value=max(8, len(st.session_state.giocatori_selezionati_db)), step=1, key="num_partecipanti")
+            # Calcola il valore predefinito più vicino al numero pari superiore
+            default_value = max(2, ((len(st.session_state.giocatori_selezionati_db) + 1) // 2) * 2)
+            num_squadre = st.number_input(
+                "Numero totale di partecipanti (solo numeri pari):",
+                min_value=2,
+                max_value=100,
+                value=default_value,
+                step=2,  # Incrementi di 2 per mantenere il numero pari
+                key="num_partecipanti"
+            )
 
         num_mancanti = num_squadre - len(st.session_state.giocatori_selezionati_db)
         if num_mancanti > 0:
@@ -1274,7 +1253,9 @@ if st.session_state.setup_mode == "nuovo":
         with col1:
             if st.button("Accetta giocatori ✅", key="next_step_1", use_container_width=True, type="primary"):
                 if len(st.session_state.giocatori_totali) != num_squadre:
-                    st.error(f"❌ Il numero di giocatori selezionati ({len(st.session_state.giocatori_totali)}) non corrisponde al numero totale di partecipanti ({num_squadre}).")
+                    st.error(f"❌ Il numero di giocatori selezionati ({len(st.session_state.giocatori_totali)}) non corrisponde al numero totale di partecipanti richiesto ({num_squadre}).")
+                elif num_squadre % 2 != 0:
+                    st.error("❌ Il numero di partecipanti deve essere un numero pari.")
                 else:
                     data_squadre = []
                     giocatori_db_df = carica_giocatori_da_db()
