@@ -62,7 +62,7 @@ def add_keep_alive():
     }, 240000);
     </script>
     """
-    st.sidebar.components.v1.html(js, height=0, width=0)
+    st.components.v1.html(js, height=0, width=0)
 
 # Inizializza il keep-alive
 #add_keep_alive()
@@ -1532,7 +1532,7 @@ if st.session_state.torneo_iniziato:
 
 
     # Inizializza il keep-alive
-    add_keep_alive()
+    #add_keep_alive()
 
 # -------------------------
 # Interfaccia Utente Torneo
