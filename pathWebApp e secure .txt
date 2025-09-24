@@ -1,0 +1,23 @@
+
+Superba
+farm-tornei-subbuteo-superba-all-db
+torneo-subbuteo-superba-ita-all-db
+torneo-subbuteo-ff-superba-ita-all-db
+torneo-subbuteo-superba-new-version-svizzero-alldb
+torneo-subbuteo-superba-svizzero-alldb
+edit-superba-club-all-db
+
+
+https://farm-tornei-subbuteo-superba-all-db.streamlit.app/
+https://torneo-subbuteo-superba-ita-all-db.streamlit.app/
+https://torneo-subbuteo-ff-superba-ita-all-db.streamlit.app/
+https://torneo-subbuteo-superba-new-version-svizzero-alldb.streamlit.app/
+https://torneo-subbuteo-superba-svizzero-alldb.streamlit.app/
+
+
+
+
+Secrets
+MONGO_URI = "mongodb+srv://massimilianoferrando:Legnaro21!$@cluster0.t3750lc.mongodb.net/?retryWrites=true&w=majority"
+MONGO_URI_TOURNEMENTS = "mongodb+srv://massimilianoferrando:Legnaro21!$@cluster0.t3750lc.mongodb.net/?retryWrites=true&w=majority"
+MONGO_URI_TOURNEMENTS_CH = "mongodb+srv://massimilianoferrando:Legnaro21!$@cluster0.t3750lc.mongodb.net/?retryWrites=true&w=majority"
