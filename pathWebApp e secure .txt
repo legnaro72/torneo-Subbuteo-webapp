@@ -7,6 +7,13 @@ torneo-subbuteo-superba-new-version-svizzero-alldb
 torneo-subbuteo-superba-svizzero-alldb
 edit-superba-club-all-db
 
+farm-tornei-subbuteo-tigullio-all-db
+torneo-subbuteo-tigullio-ita-all-db
+torneo-subbuteo-ff-tigullio-ita-all-db
+torneo-subbuteo-tigullio-new-version-svizzero-alldb
+torneo-subbuteo-tigullio-svizzero-alldb
+edit-tigullio-club-all-db
+
 
 https://farm-tornei-subbuteo-superba-all-db.streamlit.app/
 https://torneo-subbuteo-superba-ita-all-db.streamlit.app/
