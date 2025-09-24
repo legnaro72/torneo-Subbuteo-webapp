@@ -60,7 +60,7 @@ def add_keep_alive():
 
 # Mostra la schermata di autenticazione se non si è già autenticati
 if not st.session_state.get('authenticated', False):
-    auth.show_auth_screen(club="Superba")
+    auth.show_auth_screen(club="Tigullio")
     st.stop()
 
 # Configurazione della pagina già impostata all'inizio
@@ -100,7 +100,7 @@ for key, default in {
     "turno_attivo": 0,
     "risultati_temp": {},
     "nuovo_torneo_step": 1,
-    "club_scelto": "Superba",
+    "club_scelto": "Tigullio",
     "giocatori_selezionati_db": [],
     "modalita_selezione_giocatori": "Checkbox singole",
     "giocatori_ospiti": [],
@@ -280,12 +280,12 @@ else:
                 
                 # Connessione per i giocatori
                 db_players = client.get_database("giocatori_subbuteo")
-                players_collection = db_players.get_collection("superba_players")
+                players_collection = db_players.get_collection("tigullio_players")
                 _ = players_collection.find_one()
 
                 # Connessione per i tornei
                 db_tournaments = client.get_database("TorneiSubbuteo")
-                tournaments_collection = db_tournaments.get_collection("SuperbaSvizzero")
+                tournaments_collection = db_tournaments.get_collection("TigullioSvizzero")
                 _ = tournaments_collection.find_one()
                 
                 #st.sidebar.success("✅ Connessione a MongoDB Atlas riuscita!")
@@ -471,7 +471,7 @@ def carica_giocatori_da_db():
         try:
             count = players_collection.count_documents({})
             if count == 0:
-                st.warning("⚠️ La collection 'superba_players' è vuota o non esiste. Non è stato caricato alcun giocatore.")
+                st.warning("⚠️ La collection 'tigullio_players' è vuota o non esiste. Non è stato caricato alcun giocatore.")
                 return pd.DataFrame()
             else:
                 st.info(f"✅ Trovati {count} giocatori nel database. Caricamento in corso...")
@@ -1089,7 +1089,7 @@ if not st.session_state.torneo_iniziato and st.session_state.setup_mode is None:
             st.markdown(
                 """<div style='text-align:center'>
                     <h2>✨ Crea nuovo torneo</h2>
-                    <p style='margin:0.2rem 0 1rem 0'>Genera primo turno scegliendo giocatori del Club Superba</p>
+                    <p style='margin:0.2rem 0 1rem 0'>Genera primo turno scegliendo giocatori del Club Tigullio</p>
                     </div>""",
                 unsafe_allow_html=True,
             )
@@ -1102,7 +1102,7 @@ if not st.session_state.torneo_iniziato and st.session_state.setup_mode is None:
                     st.session_state.giocatori_selezionati_db = []
                     st.session_state.giocatori_ospiti = []
                     st.session_state.giocatori_totali = []
-                    st.session_state.club_scelto = "Superba"
+                    st.session_state.club_scelto = "Tigullio"
                     st.session_state.torneo_finito = False
                     st.session_state.edited_df_squadre = pd.DataFrame()
                     st.session_state.gioc_info = {} # Reset del dizionario per la nuova grafica
@@ -1372,7 +1372,7 @@ if st.session_state.get("authenticated"):
 
 # ✅ 1. 🕹️ Gestione Rapida (in cima)
 st.sidebar.subheader("🕹️ Gestione Rapida")
-st.sidebar.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/", use_container_width=True)
+st.sidebar.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-tigullio-all-db.streamlit.app/", use_container_width=True)
 st.sidebar.markdown("---")
 
 st.sidebar.subheader("👤 Mod Selezione Partecipanti")
