@@ -870,6 +870,7 @@ def main():
     # Mostra la schermata di autenticazione se non si è già autenticati
     if not st.session_state.get('authenticated', False):
         auth.show_auth_screen(club="Superba")
+        st.stop()   # blocca tutto finché non sei loggato
 
     # Debug: mostra utente autenticato e ruolo
     if st.session_state.get("authenticated"):
