@@ -155,8 +155,8 @@ with col3:
                 competizioni equilibrate tra più squadre/club.
             </div>
             <div class="card-link-container">
-                <a class="card-link" href="https://torneo-subbuteo-superba-svizzero-alldb.streamlit.app/" target="_blank">Apri App</a>
-                <a class="card-link card-link-beta" href="https://torneo-subbuteo-superba-new-version-svizzero-alldb.streamlit.app/" target="_blank">Apri App Beta ++</a>
+                <a class="card-link" href="https://torneo-subbuteo-superba-new-version-svizzero-alldb.streamlit.app/" target="_blank">Apri App</a>
+                #<a class="card-link card-link-beta" href="https://torneo-subbuteo-superba-new-version-svizzero-alldb.streamlit.app/" target="_blank">Apri App Beta ++</a>
             </div>
         </div>
     ''', unsafe_allow_html=True)
