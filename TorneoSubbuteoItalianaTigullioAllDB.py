@@ -71,7 +71,9 @@ DEFAULT_STATE = {
     'usa_bottoni': False,
     'filtro_attivo': 'Nessuno',  # stato per i filtri
     'azione_scelta': None,   # <-- aggiunta
-    'giocatori_ritirati': []
+    'giocatori_ritirati': [],
+    'usa_multiselect_giocatori': False,  # REQUISITO 1: Default False = Checkbox Individuali
+    'usa_nomi_come_squadre': False,     # REQUISITO 4
 }
 
 for key, value in DEFAULT_STATE.items():
@@ -871,22 +873,13 @@ def main():
     if not st.session_state.get('authenticated', False):
         auth.show_auth_screen(club="Tigullio")
         st.stop()   # blocca tutto finché non sei loggato
-        
+
     # Debug: mostra utente autenticato e ruolo
     if st.session_state.get("authenticated"):
         user = st.session_state.get("user", {})
         st.sidebar.markdown(f"**👤 Utente:** {user.get('username', '??')}")
         st.sidebar.markdown(f"**🔑 Ruolo:** {user.get('role', '??')}")
-
-    # downgrade automatico per Campionati
-    #if st.session_state.get("authenticated") and "nome_torneo" in st.session_state:
-    #    if "Campionato" in st.session_state["nome_torneo"]:
-    #        user = st.session_state.get("user", {})
-    #        if user.get("role") != "A":
-    #            st.session_state.read_only = True
-    #            st.warning("⛔ Accesso in sola lettura: solo un amministratore può modificare i Campionati")
-    #    return
-    
+  
     # Downgrade automatico per Campionati
     if st.session_state.get("authenticated"):
         # Verifica che la chiave 'nome_torneo' esista nello stato della sessione
@@ -992,6 +985,17 @@ def main():
     # ✅ 1. 🕹 Gestione Rapida (sempre in cima)
     st.sidebar.subheader("🕹️ Gestione Rapida")
     st.sidebar.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-tigullio-all-db.streamlit.app/", use_container_width=True)
+    st.sidebar.markdown("---")
+    
+    # Nuovo blocco Mod Selezione Partecipanti (Requisito 1)
+    st.sidebar.subheader("👤 Mod Selezione Partecipanti")
+    # Checkbox per usare il Multiselect (default disabilitato)
+    st.session_state.usa_multiselect_giocatori = st.sidebar.checkbox(
+        "Utilizza 'Multiselect'",
+        value=st.session_state.get('usa_multiselect_giocatori', False),
+        key='sidebar_usa_multiselect_giocatori',
+        help="Disabilitato per usare la modalità 'Checkbox Individuali' (raccomandata)"
+    )
     st.sidebar.markdown("---")
     
     if st.session_state.get('calendario_generato', False):
@@ -1601,12 +1605,38 @@ def main():
                 st.session_state["n_giocatori"] = len(amici)  # Aggiorna automaticamente il numero di partecipanti
                 st.session_state["amici_selezionati"] = amici  # Salva la selezione
             else:
-                amici_selezionati = st.multiselect(
-                    "Seleziona giocatori dal database", 
-                    amici, 
-                    default=st.session_state.get("amici_selezionati", []), 
-                    key="amici_multiselect"
-                )
+                # Usa il valore corretto per il controllo della modalità
+                usa_multiselect = st.session_state.get('usa_multiselect_giocatori', False)
+                
+                if usa_multiselect:
+                    # Modalità MULTISELECT
+                    amici_selezionati = st.multiselect(
+                        "Seleziona giocatori dal database", 
+                        sorted(amici),   # già ordinati alfabeticamente
+                        default=st.session_state.get("amici_selezionati", []), 
+                        key="amici_multiselect"
+                    )
+                else:
+                    # Modalità CHECKBOX INDIVIDUALI
+                    st.markdown("### Seleziona i giocatori")
+                    amici_selezionati = st.session_state.get("amici_selezionati", []).copy()
+                    
+                    # Crea una griglia di checkbox (3 colonne)
+                    cols = st.columns(3)
+                    for i, giocatore in enumerate(sorted(amici)):
+                        with cols[i % 3]:
+                            # Usa il valore corrente dalla lista dei selezionati come default
+                            is_checked = giocatore in amici_selezionati
+                            if st.checkbox(giocatore, value=is_checked, key=f"chk_{giocatore}"):
+                                if giocatore not in amici_selezionati:
+                                    amici_selezionati.append(giocatore)
+                            else:
+                                if giocatore in amici_selezionati:
+                                    amici_selezionati.remove(giocatore)
+                    
+                    # Aggiorna la lista dei giocatori selezionati nella sessione
+                    st.session_state["amici_selezionati"] = amici_selezionati
+
 
             num_supplementari = st.session_state["n_giocatori"] - len(amici_selezionati)
             if num_supplementari < 0:
@@ -1623,31 +1653,63 @@ def main():
                 st.session_state['giocatori_supplementari_list'][i] = nome_ospite
                 if nome_ospite:
                     giocatori_supplementari.append(nome_ospite.strip())
-
+                    
+            # Opzione post-selezione: popolare il campo "Nome squadra" con il nome del giocatore
+            usa_nomi_giocatori = st.checkbox(
+                "Usa i nomi dei giocatori come nomi delle squadre",
+                key="usa_nomi_giocatori",
+                value=False
+            )
+            #inizio
             if st.button("✅ Conferma Giocatori", use_container_width=True, disabled=st.session_state.get('read_only', True)):
                 if not verify_write_access():
                     return
+
+                # unisci selezione DB + giocatori ospiti
                 giocatori_scelti = amici_selezionati + [g for g in giocatori_supplementari if g]
+                # controllo minimo 3 giocatori
                 if len(set(giocatori_scelti)) < 3:
                     st.warning("⚠️ Inserisci almeno 3 giocatori diversi.")
                     return
-                st.session_state['giocatori_selezionati_definitivi'] = list(set(giocatori_scelti))
+
+                # salva la lista definitiva (rimuove duplicati preservando l'ordine)
+                # dict.fromkeys mantiene l'ordine in Python >= 3.7
+                st.session_state['giocatori_selezionati_definitivi'] = list(dict.fromkeys(giocatori_scelti))
+
                 st.session_state['mostra_assegnazione_squadre'] = True
                 st.session_state['mostra_gironi'] = False
                 st.session_state['gironi_manuali_completi'] = False
                 st.session_state['giocatori_confermati'] = True
+
+                # Ricostruisce gioc_info preservando potenziale e altri attributi dal DB,
+                # ma — se l'opzione è attiva — imposta Squadra = nome del giocatore
                 st.session_state['gioc_info'] = {}
+                usa_nomi = st.session_state.get('usa_nomi_giocatori', False)
+
                 for gioc in st.session_state['giocatori_selezionati_definitivi']:
-                    if not df_master.empty and gioc in df_master['Giocatore'].values:
+                    if not df_master.empty and 'Giocatore' in df_master.columns and gioc in df_master['Giocatore'].values:
                         row = df_master[df_master['Giocatore'] == gioc].iloc[0]
-                        squadra_default = row['Squadra']
-                        potenziale_default = int(row['Potenziale'])
+                        squadra_default = row.get('Squadra', "")
+                        # compatibilità col nome colonna Potenziale (es. 'Potenziale')
+                        try:
+                            potenziale_default = int(row.get('Potenziale', row.get('potenziale', 4)))
+                        except Exception:
+                            potenziale_default = 4
                     else:
                         squadra_default = ""
                         potenziale_default = 4
+
+                    # se l'opzione è attiva, sovrascrivo SOLO il nome della squadra con il nome del giocatore
+                    if usa_nomi:
+                        squadra_default = gioc
+
                     st.session_state['gioc_info'][gioc] = {"Squadra": squadra_default, "Potenziale": potenziale_default}
+
                 st.toast("✅ Giocatori confermati")
                 st.rerun()
+
+            #
+
 
             if st.session_state.get('mostra_assegnazione_squadre', False):
                 st.markdown("---")
