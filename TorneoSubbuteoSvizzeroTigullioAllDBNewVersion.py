@@ -83,11 +83,16 @@ if st.session_state.get('sidebar_state_reset', False):
     reset_app_state()
     st.session_state['sidebar_state_reset'] = False
 
-# Inizializza le variabili di stato per la gestione dei turni
+# Inizializza le variabili di stato per la gestione dei turni e visualizzazioni
 if 'modalita_turni' not in st.session_state:
     st.session_state.modalita_turni = "illimitati"  # Valore predefinito
 if 'max_turni' not in st.session_state:
     st.session_state.max_turni = None  # Valore predefinito
+if 'mostra_classifica' not in st.session_state:
+    st.session_state.mostra_classifica = False  # Controlla se mostrare la classifica
+    
+if st.session_state.get('rerun_needed', False):
+    st.session_state.rerun_needed = False
     st.rerun()
 
 
@@ -280,7 +285,7 @@ else:
                 
                 # Connessione per i giocatori
                 db_players = client.get_database("giocatori_subbuteo")
-                players_collection = db_players.get_collection("tigullio_players")
+                players_collection = db_players.get_collection("pierCrew_players")
                 _ = players_collection.find_one()
 
                 # Connessione per i tornei
@@ -471,7 +476,7 @@ def carica_giocatori_da_db():
         try:
             count = players_collection.count_documents({})
             if count == 0:
-                st.warning("⚠️ La collection 'tigullio_players' è vuota o non esiste. Non è stato caricato alcun giocatore.")
+                st.warning("⚠️ La collection 'pierCrew_players' è vuota o non esiste. Non è stato caricato alcun giocatore.")
                 return pd.DataFrame()
             else:
                 st.info(f"✅ Trovati {count} giocatori nel database. Caricamento in corso...")
@@ -611,6 +616,15 @@ def calcola_punti_scontro_diretto(squadra1, squadra2, df):
     return punti1, punti2
 
 def aggiorna_classifica(df):
+    # controlla che il df sia valido e abbia le colonne necessarie
+    colonne_richieste = {"Casa", "Ospite", "GolCasa", "GolOspite", "Validata"}
+    if not isinstance(df, pd.DataFrame) or not colonne_richieste.issubset(set(df.columns)):
+        # restituisci classifica vuota se non ci sono ancora partite
+        return pd.DataFrame(columns=[
+            "Squadra", "Punti", "Partite", "Vittorie", "Pareggi", "Sconfitte",
+            "GolFatti", "GolSubiti", "DifferenzaReti"
+        ])
+
     stats = {}
     
     # Inizializza le statistiche per ogni squadra
@@ -705,224 +719,314 @@ def aggiorna_classifica(df):
     
     return df_classifica
 
+#inizio
+# ==============================
+# NUOVA FUNZIONE: controllo fine torneo
+# ==============================
+def controlla_fine_torneo():
+    """Controlla se il torneo deve terminare automaticamente."""
+    if st.session_state.get("torneo_finito", False):
+        return True
+
+    # Caso turni fissi
+    if st.session_state.modalita_turni == "fisso":
+        if st.session_state.turno_attivo >= st.session_state.max_turni:
+            st.session_state.torneo_finito = True
+            return True
+
+    # Caso illimitato o numero massimo di turni superiore alle possibili combinazioni
+    if "df_torneo" in st.session_state and not st.session_state.df_torneo.empty:
+        classifica_corrente = aggiorna_classifica(st.session_state.df_torneo)
+        precedenti = set(
+            tuple(sorted([row["Casa"], row["Ospite"]]))
+            for _, row in st.session_state.df_torneo.iterrows()
+        )
+        nuovi_accoppiamenti = genera_accoppiamenti(classifica_corrente, precedenti)
+        if nuovi_accoppiamenti is None or nuovi_accoppiamenti.empty:
+            st.session_state.torneo_finito = True
+            return True
+
+    return False
+
+# ==============================
+# PATCH FUNZIONE: genera_accoppiamenti
+# ==============================
 def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
+    squadre_non_abbinate = []
+
+    def trova_miglior_accoppiamento(squadre_rimanenti, accoppiamenti_correnti, profondita=0, max_profondita=3):
+        if profondita >= max_profondita or len(squadre_rimanenti) < 2:
+            return accoppiamenti_correnti, squadre_rimanenti
+
+        if len(squadre_rimanenti) == 2:
+            s1, s2 = squadre_rimanenti
+            if (s1, s2) not in precedenti and (s2, s1) not in precedenti:
+                return accoppiamenti_correnti + [(s1, s2)], []
+            return accoppiamenti_correnti, squadre_rimanenti
+
+        s1 = squadre_rimanenti[0]
+        miglior_risultato = None
+        miglior_rimanenti = None
+
+        for i, s2 in enumerate(squadre_rimanenti[1:], 1):
+            if (s1, s2) not in precedenti and (s2, s1) not in precedenti:
+                nuove_rimanenti = [s for j, s in enumerate(squadre_rimanenti) if j != 0 and j != i]
+                nuovo_acc, rimanenti = trova_miglior_accoppiamento(
+                    nuove_rimanenti,
+                    accoppiamenti_correnti + [(s1, s2)],
+                    profondita + 1,
+                    max_profondita
+                )
+                if not rimanenti:
+                    return nuovo_acc, []
+                if miglior_risultato is None or len(rimanenti) < len(miglior_rimanenti):
+                    miglior_risultato = nuovo_acc
+                    miglior_rimanenti = rimanenti
+
+        if miglior_risultato is None:
+            return trova_miglior_accoppiamento(
+                squadre_rimanenti[1:],
+                accoppiamenti_correnti,
+                profondita + 1,
+                max_profondita
+            )
+
+        return miglior_risultato, miglior_rimanenti
+
     accoppiamenti = []
-    gia_abbinati = set()
 
     if primo_turno:
-        # Ordina per Potenziale decrescente
         classifica = classifica.copy()
         classifica['Potenziale'] = pd.to_numeric(classifica['Potenziale'], errors='coerce').fillna(0)
         classifica = classifica.sort_values(by='Potenziale', ascending=False).reset_index(drop=True)
     else:
-        # Usa la classifica aggiornata
         classifica = aggiorna_classifica(st.session_state.df_torneo)
 
-    # Se dispari → ultima squadra riposa
     if len(classifica) % 2 != 0:
         riposa = classifica.iloc[-1]['Squadra']
         st.warning(f"Numero dispari di squadre – {riposa} riposa in questo turno")
         classifica = classifica.iloc[:-1]
 
-    # Accoppiamenti in ordine di classifica
-    # Ciclo accoppiamenti
-    for i in range(len(classifica)):
-        s1 = classifica.iloc[i]['Squadra']
-        if s1 in gia_abbinati:
-            continue
+    squadre_da_accoppiare = classifica['Squadra'].tolist()
 
-        # cerca la prossima squadra libera con cui non ha già giocato
-        for j in range(i + 1, len(classifica)):
-            s2 = classifica.iloc[j]['Squadra']
-            if s2 in gia_abbinati:
-                continue
-            if (s1, s2) not in precedenti and (s2, s1) not in precedenti:
-                accoppiamenti.append((s1, s2))
-                gia_abbinati.update([s1, s2])
-                break
-
-    accoppiamenti = []
-    gia_abbinati = set()
-
-    # Copia locale della classifica
-    classifica = classifica.copy()
-
-    # Primo turno: usa i potenziali
     if primo_turno:
-        classifica['Potenziale'] = pd.to_numeric(classifica['Potenziale'], errors='coerce').fillna(0)
-        classifica = classifica.sort_values(by='Potenziale', ascending=False).reset_index(drop=True)
-
-    else:
-        # Dal secondo turno in poi: ricalcola l'ordine con aggiorna_classifica
-        classifica = aggiorna_classifica(st.session_state.df_torneo)
-
-    # Se dispari → riposo dell’ultima squadra
-    if len(classifica) % 2 != 0:
-        riposa = classifica.iloc[-1]['Squadra']
-        st.warning(f"Numero dispari di squadre – {riposa} riposa in questo turno")
-        classifica = classifica.iloc[:-1]
-
-    # Ciclo accoppiamenti
-    for i in range(len(classifica)):
-        s1 = classifica.iloc[i]['Squadra']
-        if s1 in gia_abbinati:
-            continue
-
-        # cerca la prossima squadra libera con cui non ha già giocato
-        for j in range(i + 1, len(classifica)):
-            s2 = classifica.iloc[j]['Squadra']
-            if s2 in gia_abbinati:
-                continue
-            if (s1, s2) not in precedenti and (s2, s1) not in precedenti:
+        for i in range(0, len(squadre_da_accoppiare), 2):
+            if i + 1 < len(squadre_da_accoppiare):
+                s1 = squadre_da_accoppiare[i]
+                s2 = squadre_da_accoppiare[i+1]
                 accoppiamenti.append((s1, s2))
-                gia_abbinati.update([s1, s2])
-                break
+    else:
+        accoppiamenti, squadre_non_abbinate = trova_miglior_accoppiamento(squadre_da_accoppiare, [])
 
-    # Controllo finale
-    squadre_non_abbinate = [s for s in classifica['Squadra'] if s not in gia_abbinati]
+        if squadre_non_abbinate:
+            st.warning("Impossibile trovare accoppiamenti per tutte le squadre. Tentativo di riorganizzazione...")
+
+            for tentativo in range(3):
+                for i, (c1, o1) in enumerate(accoppiamenti):
+                    for s in squadre_non_abbinate:
+                        if (s, o1) not in precedenti and (o1, s) not in precedenti:
+                            for s2 in squadre_non_abbinate:
+                                if s2 != s and (c1, s2) not in precedenti and (s2, c1) not in precedenti:
+                                    accoppiamenti[i] = (s, o1)
+                                    accoppiamenti.append((c1, s2))
+                                    squadre_non_abbinate.remove(s)
+                                    squadre_non_abbinate.remove(s2)
+                                    break
+                            if not squadre_non_abbinate:
+                                break
+                    if not squadre_non_abbinate:
+                        break
+
+                if not squadre_non_abbinate:
+                    break
+
+                if tentativo == 1:
+                    squadre_rimaste = squadre_da_accoppiare.copy()
+                    accoppiamenti = []
+                    max_iterazioni = len(squadre_rimaste) ** 2
+                    tentativi = 0
+
+                    while len(squadre_rimaste) >= 2 and tentativi < max_iterazioni:
+                        s1 = squadre_rimaste[0]
+                        trovato = False
+                        for i, s2 in enumerate(squadre_rimaste[1:], 1):
+                            if (s1, s2) not in precedenti and (s2, s1) not in precedenti:
+                                accoppiamenti.append((s1, s2))
+                                del squadre_rimaste[i]
+                                del squadre_rimaste[0]
+                                trovato = True
+                                break
+                        if not trovato:
+                            squadre_rimaste = squadre_rimaste[1:] + [squadre_rimaste[0]]
+                        tentativi += 1
+
+                    if tentativi >= max_iterazioni and len(squadre_rimaste) > 0:
+                        st.warning(f"⚠️ Non è stato possibile accoppiare: {', '.join(squadre_rimaste)}")
+                        squadre_non_abbinate = squadre_rimaste
+
     if squadre_non_abbinate:
         st.warning(f"Non è stato possibile accoppiare: {', '.join(squadre_non_abbinate)}")
 
-    # Crea DataFrame degli incontri
     df = pd.DataFrame([{"Casa": c, "Ospite": o, "GolCasa": 0, "GolOspite": 0, "Validata": False}
-                       for c, o in accoppiamenti])
+                      for c, o in accoppiamenti])
     return df
 
+#fine
+    # Inizializza squadre_non_abbinate come lista vuota
+    squadre_non_abbinate = []
+    
+    def trova_miglior_accoppiamento(squadre_rimanenti, accoppiamenti_correnti, profondita=0, max_profondita=3):
+        # Se abbiamo raggiunto la profondità massima o non ci sono abbastanza squadre, restituisci la soluzione corrente
+        if profondita >= max_profondita or len(squadre_rimanenti) < 2:
+            return accoppiamenti_correnti, squadre_rimanenti
+            
+        # Se abbiamo solo due squadre rimaste, verifica se possono giocare tra loro
+        if len(squadre_rimanenti) == 2:
+            s1, s2 = squadre_rimanenti
+            if (s1, s2) not in precedenti and (s2, s1) not in precedenti:
+                return accoppiamenti_correnti + [(s1, s2)], []
+            return accoppiamenti_correnti, squadre_rimanenti
+            
+        # Prova a trovare un accoppiamento per la prima squadra rimanente
+        s1 = squadre_rimanenti[0]
+        miglior_risultato = None
+        miglior_rimanenti = None
+        
+        # Prova a trovare un avversario valido
+        for i, s2 in enumerate(squadre_rimanenti[1:], 1):
+            if (s1, s2) not in precedenti and (s2, s1) not in precedenti:
+                # Crea una nuova lista di squadre rimanenti
+                nuove_rimanenti = [s for j, s in enumerate(squadre_rimanenti) if j != 0 and j != i]
+                
+                # Prosegui ricorsivamente
+                nuovo_acc, rimanenti = trova_miglior_accoppiamento(
+                    nuove_rimanenti, 
+                    accoppiamenti_correnti + [(s1, s2)],
+                    profondita + 1,
+                    max_profondita
+                )
+                
+                # Se abbiamo trovato una soluzione completa, restituiscila
+                if not rimanenti:
+                    return nuovo_acc, []
+                    
+                # Altrimenti, salva la soluzione migliore finora
+                if miglior_risultato is None or len(rimanenti) < len(miglior_rimanenti):
+                    miglior_risultato = nuovo_acc
+                    miglior_rimanenti = rimanenti
+        
+        # Se non abbiamo trovato nessun accoppiamento valido per s1, passiamo alla prossima squadra
+        if miglior_risultato is None:
+            return trova_miglior_accoppiamento(
+                squadre_rimanenti[1:], 
+                accoppiamenti_correnti,
+                profondita + 1,
+                max_profondita
+            )
+            
+        return miglior_risultato, miglior_rimanenti
+
+    # Inizializzazione
     accoppiamenti = []
     gia_abbinati = set()
     
-    # Crea una copia della classifica per non modificare l'originale
-    classifica = classifica.copy()
-    
-    # Riaggiungi il potenziale dalle squadre se manca
-    if 'Potenziale' not in classifica.columns and not st.session_state.df_squadre.empty:
-        pot_map = st.session_state.df_squadre.set_index("Squadra")["Potenziale"].to_dict()
-        classifica["Potenziale"] = classifica["Squadra"].map(pot_map).fillna(0)
-    
-    # Determina il numero di turno corrente
-    turno_corrente = st.session_state.turno_attivo + 1  # +1 perché turno_attivo è 0-based
-    
+    # Prepara la classifica
     if primo_turno:
-        # Assicuriamoci che 'Potenziale' sia numerico
-        if 'Potenziale' in classifica.columns:
-            classifica['Potenziale'] = pd.to_numeric(classifica['Potenziale'], errors='coerce').fillna(0)
-        
-        # Ordinamento per potenziale (decrescente)
+        # Primo turno: ordina per potenziale
+        classifica = classifica.copy()
+        classifica['Potenziale'] = pd.to_numeric(classifica['Potenziale'], errors='coerce').fillna(0)
         classifica = classifica.sort_values(by='Potenziale', ascending=False).reset_index(drop=True)
-
-        # Se dispari → ultima squadra riposa
-        if len(classifica) % 2 != 0:
-            riposa = classifica.iloc[-1]['Squadra']
-            st.warning(f"Numero dispari di squadre - {riposa} riposa nel primo turno")
-            classifica = classifica.iloc[:-1]
-
-        # Accoppiamento diretto: 1 vs 2, 3 vs 4, ecc.
-        for i in range(0, len(classifica), 2):
-            if i + 1 < len(classifica):
-                s1 = classifica.iloc[i]['Squadra']
-                s2 = classifica.iloc[i + 1]['Squadra']
-                pot1 = classifica.iloc[i]['Potenziale']
-                pot2 = classifica.iloc[i + 1]['Potenziale']
-                accoppiamenti.append((s1, s2))
-                gia_abbinati.add(s1)
-                gia_abbinati.add(s2)
-                st.write(f"Accoppiamento primo turno: {s1} (Pot: {pot1}) vs {s2} (Pot: {pot2})")
-
     else:
-        # Dal secondo turno in poi, accoppia in base alla classifica (1° vs 2°, 3° vs 4°, ecc.)
-        # Assicurati che la classifica sia ordinata correttamente
-        if 'Pos.' in classifica.columns:
-            # Usa la posizione in classifica (1° è il migliore)
-            classifica = classifica.sort_values('Pos.').reset_index(drop=True)
-        else:
-            # Se non c'è la colonna Pos., usa un ordine casuale (caso di fallback)
-            classifica = classifica.sample(frac=1).reset_index(drop=True)
+        # Turni successivi: usa la classifica aggiornata
+        classifica = aggiorna_classifica(st.session_state.df_torneo)
+    
+    # Se il numero di squadre è dispari, l'ultima riposa
+    if len(classifica) % 2 != 0:
+        riposa = classifica.iloc[-1]['Squadra']
+        st.warning(f"Numero dispari di squadre – {riposa} riposa in questo turno")
+        classifica = classifica.iloc[:-1]
+    
+    # Prepara la lista delle squadre da accoppiare
+    squadre_da_accoppiare = classifica['Squadra'].tolist()
+    
+    # Se è il primo turno, accoppia semplicemente in ordine di potenziale
+    if primo_turno:
+        for i in range(0, len(squadre_da_accoppiare), 2):
+            if i + 1 < len(squadre_da_accoppiare):
+                s1 = squadre_da_accoppiare[i]
+                s2 = squadre_da_accoppiare[i+1]
+                accoppiamenti.append((s1, s2))
+                gia_abbinati.update([s1, s2])
+    else:
+        # Usa l'algoritmo di backtracking per trovare il miglior accoppiamento
+        accoppiamenti, squadre_non_abbinate = trova_miglior_accoppiamento(squadre_da_accoppiare, [])
         
-        # Crea una lista di indici delle squadre da accoppiare
-        indici_da_accoppiare = [i for i in range(len(classifica)) 
-                              if classifica.iloc[i]['Squadra'] not in gia_abbinati]
-        
-        # Funzione per verificare se due squadre possono giocare tra loro
-        def possono_giocare(s1, s2):
-            return ((s1, s2) not in precedenti and 
-                   (s2, s1) not in precedenti and
-                   s1 != s2)
-        
-        # Prova ad accoppiare in ordine di classifica
-        i = 0
-        while i < len(indici_da_accoppiare):
-            idx1 = indici_da_accoppiare[i]
-            s1 = classifica.iloc[idx1]['Squadra']
+        # Se ci sono squadre non abbinate, prova a trovare una soluzione alternativa
+        if squadre_non_abbinate:
+            st.warning(f"Impossibile trovare accoppiamenti per tutte le squadre. Tentativo di riorganizzazione...")
             
-            # Se la squadra è già stata accoppiata, passa alla successiva
-            if s1 in gia_abbinati:
-                i += 1
-                continue
-                
-            # Cerca il prossimo avversario disponibile nella classifica
-            for j in range(i + 1, len(indici_da_accoppiare)):
-                idx2 = indici_da_accoppiare[j]
-                s2 = classifica.iloc[idx2]['Squadra']
-                
-                # Verifica se le squadre possono giocare tra loro
-                if possono_giocare(s1, s2):
-                    # Trovato un avversario valido, crea l'accoppiamento
-                    accoppiamenti.append((s1, s2))
-                    gia_abbinati.add(s1)
-                    gia_abbinati.add(s2)
-                    
-                    # Rimuovi entrambi gli indici dalla lista
-                    indici_da_accoppiare.pop(j)
-                    indici_da_accoppiare.pop(i)
-                    
-                    # Riparti dall'inizio per evitare problemi con gli indici
-                    i = -1  # Verrà incrementato a 0 alla fine del ciclo
-                    break
-            
-            i += 1
-        
-        # Se ci sono squadre rimaste senza accoppiamento, prova a trovare un accoppiamento alternativo
-        squadre_rimaste = [classifica.iloc[idx]['Squadra'] for idx in indici_da_accoppiare 
-                          if classifica.iloc[idx]['Squadra'] not in gia_abbinati]
-        
-        if squadre_rimaste:
-            st.warning(f"Squadre rimaste senza accoppiamento diretto: {', '.join(squadre_rimaste)}")
-            st.warning("Tentativo di accoppiamento alternativo...")
-            
-            # Prova a trovare accoppiamenti alternativi per le squadre rimaste
-            for s1 in squadre_rimaste[:]:
-                if s1 in gia_abbinati:
-                    continue
-                    
-                # Cerca un avversario tra tutte le squadre
-                for s2 in classifica['Squadra']:
-                    if (s1 != s2 and s2 not in gia_abbinati and 
-                        possono_giocare(s1, s2)):
-                        # Trovato un avversario valido
-                        accoppiamenti.append((s1, s2))
-                        gia_abbinati.add(s1)
-                        gia_abbinati.add(s2)
+            # Prova a scambiare alcune partite per trovare una soluzione migliore
+            for tentativo in range(3):  # Massimo 3 tentativi
+                # Prendi una partita esistente e prova a scambiare
+                for i, (c1, o1) in enumerate(accoppiamenti):
+                    for s in squadre_non_abbinate:
+                        # Prova a scambiare c1 con s
+                        if (s, o1) not in precedenti and (o1, s) not in precedenti:
+                            # Verifica se c1 può essere accoppiato con qualcun altro
+                            for s2 in squadre_non_abbinate:
+                                if s2 != s and (c1, s2) not in precedenti and (s2, c1) not in precedenti:
+                                    # Trovato uno scambio valido
+                                    accoppiamenti[i] = (s, o1)
+                                    accoppiamenti.append((c1, s2))
+                                    squadre_non_abbinate.remove(s)
+                                    squadre_non_abbinate.remove(s2)
+                                    break
+                            if not squadre_non_abbinate:
+                                break
+                    if not squadre_non_abbinate:
                         break
+                
+                if not squadre_non_abbinate:
+                    break
+                    
+                # Se siamo qui, prova un altro approccio: riorganizza tutte le partite
+                if tentativo == 1:
+                    squadre_rimaste = squadre_da_accoppiare.copy()
+                    accoppiamenti = []
+                    while len(squadre_rimaste) >= 2:
+                        s1 = squadre_rimaste[0]
+                        trovato = False
+                        for i, s2 in enumerate(squadre_rimaste[1:], 1):
+                            if (s1, s2) not in precedenti and (s2, s1) not in precedenti:
+                                accoppiamenti.append((s1, s2))
+                                del squadre_rimaste[i]
+                                del squadre_rimaste[0]
+                                trovato = True
+                                break
+                        if not trovato:
+                            # Se non troviamo un accoppiamento per s1, passa alla prossima
+                            squadre_rimaste = squadre_rimaste[1:] + [squadre_rimaste[0]]
+                    squadre_non_abbinate = squadre_rimaste
+    
+    # Verifica finale
+    squadre_abbinate = set()
+    for c, o in accoppiamenti:
+        if c in squadre_abbinate or o in squadre_abbinate:
+            st.error(f"Errore: {c} o {o} sono già stati accoppiati!")
+            return None
+        squadre_abbinate.update([c, o])
         
-    # Se ci sono giocatori rimasti senza accoppiamento
-    if len(gia_abbinati) < len(classifica):
-        squadre_rimaste = [s for s in classifica['Squadra'] if s not in gia_abbinati]
-        
-        # Se c'è una sola squadra rimasta, è un riposo forzato
-        if len(squadre_rimaste) == 1:
-            st.warning(f"{squadre_rimaste[0]} riposa in questo turno (nessun avversario disponibile)")
-        else:
-            # Se ci sono squadre rimaste ma non è stato possibile accoppiarle
-            st.warning(f"Non è stato possibile trovare accoppiamenti validi per le squadre: {', '.join(squadre_rimaste)}")
-            st.warning("Il torneo è terminato perché non ci sono più accoppiamenti disponibili.")
+        # Verifica che non ci siano partite già giocate
+        if (c, o) in precedenti or (o, c) in precedenti:
+            st.error(f"Errore: {c} e {o} hanno già giocato tra loro!")
             return None
     
-    # Se non è stato creato nessun accoppiamento
-    if not accoppiamenti:
-        st.warning("Non è stato possibile generare nuovi accoppiamenti senza ripetere partite già giocate.")
-        return None
-        
-    df = pd.DataFrame([{"Casa": c, "Ospite": o, "GolCasa": 0, "GolOspite": 0, "Validata": False} 
+    # Se ci sono squadre non abbinate, mostra un avviso
+    if squadre_non_abbinate:
+        st.warning(f"Non è stato possibile accoppiare: {', '.join(squadre_non_abbinate)}")
+    
+    # Crea il DataFrame finale
+    df = pd.DataFrame([{"Casa": c, "Ospite": o, "GolCasa": 0, "GolOspite": 0, "Validata": False}
                       for c, o in accoppiamenti])
     return df
 
@@ -1190,10 +1294,12 @@ if st.session_state.setup_mode == "nuovo":
                     )
                     pass
                 else:
-                    # Nuova modalità: checkbox singole
+                    # Nuova modalità: checkbox singole - ordinate alfabeticamente
                     st.markdown("### ✅ Seleziona i giocatori")
                     selezionati = []
-                    for g in df_gioc['Giocatore'].tolist():
+                    # Ordina i giocatori alfabeticamente
+                    giocatori_ordinati = sorted(df_gioc['Giocatore'].tolist())
+                    for g in giocatori_ordinati:
                         if st.checkbox(g, value=(g in st.session_state.giocatori_selezionati_db), key=f"chk_{g}"):
                             selezionati.append(g)
                     st.session_state.giocatori_selezionati_db = selezionati
@@ -1250,6 +1356,11 @@ if st.session_state.setup_mode == "nuovo":
         #fine
 
         col1, col2 = st.columns(2)
+        # Aggiungi checkbox per copiare i nomi dei giocatori nei nomi delle squadre
+        copia_nomi = st.checkbox("Usa i nomi dei giocatori come nomi delle squadre", 
+                                help="Se selezionato, i nomi delle squadre verranno impostati uguali ai nomi dei giocatori")
+        
+        col1, col2 = st.columns(2)
         with col1:
             if st.button("Accetta giocatori ✅", key="next_step_1", use_container_width=True, type="primary"):
                 if len(st.session_state.giocatori_totali) != num_squadre:
@@ -1260,13 +1371,21 @@ if st.session_state.setup_mode == "nuovo":
                     data_squadre = []
                     giocatori_db_df = carica_giocatori_da_db()
                     for player in st.session_state.giocatori_totali:
-                        if player in giocatori_db_df['Giocatore'].tolist():
+                        if player in giocatori_db_df['Giocatore'].tolist() and not copia_nomi:
                             player_info = giocatori_db_df[giocatori_db_df['Giocatore'] == player].iloc[0]
                             squadra = player_info.get('Squadra', player)
                             potenziale = player_info.get('Potenziale', 0)
                             data_squadre.append({'Giocatore': player, 'Squadra': squadra, 'Potenziale': potenziale})
                         else:
-                            data_squadre.append({'Giocatore': player, 'Squadra': player, 'Potenziale': 0})
+                            # Se copia_nomi è True, usa il nome del giocatore come nome squadra
+                            # ma mantieni il potenziale dal database se esiste
+                            potenziale = 0
+                            if player in giocatori_db_df['Giocatore'].tolist():
+                                player_info = giocatori_db_df[giocatori_db_df['Giocatore'] == player].iloc[0]
+                                potenziale = player_info.get('Potenziale', 0)
+                                
+                            squadra = player if copia_nomi else player
+                            data_squadre.append({'Giocatore': player, 'Squadra': squadra, 'Potenziale': potenziale})
                     
                     st.session_state.df_squadre = pd.DataFrame(data_squadre)
                     st.session_state.nuovo_torneo_step = 2
@@ -1372,7 +1491,7 @@ if st.session_state.get("authenticated"):
 
 # ✅ 1. 🕹️ Gestione Rapida (in cima)
 st.sidebar.subheader("🕹️ Gestione Rapida")
-st.sidebar.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-tigullio-all-db.streamlit.app/", use_container_width=True)
+st.sidebar.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-pierCrew-all-db.streamlit.app/", use_container_width=True)
 st.sidebar.markdown("---")
 
 st.sidebar.subheader("👤 Mod Selezione Partecipanti")
@@ -1454,10 +1573,15 @@ if st.session_state.torneo_iniziato:
             key="radio_sidebar"
         )
     
-    # 📅 Visualizzazione incontri giocati
-    with st.sidebar.expander("📅 Visualizzazione incontri giocati", expanded=False):
+    # 📅 Visualizzazione incontri giocati e classifica
+    with st.sidebar.expander("📅 Visualizzazione incontri giocati e classifica", expanded=False):
         if st.button("📋 Mostra tutti gli incontri disputati", key="btn_mostra_tutti_incontri", use_container_width=True):
             st.session_state["mostra_incontri_disputati"] = True
+            st.rerun()
+            
+        # Aggiungi il pulsante per mostrare/nascondere la classifica
+        if st.button("📊 Mostra/Nascondi Classifica", key="btn_mostra_classifica", use_container_width=True):
+            st.session_state.mostra_classifica = not st.session_state.get('mostra_classifica', False)
             st.rerun()
 
     st.sidebar.markdown("---")
@@ -1487,7 +1611,7 @@ if st.session_state.torneo_iniziato:
 # Interfaccia Utente Torneo
 # -------------------------
 if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
-    if st.session_state["mostra_incontri_disputati"]:
+    if st.session_state.get("mostra_incontri_disputati", False):
         st.markdown("## 🏟️ Tutti gli incontri disputati")
         df_giocati = st.session_state.df_torneo[st.session_state.df_torneo['Validata'] == True]
         
@@ -1566,7 +1690,7 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
         # Pulsante per chiudere la tabella e tornare alla vista classica
         if st.button("🔙 Torna alla vista classica", key="btn_chiudi_incontri", use_container_width=True):
             st.session_state["mostra_incontri_disputati"] = False
-            st.rerun()
+            st.session_state.rerun_needed = True
     else:
         st.markdown(f"### Turno {st.session_state.turno_attivo}")
     
@@ -1584,15 +1708,21 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
     partite_giocate_turno = st.session_state.df_torneo[st.session_state.df_torneo['Turno'] == st.session_state.turno_attivo]
     tutte_validate = partite_giocate_turno['Validata'].all()
     
-    col_class, col_next = st.columns([2, 1])
-    with col_class:
-        st.subheader("Classifica 🏆")
-        classifica_attuale = aggiorna_classifica(st.session_state.df_torneo)
-        if not classifica_attuale.empty:
-            st.dataframe(classifica_attuale, hide_index=True, use_container_width=True)
-        else:
-            st.info("Nessuna partita giocata per aggiornare la classifica.")
-            
+    # Mostra la classifica solo se richiesta
+    classifica_attuale = aggiorna_classifica(st.session_state.df_torneo)
+    
+        
+    # Se la classifica è visibile, la mostriamo in un espandibile
+    if st.session_state.mostra_classifica:
+        with st.expander("🏆 Classifica Attuale", expanded=True):
+            if not classifica_attuale.empty:
+                st.dataframe(classifica_attuale, hide_index=True, use_container_width=True)
+            else:
+                st.info("Nessuna partita giocata per aggiornare la classifica.")
+    
+    # Manteniamo il layout a due colonne per il prossimo turno
+    col_next = st.columns([1])[0]  # Creiamo una colonna singola per il pulsante del prossimo turno
+    
     with col_next:
         st.subheader("Prossimo Turno ➡️")
         if tutte_validate:
@@ -1656,10 +1786,38 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
                 #FINE
 
             else:
-                st.info("Non ci sono più accoppiamenti possibili senza ripetere partite già giocate. Il torneo è terminato.")
-                st.session_state.torneo_finito = True
-                salva_torneo_su_db()  # Salva lo stato finale del torneo
-                st.rerun()
+                # Controlla se abbiamo effettivamente esaurito tutti i possibili accoppiamenti
+                # Se non si trovano accoppiamenti, chiudi subito il torneo
+                st.error("❌ Impossibile trovare accoppiamenti validi per il prossimo turno.")
+                
+                # Determina il vincitore dalla classifica attuale
+                classifica_attuale = aggiorna_classifica(st.session_state.df_torneo)
+                if not classifica_attuale.empty:
+                    vincitore = classifica_attuale.iloc[0]['Squadra']
+                    punti_vincitore = classifica_attuale.iloc[0]['Punti']
+                    
+                    st.warning(f"🏆 Il torneo è terminato. Vincitore: {vincitore} con {punti_vincitore} punti")
+                    
+                    # Mostra la classifica completa
+                    st.subheader("Classifica Finale")
+                    st.dataframe(classifica_attuale, hide_index=True, use_container_width=True)
+                    
+                    # Salva lo stato del torneo come terminato
+                    st.session_state.torneo_finito = True
+                    salva_torneo_su_db()
+                    st.rerun()
+                else:
+                    # Meno di 2 squadre rimaste, il torneo è finito
+                    st.success("🏆 Torneo terminato con successo!")
+                    # Determina il vincitore dalla classifica
+                    classifica_attuale = aggiorna_classifica(st.session_state.df_torneo)
+                    if not classifica_attuale.empty:
+                        vincitore = classifica_attuale.iloc[0]['Squadra']
+                        st.warning(f"Vincitore finale: {vincitore}")
+                    
+                    st.session_state.torneo_finito = True
+                    salva_torneo_su_db()
+                    st.rerun()
         else:
             st.warning("⚠️ Per generare il prossimo turno, devi validare tutti i risultati.")
 
