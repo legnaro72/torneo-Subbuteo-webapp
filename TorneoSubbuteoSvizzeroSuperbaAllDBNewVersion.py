@@ -345,6 +345,21 @@ def salva_torneo_su_db():
     # Crea una copia del dataframe per la serializzazione
     df_torneo_to_save = st.session_state.df_torneo.copy()
     
+    # ----------------------------------------------------
+    # NEW PATCH 1: Validazione 0-0 automatica per RIPOSA
+    # ----------------------------------------------------
+    
+    # Trova le righe in cui una delle due squadre è 'RIPOSA'
+    riposo_mask = (df_torneo_to_save['Casa'] == 'RIPOSA') | (df_torneo_to_save['Ospite'] == 'RIPOSA')
+
+    # Applica 0-0 e valida tutte le partite di riposo
+    if riposo_mask.any():
+        df_torneo_to_save.loc[riposo_mask, 'GolCasa'] = 0
+        df_torneo_to_save.loc[riposo_mask, 'GolOspite'] = 0
+        df_torneo_to_save.loc[riposo_mask, 'Validata'] = True
+        
+    # ----------------------------------------------------
+    
     # Assicurati che la colonna 'Validata' esista e sia booleana
     if 'Validata' not in df_torneo_to_save.columns:
         df_torneo_to_save['Validata'] = False
@@ -366,7 +381,6 @@ def salva_torneo_su_db():
         "torneo_finito": st.session_state.get('torneo_finito', False),
         "modalita_turni": st.session_state.get('modalita_turni', 'illimitati'),
         "max_turni": st.session_state.get('max_turni'),
-        "squadre_riposate": st.session_state.get('squadre_riposate', {})
     }
 
     try:
@@ -424,21 +438,17 @@ def carica_torneo_da_db(nome_torneo):
             return False
             
         # Ripristina lo stato della sessione
-        st.session_state.nome_torneo = torneo["nome_torneo"]
-        st.session_state.df_torneo = pd.DataFrame(torneo["df_torneo"])
-        st.session_state.df_squadre = pd.DataFrame(torneo["df_squadre"])
-        st.session_state.turno_attivo = torneo["turno_attivo"]
-        st.session_state.torneo_iniziato = torneo["torneo_iniziato"]
-        st.session_state.torneo_finito = torneo.get("torneo_finito", False)
-        st.session_state.modalita_turni = torneo.get("modalita_turni", "illimitati")
-        st.session_state.max_turni = torneo.get("max_turni")
+        st.session_state.df_torneo = pd.DataFrame(torneo['df_torneo'])
+        st.session_state.df_squadre = pd.DataFrame(torneo['df_squadre'])
+        st.session_state.turno_attivo = torneo['turno_attivo']
+        st.session_state.torneo_iniziato = torneo['torneo_iniziato']
+        st.session_state.torneo_finito = torneo.get('torneo_finito', False)
+        st.session_state.tournament_id = str(torneo['_id'])
         
-        # Carica i dati delle squadre riposate se presenti
-        if 'squadre_riposate' in torneo:
-            st.session_state.squadre_riposate = torneo['squadre_riposate']
-        else:
-            st.session_state.squadre_riposate = {}
-            
+        # Ripristina le impostazioni dei turni
+        st.session_state.modalita_turni = torneo.get('modalita_turni', 'illimitati')
+        st.session_state.max_turni = torneo.get('max_turni')
+        
         # Inizializza i risultati temporanei per tutte le partite del turno corrente
         if 'risultati_temp' not in st.session_state:
             st.session_state.risultati_temp = {}
@@ -679,7 +689,36 @@ def aggiorna_classifica(df):
     df_classifica = pd.DataFrame([(k, v['Punti'], v['G'], v['V'], v['N'], v['P'], v['GF'], v['GS'], v['DR']) 
                                 for k, v in stats.items()],
                               columns=['Squadra', 'Punti', 'G', 'V', 'N', 'P', 'GF', 'GS', 'DR'])
+    # ----------------------------------------------------
+    # NEW PATCH 2 & 3: Correzione Statistica e Nascondimento
+    # ----------------------------------------------------
     
+    # Correzione statistica per il riposo (Patch 3)
+    # Troviamo le partite di riposo e le squadre coinvolte
+    df_riposi = df[(df['Ospite'] == 'RIPOSA') | (df['Casa'] == 'RIPOSA')]
+    riposi_count = {}
+
+    # 1. Contiamo quante volte ogni squadra ha riposato
+    for _, r in df_riposi.iterrows():
+        # Identifica la squadra vera che ha riposato
+        squadra_vera = r['Casa'] if r['Ospite'] == 'RIPOSA' else r['Ospite']
+        riposi_count[squadra_vera] = riposi_count.get(squadra_vera, 0) + 1
+
+    # 2. Applichiamo la correzione a tutte le squadre in classifica che hanno riposato
+    # Sottraiamo 1 punto, 1 partita giocata (G), 1 pareggiata (N) per ogni riposo
+    for idx in df_classifica.index:
+        squadra = df_classifica.loc[idx, 'Squadra']
+        num_riposi = riposi_count.get(squadra, 0)
+        
+        if num_riposi > 0:
+            df_classifica.loc[idx, 'Punti'] -= num_riposi
+            df_classifica.loc[idx, 'G'] -= num_riposi
+            df_classifica.loc[idx, 'N'] -= num_riposi
+
+    # 3. Nascondi la squadra fittizia "RIPOSA" dalla classifica (Patch 2)
+    df_classifica = df_classifica[df_classifica['Squadra'] != 'RIPOSA'].reset_index(drop=True)
+
+    # ----------------------------------------------------
     # Ordina usando una chiave personalizzata che include il confronto diretto
     def sort_key(row):
         # Crea una tupla con i criteri di ordinamento
@@ -722,6 +761,17 @@ def aggiorna_classifica(df):
     indici_ordinati = sorted(df_classifica.index, key=lambda x: sort_key(df_classifica.loc[x]))
     df_classifica = df_classifica.loc[indici_ordinati].reset_index(drop=True)
     
+    #return df_classifica
+    # ----------------------------------------------------
+    # NEW FIX 4: Applica e finalizza l'ordinamento per la stabilità
+    # ----------------------------------------------------
+    
+    # Applica la chiave di ordinamento (sort_key) a tutte le righe
+    df_classifica['sort_key'] = df_classifica.apply(sort_key, axis=1)
+    
+    # Ordina definitivamente il DataFrame in base alla chiave e rimuovi la colonna temporanea
+    df_classifica = df_classifica.sort_values(by='sort_key').drop(columns=['sort_key']).reset_index(drop=True)
+    
     return df_classifica
 
 #inizio
@@ -753,319 +803,287 @@ def controlla_fine_torneo():
 
     return False
 
-# ==============================
-# PATCH FUNZIONE: genera_accoppiamenti
-# ==============================
+
 def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
-    # Inizializza il dizionario delle squadre riposate se non esiste
-    if 'squadre_riposate' not in st.session_state:
-        st.session_state.squadre_riposate = {}
-    
-    squadre_non_abbinate = []
-    squadra_che_riposa = None
+    import random
 
-    def trova_miglior_accoppiamento(squadre_rimanenti, accoppiamenti_correnti, profondita=0, max_profondita=3):
-        if profondita >= max_profondita or len(squadre_rimanenti) < 2:
-            return accoppiamenti_correnti, squadre_rimanenti
-
-        if len(squadre_rimanenti) == 2:
-            s1, s2 = squadre_rimanenti
-            if (s1, s2) not in precedenti and (s2, s1) not in precedenti:
-                return accoppiamenti_correnti + [(s1, s2)], []
-            return accoppiamenti_correnti, squadre_rimanenti
-
-        s1 = squadre_rimanenti[0]
-        miglior_risultato = None
-        miglior_rimanenti = None
-
-        for i, s2 in enumerate(squadre_rimanenti[1:], 1):
-            if (s1, s2) not in precedenti and (s2, s1) not in precedenti:
-                nuove_rimanenti = [s for j, s in enumerate(squadre_rimanenti) if j != 0 and j != i]
-                nuovo_acc, rimanenti = trova_miglior_accoppiamento(
-                    nuove_rimanenti,
-                    accoppiamenti_correnti + [(s1, s2)],
-                    profondita + 1,
-                    max_profondita
-                )
-                if not rimanenti:
-                    return nuovo_acc, []
-                if miglior_risultato is None or len(rimanenti) < len(miglior_rimanenti):
-                    miglior_risultato = nuovo_acc
-                    miglior_rimanenti = rimanenti
-
-        if miglior_risultato is None:
-            return trova_miglior_accoppiamento(
-                squadre_rimanenti[1:],
-                accoppiamenti_correnti,
-                profondita + 1,
-                max_profondita
-            )
-
-        return miglior_risultato, miglior_rimanenti
-
-    accoppiamenti = []
-
+    # Ordinamento iniziale: per potenziale al primo turno,
+    # altrimenti per classifica aggiornata
     if primo_turno:
         classifica = classifica.copy()
-        classifica['Potenziale'] = pd.to_numeric(classifica['Potenziale'], errors='coerce').fillna(0)
-        classifica = classifica.sort_values(by='Potenziale', ascending=False).reset_index(drop=True)
+        classifica["Potenziale"] = pd.to_numeric(
+            classifica["Potenziale"], errors="coerce"
+        ).fillna(0)
+        classifica = classifica.sort_values(
+            by="Potenziale", ascending=False
+        ).reset_index(drop=True)
     else:
         classifica = aggiorna_classifica(st.session_state.df_torneo)
 
-    # Gestione squadre dispari
-    if len(classifica) % 2 != 0:
-        # Ottieni l'elenco di tutte le squadre
-        tutte_squadre = classifica['Squadra'].tolist()
-        
-        # Conta i riposi per ogni squadra
-        conteggio_riposi = {squadra: 0 for squadra in tutte_squadre}
-        for giorno, riposi in st.session_state.squadre_riposate.items():
-            for squadra in riposi:
-                if squadra in conteggio_riposi:
-                    conteggio_riposi[squadra] += 1
-        
-        # Trova la squadra con meno riposi che non ha ancora riposato in questo torneo
-        squadra_che_riposa = min(conteggio_riposi.items(), key=lambda x: x[1])[0]
-        
-        # Aggiorna il dizionario delle squadre riposate
-        if 'turno_attuale' not in st.session_state.squadre_riposate:
-            st.session_state.squadre_riposate['turno_attuale'] = []
-        st.session_state.squadre_riposate['turno_attuale'].append(squadra_che_riposa)
-        
-        # Mostra un messaggio informativo
-        st.warning(f"Numero dispari di squadre – {squadra_che_riposa} riposa in questo turno (ha riposato {conteggio_riposi[squadra_che_riposa]} volte finora)")
-        
-        # Rimuovi la squadra che riposa dalla classifica
-        classifica = classifica[classifica['Squadra'] != squadra_che_riposa]
+    squadre = classifica["Squadra"].tolist()
 
-    squadre_da_accoppiare = classifica['Squadra'].tolist()
-
-    if primo_turno:
-        for i in range(0, len(squadre_da_accoppiare), 2):
-            if i + 1 < len(squadre_da_accoppiare):
-                s1 = squadre_da_accoppiare[i]
-                s2 = squadre_da_accoppiare[i+1]
-                accoppiamenti.append((s1, s2))
-    else:
-        accoppiamenti, squadre_non_abbinate = trova_miglior_accoppiamento(squadre_da_accoppiare, [])
-    
-    # Se c'è una squadra che riposa, la aggiungiamo al risultato
-    if squadra_che_riposa:
-        # Aggiungiamo una riga speciale per la squadra che riposa
-        accoppiamenti.append((squadra_che_riposa, "RIPOSO"))
-    
-    # Gestione squadre non abbinate
-    if squadre_non_abbinate:
-        st.warning("Impossibile trovare accoppiamenti per tutte le squadre. Tentativo di riorganizzazione...")
-
-        for tentativo in range(3):
-            for i, (c1, o1) in enumerate(accoppiamenti):
-                for s in squadre_non_abbinate:
-                    if (s, o1) not in precedenti and (o1, s) not in precedenti:
-                        for s2 in squadre_non_abbinate:
-                            if s2 != s and (c1, s2) not in precedenti and (s2, c1) not in precedenti:
-                                    accoppiamenti[i] = (s, o1)
-                                    accoppiamenti.append((c1, s2))
-                                    squadre_non_abbinate.remove(s)
-                                    squadre_non_abbinate.remove(s2)
-                                    break
-                            if not squadre_non_abbinate:
-                                break
-                    if not squadre_non_abbinate:
-                        break
-
-                if not squadre_non_abbinate:
-                    break
-
-                if tentativo == 1:
-                    squadre_rimaste = squadre_da_accoppiare.copy()
-                    accoppiamenti = []
-                    max_iterazioni = len(squadre_rimaste) ** 2
-                    tentativi = 0
-
-                    while len(squadre_rimaste) >= 2 and tentativi < max_iterazioni:
-                        s1 = squadre_rimaste[0]
-                        trovato = False
-                        for i, s2 in enumerate(squadre_rimaste[1:], 1):
-                            if (s1, s2) not in precedenti and (s2, s1) not in precedenti:
-                                accoppiamenti.append((s1, s2))
-                                del squadre_rimaste[i]
-                                del squadre_rimaste[0]
-                                trovato = True
-                                break
-                        if not trovato:
-                            squadre_rimaste = squadre_rimaste[1:] + [squadre_rimaste[0]]
-                        tentativi += 1
-
-                    if tentativi >= max_iterazioni and len(squadre_rimaste) > 0:
-                        st.warning(f"⚠️ Non è stato possibile accoppiare: {', '.join(squadre_rimaste)}")
-                        squadre_non_abbinate = squadre_rimaste
-
-    if squadre_non_abbinate:
-        st.warning(f"Non è stato possibile accoppiare: {', '.join(squadre_non_abbinate)}")
-
-    df = pd.DataFrame([{"Casa": c, "Ospite": o, "GolCasa": 0, "GolOspite": 0, "Validata": False}
-                      for c, o in accoppiamenti])
-    return df
-
-#fine
-    # Inizializza squadre_non_abbinate come lista vuota
-    squadre_non_abbinate = []
-    
-    def trova_miglior_accoppiamento(squadre_rimanenti, accoppiamenti_correnti, profondita=0, max_profondita=3):
-        # Se abbiamo raggiunto la profondità massima o non ci sono abbastanza squadre, restituisci la soluzione corrente
-        if profondita >= max_profondita or len(squadre_rimanenti) < 2:
-            return accoppiamenti_correnti, squadre_rimanenti
-            
-        # Se abbiamo solo due squadre rimaste, verifica se possono giocare tra loro
-        if len(squadre_rimanenti) == 2:
-            s1, s2 = squadre_rimanenti
-            if (s1, s2) not in precedenti and (s2, s1) not in precedenti:
-                return accoppiamenti_correnti + [(s1, s2)], []
-            return accoppiamenti_correnti, squadre_rimanenti
-            
-        # Prova a trovare un accoppiamento per la prima squadra rimanente
-        s1 = squadre_rimanenti[0]
-        miglior_risultato = None
-        miglior_rimanenti = None
-        
-        # Prova a trovare un avversario valido
-        for i, s2 in enumerate(squadre_rimanenti[1:], 1):
-            if (s1, s2) not in precedenti and (s2, s1) not in precedenti:
-                # Crea una nuova lista di squadre rimanenti
-                nuove_rimanenti = [s for j, s in enumerate(squadre_rimanenti) if j != 0 and j != i]
-                
-                # Prosegui ricorsivamente
-                nuovo_acc, rimanenti = trova_miglior_accoppiamento(
-                    nuove_rimanenti, 
-                    accoppiamenti_correnti + [(s1, s2)],
-                    profondita + 1,
-                    max_profondita
-                )
-                
-                # Se abbiamo trovato una soluzione completa, restituiscila
-                if not rimanenti:
-                    return nuovo_acc, []
-                    
-                # Altrimenti, salva la soluzione migliore finora
-                if miglior_risultato is None or len(rimanenti) < len(miglior_rimanenti):
-                    miglior_risultato = nuovo_acc
-                    miglior_rimanenti = rimanenti
-        
-        # Se non abbiamo trovato nessun accoppiamento valido per s1, passiamo alla prossima squadra
-        if miglior_risultato is None:
-            return trova_miglior_accoppiamento(
-                squadre_rimanenti[1:], 
-                accoppiamenti_correnti,
-                profondita + 1,
-                max_profondita
+    riposa = None
+  
+    if len(squadre) % 2 != 0:
+        gia_riposo = set()
+        # ✅ Controllo robusto: esegui solo se df_torneo non è vuoto e contiene le colonne
+        if (
+            "df_torneo" in st.session_state 
+            and not st.session_state.df_torneo.empty 
+            and "Ospite" in st.session_state.df_torneo.columns
+        ):
+            gia_riposo = set(
+                st.session_state.df_torneo.loc[
+                    st.session_state.df_torneo["Ospite"] == "RIPOSA", "Casa"
+                ]
             )
-            
-        return miglior_risultato, miglior_rimanenti
 
-    # Inizializzazione
-    accoppiamenti = []
-    gia_abbinati = set()
-    
-    # Prepara la classifica
-    if primo_turno:
-        # Primo turno: ordina per potenziale
-        classifica = classifica.copy()
-        classifica['Potenziale'] = pd.to_numeric(classifica['Potenziale'], errors='coerce').fillna(0)
-        classifica = classifica.sort_values(by='Potenziale', ascending=False).reset_index(drop=True)
-    else:
-        # Turni successivi: usa la classifica aggiornata
-        classifica = aggiorna_classifica(st.session_state.df_torneo)
-    
-    # Se il numero di squadre è dispari, l'ultima riposa
-    if len(classifica) % 2 != 0:
-        riposa = classifica.iloc[-1]['Squadra']
-        st.warning(f"Numero dispari di squadre – {riposa} riposa in questo turno")
-        classifica = classifica.iloc[:-1]
-    
-    # Prepara la lista delle squadre da accoppiare
-    squadre_da_accoppiare = classifica['Squadra'].tolist()
-    
-    # Se è il primo turno, accoppia semplicemente in ordine di potenziale
-    if primo_turno:
-        for i in range(0, len(squadre_da_accoppiare), 2):
-            if i + 1 < len(squadre_da_accoppiare):
-                s1 = squadre_da_accoppiare[i]
-                s2 = squadre_da_accoppiare[i+1]
-                accoppiamenti.append((s1, s2))
-                gia_abbinati.update([s1, s2])
-    else:
-        # Usa l'algoritmo di backtracking per trovare il miglior accoppiamento
-        accoppiamenti, squadre_non_abbinate = trova_miglior_accoppiamento(squadre_da_accoppiare, [])
-        
-        # Se ci sono squadre non abbinate, prova a trovare una soluzione alternativa
-        if squadre_non_abbinate:
-            st.warning(f"Impossibile trovare accoppiamenti per tutte le squadre. Tentativo di riorganizzazione...")
-            
-            # Prova a scambiare alcune partite per trovare una soluzione migliore
-            for tentativo in range(3):  # Massimo 3 tentativi
-                # Prendi una partita esistente e prova a scambiare
-                for i, (c1, o1) in enumerate(accoppiamenti):
-                    for s in squadre_non_abbinate:
-                        # Prova a scambiare c1 con s
-                        if (s, o1) not in precedenti and (o1, s) not in precedenti:
-                            # Verifica se c1 può essere accoppiato con qualcun altro
-                            for s2 in squadre_non_abbinate:
-                                if s2 != s and (c1, s2) not in precedenti and (s2, c1) not in precedenti:
-                                    # Trovato uno scambio valido
-                                    accoppiamenti[i] = (s, o1)
-                                    accoppiamenti.append((c1, s2))
-                                    squadre_non_abbinate.remove(s)
-                                    squadre_non_abbinate.remove(s2)
-                                    break
-                            if not squadre_non_abbinate:
-                                break
-                    if not squadre_non_abbinate:
-                        break
-                
-                if not squadre_non_abbinate:
-                    break
-                    
-                # Se siamo qui, prova un altro approccio: riorganizza tutte le partite
-                if tentativo == 1:
-                    squadre_rimaste = squadre_da_accoppiare.copy()
-                    accoppiamenti = []
-                    while len(squadre_rimaste) >= 2:
-                        s1 = squadre_rimaste[0]
-                        trovato = False
-                        for i, s2 in enumerate(squadre_rimaste[1:], 1):
-                            if (s1, s2) not in precedenti and (s2, s1) not in precedenti:
-                                accoppiamenti.append((s1, s2))
-                                del squadre_rimaste[i]
-                                del squadre_rimaste[0]
-                                trovato = True
-                                break
-                        if not trovato:
-                            # Se non troviamo un accoppiamento per s1, passa alla prossima
-                            squadre_rimaste = squadre_rimaste[1:] + [squadre_rimaste[0]]
-                    squadre_non_abbinate = squadre_rimaste
-    
-    # Verifica finale
-    squadre_abbinate = set()
-    for c, o in accoppiamenti:
-        if c in squadre_abbinate or o in squadre_abbinate:
-            st.error(f"Errore: {c} o {o} sono già stati accoppiati!")
+        # ✅ Candidati = squadre che non hanno ancora riposato
+        candidati = [s for s in squadre if s not in gia_riposo]
+
+        # ✅ Candidati = squadre che non hanno ancora riposato
+        candidati = [s for s in squadre if s not in gia_riposo]
+
+        if not candidati:
+            st.error("⚠️ Tutte le squadre hanno già riposato, impossibile assegnare nuovo riposo!")
             return None
-        squadre_abbinate.update([c, o])
+
+        # 🔄 Scelta casuale fra i candidati (puoi usare candidati[0] per ordine fisso)
+        riposa = random.choice(candidati)
+        squadre.remove(riposa)
+
+    # 🔗 Algoritmo di backtracking per formare coppie valide
+    def backtrack(da_accoppiare, accoppiamenti):
+        if not da_accoppiare:
+            return accoppiamenti
+        s1 = da_accoppiare[0]
+        for i, s2 in enumerate(da_accoppiare[1:], 1):
+            if (s1, s2) in precedenti or (s2, s1) in precedenti:
+                continue
+            nuovi_accoppiamenti = accoppiamenti + [(s1, s2)]
+            nuove_rimanenti = [
+                x for j, x in enumerate(da_accoppiare) if j not in (0, i)
+            ]
+            risultato = backtrack(nuove_rimanenti, nuovi_accoppiamenti)
+            if risultato is not None:
+                return risultato
+        return None
+
+    accoppiamenti = backtrack(squadre, [])
+
+    # fallback se il backtracking non trova nulla
+    # La lista 'squadre' qui è ordinata per classifica (Svizzero "stretto")
+    squadre_strette = squadre.copy() 
+    accoppiamenti = backtrack(squadre_strette, []) 
+
+    # -----------------------------------
+    # INIZIO MODIFICA: LOGICA PERMISSIVA (FALLBACK)
+    # -----------------------------------
+    # Se l'accoppiamento "stretto" basato sul punteggio non trova soluzioni...
+    if accoppiamenti is None:
+        st.warning("🔄 Tentativo di accoppiamento stretto (per punteggio) fallito. Riprovo in modalità permissiva.")
         
-        # Verifica che non ci siano partite già giocate
-        if (c, o) in precedenti or (o, c) in precedenti:
-            st.error(f"Errore: {c} e {o} hanno già giocato tra loro!")
-            return None
-    
-    # Se ci sono squadre non abbinate, mostra un avviso
-    if squadre_non_abbinate:
-        st.warning(f"Non è stato possibile accoppiare: {', '.join(squadre_non_abbinate)}")
-    
-    # Crea il DataFrame finale
-    df = pd.DataFrame([{"Casa": c, "Ospite": o, "GolCasa": 0, "GolOspite": 0, "Validata": False}
-                      for c, o in accoppiamenti])
+        # PASS 2: Modalità Permissiva - Mischiamo la lista per eliminare il vincolo sul punteggio.
+        # Manteniamo SOLO il vincolo di non-ripetizione (gestito da backtrack).
+        squadre_permissive = squadre.copy()
+        random.shuffle(squadre_permissive)
+        
+        # Riprova il backtracking sul nuovo ordine casuale
+        accoppiamenti = backtrack(squadre_permissive, [])
+
+    # -----------------------------------
+    # FINE MODIFICA: LOGICA PERMISSIVA (FALLBACK)
+    # -----------------------------------
+
+    # Il codice prosegue qui con l'assegnazione dell'errore finale
+    if accoppiamenti is None and not riposa:
+        st.error("⚠️ Non è stato possibile generare accoppiamenti validi anche in modalità permissiva!")
+        return None
+    if not accoppiamenti and not riposa:
+        st.error("⚠️ Non è stato possibile generare accoppiamenti validi!")
+        return None
+
+    # Costruisci il DataFrame degli accoppiamenti
+    df = pd.DataFrame(
+        [
+            {"Casa": c, "Ospite": o, "GolCasa": 0, "GolOspite": 0, "Validata": False}
+            for c, o in accoppiamenti
+        ]
+    )
+
+    # Aggiungi il riposo se previsto
+    if riposa:
+        df = pd.concat(
+            [
+                df,
+                pd.DataFrame(
+                    [
+                        {
+                            "Casa": riposa,
+                            "Ospite": "RIPOSA",
+                            "GolCasa": 0,
+                            "GolOspite": 0,
+                            "Validata": True,
+                        }
+                    ]
+                ),
+            ],
+            ignore_index=True,
+        )
+
+    # 🔥 Aggiungi la colonna Turno
+    df["Turno"] = st.session_state.turno_attivo
+
     return df
+
+    import random
+
+    # Ordinamento iniziale: per potenziale al primo turno,
+    # altrimenti per classifica aggiornata
+    if primo_turno:
+        classifica = classifica.copy()
+        classifica["Potenziale"] = pd.to_numeric(
+            classifica["Potenziale"], errors="coerce"
+        ).fillna(0)
+        classifica = classifica.sort_values(
+            by="Potenziale", ascending=False
+        ).reset_index(drop=True)
+    else:
+        classifica = aggiorna_classifica(st.session_state.df_torneo)
+
+    squadre = classifica["Squadra"].tolist()
+
+    riposa = None
+    if len(squadre) % 2 != 0:
+        # 🔎 Controlla chi ha già riposato
+        gia_riposo = set(
+            st.session_state.df_torneo.loc[
+                st.session_state.df_torneo["Ospite"] == "RIPOSA", "Casa"
+            ]
+        )
+        # ✅ Candidati = squadre che non hanno ancora riposato
+        candidati = [s for s in squadre if s not in gia_riposo]
+
+        if not candidati:
+            st.error("⚠️ Tutte le squadre hanno già riposato, impossibile assegnare nuovo riposo!")
+            return None
+
+        # 🔄 Scelta casuale fra i candidati (puoi usare candidati[0] per ordine fisso)
+        riposa = random.choice(candidati)
+        squadre.remove(riposa)
+
+    # 🔗 Algoritmo di backtracking per formare coppie valide
+    def backtrack(da_accoppiare, accoppiamenti):
+        if not da_accoppiare:
+            return accoppiamenti
+        s1 = da_accoppiare[0]
+        for i, s2 in enumerate(da_accoppiare[1:], 1):
+            if (s1, s2) in precedenti or (s2, s1) in precedenti:
+                continue
+            nuovi_accoppiamenti = accoppiamenti + [(s1, s2)]
+            nuove_rimanenti = [
+                x for j, x in enumerate(da_accoppiare) if j not in (0, i)
+            ]
+            risultato = backtrack(nuove_rimanenti, nuovi_accoppiamenti)
+            if risultato is not None:
+                return risultato
+        return None
+
+    accoppiamenti = backtrack(squadre, [])
+
+    # fallback se il backtracking non trova nulla
+    if accoppiamenti is None:
+        random.shuffle(squadre)
+        accoppiamenti = []
+        for i in range(0, len(squadre), 2):
+            if i + 1 < len(squadre):
+                if (squadre[i], squadre[i + 1]) not in precedenti and (
+                    squadre[i + 1], squadre[i]
+                ) not in precedenti:
+                    accoppiamenti.append((squadre[i], squadre[i + 1]))
+
+    if not accoppiamenti and not riposa:
+        st.error("⚠️ Non è stato possibile generare accoppiamenti validi!")
+        return None
+
+    # Costruisci il DataFrame degli accoppiamenti
+    df = pd.DataFrame(
+        [
+            {"Casa": c, "Ospite": o, "GolCasa": 0, "GolOspite": 0, "Validata": False}
+            for c, o in accoppiamenti
+        ]
+    )
+
+    # Aggiungi il riposo se previsto
+    if riposa:
+        df = pd.concat(
+            [
+                df,
+                pd.DataFrame(
+                    [
+                        {
+                            "Casa": riposa,
+                            "Ospite": "RIPOSA",
+                            "GolCasa": 0,
+                            "GolOspite": 0,
+                            "Validata": True,
+                        }
+                    ]
+                ),
+            ],
+            ignore_index=True,
+        )
+
+    return df
+
+    import random
+
+    if primo_turno:
+        classifica = classifica.copy()
+        classifica["Potenziale"] = pd.to_numeric(classifica["Potenziale"], errors="coerce").fillna(0)
+        classifica = classifica.sort_values(by="Potenziale", ascending=False).reset_index(drop=True)
+    else:
+        classifica = aggiorna_classifica(st.session_state.df_torneo)
+
+    squadre = classifica["Squadra"].tolist()
+
+    riposa = None
+    if len(squadre) % 2 != 0:
+        riposa = squadre.pop()
+
+    def backtrack(da_accoppiare, accoppiamenti):
+        if not da_accoppiare:
+            return accoppiamenti
+        s1 = da_accoppiare[0]
+        for i, s2 in enumerate(da_accoppiare[1:], 1):
+            if (s1, s2) in precedenti or (s2, s1) in precedenti:
+                continue
+            nuovi_accoppiamenti = accoppiamenti + [(s1, s2)]
+            nuove_rimanenti = [x for j, x in enumerate(da_accoppiare) if j not in (0, i)]
+            risultato = backtrack(nuove_rimanenti, nuovi_accoppiamenti)
+            if risultato is not None:
+                return risultato
+        return None
+
+    accoppiamenti = backtrack(squadre, [])
+    if accoppiamenti is None:
+        # fallback casuale: mescola le squadre e accoppiale
+        random.shuffle(squadre)
+        accoppiamenti = []
+        for i in range(0, len(squadre), 2):
+            if i + 1 < len(squadre):
+                if (squadre[i], squadre[i+1]) not in precedenti and (squadre[i+1], squadre[i]) not in precedenti:
+                    accoppiamenti.append((squadre[i], squadre[i+1]))
+
+    if not accoppiamenti:
+        st.error("⚠️ Non è stato possibile generare accoppiamenti validi!")
+        return None
+
+    df = pd.DataFrame([{"Casa": c, "Ospite": o, "GolCasa": 0, "GolOspite": 0, "Validata": False} for c, o in accoppiamenti])
+    if riposa:
+        df = pd.concat([df, pd.DataFrame([{"Casa": riposa, "Ospite": "RIPOSA", "GolCasa": 0, "GolOspite": 0, "Validata": True}])], ignore_index=True)
+    return df
+
 
 def init_results_temp_from_df(df):
     for _, row in df.iterrows():
@@ -1090,26 +1108,29 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
             key_val = f"val_{turno_attivo}_{casa}_{ospite}"
             valida_key = f"valida_{turno_attivo}_{casa}_{ospite}"
 
-            # Recupera i dati di squadra e giocatore per la visualizzazione con gestione degli errori
-            try:
-                info_casa = st.session_state.df_squadre[st.session_state.df_squadre['Squadra'] == casa].iloc[0]
-                nome_squadra_casa = info_casa['Squadra']
-                nome_giocatore_casa = info_casa.get('Giocatore', casa)  # Usa il nome della squadra come fallback
-            except (IndexError, KeyError):
-                # Se non trova la squadra, usa i valori di default
-                nome_squadra_casa = casa
-                nome_giocatore_casa = casa
-                st.warning(f"⚠️ Informazioni mancanti per la squadra: {casa}")
-            
-            try:
-                info_ospite = st.session_state.df_squadre[st.session_state.df_squadre['Squadra'] == ospite].iloc[0]
-                nome_squadra_ospite = info_ospite['Squadra']
-                nome_giocatore_ospite = info_ospite.get('Giocatore', ospite)  # Usa il nome della squadra come fallback
-            except (IndexError, KeyError):
-                # Se non trova la squadra, usa i valori di default
-                nome_squadra_ospite = ospite
-                nome_giocatore_ospite = ospite
-                st.warning(f"⚠️ Informazioni mancanti per la squadra: {ospite}")
+            # Recupera i dati di squadra e giocatore per la visualizzazione
+            # Gestione CASA
+            if casa == "RIPOSA" or st.session_state.df_squadre[st.session_state.df_squadre['Squadra'] == casa].empty:
+                info_casa = {"Squadra": "RIPOSA", "Giocatore": "—"}
+            else:
+                info_casa = st.session_state.df_squadre[
+                    st.session_state.df_squadre['Squadra'] == casa
+                ].iloc[0]
+
+            # Gestione OSPITE
+            if ospite == "RIPOSA" or st.session_state.df_squadre[st.session_state.df_squadre['Squadra'] == ospite].empty:
+                info_ospite = {"Squadra": "RIPOSA", "Giocatore": "—"}
+            else:
+                info_ospite = st.session_state.df_squadre[
+                    st.session_state.df_squadre['Squadra'] == ospite
+                ].iloc[0]
+
+
+
+            nome_squadra_casa = info_casa['Squadra']
+            nome_giocatore_casa = info_casa['Giocatore']
+            nome_squadra_ospite = info_ospite['Squadra']
+            nome_giocatore_ospite = info_ospite['Giocatore']
             
             st.markdown(f"<p style='text-align:center; font-size:1.2rem; font-weight:bold;'>⚽ Partita</p>", unsafe_allow_html=True)
             
@@ -1357,12 +1378,13 @@ if st.session_state.setup_mode == "nuovo":
         with col_num:
             # Calcola il valore predefinito
             default_value = max(2, len(st.session_state.giocatori_selezionati_db))
+            
             num_squadre = st.number_input(
                 "Numero totale di partecipanti:",
                 min_value=2,
                 max_value=100,
                 value=default_value,
-                step=1,  # Incrementi di 1 per permettere qualsiasi numero
+                step=1,  # Incrementi di 1 per consentire qualsiasi numero
                 key="num_partecipanti"
             )
 
