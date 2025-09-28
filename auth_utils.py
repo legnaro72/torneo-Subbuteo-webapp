@@ -13,6 +13,7 @@ AUTH_COLLECTION = "auth_password"
 DB_NAME_PLAYERS = "giocatori_subbuteo"
 PLAYERS_COLLECTION1 = "superba_players"
 PLAYERS_COLLECTION2 = "piercrew_players"
+PLAYERS_COLLECTION3 = "tigullio_players"
 
 def get_mongo_client():
     return MongoClient(MONGO_URI, 
@@ -41,9 +42,11 @@ def find_user(username: str, club: str = None):
         collections = [PLAYERS_COLLECTION1]
     elif club == 'PierCrew':
         collections = [PLAYERS_COLLECTION2]
+    elif club == 'Tigullio':
+        collections = [PLAYERS_COLLECTION3]
     else:
-        # Se non specificato o valore non valido, cerca in entrambe
-        collections = [PLAYERS_COLLECTION1, PLAYERS_COLLECTION2]
+        # Se non specificato o valore non valido, cerca in tutte le collezioni
+        collections = [PLAYERS_COLLECTION1, PLAYERS_COLLECTION2, PLAYERS_COLLECTION3]
     
     for coll in collections:
         try:
