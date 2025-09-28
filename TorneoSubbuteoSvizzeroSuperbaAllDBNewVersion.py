@@ -390,7 +390,7 @@ def salva_torneo_su_db():
                 {"_id": ObjectId(st.session_state.tournament_id)},
                 {"$set": torneo_data}
             )
-            st.toast(f"✅ Torneo '{st.session_state.nome_torneo}' aggiornato con successo!")
+            pass #st.toast(f"✅ Torneo '{st.session_state.nome_torneo}' aggiornato con successo!")
         else:
             # Altrimenti cerchiamo un torneo esistente con lo stesso nome
             existing_doc = tournaments_collection.find_one({"nome_torneo": st.session_state.nome_torneo})
@@ -849,7 +849,14 @@ def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
             return None
 
         # 🔄 Scelta casuale fra i candidati (puoi usare candidati[0] per ordine fisso)
-        riposa = random.choice(candidati)
+        #riposa = random.choice(candidati)
+        # Assicurati che classifica contenga la colonna "Potenziale" prima di usare idxmin()
+        if "Potenziale" not in classifica.columns:
+            classifica["Potenziale"] = st.session_state.df_squadre.set_index("Squadra")["Potenziale"]
+
+        potenziale_candidati = classifica.set_index("Squadra").loc[candidati]["Potenziale"]
+        riposa = potenziale_candidati.idxmin()  # squadra con potenziale più basso
+
         squadre.remove(riposa)
 
     # 🔗 Algoritmo di backtracking per formare coppie valide
@@ -940,37 +947,51 @@ def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
 
     # Ordinamento iniziale: per potenziale al primo turno,
     # altrimenti per classifica aggiornata
-    if primo_turno:
+    turno = st.session_state.turno_attivo
+
+    if primo_turno or turno in [1, 2]:
         classifica = classifica.copy()
-        classifica["Potenziale"] = pd.to_numeric(
-            classifica["Potenziale"], errors="coerce"
-        ).fillna(0)
-        classifica = classifica.sort_values(
-            by="Potenziale", ascending=False
-        ).reset_index(drop=True)
+        classifica["Potenziale"] = pd.to_numeric(classifica["Potenziale"], errors="coerce").fillna(0)
+        classifica = classifica.sort_values(by="Potenziale", ascending=False).reset_index(drop=True)
+    elif turno == 3:
+        classifica = aggiorna_classifica(st.session_state.df_torneo)
+        classifica["MediaPunti"] = 0.5 * classifica["Potenziale"] + 0.5 * classifica["Punti"]
+        classifica = classifica.sort_values(by="MediaPunti", ascending=False).reset_index(drop=True)
     else:
         classifica = aggiorna_classifica(st.session_state.df_torneo)
+
+
 
     squadre = classifica["Squadra"].tolist()
 
     riposa = None
     if len(squadre) % 2 != 0:
-        # 🔎 Controlla chi ha già riposato
-        gia_riposo = set(
-            st.session_state.df_torneo.loc[
-                st.session_state.df_torneo["Ospite"] == "RIPOSA", "Casa"
-            ]
-        )
-        # ✅ Candidati = squadre che non hanno ancora riposato
+        # Controlla chi ha già riposato
+        gia_riposo = set()
+        if "df_torneo" in st.session_state and not st.session_state.df_torneo.empty and "Ospite" in st.session_state.df_torneo.columns:
+            gia_riposo = set(st.session_state.df_torneo.loc[st.session_state.df_torneo["Ospite"] == "RIPOSA", "Casa"])
+        
+        # Candidati = squadre che non hanno ancora riposato
         candidati = [s for s in squadre if s not in gia_riposo]
-
+        
         if not candidati:
             st.error("⚠️ Tutte le squadre hanno già riposato, impossibile assegnare nuovo riposo!")
             return None
 
-        # 🔄 Scelta casuale fra i candidati (puoi usare candidati[0] per ordine fisso)
-        riposa = random.choice(candidati)
+        # --- NUOVA LOGICA SICURA: usa il potenziale solo se esiste ---
+        if "Potenziale" not in classifica.columns:
+            # recupera il potenziale originale dal DataFrame delle squadre
+            classifica = classifica.merge(
+                st.session_state.df_squadre[["Squadra", "Potenziale"]],
+                on="Squadra",
+                how="left"
+            )
+        
+        # Seleziona la squadra con potenziale più basso
+        potenziale_candidati = classifica.set_index("Squadra").loc[candidati]["Potenziale"]
+        riposa = potenziale_candidati.idxmin()
         squadre.remove(riposa)
+
 
     # 🔗 Algoritmo di backtracking per formare coppie valide
     def backtrack(da_accoppiare, accoppiamenti):
@@ -1208,7 +1229,7 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
                     st.session_state.df_torneo.loc[partita_idx, ['GolCasa', 'GolOspite', 'Validata']] = df_turno_corrente.loc[partita_idx, ['GolCasa', 'GolOspite', 'Validata']]
                     
                     if salva_torneo_su_db():
-                        st.toast(f"✅ Partita {casa} vs {ospite} validata e salvata!")
+                        pass #st.toast(f"✅ Partita {casa} vs {ospite} validata e salvata!")
                     else:
                         st.error("❌ Errore durante il salvataggio del risultato")
                 else:
@@ -1226,7 +1247,7 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
             
             # Mostra stato validazione
             if st.session_state.risultati_temp.get(key_val, False):
-                st.toast("✅ Partita validata!")
+                pass #st.toast("✅ Partita validata!")
             else:
                 st.warning("⚠️ Partita non ancora validata.")
 

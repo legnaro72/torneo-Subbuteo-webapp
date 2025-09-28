@@ -390,7 +390,7 @@ def salva_torneo_su_db():
                 {"_id": ObjectId(st.session_state.tournament_id)},
                 {"$set": torneo_data}
             )
-            st.toast(f"✅ Torneo '{st.session_state.nome_torneo}' aggiornato con successo!")
+            pass #st.toast(f"✅ Torneo '{st.session_state.nome_torneo}' aggiornato con successo!")
         else:
             # Altrimenti cerchiamo un torneo esistente con lo stesso nome
             existing_doc = tournaments_collection.find_one({"nome_torneo": st.session_state.nome_torneo})
@@ -1208,7 +1208,7 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
                     st.session_state.df_torneo.loc[partita_idx, ['GolCasa', 'GolOspite', 'Validata']] = df_turno_corrente.loc[partita_idx, ['GolCasa', 'GolOspite', 'Validata']]
                     
                     if salva_torneo_su_db():
-                        st.toast(f"✅ Partita {casa} vs {ospite} validata e salvata!")
+                        pass #st.toast(f"✅ Partita {casa} vs {ospite} validata e salvata!")
                     else:
                         st.error("❌ Errore durante il salvataggio del risultato")
                 else:
@@ -1226,7 +1226,7 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
             
             # Mostra stato validazione
             if st.session_state.risultati_temp.get(key_val, False):
-                st.toast("✅ Partita validata!")
+                pass #st.toast("✅ Partita validata!")
             else:
                 st.warning("⚠️ Partita non ancora validata.")
 
