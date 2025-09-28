@@ -15,28 +15,42 @@ PLAYERS_COLLECTION1 = "superba_players"
 PLAYERS_COLLECTION2 = "piercrew_players"
 PLAYERS_COLLECTION3 = "tigullio_players"
 
+# Database e collezione logs
+DB_LOGS = "Login"
+LOGS_COLLECTION = "Logs"
+
 def get_mongo_client():
-    return MongoClient(MONGO_URI, 
-                     server_api=ServerApi('1'), 
-                     connectTimeoutMS=5000, 
+    return MongoClient(MONGO_URI,
+                     server_api=ServerApi('1'),
+                     connectTimeoutMS=5000,
                      serverSelectionTimeoutMS=5000,
                      tlsCAFile=certifi.where())
+
+def log_event(username: str, esito: str, dettagli: dict = None):
+    """
+    Salva un log nella collezione 'Logs' del DB 'Login'.
+    """
+    try:
+        client = get_mongo_client()
+        db_logs = client[DB_LOGS]
+        logs_coll = db_logs[LOGS_COLLECTION]
+        log_entry = {
+            "timestamp": datetime.utcnow(),
+            "username": username,
+            "esito": esito,
+            "dettagli": dettagli or {}
+        }
+        logs_coll.insert_one(log_entry)
+    except Exception as e:
+        print(f"Errore durante il logging: {e}")
 
 def find_user(username: str, club: str = None):
     """
     Cerca un utente nel database.
-    
-    Args:
-        username: Nome utente da cercare
-        club: Se specificato, cerca solo nella collection del club specificato.
-             'Superba' -> superba_players
-             'PierCrew' -> piercrew_players
-             Se None o altro valore, cerca in entrambe le collections
     """
     client = get_mongo_client()
     db_players = client[DB_NAME_PLAYERS]
-    
-    # Determina in quali collections cercare in base al parametro club
+
     collections = []
     if club == 'Superba':
         collections = [PLAYERS_COLLECTION1]
@@ -45,9 +59,8 @@ def find_user(username: str, club: str = None):
     elif club == 'Tigullio':
         collections = [PLAYERS_COLLECTION3]
     else:
-        # Se non specificato o valore non valido, cerca in tutte le collezioni
         collections = [PLAYERS_COLLECTION1, PLAYERS_COLLECTION2, PLAYERS_COLLECTION3]
-    
+
     for coll in collections:
         try:
             player = db_players[coll].find_one({"Giocatore": {'$regex': f'^{username}$', '$options': 'i'}})
@@ -56,7 +69,7 @@ def find_user(username: str, club: str = None):
                 return player
         except Exception as e:
             print(f"Errore durante la ricerca nella collection {coll}: {e}")
-    
+
     return None
 
 def validate_system_password(pwd: str) -> bool:
@@ -75,29 +88,27 @@ def update_user_password(player, new_pwd: str):
         {"_id": player["_id"]},
         {"$set": {"Password": new_pwd, "SetPwd": 1}}
     )
+    # Log impostazione nuova password
+    log_event(player.get("Giocatore", "Sconosciuto"), "Impostazione nuova password", {
+        "azione": "Cambio password",
+        "club": player.get("_collection")
+    })
 
 def show_auth_screen(club: str = "Superba"):
     """
     Mostra la schermata di autenticazione.
-    
-    Args:
-        club: Nome del club per cui effettuare l'autenticazione.
-             Determina in quale collection cercare l'utente.
-             Valori accettati: 'Superba' o 'PierCrew'. Default: 'Superba'
     """
-    # Inizializza stato
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
     if "read_only" not in st.session_state:
         st.session_state.read_only = False
     if "auth_phase" not in st.session_state:
-        st.session_state.auth_phase = "username"  # username / password / set_password
+        st.session_state.auth_phase = "username"
     if "player" not in st.session_state:
         st.session_state.player = None
     if "club" not in st.session_state:
         st.session_state.club = club
 
-    # Se già autenticato, esci
     if st.session_state.authenticated:
         return True
 
@@ -109,32 +120,38 @@ def show_auth_screen(club: str = "Superba"):
             username = st.text_input("Username", key="auth_username")
             col1, col2 = st.columns([1, 2])
             with col1:
-                submitted = st.form_submit_button("Accedi", help="Verifica esistenza username")
+                submitted = st.form_submit_button("Accedi")
             with col2:
-                guest_submitted = st.form_submit_button("Accedi come ospite", help="Accedi in modalità sola lettura")
-                
+                guest_submitted = st.form_submit_button("Accedi come ospite")
+
             if guest_submitted:
                 st.session_state.authenticated = True
                 st.session_state.read_only = True
                 st.session_state.user = {
                     "username": "Ospite",
-                    "role": "G",  # G per Guest
+                    "role": "G",
                     "collection": "guests",
                     "id": None
                 }
+                log_event("Ospite", "Accesso riuscito", {"ruolo": "Guest"})
                 st.rerun()
+
         if submitted:
             if not username:
                 st.error("Inserisci lo username")
                 return False
-            # Cerca l'utente nella collection specificata dal parametro club
+
+            log_event(username, "Inserimento username", {"azione": "Tentativo login", "club": st.session_state.club})
+
             player = find_user(username, st.session_state.club)
             if not player:
                 st.error(f"Utente non trovato nel club {st.session_state.club}")
+                log_event(username, "Utente non trovato", {"motivo": "Username inesistente", "club": st.session_state.club})
                 return False
+
             st.session_state.player = player
             ruolo = player.get("Ruolo", "R")
-            # ruolo R => sola lettura
+
             if ruolo == "R":
                 st.session_state.authenticated = True
                 st.session_state.read_only = True
@@ -145,16 +162,16 @@ def show_auth_screen(club: str = "Superba"):
                     "id": str(player["_id"])
                 }
                 st.success("✅ Accesso in sola lettura")
+                log_event(player.get("Giocatore"), "Accesso riuscito", {"club": player["_collection"], "ruolo": ruolo})
                 st.rerun()
             else:
-                # Se ha già password impostata
                 if int(player.get("SetPwd", 0)) == 1:
                     st.session_state.auth_phase = "password"
                 else:
                     st.session_state.auth_phase = "set_password"
                 st.rerun()
 
-    # FASE 2: password esistente
+    # FASE 2: password
     elif st.session_state.auth_phase == "password":
         st.markdown("### Inserisci la tua password")
         with st.form(key="auth_form_password"):
@@ -173,11 +190,13 @@ def show_auth_screen(club: str = "Superba"):
                     "id": str(player["_id"])
                 }
                 st.success("✅ Accesso con diritti di scrittura")
+                log_event(player.get("Giocatore"), "Accesso riuscito", {"club": player["_collection"], "ruolo": player.get("Ruolo", "W")})
                 st.rerun()
             else:
                 st.error("Password errata")
+                log_event(player.get("Giocatore", "Sconosciuto"), "Password errata", {"motivo": "Password non corrispondente"})
 
-    # FASE 3: impostazione nuova password (richiede System Password)
+    # FASE 3: impostazione nuova password
     elif st.session_state.auth_phase == "set_password":
         st.markdown("### Imposta la tua password (richiede System Password)")
         with st.form(key="auth_form_setpwd"):
@@ -188,6 +207,7 @@ def show_auth_screen(club: str = "Superba"):
         if submit_set:
             if not validate_system_password(sys_pwd):
                 st.error("System Password non valida")
+                log_event(st.session_state.player.get("Giocatore", "Sconosciuto"), "Password non impostata", {"motivo": "System password errata"})
                 return False
             if not new_pwd or not confirm_pwd:
                 st.error("Inserisci entrambe le password")
@@ -195,13 +215,13 @@ def show_auth_screen(club: str = "Superba"):
             if new_pwd != confirm_pwd:
                 st.error("Le password non coincidono")
                 return False
-            # Aggiorna password sul record utente
+
             player = st.session_state.player
             if player is None:
                 st.error("Errore: utente non presente nella sessione")
                 return False
+
             update_user_password(player, new_pwd)
-            # Aggiorna il player in sessione con SetPwd=1 e Password aggiornata
             player["Password"] = new_pwd
             player["SetPwd"] = 1
             st.session_state.player = player
@@ -214,6 +234,7 @@ def show_auth_screen(club: str = "Superba"):
                 "id": str(player["_id"])
             }
             st.success("✅ Password impostata e accesso con scrittura")
+            log_event(player.get("Giocatore"), "Impostazione nuova password", {"club": player["_collection"], "ruolo": player.get("Ruolo", "W")})
             st.rerun()
 
     return st.session_state.authenticated
