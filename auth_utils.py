@@ -15,9 +15,9 @@ PLAYERS_COLLECTION1 = "superba_players"
 PLAYERS_COLLECTION2 = "piercrew_players"
 PLAYERS_COLLECTION3 = "tigullio_players"
 
-# Database e collezione logs
-DB_LOGS = "Login"
-LOGS_COLLECTION = "Logs"
+# Database e collezione Login
+DB_Login = "Log"
+LOG_COLLECTION = "Login"
 
 def get_mongo_client():
     return MongoClient(MONGO_URI,
@@ -28,19 +28,19 @@ def get_mongo_client():
 
 def log_event(username: str, esito: str, dettagli: dict = None):
     """
-    Salva un log nella collezione 'Logs' del DB 'Login'.
+    Salva un log nella collezione 'Login' del DB 'Log'.
     """
     try:
         client = get_mongo_client()
-        db_logs = client[DB_LOGS]
-        logs_coll = db_logs[LOGS_COLLECTION]
+        db_Login = client[DB_Login]
+        Login_coll = db_Login[LOG_COLLECTION]
         log_entry = {
             "timestamp": datetime.utcnow(),
             "username": username,
             "esito": esito,
             "dettagli": dettagli or {}
         }
-        logs_coll.insert_one(log_entry)
+        Login_coll.insert_one(log_entry)
     except Exception as e:
         print(f"Errore durante il logging: {e}")
 
@@ -141,7 +141,7 @@ def show_auth_screen(club: str = "Superba"):
                 st.error("Inserisci lo username")
                 return False
 
-            log_event(username, "Inserimento username", {"azione": "Tentativo login", "club": st.session_state.club})
+            log_event(username, "Inserimento username", {"azione": "Tentativo Log", "club": st.session_state.club})
 
             player = find_user(username, st.session_state.club)
             if not player:

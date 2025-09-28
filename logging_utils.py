@@ -6,8 +6,8 @@ import os
 
 # Configurazione connessione MongoDB
 MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://massimilianoferrando:Legnaro21!$@cluster0.t3750lc.mongodb.net/")
-DB_LOGS = "Login"
-LOGS_COLLECTION = "Actions"
+DB_LOGS = "Log"
+ACTIONS_COLLECTION = "Actions"
 
 def get_mongo_client():
     return MongoClient(MONGO_URI,
@@ -35,8 +35,8 @@ def log_action(username: str, action: str, torneo: str, details: dict = None):
         
         print(f"[DEBUG] Connessione al database: {DB_LOGS}")
         db = client[DB_LOGS]
-        print(f"[DEBUG] Connessione alla collezione: {LOGS_COLLECTION}")
-        collection = db[LOGS_COLLECTION]
+        print(f"[DEBUG] Connessione alla collezione: {ACTIONS_COLLECTION}")
+        collection = db[ACTIONS_COLLECTION]
         
         log_entry = {
             "timestamp": datetime.utcnow(),
