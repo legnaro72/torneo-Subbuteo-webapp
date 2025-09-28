@@ -817,13 +817,23 @@ def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
     import random
     turno_attuale = st.session_state.get("turno_attivo", 1)
 
+    # --- Calcola il numero di turni che usano il potenziale ---
+    num_squadre = len(st.session_state.df_squadre)
+    
+    if st.session_state.modalita_turni == "fisso" and st.session_state.max_turni is not None:
+        # Se è impostato un limite di turni, usa il potenziale per metà dei turni (arrotondato per eccesso)
+        turni_con_potenziale = (st.session_state.max_turni + 1) // 2
+    else:
+        # Se non c'è limite, usa il potenziale per metà delle squadre (arrotondato per eccesso)
+        turni_con_potenziale = (num_squadre + 1) // 2
+    
     # --- Ordinamento ---
-    if turno_attuale in (1, 2, 3):
+    if turno_attuale <= turni_con_potenziale:
         # Ordinamento per Potenziale (discendente)
         classifica = st.session_state.df_squadre.copy()
         classifica = classifica.sort_values(by="Potenziale", ascending=False).reset_index(drop=True)
     else:
-        # Dal 3° turno in poi: per Classifica aggiornata
+        # Dopo i turni con potenziale: per Classifica aggiornata
         classifica = aggiorna_classifica(st.session_state.df_torneo)
 
     squadre = classifica["Squadra"].tolist()
