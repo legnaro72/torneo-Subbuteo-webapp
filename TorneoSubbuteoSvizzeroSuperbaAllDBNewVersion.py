@@ -689,6 +689,16 @@ def aggiorna_classifica(df):
     df_classifica = pd.DataFrame([(k, v['Punti'], v['G'], v['V'], v['N'], v['P'], v['GF'], v['GS'], v['DR']) 
                                 for k, v in stats.items()],
                               columns=['Squadra', 'Punti', 'G', 'V', 'N', 'P', 'GF', 'GS', 'DR'])
+                              
+
+    # 🔥 Merge con potenziali delle squadre
+    if "df_squadre" in st.session_state and not st.session_state.df_squadre.empty:
+        df_classifica = df_classifica.merge(
+            st.session_state.df_squadre[["Squadra", "Potenziale"]],
+            on="Squadra",
+            how="left"
+        )
+
     # ----------------------------------------------------
     # NEW PATCH 2 & 3: Correzione Statistica e Nascondimento
     # ----------------------------------------------------
@@ -802,14 +812,106 @@ def controlla_fine_torneo():
             return True
 
     return False
-
-
+#inizio genera
 def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
     import random
+    turno_attuale = st.session_state.get("turno_attivo", 1)
 
-    # Ordinamento iniziale: per potenziale al primo turno,
-    # altrimenti per classifica aggiornata
-    if primo_turno:
+    # --- Ordinamento ---
+    if turno_attuale in (1, 2, 3):
+        # Ordinamento per Potenziale (discendente)
+        classifica = st.session_state.df_squadre.copy()
+        classifica = classifica.sort_values(by="Potenziale", ascending=False).reset_index(drop=True)
+    else:
+        # Dal 3° turno in poi: per Classifica aggiornata
+        classifica = aggiorna_classifica(st.session_state.df_torneo)
+
+    squadre = classifica["Squadra"].tolist()
+    riposa = None
+
+    # --- Gestione riposo ---
+    if len(squadre) % 2 != 0:
+        # Squadre che hanno già riposato
+        gia_riposo = set()
+        if (
+            "df_torneo" in st.session_state
+            and not st.session_state.df_torneo.empty
+            and "Ospite" in st.session_state.df_torneo.columns
+        ):
+            gia_riposo = set(
+                st.session_state.df_torneo.loc[
+                    st.session_state.df_torneo["Ospite"] == "RIPOSA", "Casa"
+                ]
+            )
+
+        # Candidati = squadre che non hanno ancora riposato
+        candidati = [s for s in squadre if s not in gia_riposo]
+
+        if not candidati:
+            st.error("⚠️ Tutte le squadre hanno già riposato!")
+            return None
+
+        # 💤 Scelta: squadra con POTENZIALE più basso
+        df_candidati = classifica[classifica["Squadra"].isin(candidati)]
+        riposa = df_candidati.sort_values(by="Potenziale", ascending=True).iloc[0]["Squadra"]
+
+        squadre.remove(riposa)
+
+    # --- Algoritmo backtracking per formare coppie ---
+    def backtrack(da_accoppiare, accoppiamenti):
+        if not da_accoppiare:
+            return accoppiamenti
+        s1 = da_accoppiare[0]
+        for i, s2 in enumerate(da_accoppiare[1:], 1):
+            if (s1, s2) in precedenti or (s2, s1) in precedenti:
+                continue
+            nuovi_accoppiamenti = accoppiamenti + [(s1, s2)]
+            nuove_rimanenti = [x for j, x in enumerate(da_accoppiare) if j not in (0, i)]
+            risultato = backtrack(nuove_rimanenti, nuovi_accoppiamenti)
+            if risultato is not None:
+                return risultato
+        return None
+
+    accoppiamenti = backtrack(squadre, [])
+
+    # fallback: shuffle
+    if accoppiamenti is None:
+        random.shuffle(squadre)
+        accoppiamenti = []
+        for i in range(0, len(squadre), 2):
+            if i + 1 < len(squadre):
+                if (squadre[i], squadre[i+1]) not in precedenti and (squadre[i+1], squadre[i]) not in precedenti:
+                    accoppiamenti.append((squadre[i], squadre[i+1]))
+
+    if not accoppiamenti and not riposa:
+        st.error("⚠️ Non è stato possibile generare accoppiamenti validi!")
+        return None
+
+    # --- Costruzione DataFrame ---
+    df = pd.DataFrame(
+        [{"Casa": c, "Ospite": o, "GolCasa": 0, "GolOspite": 0, "Validata": False} for c, o in accoppiamenti]
+    )
+
+    if riposa:
+        df = pd.concat(
+            [df, pd.DataFrame([{"Casa": riposa, "Ospite": "RIPOSA", "GolCasa": 0, "GolOspite": 0, "Validata": True}])],
+            ignore_index=True,
+        )
+
+    df["Turno"] = turno_attuale
+    return df
+
+
+#fine genera
+
+
+    import random
+
+    turno_attuale = st.session_state.get("turno_attivo", 1)
+
+    # --- Ordinamento dinamico in base al turno ---
+    if turno_attuale == 1 or turno_attuale == 2:
+        # Usa SOLO il potenziale
         classifica = classifica.copy()
         classifica["Potenziale"] = pd.to_numeric(
             classifica["Potenziale"], errors="coerce"
@@ -817,8 +919,28 @@ def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
         classifica = classifica.sort_values(
             by="Potenziale", ascending=False
         ).reset_index(drop=True)
+
+    elif turno_attuale in (3, 4):
+        # Media 50% potenziale + 50% posizione classifica
+        classifica_corrente = aggiorna_classifica(st.session_state.df_torneo)
+        classifica = classifica_corrente.merge(
+            st.session_state.df_squadre[["Squadra", "Potenziale"]],
+            on="Squadra",
+            how="left"
+        )
+        classifica["Posizione"] = classifica.reset_index().index + 1
+        classifica["MixScore"] = (
+            classifica["Potenziale"].rank(ascending=False) * 0.5 +
+            classifica["Posizione"] * 0.5
+        )
+        classifica = classifica.sort_values(
+            by="MixScore", ascending=True
+        ).reset_index(drop=True)
+
     else:
+        # Dal 5° turno in poi: SOLO posizione in classifica
         classifica = aggiorna_classifica(st.session_state.df_torneo)
+
 
     squadre = classifica["Squadra"].tolist()
 
@@ -1604,28 +1726,22 @@ if st.session_state.torneo_iniziato:
 
     # Convert NumPy boolean to Python boolean for the disabled state
     is_disabled_finish = bool(not verify_write_access())
+
     if st.sidebar.button("🏁 Termina Torneo", 
                         key="reset_app", 
                         use_container_width=True,
                         disabled=is_disabled_finish,
                         help="Termina il torneo corrente" + ("" if verify_write_access() else " (accesso in sola lettura)")):
         if verify_write_access():
+            # Salva lo stato attuale nel DB
             salva_torneo_su_db()
-            st.session_state.torneo_iniziato = False
-            st.session_state.setup_mode = None
-            st.session_state.df_torneo = pd.DataFrame()
-            st.session_state.df_squadre = pd.DataFrame()
-            st.session_state.turno_attivo = 0
-            st.session_state.risultati_temp = {}
-            st.session_state.nuovo_torneo_step = 1
-            st.rerun()
+
+            # Segna come terminato senza cancellare/reset
+            st.session_state.torneo_finito = True
+            st.sidebar.success("✅ Torneo terminato. Dati salvati nel DB.")
         else:
             st.error("⛔ Accesso in sola lettura. Non è possibile terminare il torneo.")
-        st.session_state.torneo_finito = False
-        st.sidebar.success("✅ Torneo terminato. Dati resettati.")
-        st.rerun()
 
-    st.sidebar.markdown("---")
 
     # ✅ 3. 🔧 Utility (sezione principale con sottosezioni)
     st.sidebar.subheader("🔧 Utility")
