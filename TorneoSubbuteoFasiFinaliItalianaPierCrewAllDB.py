@@ -1,4 +1,3 @@
-
 import streamlit as st
 import base64
 import datetime
@@ -8,8 +7,9 @@ import os
 import re
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime as dt, timedelta
 from io import BytesIO
+import logging_utils as log
 
 import numpy as np
 import pandas as pd
@@ -1017,10 +1017,26 @@ def clona_torneo_su_db(tournaments_collection, source_id, new_name):
             st.error(f"❌ Torneo sorgente con ID {source_id} non trovato.")
             return None, None
         
+        old_name = source_data.get('nome_torneo', 'sconosciuto')
         source_data.pop('_id')
         source_data['nome_torneo'] = new_name
         source_data['calendario'] = []
         result = tournaments_collection.insert_one(source_data)
+        
+        # Log dell'operazione
+        username = st.session_state.get('user', {}).get('username', 'sconosciuto')
+        log.log_action(
+            username=username,
+            action="clonazione_torneo",
+            torneo=new_name,
+            details={
+                "tipo_operazione": "clonazione",
+                "torneo_originale": old_name,
+                "torneo_originale_id": source_id,
+                "nuovo_torneo_id": str(result.inserted_id)
+            }
+        )
+        
         st.toast(f"✅ Torneo clonato con successo! Nuovo nome: **{new_name}**")
         return result.inserted_id, new_name
         
@@ -1033,10 +1049,32 @@ def rinomina_torneo_su_db(tournaments_collection, tournament_id, new_name):
     if tournaments_collection is None:
         return False
     try:
+        # Ottieni il vecchio nome per il log
+        torneo = tournaments_collection.find_one({"_id": ObjectId(tournament_id)})
+        if not torneo:
+            st.error("❌ Torneo non trovato")
+            return False
+            
+        old_name = torneo.get('nome_torneo', 'sconosciuto')
+        
         tournaments_collection.update_one(
             {"_id": ObjectId(tournament_id)},
             {"$set": {"nome_torneo": new_name}}
         )
+        
+        # Log dell'operazione
+        username = st.session_state.get('user', {}).get('username', 'sconosciuto')
+        log.log_action(
+            username=username,
+            action="rinomina_torneo",
+            torneo=tournament_id,
+            details={
+                "tipo_operazione": "rinomina",
+                "vecchio_nome": old_name,
+                "nuovo_nome": new_name
+            }
+        )
+        
         return True
     except Exception as e:
         st.error(f"❌ Errore nella ridenominazione del torneo: {e}")
@@ -1112,6 +1150,33 @@ def salva_risultati_ko():
             df_final_torneo = pd.concat([df_final_torneo, pd.DataFrame([row])], ignore_index=True)
     
     if aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_final_torneo):
+        username = st.session_state.get('user', {}).get('username', 'sconosciuto')
+        round_name = st.session_state.get('round_corrente', 'Round sconosciuto')
+        
+        # Prepara i dettagli delle partite per il log
+        partite_dettaglio = []
+        for _, partita in current_round_df.iterrows():
+            partite_dettaglio.append({
+                'squadra_casa': partita['SquadraA'],
+                'squadra_ospite': partita['SquadraB'],
+                'gol_casa': partita['GolA'],
+                'gol_ospite': partita['GolB'],
+                'vincitore': partita['Vincitore']
+            })
+            
+        # Log del salvataggio dei risultati con dettagli partite
+        log.log_action(
+            username=username,
+            action="salva_risultati_ko",
+            torneo=st.session_state.get('tournament_id', 'sconosciuto'),
+            details={
+                "tipo_operazione": "salva_risultati",
+                "round": round_name,
+                "partite_salvate": len(current_round_df),
+                "partite": partite_dettaglio
+            }
+        )
+        
         st.toast("✅ Risultati salvati su DB!")
         st.session_state['df_torneo_preliminare'] = df_final_torneo
     else:
@@ -1145,6 +1210,21 @@ def salva_risultati_ko():
             })
         st.session_state['rounds_ko'].append(pd.DataFrame(next_matches))
         st.session_state['round_corrente'] = next_round_name
+        
+        # Log della generazione del nuovo round
+        username = st.session_state.get('user', {}).get('username', 'sconosciuto')
+        log.log_action(
+            username=username,
+            action="genera_round_ko",
+            torneo=st.session_state.get('tournament_id', 'sconosciuto'),
+            details={
+                "tipo_operazione": "genera_round",
+                "round_precedente": st.session_state.get('round_corrente', 'Round sconosciuto'),
+                "nuovo_round": next_round_name,
+                "squadre_qualificate": winners
+            }
+        )
+        
         st.success(f"Prossimo turno: {next_round_name} generato!")
     
     elif len(winners) == 1:
@@ -1300,7 +1380,29 @@ def main():
             help="Termina il torneo corrente" + ("" if has_write_access else " (accesso in sola lettura)")
         ):
             if has_write_access:
+                # Log dell'azione di terminazione torneo
+                username = st.session_state.get('user', {}).get('username', 'sconosciuto')
+                tournament_id = st.session_state.get('tournament_id', 'sconosciuto')
+                
+                # Prepara i dettagli del torneo per il log
+                torneo_details = {
+                    "tipo_operazione": "terminazione_torneo",
+                    "stato": "torneo_terminato",
+                    "vincitore": st.session_state.get('vincitore_torneo', 'Nessun vincitore definito'),
+                    "data_terminazione": datetime.datetime.now().isoformat(),
+                    "round_corrente": st.session_state.get('round_corrente', 'Nessun round attivo')
+                }
+                
+                # Log dell'azione
+                log.log_action(
+                    username=username,
+                    action="termina_torneo",
+                    torneo=tournament_id,
+                    details=torneo_details
+                )
+                
                 st.session_state.update({"vincitore_torneo": "Torneo terminato manualmente"})
+                st.toast("✅ Torneo terminato con successo!")
             else:
                 st.error("⛔ Accesso in sola lettura. Non è possibile terminare il torneo.")
         
@@ -1744,6 +1846,33 @@ def main():
                     
                     # Pulsante per generare i gironi con la configurazione attuale
                     if st.button("🔄 Genera calendario gironi"):
+                        # Log dell'azione di generazione calendario gironi
+                        username = st.session_state.get('user', {}).get('username', 'sconosciuto')
+                        tournament_id = st.session_state.get('tournament_id', 'sconosciuto')
+                        
+                        # Prepara i dettagli dei gironi per il log
+                        gironi_dettaglio = []
+                        for girone, squadre in st.session_state.gironi_manuali.items():
+                            gironi_dettaglio.append({
+                                'nome_girone': girone,
+                                'squadre': squadre,
+                                'num_squadre': len(squadre)
+                            })
+                        
+                        # Log dell'azione
+                        log.log_action(
+                            username=username,
+                            action="genera_calendario_gironi",
+                            torneo=tournament_id,
+                            details={
+                                "tipo_operazione": "generazione_calendario_gironi",
+                                "num_gironi": num_gironi,
+                                "andata_ritorno": andata_ritorno,
+                                "gironi": gironi_dettaglio,
+                                "timestamp": dt.now().isoformat()
+                            }
+                        )
+                        
                         st.session_state['giornate_mode'] = 'gironi'
                         st.session_state['gironi_num'] = num_gironi
                         st.session_state['gironi_ar'] = andata_ritorno
@@ -2011,7 +2140,23 @@ def main():
                                 disabled=not has_write_access,
                                 help="Salva i risultati e genera il prossimo round" + ("" if has_write_access else " (accesso in sola lettura)")
                             ):
-                                if not has_write_access:
+                                if has_write_access:
+                                    # Log dell'azione di salvataggio torneo
+                                    username = st.session_state.get('user', {}).get('username', 'sconosciuto')
+                                    tournament_id = st.session_state.get('tournament_id', 'sconosciuto')
+                                    round_name = st.session_state.get('round_corrente', 'Round sconosciuto')
+                                    
+                                    log.log_action(
+                                        username=username,
+                                        action="salva_torneo",
+                                        torneo=tournament_id,
+                                        details={
+                                            "tipo_operazione": "salvataggio_torneo",
+                                            "round_corrente": round_name,
+                                            "stato": "salvataggio_in_corso"
+                                        }
+                                    )
+                                else:
                                     st.error("⛔ Accesso in sola lettura. Non è possibile salvare i risultati o generare il prossimo round.")
                         
                     if st.session_state['giornate_mode'] == 'ko':

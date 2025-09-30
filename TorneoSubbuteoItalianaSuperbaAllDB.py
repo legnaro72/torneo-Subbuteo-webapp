@@ -58,6 +58,8 @@ st.set_page_config(
 if 'df_torneo' not in st.session_state:
     st.session_state['df_torneo'] = pd.DataFrame()
 
+from logging_utils import log_action
+
 DEFAULT_STATE = {
     'calendario_generato': False,
     'mostra_form_creazione': False,
@@ -229,10 +231,32 @@ def salva_torneo_su_db(tournaments_collection, df_torneo, nome_torneo, tournamen
                 {"_id": ObjectId(tournament_id)},
                 {"$set": data}
             )
+            # logging: aggiornamento torneo
+            try:
+                user = st.session_state.get('user', 'unknown') if 'st' in globals() else 'system'
+                log_action(
+                    username=user,
+                    action='creatorneo',
+                    torneo=nome_torneo,
+                    details={'torneo_id': str(result.inserted_id)}
+                )
+            except Exception as e:
+                print(f"[LOGGING] errore in salva_torneo_su_db (update): {e}")
             return tournament_id
         else:
             # Altrimenti creiamo un nuovo torneo
             result = tournaments_collection.insert_one(data)
+            # logging: creazione torneo
+            try:
+                user = st.session_state.get('user', 'unknown') if 'st' in globals() else 'system'
+                log_action(
+                    username=user,
+                    action='creatorneo',
+                    torneo=nome_torneo,
+                    details={'torneo_id': str(result.inserted_id)}
+                )
+            except Exception as e:
+                print(f"[LOGGING] errore in salva_torneo_su_db (insert): {e}")
             return result.inserted_id
     except Exception as e:
         st.error(f"❌ Errore salvataggio torneo: {e}")
@@ -247,6 +271,17 @@ def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
             {"_id": ObjectId(tournament_id)},
             {"$set": {"calendario": df_torneo_pulito.to_dict('records')}}
         )
+        # logging: aggiornamento torneo
+        try:
+            user = st.session_state.get('user', 'unknown') if 'st' in globals() else 'system'
+            log_action(
+                username=user,
+                action='aggiorna_torneo',
+                torneo=st.session_state.get('nome_torneo'),
+                details={'torneo_id': str(tournament_id), 'num_match': ...}
+            )
+        except Exception as e:
+            print(f"[LOGGING] errore in aggiorna_torneo_su_db: {e}")
         return True
     except Exception as e:
         st.error(f"❌ Errore aggiornamento torneo: {e}")
@@ -434,6 +469,104 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizza
                 st.warning("⚠️ Partita non ancora validata.")
                 
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
+    try:
+        print(f"[DEBUG] Inizio salvataggio risultati per girone: {girone_sel}, giornata: {giornata_sel}")
+        df = st.session_state['df_torneo'].copy()
+        
+        # Filtra le partite della giornata corrente
+        mask = (df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)
+        df_giornata = df[mask].copy()
+        print(f"[DEBUG] Trovate {len(df_giornata)} partite per questa giornata")
+
+        # Aggiorna i risultati
+        for idx, row in df_giornata.iterrows():
+            key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+            key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+            key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+            
+            # Converti esplicitamente i valori in tipi nativi di Python
+            gol_casa = int(st.session_state.get(key_golcasa, 0) or 0)
+            gol_ospite = int(st.session_state.get(key_golospite, 0) or 0)
+            valida = bool(st.session_state.get(key_valida, False))
+
+            # Aggiorna il DataFrame
+            df.loc[idx, 'GolCasa'] = gol_casa
+            df.loc[idx, 'GolOspite'] = gol_ospite
+            df.loc[idx, 'Valida'] = valida
+
+        # Conversione esplicita dei tipi
+        df['GolCasa'] = pd.to_numeric(df['GolCasa'], errors='coerce').fillna(0).astype(int)
+        df['GolOspite'] = pd.to_numeric(df['GolOspite'], errors='coerce').fillna(0).astype(int)
+        df['Valida'] = df['Valida'].astype(bool)
+
+        # Aggiorna il session state
+        st.session_state['df_torneo'] = df
+
+        # Verifica l'ID del torneo
+        if 'tournament_id' not in st.session_state:
+            print("[ERROR] Nessun tournament_id in sessione")
+            st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
+            return False
+
+        # Prepara i dati per il logging
+        partite_modificate = []
+        for _, row in df_giornata.iterrows():
+            partita = {
+                'partita': f"{row['Casa']} vs {row['Ospite']}",
+                'risultato': f"{int(row['GolCasa'])}-{int(row['GolOspite'])}",
+                'valida': bool(row['Valida'])
+            }
+            partite_modificate.append(partita)
+
+        # Salva su MongoDB
+        ok = aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
+        if not ok:
+            print("[ERROR] Errore durante l'aggiornamento del torneo su MongoDB")
+            st.error("❌ Errore durante il salvataggio su MongoDB.")
+            return False
+
+        # Logging
+        try:
+            user = st.session_state.get('user', 'unknown') if 'st' in globals() else 'system'
+            nome_torneo = st.session_state.get('nome_torneo', 'Torneo sconosciuto')
+            
+            log_action(
+                username=user,
+                action='salvarisultati',
+                torneo=nome_torneo,
+                details={
+                    'torneo_id': str(st.session_state.get('tournament_id')),
+                    'giornata': int(giornata_sel),
+                    'partite_modificate': partite_modificate
+                }
+            )
+            print(f"[DEBUG] Log inviato per {len(partite_modificate)} partite modificate")
+            st.toast("💾 Risultati salvati con successo!")
+            
+        except Exception as e:
+            print(f"[ERROR] Errore durante il logging: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            st.toast("💾 Risultati salvati, ma si è verificato un errore nel logging")
+
+        # Verifica se tutte le partite sono state validate
+        if df['Valida'].all():
+            nome_completato = f"completato_{st.session_state['nome_torneo']}"
+            classifica_finale = aggiorna_classifica(df)
+            salva_torneo_su_db(tournaments_collection, df, nome_completato)
+            st.session_state['torneo_completato'] = True
+            st.session_state['classifica_finale'] = classifica_finale
+            st.session_state['show_redirect_button'] = True 
+            st.toast(f"🏁 Torneo completato e salvato come {nome_completato} ✅")
+
+        return True
+
+    except Exception as e:
+        print(f"[CRITICAL] Errore critico in salva_risultati_giornata: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        st.error("❌ Si è verificato un errore durante il salvataggio dei risultati.")
+        return False
     df = st.session_state['df_torneo']
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)]
 
@@ -462,6 +595,18 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     if 'tournament_id' in st.session_state:
         ok = aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
         if ok:
+            try:
+                user = st.session_state.get('user', 'unknown') if 'st' in globals() else 'system'
+                nome_torneo = st.session_state.get('nome_torneo', 'Torneo sconosciuto')
+                log_action(
+                    username=user,
+                    action='salvarisultati',
+                    torneo=st.session_state.get('nome_torneo'),
+                    details={'torneo_id': st.session_state.get('tournament_id'), 'giornata': giornata_sel}
+                )
+
+            except Exception as e:
+                print(f"[LOGGING] errore in salva_risultati_giornata: {e}")
             st.toast("💾 Risultati salvati su MongoDB ✅")
         else:
             st.error("❌ Errore durante l'aggiornamento del torneo su MongoDB.")
@@ -537,11 +682,25 @@ def gestisci_abbandoni(df_torneo, giocatori_da_ritirare, tournaments_collection)
     
     # Salva su DB
     if 'tournament_id' in st.session_state:
-        ok = aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
-        if ok:
-            st.toast(f"✅ Aggiornati {matches_to_update} incontri. Modifiche salvate su MongoDB!")
-        else:
-            st.error("❌ Errore durante il salvataggio su MongoDB.")
+        try:
+            ok = aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
+            if ok:
+                try:
+                    user = st.session_state.get('user', 'unknown') if 'st' in globals() else 'system'
+                    log_action(
+                        username=user,
+                        action='abbandono_player',
+                        torneo=st.session_state.get('nome_torneo'),
+                        details={'torneo_id': st.session_state.get('tournament_id'), 'players': giocatori_da_ritirare, 'matches_updated': matches_to_update}
+                    )
+
+                except Exception as e:
+                    print(f"[LOGGING] errore in gestisci_abbandoni: {e}")
+                st.toast(f"✅ Aggiornati {matches_to_update} incontri. Modifiche salvate su MongoDB!")
+            else:
+                st.error("❌ Errore durante il salvataggio su MongoDB.")
+        except Exception as e:
+            st.error(f"❌ Errore durante il salvataggio su MongoDB: {e}")
     else:
         st.error("❌ ID del torneo non trovato. Impossibile salvare.")
     return df
@@ -1297,7 +1456,7 @@ def main():
                 else:
                     st.info("🎉 Nessuna partita trovata per questo giocatore.")
 
-
+                
         elif filtro_principale == 'Girone':
             st.sidebar.markdown("#### 🧩 Filtra per Girone")
             gironi_disponibili = sorted(df['Girone'].unique().tolist())
@@ -1403,7 +1562,7 @@ def main():
                 else:
                     st.info("🎉 Nessuna partita trovata per questo girone.")
 
-
+                
         st.sidebar.markdown("---")
         
         # ✅ 5. 📤 Esportazione (in fondo)

@@ -9,6 +9,9 @@ MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://massimilianoferrando:Legnaro21
 DB_LOGS = "Log"
 ACTIONS_COLLECTION = "Actions"
 
+# Abilita il debug
+DEBUG = True
+
 def get_mongo_client():
     return MongoClient(MONGO_URI,
                      server_api=ServerApi('1'),
@@ -25,34 +28,83 @@ def log_action(username: str, action: str, torneo: str, details: dict = None):
         action: Tipo di azione (es. 'salvataggio', 'modifica', 'validazione')
         torneo: Nome del torneo su cui è stata eseguita l'azione
         details: Dettagli aggiuntivi dell'azione (opzionale)
-    """
-    print(f"[DEBUG] Tentativo di log - Utente: {username}, Azione: {action}, Torneo: {torneo}")
     
+    Returns:
+        bool: True se il log è stato registrato con successo, False altrimenti
+    """
+    if DEBUG:
+        print(f"[LOG_ACTION] Inizio log - Utente: {username}, Azione: {action}, Torneo: {torneo}")
+        if details:
+            print(f"[LOG_ACTION] Dettagli: {details}")
+    
+    client = None
     try:
-        print("[DEBUG] Creazione client MongoDB...")
-        client = get_mongo_client()
-        print(f"[DEBUG] Client MongoDB creato: {client is not None}")
+        if DEBUG:
+            print("[LOG_ACTION] Creazione client MongoDB...")
         
-        print(f"[DEBUG] Connessione al database: {DB_LOGS}")
+        client = get_mongo_client()
+        
+        if DEBUG:
+            print(f"[LOG_ACTION] Client MongoDB creato: {client is not None}")
+            
+        # Verifica la connessione al server
+        if client:
+            client.admin.command('ping')
+            if DEBUG:
+                print("[LOG_ACTION] Connessione al server MongoDB verificata")
+        
+        if DEBUG:
+            print(f"[LOG_ACTION] Connessione al database: {DB_LOGS}")
+        
         db = client[DB_LOGS]
-        print(f"[DEBUG] Connessione alla collezione: {ACTIONS_COLLECTION}")
+        
+        if DEBUG:
+            print(f"[LOG_ACTION] Connessione alla collezione: {ACTIONS_COLLECTION}")
+        
         collection = db[ACTIONS_COLLECTION]
         
+        # Crea il documento di log con tutti i dettagli
         log_entry = {
             "timestamp": datetime.utcnow(),
             "username": username,
             "action": action,
             "torneo": torneo,
+            "ip_address": os.environ.get("REMOTE_ADDR", "unknown"),
+            "user_agent": os.environ.get("HTTP_USER_AGENT", "unknown"),
             "details": details or {}
         }
         
-        print(f"[DEBUG] Inserimento log: {log_entry}")
+        if DEBUG:
+            print(f"[LOG_ACTION] Inserimento log: {log_entry}")
+        
+        # Inserisci il log nel database
         result = collection.insert_one(log_entry)
-        print(f"[DEBUG] Log inserito con ID: {result.inserted_id}")
+        
+        if DEBUG:
+            print(f"[LOG_ACTION] Log inserito con ID: {result.inserted_id}")
         
         return True
+        
     except Exception as e:
         import traceback
-        error_msg = f"Errore durante il logging dell'azione: {e}\n{traceback.format_exc()}"
-        print(f"[ERROR] {error_msg}")
+        error_msg = f"[LOG_ACTION_ERROR] Errore durante il logging: {str(e)}\n{traceback.format_exc()}"
+        print(error_msg)
+        
+        # Prova a registrare l'errore in un file di log locale
+        try:
+            with open('error_log.txt', 'a', encoding='utf-8') as f:
+                f.write(f"{datetime.now().isoformat()} - {error_msg}\n")
+        except Exception as file_err:
+            print(f"[LOG_ACTION_ERROR] Impossibile scrivere su file di log: {file_err}")
+        
         return False
+        
+    finally:
+        # Chiudi la connessione in ogni caso
+        if client:
+            try:
+                client.close()
+                if DEBUG:
+                    print("[LOG_ACTION] Connessione al database chiusa")
+            except Exception as close_err:
+                print(f"[LOG_ACTION_ERROR] Errore nella chiusura della connessione: {close_err}")
