@@ -508,15 +508,7 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
             st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
             return False
 
-        # Prepara i dati per il logging
-        partite_modificate = []
-        for _, row in df_giornata.iterrows():
-            partita = {
-                'partita': f"{row['Casa']} vs {row['Ospite']}",
-                'risultato': f"{int(row['GolCasa'])}-{int(row['GolOspite'])}",
-                'valida': bool(row['Valida'])
-            }
-            partite_modificate.append(partita)
+        
 
         # Salva su MongoDB
         ok = aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
@@ -524,6 +516,21 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
             print("[ERROR] Errore durante l'aggiornamento del torneo su MongoDB")
             st.error("❌ Errore durante il salvataggio su MongoDB.")
             return False
+            
+        # ------------------------------------------------------------------
+        # CORREZIONE DEL LOGGING: Usiamo il DataFrame AGGIORNATO (df) filtrato
+        # ------------------------------------------------------------------
+        df_giornata_aggiornata = df[mask] # 👈 Usa df [mask] che contiene i risultati corretti!
+            
+        # Prepara i dati per il logging
+        partite_modificate = []
+        for _, row in df_giornata_aggiornata.iterrows(): # 👈 CICLA sui dati corretti
+            partita = {
+                'partita': f"{row['Casa']} vs {row['Ospite']}",
+                'risultato': f"{int(row['GolCasa'])}-{int(row['GolOspite'])}",
+                'valida': bool(row['Valida'])
+            }
+            partite_modificate.append(partita)
 
         # Logging
         try:
@@ -560,68 +567,13 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
             st.toast(f"🏁 Torneo completato e salvato come {nome_completato} ✅")
 
         return True
-
+        
     except Exception as e:
         print(f"[CRITICAL] Errore critico in salva_risultati_giornata: {str(e)}")
         import traceback
         traceback.print_exc()
         st.error("❌ Si è verificato un errore durante il salvataggio dei risultati.")
         return False
-    df = st.session_state['df_torneo']
-    df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)]
-
-    for idx, row in df_giornata.iterrows():
-        # Le chiavi devono corrispondere esattamente a quelle create nella UI
-        key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
-        key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
-        key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
-        
-        # Recupera i valori dallo stato della sessione e gestisci i casi mancanti
-        gol_casa = st.session_state.get(key_golcasa)
-        gol_ospite = st.session_state.get(key_golospite)
-        valida = st.session_state.get(key_valida, False)
-        
-        # Aggiorna il DataFrame con i valori corretti
-        df.loc[idx, 'GolCasa'] = int(gol_casa) if gol_casa is not None else 0
-        df.loc[idx, 'GolOspite'] = int(gol_ospite) if gol_ospite is not None else 0
-        df.loc[idx, 'Valida'] = bool(valida)
-
-    # Assicurati che le colonne siano del tipo corretto prima di salvare
-    df['GolCasa'] = pd.to_numeric(df['GolCasa'], errors='coerce').fillna(0).astype('Int64')
-    df['GolOspite'] = pd.to_numeric(df['GolOspite'], errors='coerce').fillna(0).astype('Int64')
-
-    st.session_state['df_torneo'] = df
-
-    if 'tournament_id' in st.session_state:
-        ok = aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
-        if ok:
-            try:
-                user = st.session_state.get('user', 'unknown') if 'st' in globals() else 'system'
-                nome_torneo = st.session_state.get('nome_torneo', 'Torneo sconosciuto')
-                log_action(
-                    username=user,
-                    action='salvarisultati',
-                    torneo=st.session_state.get('nome_torneo'),
-                    details={'torneo_id': st.session_state.get('tournament_id'), 'giornata': giornata_sel}
-                )
-
-            except Exception as e:
-                print(f"[LOGGING] errore in salva_risultati_giornata: {e}")
-            st.toast("💾 Risultati salvati su MongoDB ✅")
-        else:
-            st.error("❌ Errore durante l'aggiornamento del torneo su MongoDB.")
-    else:
-        st.error("❌ Errore: ID del torneo non trovato. Impossibile salvare.")
-
-    if df['Valida'].all():
-        nome_completato = f"completato_{st.session_state['nome_torneo']}"
-        classifica_finale = aggiorna_classifica(df)
-        salva_torneo_su_db(tournaments_collection, df, nome_completato)
-        st.session_state['torneo_completato'] = True
-        st.session_state['classifica_finale'] = classifica_finale
-        # Aggiungi questa nuova variabile di stato
-        st.session_state['show_redirect_button'] = True 
-        st.toast(f"🏁 Torneo completato e salvato come {nome_completato} ✅")
         
 def gestisci_abbandoni(df_torneo, giocatori_da_ritirare, tournaments_collection):
     df = df_torneo.copy()
