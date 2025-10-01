@@ -114,28 +114,76 @@ def crud_interface(selected_db, collection_name):
 
     # Filtri per Login/Actions nel DB Log
     query = {}
+    # DELTA: Sostituisci l'intero blocco di Filtri per il DB Log
+# Inizia attorno alla riga 112 nel tuo script
+
+    # Filtri per Login/Actions nel DB Log
+    query = {}
     if selected_db == "Log" and collection_name in ["Login", "Actions"]:
         st.header(EMOJI_MAP['filters'])
+        
+        # Uso di st.form per attuare i filtri solo al click del pulsante
+        with st.form(key=f"log_filters_{collection_name}"):
+            
+            # --- Filtro Username ---
+            col_user, col_field = st.columns([1, 1])
+            with col_field:
+                username_field = st.text_input("Campo username", value="username", key=f"user_field_{collection_name}")
+            with col_user:
+                username_value = st.text_input("Valore username", key=f"user_value_{collection_name}")
+            
+            if username_value:
+                query[username_field] = username_value
+                
+            st.markdown("---") # Separatore
+                
+            # --- Filtro Temporale (Data + Ora) ---
+            date_field = st.text_input("Campo data/ora (es. timestamp)", value="timestamp", key=f"date_field_{collection_name}")
+            
+            # Colonne per Data Inizio / Ora Inizio
+            col_start_date, col_start_time = st.columns(2)
+            with col_start_date:
+                start_date = st.date_input("Data inizio", key=f"start_date_{collection_name}", value=datetime.today().date())
+            with col_start_time:
+                # NUOVO: Aggiungi input per l'ora di inizio (di default mezzanotte)
+                start_time = st.time_input("Ora inizio", key=f"start_time_{collection_name}", value=datetime.min.time())
 
-        username_field = st.text_input("Campo username (es. username)", value="username", key=f"user_field_{collection_name}")
-        username_value = st.text_input("Valore username", key=f"user_value_{collection_name}")
-        if username_value:
-            query[username_field] = username_value
+            # Colonne per Data Fine / Ora Fine
+            col_end_date, col_end_time = st.columns(2)
+            with col_end_date:
+                end_date = st.date_input("Data fine", key=f"end_date_{collection_name}", value=datetime.today().date())
+            with col_end_time:
+                # NUOVO: Aggiungi input per l'ora di fine (di default l'ora corrente)
+                end_time = st.time_input("Ora fine", key=f"end_time_{collection_name}", value=datetime.now().time())
 
-        date_field = st.text_input("Campo data/ora (es. timestamp)", value="timestamp", key=f"date_field_{collection_name}")
-        start_date = st.date_input("Data inizio", key=f"start_date_{collection_name}")
-        end_date = st.date_input("Data fine", key=f"end_date_{collection_name}")
-        if start_date and end_date:
-            if start_date <= end_date:
-                query[date_field] = {
-                    "$gte": datetime.combine(start_date, datetime.min.time()),
-                    "$lte": datetime.combine(end_date, datetime.max.time())
-                }
-            else:
-                st.error(f"{EMOJI_MAP['error']} La data di inizio deve essere precedente alla data di fine.")
+            # Pulsante per applicare i filtri
+            submitted = st.form_submit_button("🔎 Applica Filtri Log")
+        
+        # Logica di applicazione dei filtri temporali (eseguita solo se il form è stato inviato)
+        if submitted or not st.session_state.get('log_filters_applied', False):
+            
+            st.session_state['log_filters_applied'] = True # Segna che i filtri sono stati applicati almeno una volta
+            
+            if start_date and end_date:
+                if start_date <= end_date:
+                    
+                    # COMBINA DATA E ORA
+                    start_datetime = datetime.combine(start_date, start_time)
+                    end_datetime = datetime.combine(end_date, end_time)
+                    
+                    # Aggiungi il filtro solo se le date sono valide
+                    query[date_field] = {
+                        "$gte": start_datetime,
+                        "$lte": end_datetime
+                    }
+                else:
+                    st.error(f"{EMOJI_MAP['error']} La data di inizio deve essere precedente o uguale alla data di fine.")
+                    # Se c'è un errore, forziamo una query vuota per non mostrare dati non filtrati
+                    query = {"error": True} 
 
-    # Recupera documenti con filtri
+    # Recupera documenti con filtri (il resto dello script continua da qui)
     docs = list(collection.find(query))
+
 
     # Elenco record
     st.header(EMOJI_MAP['records_header'])
