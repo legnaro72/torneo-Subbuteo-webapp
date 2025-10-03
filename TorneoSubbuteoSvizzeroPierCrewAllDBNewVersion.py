@@ -1,5 +1,5 @@
-
 import streamlit as st
+from logging_utils import log_action
 
 # Configurazione della pagina DEVE essere la PRIMA operazione Streamlit
 st.set_page_config(
@@ -54,8 +54,6 @@ def add_keep_alive():
 
 # Inizializza il keep-alive
 #add_keep_alive()
-
-
 
 
 # Mostra la schermata di autenticazione se non si è già autenticati
@@ -124,6 +122,25 @@ for key, default in {
 # Aggiornamento del nome del torneo se è finito
 if st.session_state.torneo_finito and not st.session_state.nome_torneo.startswith("finito_"):
     st.session_state.nome_torneo = f"finito_{st.session_state.nome_torneo}"
+# -------------------------
+
+
+# ==============================================================================
+# DEFINIZIONE URL AUDIO PERSISTENTE
+# ==============================================================================
+BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/Appenzeller%20Jodler.mp3"
+# ==============================================================================
+
+
+# ==============================================================================
+# ISTRUZIONE DEFINITIVA: AVVIO AUDIO DI SOTTOFONDO PERSISTENTE
+# ==============================================================================
+# Definisci la tua URL raw per l'audio di sfondo
+BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/Appenzeller%20Jodler.mp3"
+
+# ==============================================================================
+
+
 # -------------------------
 # CSS personalizzato
 # -------------------------
@@ -311,6 +328,115 @@ else:
 # Funzioni di utilità
 # -------------------------
 
+
+# FUNZIONE 1: Per l'audio di SOTTOFONDO con loop (VERS. PERSISTENTE JS FINALE)
+# =============================================================================
+# AUDIO DI SOTTOFONDO PERSISTENTE
+# =============================================================================
+#BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/Appenzeller%20Jodler.mp3"
+
+def autoplay_background_audio(audio_url: str):
+    import requests, base64
+
+    if "background_audio_data" not in st.session_state:
+        try:
+            response = requests.get(audio_url, timeout=10)
+            response.raise_for_status()
+            audio_data = response.content
+            st.session_state.background_audio_data = base64.b64encode(audio_data).decode("utf-8")
+        except Exception as e:
+            st.warning(f"Errore caricamento audio: {e}")
+            return False
+
+    b64 = st.session_state.background_audio_data
+
+    html_code = f"""
+    <script>
+    const audio_id = "subbuteo_background_audio";
+    let audio_element = document.getElementById(audio_id);
+
+    if (!audio_element) {{
+        // Crea una sola volta
+        audio_element = document.createElement("audio");
+        audio_element.id = audio_id;
+        audio_element.src = "data:audio/mp3;base64,{b64}";
+        audio_element.loop = true;
+        audio_element.autoplay = true;
+        audio_element.volume = 0.5;
+        document.body.appendChild(audio_element);
+        console.log("🎵 Audio creato");
+    }} else {{
+        console.log("🎵 Audio già presente, non ricreato");
+    }}
+
+    // Se è in pausa, prova a farlo ripartire
+    if (audio_element.paused) {{
+        audio_element.play().catch(e => {{
+            console.log("⚠️ Autoplay bloccato, ripartirà al primo click.");
+        }});
+    }}
+    </script>
+    """
+    st.components.v1.html(html_code, height=0, width=0, scrolling=False)
+    return True
+
+    """
+    Inietta un elemento <audio> persistente nel DOM con autoplay e loop.
+    Funziona anche dopo i rerun di Streamlit.
+    """
+    import requests, base64
+
+    # Scarica l'mp3 una sola volta in base64
+    if "background_audio_data" not in st.session_state:
+        try:
+            response = requests.get(audio_url, timeout=10)
+            response.raise_for_status()
+            audio_data = response.content
+            st.session_state.background_audio_data = base64.b64encode(audio_data).decode("utf-8")
+        except Exception as e:
+            st.warning(f"Errore caricamento audio: {e}")
+            return False
+
+    b64 = st.session_state.background_audio_data
+
+    js_code = f"""
+    <script>
+    const audio_id = "subbuteo_background_audio";
+    let audio_element = document.getElementById(audio_id);
+
+    // Se non esiste, crealo
+    if (!audio_element) {{
+        audio_element = new Audio("data:audio/mp3;base64,{b64}");
+        audio_element.id = audio_id;
+        audio_element.loop = true;
+        audio_element.volume = 0.5;
+        document.body.appendChild(audio_element);
+        console.log("🎵 Audio creato");
+    }}
+
+    // Se è in pausa, prova a ripartire
+    if (audio_element.paused) {{
+        audio_element.play().catch(e => {{
+            console.log("⚠️ Autoplay bloccato, ripartirà al primo click.");
+        }});
+    }}
+    </script>
+    """
+    st.components.v1.html(js_code, height=0, width=0, scrolling=False)
+    return True
+
+# Avvio audio (solo al primo run)
+#if "background_audio_started" not in st.session_state:
+#    autoplay_background_audio(BACKGROUND_AUDIO_URL)
+#    st.session_state.background_audio_started = True
+
+# Avvio audio ad ogni rerun. La logica JS all'interno di questa funzione
+# assicura che l'elemento audio nel browser venga creato una sola volta
+# e mantenuto attivo.
+autoplay_background_audio(BACKGROUND_AUDIO_URL)   
+
+# FUNZIONE 2: Per l'audio che parte UNA SOLA volta (es. vittoria) - L'ORIGINALE
+
 def autoplay_audio(audio_data: bytes):
     b64 = base64.b64encode(audio_data).decode("utf-8")
     md = f"""
@@ -319,9 +445,19 @@ def autoplay_audio(audio_data: bytes):
         </audio>
         """
     st.markdown(md, unsafe_allow_html=True)
+
+        
+# ==============================================================================
+
     
-def salva_torneo_su_db():
-    """Salva o aggiorna lo stato del torneo su MongoDB."""
+def salva_torneo_su_db(action_type="salvataggio", details=None):
+    """
+    Salva o aggiorna lo stato del torneo su MongoDB.
+    
+    Args:
+        action_type: Tipo di azione da registrare (es. 'salvataggio', 'modifica', 'validazione')
+        details: Dettagli aggiuntivi da registrare (opzionale)
+    """
     if not verify_write_access():
         st.error("⛔ Accesso in sola lettura. Non è possibile salvare le modifiche.")
         return False
@@ -329,7 +465,10 @@ def salva_torneo_su_db():
     if tournaments_collection is None:
         st.error("❌ Connessione a MongoDB non attiva, impossibile salvare.")
         return False
-        
+    
+    # Ottieni il nome utente corrente o 'sconosciuto' se non disponibile
+    current_user = st.session_state.get('user', {}).get('username', 'sconosciuto')
+    
     # Verifica se abbiamo già un ID torneo valido nella sessione
     if 'tournament_id' in st.session_state and st.session_state.tournament_id:
         try:
@@ -338,9 +477,23 @@ def salva_torneo_su_db():
             if not existing:
                 # Se il torneo non esiste più, rimuoviamo l'ID dalla sessione
                 del st.session_state.tournament_id
-        except:
+                # Log dell'errore
+                log_action(
+                    username=current_user,
+                    action="errore_salvataggio",
+                    torneo=st.session_state.get('nome_torneo', 'sconosciuto'),
+                    details={"errore": "Torneo non trovato nel database"}
+                )
+        except Exception as e:
             # In caso di errore (es. ID non valido), rimuoviamo l'ID dalla sessione
             del st.session_state.tournament_id
+            # Log dell'errore
+            log_action(
+                username=current_user,
+                action="errore_salvataggio",
+                torneo=st.session_state.get('nome_torneo', 'sconosciuto'),
+                details={"errore": str(e)}
+            )
 
     # Crea una copia del dataframe per la serializzazione
     df_torneo_to_save = st.session_state.df_torneo.copy()
@@ -384,11 +537,24 @@ def salva_torneo_su_db():
     }
 
     try:
+        # Prepara i dettagli del log
+        log_details = {
+            "tipo_operazione": "aggiornamento" if 'tournament_id' in st.session_state and st.session_state.tournament_id else "creazione",
+            "turno_corrente": st.session_state.get('turno_attivo', 0),
+            **({} if details is None else details)
+        }
+        
         # Se abbiamo un ID torneo nella sessione, aggiorniamo quel documento specifico
         if 'tournament_id' in st.session_state and st.session_state.tournament_id:
             tournaments_collection.update_one(
                 {"_id": ObjectId(st.session_state.tournament_id)},
                 {"$set": torneo_data}
+            )
+            log_action(
+                username=current_user,
+                action=action_type,
+                torneo=st.session_state.nome_torneo,
+                details=log_details
             )
             pass #st.toast(f"✅ Torneo '{st.session_state.nome_torneo}' aggiornato con successo!")
         else:
@@ -402,15 +568,29 @@ def salva_torneo_su_db():
                     {"$set": torneo_data}
                 )
                 st.session_state.tournament_id = str(existing_doc["_id"])
+                log_action(
+                    username=current_user,
+                    action=action_type,
+                    torneo=st.session_state.nome_torneo,
+                    details={"tipo_operazione": "aggiornamento_esistente", **log_details}
+                )
                 st.toast(f"✅ Torneo esistente '{st.session_state.nome_torneo}' aggiornato con successo!")
             else:
                 # Crea un nuovo documento e salva l'ID nella sessione
                 result = tournaments_collection.insert_one(torneo_data)
                 st.session_state.tournament_id = str(result.inserted_id)
+                log_action(
+                    username=current_user,
+                    action=action_type,
+                    torneo=st.session_state.nome_torneo,
+                    details={"tipo_operazione": "creazione", **log_details}
+                )
                 st.toast(f"✅ Nuovo torneo '{st.session_state.nome_torneo}' salvato con successo!")
         return True
     except Exception as e:
         st.error(f"❌ Errore durante il salvataggio del torneo: {e}")
+
+
 
 @st.cache_data(ttl=300)  # Cache per 5 minuti
 def carica_nomi_tornei_da_db():
@@ -479,7 +659,8 @@ def carica_torneo_da_db(nome_torneo):
         
         # Inizializza i risultati temporanei
         init_results_temp_from_df(st.session_state.df_torneo)
-        
+        # MODIFICA: Salvataggio immediato dopo generazione calendario
+        salva_torneo_su_db(action_type="creazione_torneo_generato", details={"turno_generato": 1})
         return True
         
     except Exception as e:
@@ -509,9 +690,6 @@ def carica_giocatori_da_db():
         except Exception as e:
             st.error(f"❌ Errore durante la lettura dalla collection dei giocatori: {e}")
             return pd.DataFrame()
-    else:
-        st.warning("⚠️ La connessione a MongoDB non è attiva.")
-        return pd.DataFrame()
 
 def esporta_pdf(df_torneo, nome_torneo):
     try:
@@ -691,7 +869,7 @@ def aggiorna_classifica(df):
                               columns=['Squadra', 'Punti', 'G', 'V', 'N', 'P', 'GF', 'GS', 'DR'])
                               
 
-    # 🔥 Merge con potenziali delle squadre
+    # 🔥 Merge con potenziale delle squadre
     if "df_squadre" in st.session_state and not st.session_state.df_squadre.empty:
         df_classifica = df_classifica.merge(
             st.session_state.df_squadre[["Squadra", "Potenziale"]],
@@ -1043,7 +1221,6 @@ def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
         ]
     )
 
-    # Aggiungi il riposo se previsto
     if riposa:
         df = pd.concat(
             [
@@ -1125,6 +1302,7 @@ def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
 
     # fallback se il backtracking non trova nulla
     if accoppiamenti is None:
+        # fallback casuale: mescola le squadre e accoppiale
         random.shuffle(squadre)
         accoppiamenti = []
         for i in range(0, len(squadre), 2):
@@ -1166,54 +1344,6 @@ def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
             ignore_index=True,
         )
 
-    return df
-
-    import random
-
-    if primo_turno:
-        classifica = classifica.copy()
-        classifica["Potenziale"] = pd.to_numeric(classifica["Potenziale"], errors="coerce").fillna(0)
-        classifica = classifica.sort_values(by="Potenziale", ascending=False).reset_index(drop=True)
-    else:
-        classifica = aggiorna_classifica(st.session_state.df_torneo)
-
-    squadre = classifica["Squadra"].tolist()
-
-    riposa = None
-    if len(squadre) % 2 != 0:
-        riposa = squadre.pop()
-
-    def backtrack(da_accoppiare, accoppiamenti):
-        if not da_accoppiare:
-            return accoppiamenti
-        s1 = da_accoppiare[0]
-        for i, s2 in enumerate(da_accoppiare[1:], 1):
-            if (s1, s2) in precedenti or (s2, s1) in precedenti:
-                continue
-            nuovi_accoppiamenti = accoppiamenti + [(s1, s2)]
-            nuove_rimanenti = [x for j, x in enumerate(da_accoppiare) if j not in (0, i)]
-            risultato = backtrack(nuove_rimanenti, nuovi_accoppiamenti)
-            if risultato is not None:
-                return risultato
-        return None
-
-    accoppiamenti = backtrack(squadre, [])
-    if accoppiamenti is None:
-        # fallback casuale: mescola le squadre e accoppiale
-        random.shuffle(squadre)
-        accoppiamenti = []
-        for i in range(0, len(squadre), 2):
-            if i + 1 < len(squadre):
-                if (squadre[i], squadre[i+1]) not in precedenti and (squadre[i+1], squadre[i]) not in precedenti:
-                    accoppiamenti.append((squadre[i], squadre[i+1]))
-
-    if not accoppiamenti:
-        st.error("⚠️ Non è stato possibile generare accoppiamenti validi!")
-        return None
-
-    df = pd.DataFrame([{"Casa": c, "Ospite": o, "GolCasa": 0, "GolOspite": 0, "Validata": False} for c, o in accoppiamenti])
-    if riposa:
-        df = pd.concat([df, pd.DataFrame([{"Casa": riposa, "Ospite": "RIPOSA", "GolCasa": 0, "GolOspite": 0, "Validata": True}])], ignore_index=True)
     return df
 
 
@@ -1339,7 +1469,14 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
                     df_turno_corrente.loc[partita_idx, 'Validata'] = True
                     st.session_state.df_torneo.loc[partita_idx, ['GolCasa', 'GolOspite', 'Validata']] = df_turno_corrente.loc[partita_idx, ['GolCasa', 'GolOspite', 'Validata']]
                     
-                    if salva_torneo_su_db():
+                    if salva_torneo_su_db(
+                        action_type="validazione_risultato",
+                        details={
+                            "partita": f"{casa} vs {ospite}",
+                            "risultato": f"{df_turno_corrente.loc[partita_idx, 'GolCasa']}-{df_turno_corrente.loc[partita_idx, 'GolOspite']}",
+                            "turno": st.session_state.turno_attivo
+                        }
+                    ):
                         pass #st.toast(f"✅ Partita {casa} vs {ospite} validata e salvata!")
                     else:
                         st.error("❌ Errore durante il salvataggio del risultato")
@@ -1348,7 +1485,13 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
                     df_turno_corrente.loc[partita_idx, 'Validata'] = False
                     st.session_state.df_torneo.loc[partita_idx, 'Validata'] = False
                     
-                    if salva_torneo_su_db():
+                    if salva_torneo_su_db(
+                        action_type="rimozione_validazione",
+                        details={
+                            "partita": f"{casa} vs {ospite}",
+                            "turno": st.session_state.turno_attivo
+                        }
+                    ):
                         st.info(f"⚠️ Validazione rimossa per {casa} vs {ospite}")
                     else:
                         st.error("❌ Errore durante il salvataggio delle modifiche")
@@ -1729,9 +1872,18 @@ if st.session_state.torneo_iniziato:
                             disabled=is_disabled_save,
                             help="Salva il torneo" + ("" if verify_write_access() else " (accesso in sola lettura)")):
             if verify_write_access():
-                salva_torneo_su_db()
+                salva_torneo_su_db(
+                    action_type="salvataggio_manuale",
+                    details={"tipo": "salvataggio_manuale_da_sidebar"}
+                )
             else:
                 st.error("⛔ Accesso in sola lettura. Non è possibile salvare le modifiche.")
+                log_action(
+                    username=st.session_state.get('user', {}).get('username', 'sconosciuto'),
+                    action="tentativo_accesso_negato",
+                    torneo=st.session_state.get('nome_torneo', 'sconosciuto'),
+                    details={"azione": "salvataggio_manuale", "motivo": "sola_lettura"}
+                )
         st.sidebar.success("✅ Torneo salvato su DB!")
 
     # Convert NumPy boolean to Python boolean for the disabled state
@@ -1744,7 +1896,10 @@ if st.session_state.torneo_iniziato:
                         help="Termina il torneo corrente" + ("" if verify_write_access() else " (accesso in sola lettura)")):
         if verify_write_access():
             # Salva lo stato attuale nel DB
-            salva_torneo_su_db()
+            salva_torneo_su_db(
+                action_type="fine_torneo_manuale",
+                details={"motivo": "terminato_dall_utente"}
+            )
 
             # Segna come terminato senza cancellare/reset
             st.session_state.torneo_finito = True
@@ -1953,14 +2108,20 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
                             if st.session_state.turno_attivo >= st.session_state.max_turni:
                                 st.info(f"✅ Torneo terminato: raggiunto il limite di {st.session_state.max_turni} round.")
                                 st.session_state.torneo_finito = True
-                                salva_torneo_su_db()
+                                salva_torneo_su_db(
+                                    action_type="fine_torneo_automatico",
+                                    details={"motivo": "raggiunto_limite_turni", "turni_giocati": st.session_state.max_turni}
+                                )
                                 st.rerun()
                         
                         # Incrementa il contatore del turno
                         nuovo_turno = st.session_state.turno_attivo + 1
                         
                         # Salva i risultati del turno corrente
-                        if not salva_torneo_su_db():
+                        if not salva_torneo_su_db(
+                            action_type="salvataggio_turno_corrente",
+                            details={"turno": st.session_state.turno_attivo}
+                        ):
                             st.error("❌ Errore durante il salvataggio del turno corrente")
                             st.stop()
                         
@@ -1972,7 +2133,10 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
                         init_results_temp_from_df(df_turno_prossimo)
                         
                         # Salva il nuovo turno
-                        if salva_torneo_su_db():
+                        if salva_torneo_su_db(
+                            action_type="generazione_nuovo_turno",
+                            details={"nuovo_turno": st.session_state.turno_attivo + 1}
+                        ):
                             st.toast("✅ Nuovo turno generato e salvato con successo!")
                             st.rerun()
                         else:
@@ -1999,7 +2163,10 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
                     
                     # Salva lo stato del torneo come terminato
                     st.session_state.torneo_finito = True
-                    salva_torneo_su_db()
+                    salva_torneo_su_db(
+                        action_type="fine_torneo_automatico",
+                        details={"motivo": "impossibile_generare_nuovi_accoppiamenti"}
+                    )
                     st.rerun()
                 else:
                     # Meno di 2 squadre rimaste, il torneo è finito
@@ -2011,7 +2178,10 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
                         st.warning(f"Vincitore finale: {vincitore}")
                     
                     st.session_state.torneo_finito = True
-                    salva_torneo_su_db()
+                    salva_torneo_su_db(
+                        action_type="fine_torneo_automatico",
+                        details={"motivo": "meno_di_due_squadre_rimaste", "vincitore": vincitore}
+                    )
                     st.rerun()
         else:
             st.warning("⚠️ Per generare il prossimo turno, devi validare tutti i risultati.")
@@ -2070,5 +2240,3 @@ if st.session_state.torneo_finito:
 # Footer leggero
 st.markdown("---")
 st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
-
-# Non è necessario il blocco if __name__ == "__main__" in un'app Streamlit

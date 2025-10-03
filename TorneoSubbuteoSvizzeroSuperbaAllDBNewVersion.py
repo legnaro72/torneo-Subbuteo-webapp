@@ -1,4 +1,3 @@
-
 import streamlit as st
 from logging_utils import log_action
 
@@ -55,8 +54,6 @@ def add_keep_alive():
 
 # Inizializza il keep-alive
 #add_keep_alive()
-
-
 
 
 # Mostra la schermata di autenticazione se non si è già autenticati
@@ -125,6 +122,25 @@ for key, default in {
 # Aggiornamento del nome del torneo se è finito
 if st.session_state.torneo_finito and not st.session_state.nome_torneo.startswith("finito_"):
     st.session_state.nome_torneo = f"finito_{st.session_state.nome_torneo}"
+# -------------------------
+
+
+# ==============================================================================
+# DEFINIZIONE URL AUDIO PERSISTENTE
+# ==============================================================================
+BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/Appenzeller%20Jodler.mp3"
+# ==============================================================================
+
+
+# ==============================================================================
+# ISTRUZIONE DEFINITIVA: AVVIO AUDIO DI SOTTOFONDO PERSISTENTE
+# ==============================================================================
+# Definisci la tua URL raw per l'audio di sfondo
+BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/Appenzeller%20Jodler.mp3"
+
+# ==============================================================================
+
+
 # -------------------------
 # CSS personalizzato
 # -------------------------
@@ -312,6 +328,115 @@ else:
 # Funzioni di utilità
 # -------------------------
 
+
+# FUNZIONE 1: Per l'audio di SOTTOFONDO con loop (VERS. PERSISTENTE JS FINALE)
+# =============================================================================
+# AUDIO DI SOTTOFONDO PERSISTENTE
+# =============================================================================
+#BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/Appenzeller%20Jodler.mp3"
+
+def autoplay_background_audio(audio_url: str):
+    import requests, base64
+
+    if "background_audio_data" not in st.session_state:
+        try:
+            response = requests.get(audio_url, timeout=10)
+            response.raise_for_status()
+            audio_data = response.content
+            st.session_state.background_audio_data = base64.b64encode(audio_data).decode("utf-8")
+        except Exception as e:
+            st.warning(f"Errore caricamento audio: {e}")
+            return False
+
+    b64 = st.session_state.background_audio_data
+
+    html_code = f"""
+    <script>
+    const audio_id = "subbuteo_background_audio";
+    let audio_element = document.getElementById(audio_id);
+
+    if (!audio_element) {{
+        // Crea una sola volta
+        audio_element = document.createElement("audio");
+        audio_element.id = audio_id;
+        audio_element.src = "data:audio/mp3;base64,{b64}";
+        audio_element.loop = true;
+        audio_element.autoplay = true;
+        audio_element.volume = 0.5;
+        document.body.appendChild(audio_element);
+        console.log("🎵 Audio creato");
+    }} else {{
+        console.log("🎵 Audio già presente, non ricreato");
+    }}
+
+    // Se è in pausa, prova a farlo ripartire
+    if (audio_element.paused) {{
+        audio_element.play().catch(e => {{
+            console.log("⚠️ Autoplay bloccato, ripartirà al primo click.");
+        }});
+    }}
+    </script>
+    """
+    st.components.v1.html(html_code, height=0, width=0, scrolling=False)
+    return True
+
+    """
+    Inietta un elemento <audio> persistente nel DOM con autoplay e loop.
+    Funziona anche dopo i rerun di Streamlit.
+    """
+    import requests, base64
+
+    # Scarica l'mp3 una sola volta in base64
+    if "background_audio_data" not in st.session_state:
+        try:
+            response = requests.get(audio_url, timeout=10)
+            response.raise_for_status()
+            audio_data = response.content
+            st.session_state.background_audio_data = base64.b64encode(audio_data).decode("utf-8")
+        except Exception as e:
+            st.warning(f"Errore caricamento audio: {e}")
+            return False
+
+    b64 = st.session_state.background_audio_data
+
+    js_code = f"""
+    <script>
+    const audio_id = "subbuteo_background_audio";
+    let audio_element = document.getElementById(audio_id);
+
+    // Se non esiste, crealo
+    if (!audio_element) {{
+        audio_element = new Audio("data:audio/mp3;base64,{b64}");
+        audio_element.id = audio_id;
+        audio_element.loop = true;
+        audio_element.volume = 0.5;
+        document.body.appendChild(audio_element);
+        console.log("🎵 Audio creato");
+    }}
+
+    // Se è in pausa, prova a ripartire
+    if (audio_element.paused) {{
+        audio_element.play().catch(e => {{
+            console.log("⚠️ Autoplay bloccato, ripartirà al primo click.");
+        }});
+    }}
+    </script>
+    """
+    st.components.v1.html(js_code, height=0, width=0, scrolling=False)
+    return True
+
+# Avvio audio (solo al primo run)
+#if "background_audio_started" not in st.session_state:
+#    autoplay_background_audio(BACKGROUND_AUDIO_URL)
+#    st.session_state.background_audio_started = True
+
+# Avvio audio ad ogni rerun. La logica JS all'interno di questa funzione
+# assicura che l'elemento audio nel browser venga creato una sola volta
+# e mantenuto attivo.
+autoplay_background_audio(BACKGROUND_AUDIO_URL)   
+
+# FUNZIONE 2: Per l'audio che parte UNA SOLA volta (es. vittoria) - L'ORIGINALE
+
 def autoplay_audio(audio_data: bytes):
     b64 = base64.b64encode(audio_data).decode("utf-8")
     md = f"""
@@ -320,6 +445,10 @@ def autoplay_audio(audio_data: bytes):
         </audio>
         """
     st.markdown(md, unsafe_allow_html=True)
+
+        
+# ==============================================================================
+
     
 def salva_torneo_su_db(action_type="salvataggio", details=None):
     """
@@ -461,6 +590,8 @@ def salva_torneo_su_db(action_type="salvataggio", details=None):
     except Exception as e:
         st.error(f"❌ Errore durante il salvataggio del torneo: {e}")
 
+
+
 @st.cache_data(ttl=300)  # Cache per 5 minuti
 def carica_nomi_tornei_da_db():
     """Carica i nomi dei tornei disponibili dal DB."""
@@ -528,7 +659,8 @@ def carica_torneo_da_db(nome_torneo):
         
         # Inizializza i risultati temporanei
         init_results_temp_from_df(st.session_state.df_torneo)
-        
+        # MODIFICA: Salvataggio immediato dopo generazione calendario
+        salva_torneo_su_db(action_type="creazione_torneo_generato", details={"turno_generato": 1})
         return True
         
     except Exception as e:
@@ -558,9 +690,6 @@ def carica_giocatori_da_db():
         except Exception as e:
             st.error(f"❌ Errore durante la lettura dalla collection dei giocatori: {e}")
             return pd.DataFrame()
-    else:
-        st.warning("⚠️ La connessione a MongoDB non è attiva.")
-        return pd.DataFrame()
 
 def esporta_pdf(df_torneo, nome_torneo):
     try:
@@ -740,7 +869,7 @@ def aggiorna_classifica(df):
                               columns=['Squadra', 'Punti', 'G', 'V', 'N', 'P', 'GF', 'GS', 'DR'])
                               
 
-    # 🔥 Merge con potenziali delle squadre
+    # 🔥 Merge con potenziale delle squadre
     if "df_squadre" in st.session_state and not st.session_state.df_squadre.empty:
         df_classifica = df_classifica.merge(
             st.session_state.df_squadre[["Squadra", "Potenziale"]],
@@ -1092,7 +1221,6 @@ def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
         ]
     )
 
-    # Aggiungi il riposo se previsto
     if riposa:
         df = pd.concat(
             [
@@ -1174,6 +1302,7 @@ def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
 
     # fallback se il backtracking non trova nulla
     if accoppiamenti is None:
+        # fallback casuale: mescola le squadre e accoppiale
         random.shuffle(squadre)
         accoppiamenti = []
         for i in range(0, len(squadre), 2):
@@ -1215,54 +1344,6 @@ def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
             ignore_index=True,
         )
 
-    return df
-
-    import random
-
-    if primo_turno:
-        classifica = classifica.copy()
-        classifica["Potenziale"] = pd.to_numeric(classifica["Potenziale"], errors="coerce").fillna(0)
-        classifica = classifica.sort_values(by="Potenziale", ascending=False).reset_index(drop=True)
-    else:
-        classifica = aggiorna_classifica(st.session_state.df_torneo)
-
-    squadre = classifica["Squadra"].tolist()
-
-    riposa = None
-    if len(squadre) % 2 != 0:
-        riposa = squadre.pop()
-
-    def backtrack(da_accoppiare, accoppiamenti):
-        if not da_accoppiare:
-            return accoppiamenti
-        s1 = da_accoppiare[0]
-        for i, s2 in enumerate(da_accoppiare[1:], 1):
-            if (s1, s2) in precedenti or (s2, s1) in precedenti:
-                continue
-            nuovi_accoppiamenti = accoppiamenti + [(s1, s2)]
-            nuove_rimanenti = [x for j, x in enumerate(da_accoppiare) if j not in (0, i)]
-            risultato = backtrack(nuove_rimanenti, nuovi_accoppiamenti)
-            if risultato is not None:
-                return risultato
-        return None
-
-    accoppiamenti = backtrack(squadre, [])
-    if accoppiamenti is None:
-        # fallback casuale: mescola le squadre e accoppiale
-        random.shuffle(squadre)
-        accoppiamenti = []
-        for i in range(0, len(squadre), 2):
-            if i + 1 < len(squadre):
-                if (squadre[i], squadre[i+1]) not in precedenti and (squadre[i+1], squadre[i]) not in precedenti:
-                    accoppiamenti.append((squadre[i], squadre[i+1]))
-
-    if not accoppiamenti:
-        st.error("⚠️ Non è stato possibile generare accoppiamenti validi!")
-        return None
-
-    df = pd.DataFrame([{"Casa": c, "Ospite": o, "GolCasa": 0, "GolOspite": 0, "Validata": False} for c, o in accoppiamenti])
-    if riposa:
-        df = pd.concat([df, pd.DataFrame([{"Casa": riposa, "Ospite": "RIPOSA", "GolCasa": 0, "GolOspite": 0, "Validata": True}])], ignore_index=True)
     return df
 
 
@@ -2159,5 +2240,3 @@ if st.session_state.torneo_finito:
 # Footer leggero
 st.markdown("---")
 st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
-
-# Non è necessario il blocco if __name__ == "__main__" in un'app Streamlit
