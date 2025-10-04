@@ -114,7 +114,8 @@ for key, default in {
     "torneo_finito": False,
     "edited_df_squadre": pd.DataFrame(),
     "gioc_info": {},
-    "modalita_visualizzazione": "Squadre"
+    "modalita_visualizzazione": "Squadre",
+    "bg_audio_disabled": False
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
@@ -433,7 +434,9 @@ def autoplay_background_audio(audio_url: str):
 # Avvio audio ad ogni rerun. La logica JS all'interno di questa funzione
 # assicura che l'elemento audio nel browser venga creato una sola volta
 # e mantenuto attivo.
-autoplay_background_audio(BACKGROUND_AUDIO_URL)   
+
+if not st.session_state.bg_audio_disabled:
+    autoplay_background_audio(BACKGROUND_AUDIO_URL)   
 
 # FUNZIONE 2: Per l'audio che parte UNA SOLA volta (es. vittoria) - L'ORIGINALE
 
@@ -446,6 +449,13 @@ def autoplay_audio(audio_data: bytes):
         """
     st.markdown(md, unsafe_allow_html=True)
 
+def toggle_audio_callback():
+    """Funzione di callback per la checkbox dell'audio."""
+    # Questa funzione viene chiamata quando la checkbox cambia.
+    # Non ha bisogno di fare nulla, ma l'atto di chiamarla
+    # garantisce che st.session_state.bg_audio_disabled sia aggiornato
+    # prima del rerun.
+    pass
         
 # ==============================================================================
 
@@ -1828,10 +1838,29 @@ if st.session_state.setup_mode == "nuovo":
 # Debug: mostra utente autenticato e ruolo
 if st.session_state.get("authenticated"):
     user = st.session_state.get("user", {})
-    st.sidebar.markdown("---")
+    #st.sidebar.markdown("---")
     st.sidebar.markdown(f"**👤 Utente:** {user.get('username', '??')}")
     st.sidebar.markdown(f"**🔑 Ruolo:** {user.get('role', '??')}")
     st.sidebar.markdown("---")
+
+# Aggiungi questo codice nella tua sidebar (st.sidebar)
+# La logica è: se la check-box è SPUNTATA (True), l'audio è DISABILITATO (True)
+# Il check-box ha la massima compatibilità e risolve i problemi di visualizzazione
+#st.session_state.bg_audio_disabled = st.sidebar.checkbox(
+#    "Disabilita Audio di Sfondo",
+#    value=st.session_state.get('bg_audio_disabled', False),
+#    key='audio_checkbox_bg' # Usa una chiave univoca
+#)
+#st.sidebar.markdown("---")
+
+# ✅ 0. 🎵️ Gestione Audio Sottofondo 
+st.sidebar.subheader("🎵️ Gestione Audio Sottofondo")
+st.sidebar.checkbox(
+    "Disabilita audio di sottofondo🔊",
+    key="bg_audio_disabled",
+    on_change=toggle_audio_callback
+)
+st.sidebar.markdown("---")
 
 # ✅ 1. 🕹️ Gestione Rapida (in cima)
 st.sidebar.subheader("🕹️ Gestione Rapida")
