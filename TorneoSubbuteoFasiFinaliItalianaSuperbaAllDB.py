@@ -52,11 +52,19 @@ def reset_app_state():
         "nuovo_torneo_step", "club_scelto", "giocatori_selezionati_db",
         "giocatori_ospiti", "giocatori_totali", "torneo_iniziato",
         "setup_mode", "torneo_finito", "edited_df_squadre",
-        "gioc_info", "modalita_visualizzazione"
+        "gioc_info", "modalita_visualizzazione","bg_audio_disabled"
     ]
     for key in keys_to_reset:
         if key in st.session_state:
             del st.session_state[key]
+            
+# ==============================================================================
+# ISTRUZIONE DEFINITIVA: AVVIO AUDIO DI SOTTOFONDO PERSISTENTE
+# ==============================================================================
+# Definisci la tua URL raw per l'audio di sfondo
+BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/⚽️%20UEFA%20Champions%20League%20🏆%20[TESTO%20originale%20+%20traduzione%20HQ]%20-%20NEW%20VERSION.mp3"
+
+# ==============================================================================
 
 #ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
 # -------------------------
@@ -397,6 +405,118 @@ def autoplay_audio(audio_data: bytes):
             st.markdown(md, unsafe_allow_html=True)
         except:
             st.warning("Impossibile riprodurre l'audio")
+            
+def toggle_audio_callback():
+    """Funzione di callback per la checkbox dell'audio."""
+    # Questa funzione viene chiamata quando la checkbox cambia.
+    # Non ha bisogno di fare nulla, ma l'atto di chiamarla
+    # garantisce che st.session_state.bg_audio_disabled sia aggiornato
+    # prima del rerun.
+    pass
+            
+def autoplay_background_audio(audio_url: str):
+    import requests, base64
+
+    if "background_audio_data" not in st.session_state:
+        try:
+            response = requests.get(audio_url, timeout=10)
+            response.raise_for_status()
+            audio_data = response.content
+            st.session_state.background_audio_data = base64.b64encode(audio_data).decode("utf-8")
+        except Exception as e:
+            st.warning(f"Errore caricamento audio: {e}")
+            return False
+
+    b64 = st.session_state.background_audio_data
+
+    html_code = f"""
+    <script>
+    const audio_id = "subbuteo_background_audio";
+    let audio_element = document.getElementById(audio_id);
+
+    if (!audio_element) {{
+        // Crea una sola volta
+        audio_element = document.createElement("audio");
+        audio_element.id = audio_id;
+        audio_element.src = "data:audio/mp3;base64,{b64}";
+        audio_element.loop = true;
+        audio_element.autoplay = true;
+        audio_element.volume = 0.5;
+        document.body.appendChild(audio_element);
+        console.log("🎵 Audio creato");
+    }} else {{
+        console.log("🎵 Audio già presente, non ricreato");
+    }}
+
+    // Se è in pausa, prova a farlo ripartire
+    if (audio_element.paused) {{
+        audio_element.play().catch(e => {{
+            console.log("⚠️ Autoplay bloccato, ripartirà al primo click.");
+        }});
+    }}
+    </script>
+    """
+    st.components.v1.html(html_code, height=0, width=0, scrolling=False)
+    return True
+
+    """
+    Inietta un elemento <audio> persistente nel DOM con autoplay e loop.
+    Funziona anche dopo i rerun di Streamlit.
+    """
+    import requests, base64
+
+    # Scarica l'mp3 una sola volta in base64
+    if "background_audio_data" not in st.session_state:
+        try:
+            response = requests.get(audio_url, timeout=10)
+            response.raise_for_status()
+            audio_data = response.content
+            st.session_state.background_audio_data = base64.b64encode(audio_data).decode("utf-8")
+        except Exception as e:
+            st.warning(f"Errore caricamento audio: {e}")
+            return False
+
+    b64 = st.session_state.background_audio_data
+
+    js_code = f"""
+    <script>
+    const audio_id = "subbuteo_background_audio";
+    let audio_element = document.getElementById(audio_id);
+
+    // Se non esiste, crealo
+    if (!audio_element) {{
+        audio_element = new Audio("data:audio/mp3;base64,{b64}");
+        audio_element.id = audio_id;
+        audio_element.loop = true;
+        audio_element.volume = 0.5;
+        document.body.appendChild(audio_element);
+        console.log("🎵 Audio creato");
+    }}
+
+    // Se è in pausa, prova a ripartire
+    if (audio_element.paused) {{
+        audio_element.play().catch(e => {{
+            console.log("⚠️ Autoplay bloccato, ripartirà al primo click.");
+        }});
+    }}
+    </script>
+    """
+    st.components.v1.html(js_code, height=0, width=0, scrolling=False)
+    return True
+
+# Avvio audio (solo al primo run)
+#if "background_audio_started" not in st.session_state:
+#    autoplay_background_audio(BACKGROUND_AUDIO_URL)
+#    st.session_state.background_audio_started = True
+
+# Avvio audio ad ogni rerun. La logica JS all'interno di questa funzione
+# assicura che l'elemento audio nel browser venga creato una sola volta
+# e mantenuto attivo.
+# Inizializza lo stato dell'audio se non esiste
+if "bg_audio_disabled" not in st.session_state:
+    st.session_state.bg_audio_disabled = False
+if not st.session_state.bg_audio_disabled:
+    autoplay_background_audio(BACKGROUND_AUDIO_URL)  
 
 def check_csv_structure(df: pd.DataFrame) -> tuple[bool, str]:
     """Controlla che le colonne necessarie siano presenti nel DataFrame."""
@@ -1343,6 +1463,15 @@ def main():
         st.sidebar.markdown("---")
         st.sidebar.markdown(f"**👤 Utente:** {user.get('username', '??')}")
         st.sidebar.markdown(f"**🔑 Ruolo:** {user.get('role', '??')}")
+        st.sidebar.markdown("---")
+    # ✅ 0. 🎵️ Gestione Audio Sottofondo 
+    st.sidebar.subheader("🎵️ Gestione Audio Sottofondo")
+    st.sidebar.checkbox(
+        "Disabilita audio di sottofondo🔊",
+        key="bg_audio_disabled",
+        on_change=toggle_audio_callback
+    )
+
     
     # ✅ 1. 🕹️ Gestione Rapida (sempre in cima)
     st.sidebar.markdown("---")

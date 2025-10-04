@@ -51,6 +51,11 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+# ==============================================================================
+# ISTRUZIONE DEFINITIVA: AVVIO AUDIO DI SOTTOFONDO PERSISTENTE
+# ==============================================================================
+# Definisci la tua URL raw per l'audio di sfondo
+BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/Gianna%20Nannini%20%26%20Edoardo%20Bennato%20-%20UNESTATE%20ITALIANA%20(Videoclip%20Italia%2090).mp3"
 
 # -------------------------
 # GESTIONE DELLO STATO E FUNZIONI INIZIALI
@@ -76,6 +81,7 @@ DEFAULT_STATE = {
     'giocatori_ritirati': [],
     'usa_multiselect_giocatori': False,  # REQUISITO 1: Default False = Checkbox Individuali
     'usa_nomi_come_squadre': False,     # REQUISITO 4
+    'bg_audio_disabled': False
 }
 
 for key, value in DEFAULT_STATE.items():
@@ -113,6 +119,117 @@ def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
 # -------------------------
 # UTILITY
 # -------------------------
+def toggle_audio_callback():
+    """Funzione di callback per la checkbox dell'audio."""
+    # Questa funzione viene chiamata quando la checkbox cambia.
+    # Non ha bisogno di fare nulla, ma l'atto di chiamarla
+    # garantisce che st.session_state.bg_audio_disabled sia aggiornato
+    # prima del rerun.
+    pass
+            
+def autoplay_background_audio(audio_url: str):
+    import requests, base64
+
+    if "background_audio_data" not in st.session_state:
+        try:
+            response = requests.get(audio_url, timeout=10)
+            response.raise_for_status()
+            audio_data = response.content
+            st.session_state.background_audio_data = base64.b64encode(audio_data).decode("utf-8")
+        except Exception as e:
+            st.warning(f"Errore caricamento audio: {e}")
+            return False
+
+    b64 = st.session_state.background_audio_data
+
+    html_code = f"""
+    <script>
+    const audio_id = "subbuteo_background_audio";
+    let audio_element = document.getElementById(audio_id);
+
+    if (!audio_element) {{
+        // Crea una sola volta
+        audio_element = document.createElement("audio");
+        audio_element.id = audio_id;
+        audio_element.src = "data:audio/mp3;base64,{b64}";
+        audio_element.loop = true;
+        audio_element.autoplay = true;
+        audio_element.volume = 0.5;
+        document.body.appendChild(audio_element);
+        console.log("🎵 Audio creato");
+    }} else {{
+        console.log("🎵 Audio già presente, non ricreato");
+    }}
+
+    // Se è in pausa, prova a farlo ripartire
+    if (audio_element.paused) {{
+        audio_element.play().catch(e => {{
+            console.log("⚠️ Autoplay bloccato, ripartirà al primo click.");
+        }});
+    }}
+    </script>
+    """
+    st.components.v1.html(html_code, height=0, width=0, scrolling=False)
+    return True
+
+    """
+    Inietta un elemento <audio> persistente nel DOM con autoplay e loop.
+    Funziona anche dopo i rerun di Streamlit.
+    """
+    import requests, base64
+
+    # Scarica l'mp3 una sola volta in base64
+    if "background_audio_data" not in st.session_state:
+        try:
+            response = requests.get(audio_url, timeout=10)
+            response.raise_for_status()
+            audio_data = response.content
+            st.session_state.background_audio_data = base64.b64encode(audio_data).decode("utf-8")
+        except Exception as e:
+            st.warning(f"Errore caricamento audio: {e}")
+            return False
+
+    b64 = st.session_state.background_audio_data
+
+    js_code = f"""
+    <script>
+    const audio_id = "subbuteo_background_audio";
+    let audio_element = document.getElementById(audio_id);
+
+    // Se non esiste, crealo
+    if (!audio_element) {{
+        audio_element = new Audio("data:audio/mp3;base64,{b64}");
+        audio_element.id = audio_id;
+        audio_element.loop = true;
+        audio_element.volume = 0.5;
+        document.body.appendChild(audio_element);
+        console.log("🎵 Audio creato");
+    }}
+
+    // Se è in pausa, prova a ripartire
+    if (audio_element.paused) {{
+        audio_element.play().catch(e => {{
+            console.log("⚠️ Autoplay bloccato, ripartirà al primo click.");
+        }});
+    }}
+    </script>
+    """
+    st.components.v1.html(js_code, height=0, width=0, scrolling=False)
+    return True
+
+# Avvio audio (solo al primo run)
+#if "background_audio_started" not in st.session_state:
+#    autoplay_background_audio(BACKGROUND_AUDIO_URL)
+#    st.session_state.background_audio_started = True
+
+# Avvio audio ad ogni rerun. La logica JS all'interno di questa funzione
+# assicura che l'elemento audio nel browser venga creato una sola volta
+# e mantenuto attivo.
+# Inizializza lo stato dell'audio se non esiste
+if "bg_audio_disabled" not in st.session_state:
+    st.session_state.bg_audio_disabled = False
+if not st.session_state.bg_audio_disabled:
+    autoplay_background_audio(BACKGROUND_AUDIO_URL)  
 def autoplay_audio(audio_data: bytes):
     b64 = base64.b64encode(audio_data).decode("utf-8")
     md = f"""
@@ -389,6 +506,8 @@ import requests
 import base64
 import time
 import re # Aggiungi la libreria 're' per le espressioni regolari
+
+
 
 def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizzazione):
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
@@ -1010,6 +1129,15 @@ def main():
         st.session_state['sidebar_state_reset'] = False
         st.rerun()
 
+    # Avvio audio ad ogni rerun. La logica JS all'interno di questa funzione
+    # assicura che l'elemento audio nel browser venga creato una sola volta
+    # e mantenuto attivo.
+    # Inizializza lo stato dell'audio se non esiste
+    if "bg_audio_disabled" not in st.session_state:
+        st.session_state.bg_audio_disabled = False
+    if not st.session_state.bg_audio_disabled:
+        autoplay_background_audio(BACKGROUND_AUDIO_URL)  
+    
     inject_css()
 
 
@@ -1093,7 +1221,17 @@ def main():
         return
 
     # Sidebar / Pagina
+    # ✅ 0. 🎵️ Gestione Audio Sottofondo 
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🎵️ Gestione Audio Sottofondo")
+    st.sidebar.checkbox(
+        "Disabilita audio di sottofondo🔊",
+        key="bg_audio_disabled",
+        on_change=toggle_audio_callback
+    )
+
     # ✅ 1. 🕹 Gestione Rapida (sempre in cima)
+    st.sidebar.markdown("---")
     st.sidebar.subheader("🕹️ Gestione Rapida")
     st.sidebar.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-piercrew-all-db.streamlit.app/", use_container_width=True)
     st.sidebar.markdown("---")
