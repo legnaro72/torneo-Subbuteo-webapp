@@ -217,19 +217,7 @@ def autoplay_background_audio(audio_url: str):
     st.components.v1.html(js_code, height=0, width=0, scrolling=False)
     return True
 
-# Avvio audio (solo al primo run)
-#if "background_audio_started" not in st.session_state:
-#    autoplay_background_audio(BACKGROUND_AUDIO_URL)
-#    st.session_state.background_audio_started = True
-
-# Avvio audio ad ogni rerun. La logica JS all'interno di questa funzione
-# assicura che l'elemento audio nel browser venga creato una sola volta
-# e mantenuto attivo.
-# Inizializza lo stato dell'audio se non esiste
-if "bg_audio_disabled" not in st.session_state:
-    st.session_state.bg_audio_disabled = False
-if not st.session_state.bg_audio_disabled:
-    autoplay_background_audio(BACKGROUND_AUDIO_URL)  
+ 
 def autoplay_audio(audio_data: bytes):
     b64 = base64.b64encode(audio_data).decode("utf-8")
     md = f"""
@@ -2323,3 +2311,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
