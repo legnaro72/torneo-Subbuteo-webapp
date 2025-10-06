@@ -127,7 +127,7 @@ def toggle_audio_callback():
     # prima del rerun.
     pass
             
-def autoplay_background_audio(audio_url: str):
+def (audio_url: str):
     import requests, base64
 
     if "background_audio_data" not in st.session_state:
@@ -226,10 +226,10 @@ def autoplay_background_audio(audio_url: str):
 # assicura che l'elemento audio nel browser venga creato una sola volta
 # e mantenuto attivo.
 # Inizializza lo stato dell'audio se non esiste
-if "bg_audio_disabled" not in st.session_state:
-    st.session_state.bg_audio_disabled = False
-if not st.session_state.bg_audio_disabled:
-    autoplay_background_audio(BACKGROUND_AUDIO_URL)  
+#if "bg_audio_disabled" not in st.session_state:
+#    st.session_state.bg_audio_disabled = False
+#if not st.session_state.bg_audio_disabled:
+#    autoplay_background_audio(BACKGROUND_AUDIO_URL)  
 def autoplay_audio(audio_data: bytes):
     b64 = base64.b64encode(audio_data).decode("utf-8")
     md = f"""
