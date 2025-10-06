@@ -127,7 +127,7 @@ def toggle_audio_callback():
     # prima del rerun.
     pass
             
-def (audio_url: str):
+def autoplay_background_audio(audio_url: str):
     import requests, base64
 
     if "background_audio_data" not in st.session_state:
