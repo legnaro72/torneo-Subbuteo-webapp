@@ -1215,8 +1215,11 @@ def salva_risultati_ko():
         st.error("❌ Errore nel salvataggio su DB.")
     
     if len(winners) > 1:
-        next_round_name = ""
-        if len(winners) == 8:
+        if len(winners) == 32:
+            next_round_name = "Sedicesimi di finale"
+        elif len(winners) == 16:
+            next_round_name = "Ottavi di finale"
+        elif len(winners) == 8:
             next_round_name = "Quarti di finale"
         elif len(winners) == 4:
             next_round_name = "Semifinali"
@@ -1259,7 +1262,7 @@ def salva_risultati_ko():
         
         st.success(f"Prossimo turno: {next_round_name} generato!")
     
-    elif len(winners) == 1:
+    elif len(winners) == 1 and st.session_state.get('round_corrente') == "Finale":
         st.balloons()
         #st.success(f"🏆 Il torneo è finito! Il vincitore è: {winners[0]}")
         # Salva il vincitore nella session_state
@@ -1725,7 +1728,8 @@ def main():
                                         accoppiamenti_visti.add(accoppiamenti)
                                         # Determine round name based on the number of matches
                                         num_matches = len(df_round)
-                                        if num_matches == 8: round_name = "Ottavi di finale"
+                                        if num_matches == 16: round_name = "Sedicesimi di finale"
+                                        elif num_matches == 8: round_name = "Ottavi di finale"
                                         elif num_matches == 4: round_name = "Quarti di finale"
                                         elif num_matches == 2: round_name = "Semifinali"
                                         elif num_matches == 1: round_name = "Finale"
@@ -1982,7 +1986,7 @@ def main():
                             st.warning("Non ci sono abbastanza squadre per generare un tabellone.")
                             st.stop()
                         
-                        round_name = "Ottavi di finale (di 16)" if n_squadre_ko == 16 else "Quarti di finale (di 8)" if n_squadre_ko == 8 else "Semifinali (di 4)" if n_squadre_ko == 4 else "Finale (di 2)"
+                        round_name = "Sedicesimi di finale (di 32)" if n_squadre_ko == 32 else "Ottavi di finale (di 16)" if n_squadre_ko == 16 else "Quarti di finale (di 8)" if n_squadre_ko == 8 else "Semifinali (di 4)" if n_squadre_ko == 4 else "Finale (di 2)"
                         
                         df_initial_round = pd.DataFrame(matches)
                         df_initial_round.insert(0, 'Round', round_name)
