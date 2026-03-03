@@ -37,34 +37,66 @@ def autoplay_background_audio(audio_url: str) -> bool:
 
     b64 = st.session_state.background_audio_data
 
+    # Iniezione JS nel corpo principale (non in un iframe) per persistenza reale
     html_code = f"""
+    <div id="audio-container" style="display:none;"></div>
     <script>
-    const audio_id = "subbuteo_background_audio";
-    let audio_element = document.getElementById(audio_id);
-
-    if (!audio_element) {{
-        // Crea una sola volta
-        audio_element = document.createElement("audio");
-        audio_element.id = audio_id;
-        audio_element.src = "data:audio/mp3;base64,{b64}";
-        audio_element.loop = true;
-        audio_element.autoplay = true;
-        audio_element.volume = 0.5;
-        document.body.appendChild(audio_element);
-        console.log("🎵 Audio creato");
-    }} else {{
-        console.log("🎵 Audio già presente, non ricreato");
-    }}
-
-    // Se è in pausa, prova a farlo ripartire
-    if (audio_element.paused) {{
-        audio_element.play().catch(e => {{
-            console.log("⚠️ Autoplay bloccato, ripartirà al primo click.");
-        }});
-    }}
+        // Funzione per avviare l'audio se non già presente nel window superiore
+        (function() {{
+            const AUDIO_ID = "subbuteo_bg_audio";
+            
+            // Proviamo a usare window.top o window.parent per massima persistenza
+            const targetWindow = window.parent || window;
+            
+            if (!targetWindow.subbuteoAudioInstance) {{
+                console.log("🎵 Inizializzazione nuova istanza audio...");
+                const audio = new Audio("data:audio/mp3;base64,{b64}");
+                audio.id = AUDIO_ID;
+                audio.loop = true;
+                audio.volume = 0.5;
+                
+                // Salva l'istanza nel window per i prossimi rerun
+                targetWindow.subbuteoAudioInstance = audio;
+                
+                audio.play().catch(err => {{
+                    console.log("⚠️ Autoplay bloccato dal browser. Partirà al primo click.");
+                    // Tentativo di play al primo click sull'intera pagina
+                    const playOnClick = () => {{
+                        audio.play();
+                        document.removeEventListener('click', playOnClick);
+                    }};
+                    document.addEventListener('click', playOnClick);
+                }});
+            }} else {{
+                console.log("🎵 Audio già attivo nel contesto globale.");
+                // Assicuriamoci che stia suonando (se non mutato)
+                if (targetWindow.subbuteoAudioInstance.paused && !targetWindow.subbuteoAudioInstance.userPaused) {{
+                    targetWindow.subbuteoAudioInstance.play().catch(() => {{}});
+                }}
+            }}
+            
+            // Gestione muting sincronizzata con Streamlit
+            window.syncAudio = function(disabled) {{
+                if (targetWindow.subbuteoAudioInstance) {{
+                    if (disabled) {{
+                        targetWindow.subbuteoAudioInstance.pause();
+                        targetWindow.subbuteoAudioInstance.userPaused = true;
+                    }} else {{
+                        targetWindow.subbuteoAudioInstance.play();
+                        targetWindow.subbuteoAudioInstance.userPaused = false;
+                    }}
+                }}
+            }};
+        }})();
     </script>
     """
-    st.components.v1.html(html_code, height=0, width=0, scrolling=False)
+    # Usiamo st.components.v1.html ma con il targetWindow hack
+    st.components.v1.html(html_code, height=0, width=0)
+    
+    # Iniziamo la sincronizzazione dello stato (muto/non muto)
+    disabled_js = "true" if st.session_state.get('bg_audio_disabled', False) else "false"
+    st.components.v1.html(f"<script>if(window.parent.syncAudio) window.parent.syncAudio({disabled_js});</script>", height=0, width=0)
+    
     return True
 
 
