@@ -33,8 +33,10 @@ def inject_all_styles():
         --glass-blur: blur(12px);
     }
 
-    /* Supporto Dark Theme automatico */
-    [data-theme="dark"] {
+    /* Supporto Dark Theme — selettori multipli per compatibilità Streamlit */
+    [data-theme="dark"],
+    [data-testid="stAppViewContainer"][data-theme="dark"],
+    .stApp[data-theme="dark"] {
         --color-primary-dark: #0A1128;
         --color-primary-mid: #1C3144;
         --color-primary-light: #009FFD;
@@ -47,6 +49,24 @@ def inject_all_styles():
         
         --text-main: #ffffff;
         --text-muted: #a0abc0;
+    }
+    
+    /* Fallback: se il browser ha prefers-color-scheme dark */
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --color-primary-dark: #0A1128;
+            --color-primary-mid: #1C3144;
+            --color-primary-light: #009FFD;
+            --color-accent: #E63946;
+            
+            --bg-gradient: linear-gradient(135deg, #0A1128 0%, #121e33 100%);
+            --card-bg: rgba(16, 25, 48, 0.6);
+            --card-border: rgba(255, 255, 255, 0.05);
+            --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            
+            --text-main: #ffffff;
+            --text-muted: #a0abc0;
+        }
     }
 
     /* Animazioni Globali */
@@ -170,7 +190,8 @@ def inject_all_styles():
         letter-spacing: 1px;
     }
     
-    [data-theme="dark"] [data-testid="stDataFrame"] th {
+    [data-theme="dark"] [data-testid="stDataFrame"] th,
+    .stApp[data-theme="dark"] [data-testid="stDataFrame"] th {
         background-color: rgba(255,255,255,0.05) !important;
     }
     
@@ -369,6 +390,55 @@ def inject_all_styles():
     st.markdown(CSS_TITLES, unsafe_allow_html=True)
     st.markdown(CSS_SIDEBAR, unsafe_allow_html=True)
     st.markdown(CSS_MATCH_CARDS, unsafe_allow_html=True)
+    
+    # 🌙 JS per rilevare il tema dark di Streamlit e propagare data-theme
+    DARK_MODE_JS = """
+    <script>
+    (function() {
+        function detectAndSetTheme() {
+            // Streamlit imposta il colore di sfondo del body in modo diverso per dark/light
+            const stApp = document.querySelector('.stApp');
+            if (!stApp) return;
+            
+            const bgColor = window.getComputedStyle(stApp).backgroundColor;
+            // Parse RGB values
+            const rgb = bgColor.match(/\\d+/g);
+            if (rgb) {
+                const brightness = (parseInt(rgb[0]) * 299 + parseInt(rgb[1]) * 587 + parseInt(rgb[2]) * 114) / 1000;
+                const isDark = brightness < 128;
+                
+                if (isDark) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                    stApp.setAttribute('data-theme', 'dark');
+                } else {
+                    document.documentElement.removeAttribute('data-theme');
+                    stApp.removeAttribute('data-theme');
+                }
+            }
+        }
+        
+        // Rileva subito e poi osserva i cambiamenti
+        detectAndSetTheme();
+        
+        // Osserva cambiamenti di stile (per switch tema runtime)
+        const observer = new MutationObserver(detectAndSetTheme);
+        const target = document.querySelector('.stApp');
+        if (target) {
+            observer.observe(target, { attributes: true, attributeFilter: ['style', 'class'] });
+        }
+        
+        // Rileva anche il cambio di prefers-color-scheme
+        if (window.matchMedia) {
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', detectAndSetTheme);
+        }
+        
+        // Ricontrolla dopo un breve delay (Streamlit potrebbe inizializzare tardi)
+        setTimeout(detectAndSetTheme, 500);
+        setTimeout(detectAndSetTheme, 2000);
+    })();
+    </script>
+    """
+    st.markdown(DARK_MODE_JS, unsafe_allow_html=True)
 
 
 def inject_hub_styles():
