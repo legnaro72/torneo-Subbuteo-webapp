@@ -1,4 +1,13 @@
 ﻿import streamlit as st
+
+# Configurazione pagina (DEVE essere il primo comando Streamlit)
+st.set_page_config(
+    page_title="Gestione Club Tigullio",
+    page_icon="⚽",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 import pandas as pd
 from pymongo import MongoClient, UpdateOne, InsertOne
 from pymongo.server_api import ServerApi
@@ -219,12 +228,8 @@ if not st.session_state.get('authenticated', False):
     auth.show_auth_screen(club="Tigullio")
     st.stop()
 
-st.set_page_config(
-    page_title="Gestione Tigullio All-in-one", 
-    page_icon="⚽",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# Configurazione pagina spostata all'inizio
+
 
 def reset_app_state():
     """Resetta lo stato dell'applicazione"""

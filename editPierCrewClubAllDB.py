@@ -1,4 +1,13 @@
 ﻿import streamlit as st
+
+# Configurazione pagina (DEVE essere il primo comando Streamlit)
+st.set_page_config(
+    page_title="Gestione Club PierCrew",
+    page_icon="⚽",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 import pandas as pd
 from pymongo import MongoClient, UpdateOne, InsertOne
 from pymongo.server_api import ServerApi

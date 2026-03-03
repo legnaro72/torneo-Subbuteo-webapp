@@ -1,4 +1,13 @@
 ﻿import streamlit as st
+
+# Configurazione pagina (DEVE essere il primo comando Streamlit)
+st.set_page_config(
+    page_title="Torneo Subbuteo",
+    page_icon="⚽",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 import pandas as pd
 import numpy as np
 import json
@@ -55,12 +64,8 @@ from common.ui_components import (
 )
 
 # Configurazione della pagina
-st.set_page_config(
-    page_title="Torneo Subbuteo",
-    page_icon="⚽",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# Configurazione pagina spostata all'inizio
+
 # ==============================================================================
 # ISTRUZIONE DEFINITIVA: AVVIO AUDIO DI SOTTOFONDO PERSISTENTE
 # ==============================================================================

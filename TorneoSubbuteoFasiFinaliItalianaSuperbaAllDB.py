@@ -1,4 +1,13 @@
 import streamlit as st
+
+# Configurazione pagina (DEVE essere il primo comando Streamlit)
+st.set_page_config(
+    page_title="⚽ Fase Finale Torneo Subbuteo",
+    layout="wide",
+    page_icon="🏆",
+    initial_sidebar_state="expanded"
+)
+
 import base64
 import datetime
 import io
@@ -48,12 +57,8 @@ warnings.filterwarnings(
 # ==============================================================================
 # ✨ Configurazione e stile di pagina (con nuove emoji e colori)
 # ==============================================================================
-st.set_page_config(
-    page_title="⚽ Fase Finale Torneo Subbuteo",
-    layout="wide",
-    page_icon="🏆",
-    initial_sidebar_state="expanded"
-)
+# Configurazione pagina spostata all'inizio
+
 
 def reset_app_state():
     """Resetta lo stato dell'applicazione"""
