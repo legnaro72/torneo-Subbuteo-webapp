@@ -33,22 +33,31 @@ def inject_all_styles():
         --glass-blur: blur(12px);
     }
 
-    /* Supporto Dark Theme — selettori multipli per compatibilità Streamlit */
-    [data-theme="dark"],
-    [data-testid="stAppViewContainer"][data-theme="dark"],
-    .stApp[data-theme="dark"] {
+    /* Supporto Dark Theme — usa l'attributo nativo di Streamlit su <html> */
+    html[data-theme="dark"] {
         --color-primary-dark: #0A1128;
         --color-primary-mid: #1C3144;
         --color-primary-light: #009FFD;
         --color-accent: #E63946;
         
         --bg-gradient: linear-gradient(135deg, #0A1128 0%, #121e33 100%);
-        --card-bg: rgba(16, 25, 48, 0.6);
+        --card-bg: rgba(16, 25, 48, 0.85);
         --card-border: rgba(255, 255, 255, 0.05);
         --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
         
         --text-main: #ffffff;
         --text-muted: #a0abc0;
+    }
+
+    /* Override forte per dark mode: sfondo, body e sidebar coerenti */
+    html[data-theme="dark"] body,
+    html[data-theme="dark"] .stApp {
+        background: var(--bg-gradient) !important;
+        color: var(--text-main) !important;
+    }
+
+    html[data-theme="dark"] [data-testid="stSidebar"] {
+        background: var(--card-bg) !important;
     }
     
     /* Fallback: se il browser ha prefers-color-scheme dark */
@@ -60,7 +69,7 @@ def inject_all_styles():
             --color-accent: #E63946;
             
             --bg-gradient: linear-gradient(135deg, #0A1128 0%, #121e33 100%);
-            --card-bg: rgba(16, 25, 48, 0.6);
+            --card-bg: rgba(16, 25, 48, 0.85);
             --card-border: rgba(255, 255, 255, 0.05);
             --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
             
@@ -190,8 +199,7 @@ def inject_all_styles():
         letter-spacing: 1px;
     }
     
-    [data-theme="dark"] [data-testid="stDataFrame"] th,
-    .stApp[data-theme="dark"] [data-testid="stDataFrame"] th {
+    html[data-theme="dark"] [data-testid="stDataFrame"] th {
         background-color: rgba(255,255,255,0.05) !important;
     }
     
@@ -391,54 +399,8 @@ def inject_all_styles():
     st.markdown(CSS_SIDEBAR, unsafe_allow_html=True)
     st.markdown(CSS_MATCH_CARDS, unsafe_allow_html=True)
     
-    # 🌙 JS per rilevare il tema dark di Streamlit e propagare data-theme
-    DARK_MODE_JS = """
-    <script>
-    (function() {
-        function detectAndSetTheme() {
-            // Streamlit imposta il colore di sfondo del body in modo diverso per dark/light
-            const stApp = document.querySelector('.stApp');
-            if (!stApp) return;
-            
-            const bgColor = window.getComputedStyle(stApp).backgroundColor;
-            // Parse RGB values
-            const rgb = bgColor.match(/\\d+/g);
-            if (rgb) {
-                const brightness = (parseInt(rgb[0]) * 299 + parseInt(rgb[1]) * 587 + parseInt(rgb[2]) * 114) / 1000;
-                const isDark = brightness < 128;
-                
-                if (isDark) {
-                    document.documentElement.setAttribute('data-theme', 'dark');
-                    stApp.setAttribute('data-theme', 'dark');
-                } else {
-                    document.documentElement.removeAttribute('data-theme');
-                    stApp.removeAttribute('data-theme');
-                }
-            }
-        }
-        
-        // Rileva subito e poi osserva i cambiamenti
-        detectAndSetTheme();
-        
-        // Osserva cambiamenti di stile (per switch tema runtime)
-        const observer = new MutationObserver(detectAndSetTheme);
-        const target = document.querySelector('.stApp');
-        if (target) {
-            observer.observe(target, { attributes: true, attributeFilter: ['style', 'class'] });
-        }
-        
-        // Rileva anche il cambio di prefers-color-scheme
-        if (window.matchMedia) {
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', detectAndSetTheme);
-        }
-        
-        // Ricontrolla dopo un breve delay (Streamlit potrebbe inizializzare tardi)
-        setTimeout(detectAndSetTheme, 500);
-        setTimeout(detectAndSetTheme, 2000);
-    })();
-    </script>
-    """
-    st.markdown(DARK_MODE_JS, unsafe_allow_html=True)
+    # ✅ Dark mode ora gestito nativamente da Streamlit via html[data-theme="dark"]
+    # Nessun JS necessario — il tema viene rilevato dall'attributo su <html>
 
 
 def inject_hub_styles():
