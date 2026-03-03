@@ -15,30 +15,18 @@ def inject_all_styles():
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
 
+    /* ================================================================
+       TEMA DI DEFAULT: DARK (coerente con config.toml base="dark")
+       Le variabili :root sono SCURE per default.
+       Il tema LIGHT è l'eccezione, attivato via @media o data-theme.
+       ================================================================ */
     :root {
-        --color-primary-dark: #1d3557;
-        --color-primary-mid: #457b9d;
-        --color-primary-light: #a8dadc;
-        --color-accent: #e63946;
-        --color-accent-hover: #ff4d5a;
-        --color-success: #2a9d8f;
-        
-        --bg-gradient: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        --card-bg: rgba(255, 255, 255, 0.7);
-        --card-border: rgba(255, 255, 255, 0.5);
-        --card-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
-        
-        --text-main: #1d3557;
-        --text-muted: #6c757d;
-        --glass-blur: blur(12px);
-    }
-
-    /* Supporto Dark Theme — usa l'attributo nativo di Streamlit su <html> */
-    html[data-theme="dark"] {
         --color-primary-dark: #0A1128;
         --color-primary-mid: #1C3144;
         --color-primary-light: #009FFD;
         --color-accent: #E63946;
+        --color-accent-hover: #ff4d5a;
+        --color-success: #2a9d8f;
         
         --bg-gradient: linear-gradient(135deg, #0A1128 0%, #121e33 100%);
         --card-bg: rgba(16, 25, 48, 0.85);
@@ -47,35 +35,42 @@ def inject_all_styles():
         
         --text-main: #ffffff;
         --text-muted: #a0abc0;
+        --glass-blur: blur(12px);
     }
 
-    /* Override forte per dark mode: sfondo, body e sidebar coerenti */
-    html[data-theme="dark"] body,
-    html[data-theme="dark"] .stApp {
+    /* Override forte: sfondo, body, sidebar e header coerenti in dark */
+    body, .stApp {
         background: var(--bg-gradient) !important;
         color: var(--text-main) !important;
     }
 
-    html[data-theme="dark"] [data-testid="stSidebar"] {
+    [data-testid="stSidebar"] {
         background: var(--card-bg) !important;
     }
-    
-    /* Fallback: se il browser ha prefers-color-scheme dark */
-    @media (prefers-color-scheme: dark) {
-        :root {
-            --color-primary-dark: #0A1128;
-            --color-primary-mid: #1C3144;
-            --color-primary-light: #009FFD;
-            --color-accent: #E63946;
-            
-            --bg-gradient: linear-gradient(135deg, #0A1128 0%, #121e33 100%);
-            --card-bg: rgba(16, 25, 48, 0.85);
-            --card-border: rgba(255, 255, 255, 0.05);
-            --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
-            
-            --text-main: #ffffff;
-            --text-muted: #a0abc0;
-        }
+
+    [data-testid="stHeader"] {
+        background: transparent !important;
+    }
+
+    /* ================================================================
+       LIGHT THEME — attivato SOLO con attributo esplicito data-theme="light"
+       NON usiamo @media prefers-color-scheme perché sovrascrive
+       il dark forzato da config.toml
+       ================================================================ */
+    html[data-theme="light"],
+    :root[data-theme="light"] {
+        --color-primary-dark: #1d3557;
+        --color-primary-mid: #457b9d;
+        --color-primary-light: #a8dadc;
+        --color-accent: #e63946;
+        
+        --bg-gradient: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        --card-bg: rgba(255, 255, 255, 0.7);
+        --card-border: rgba(255, 255, 255, 0.5);
+        --card-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        
+        --text-main: #1d3557;
+        --text-muted: #6c757d;
     }
 
     /* Animazioni Globali */
@@ -95,7 +90,7 @@ def inject_all_styles():
         font-family: 'Outfit', sans-serif !important;
     }
     
-    /* Migliora lo sfondo principale dell'app */
+    /* Sfondo principale dell'app — usa sempre le variabili del tema attivo */
     .stApp {
         background: var(--bg-gradient);
         background-attachment: fixed;
@@ -192,15 +187,11 @@ def inject_all_styles():
     
     /* Intestazioni tabella super moderne */
     [data-testid="stDataFrame"] th {
-        background-color: rgba(0,0,0,0.05) !important;
+        background-color: rgba(255,255,255,0.05) !important;
         color: var(--color-primary-light) !important;
         font-weight: 800 !important;
         text-transform: uppercase;
         letter-spacing: 1px;
-    }
-    
-    html[data-theme="dark"] [data-testid="stDataFrame"] th {
-        background-color: rgba(255,255,255,0.05) !important;
     }
     
     [data-testid="stDataFrame"] td {
@@ -399,8 +390,103 @@ def inject_all_styles():
     st.markdown(CSS_SIDEBAR, unsafe_allow_html=True)
     st.markdown(CSS_MATCH_CARDS, unsafe_allow_html=True)
     
-    # ✅ Dark mode ora gestito nativamente da Streamlit via html[data-theme="dark"]
-    # Nessun JS necessario — il tema viene rilevato dall'attributo su <html>
+    # 🌙 JS robusto per rilevare il tema dark di Streamlit
+    # Legge la variabile interna --text-color di Streamlit (che NON sovrascriviamo)
+    # e il color-scheme del <html> per determinare se è dark mode.
+    DARK_MODE_JS = """
+    <script>
+    (function() {
+        function detectAndSetTheme() {
+            var isDark = false;
+            
+            // === METODO 1: color-scheme sull'html (Streamlit lo imposta sempre) ===
+            var htmlEl = document.documentElement;
+            var cs = window.getComputedStyle(htmlEl).colorScheme || 
+                     window.getComputedStyle(htmlEl).getPropertyValue('color-scheme');
+            if (cs && cs.indexOf('dark') !== -1) {
+                isDark = true;
+            }
+            
+            // === METODO 2: --text-color di Streamlit (bianco = dark) ===
+            if (!isDark) {
+                var textColor = window.getComputedStyle(htmlEl).getPropertyValue('--text-color').trim();
+                if (textColor) {
+                    // se il testo è chiaro → tema scuro
+                    var m = textColor.match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)/);
+                    if (m) {
+                        var brightness = (parseInt(m[1]) * 299 + parseInt(m[2]) * 587 + parseInt(m[3]) * 114) / 1000;
+                        if (brightness > 128) isDark = true;
+                    }
+                }
+            }
+            
+            // === METODO 3: controlla il colore di sfondo del body ORIGINALE di Streamlit ===
+            // prima che il nostro CSS lo sovrascriva, Streamlit imposta un inline style
+            if (!isDark) {
+                var body = document.body;
+                if (body) {
+                    var bodyBg = body.style.backgroundColor || '';
+                    if (bodyBg) {
+                        var m2 = bodyBg.match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)/);
+                        if (m2) {
+                            var br = (parseInt(m2[1]) * 299 + parseInt(m2[2]) * 587 + parseInt(m2[3]) * 114) / 1000;
+                            if (br < 128) isDark = true;
+                        }
+                    }
+                }
+            }
+            
+            // === METODO 4: prefers-color-scheme dal sistema ===
+            if (!isDark && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                isDark = true;
+            }
+            
+            // Applica data-theme su <html> e .stApp
+            if (isDark) {
+                htmlEl.setAttribute('data-theme', 'dark');
+                var stApp = document.querySelector('.stApp');
+                if (stApp) stApp.setAttribute('data-theme', 'dark');
+                var appView = document.querySelector('[data-testid="stAppViewContainer"]');
+                if (appView) appView.setAttribute('data-theme', 'dark');
+            } else {
+                htmlEl.removeAttribute('data-theme');
+                var stApp2 = document.querySelector('.stApp');
+                if (stApp2) stApp2.removeAttribute('data-theme');
+                var appView2 = document.querySelector('[data-testid="stAppViewContainer"]');
+                if (appView2) appView2.removeAttribute('data-theme');
+            }
+        }
+        
+        // Rileva subito
+        detectAndSetTheme();
+        
+        // Osserva cambiamenti DOM (Streamlit rende lazy)
+        var observer = new MutationObserver(function() { detectAndSetTheme(); });
+        observer.observe(document.documentElement, { 
+            attributes: true, 
+            attributeFilter: ['style', 'class', 'data-theme'],
+            subtree: false
+        });
+        if (document.body) {
+            observer.observe(document.body, { 
+                attributes: true, 
+                attributeFilter: ['style', 'class']
+            });
+        }
+        
+        // Rileva il cambio di prefers-color-scheme
+        if (window.matchMedia) {
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', detectAndSetTheme);
+        }
+        
+        // Retry — Streamlit spesso inizializza tardi
+        setTimeout(detectAndSetTheme, 300);
+        setTimeout(detectAndSetTheme, 1000);
+        setTimeout(detectAndSetTheme, 3000);
+    })();
+    </script>
+    """
+    st.markdown(DARK_MODE_JS, unsafe_allow_html=True)
 
 
 def inject_hub_styles():
