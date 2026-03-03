@@ -1,190 +1,125 @@
 import streamlit as st
 
-# Configurazione pagina
+# Configurazione pagina (deve essere il primo comando)
 st.set_page_config(
-    page_title="Hub Tornei Subbuteo",
+    page_title="Super Suite | Hub Tornei",
     page_icon="🏆",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
-# Mostra il logo e il titolo affiancati
-col1, col2 = st.columns([1, 5])
-with col1:
-    st.image("logo_superba.jpg", width=100)
-with col2:
-    st.markdown('<div class="main-title">🎯Hub Tornei Subbuteo</div>', unsafe_allow_html=True)
+# --- CSS centralizzato ---
+from common.styles import inject_hub_styles
+inject_hub_styles()
 
-# --- CSS personalizzato ---
-st.markdown('''
-    <style>
-    /* Titolo con rettangolo blu gradiente */
-    .main-title {
-        background: linear-gradient(135deg, #1E90FF, #4682B4);
-        padding: 20px;
-        border-radius: 15px;
-        text-align: center;
-        font-size: 36px;
-        font-weight: bold;
-        color: white;
-        margin-bottom: 30px;
-        box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
-        width: 100%;
-    }
+# --- HERO SECTION ---
+st.markdown("""
+<div style="text-align: center; padding: 3rem 1rem 1rem 1rem; animation: fadeInUp 0.8s ease-out;">
+    <img src="https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/logo_superba.jpg" 
+         style="width: 120px; border-radius: 50%; box-shadow: 0 10px 30px rgba(0,0,0,0.3); margin-bottom: 1.5rem;">
+    <h1 class="main-title" style="margin-bottom: 0.5rem; font-size: clamp(36px, 6vw, 64px);">⚽ SUPER SUITE SUBBUTEO 🏆</h1>
+    <p style="font-size: 1.2rem; color: var(--text-muted); max-width: 600px; margin: 0 auto; line-height: 1.6;">
+        Benvenuto nel centro di controllo definitivo per i tornei di Subbuteo. <br>
+        Scegli una modalità per iniziare.
+    </p>
+</div>
+<hr style="margin: 3rem 0; opacity: 0.3;">
+""", unsafe_allow_html=True)
 
-    /* Cards */
-    .card {
-        background-color: #262730;
-        padding: 20px;
-        border-radius: 15px;
-        box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
-        text-align: center;
-        color: white;
-        transition: transform 0.2s;
-    }
-    .card:hover {
-        transform: scale(1.05);
-    }
-    .card-title {
-        font-size: 22px;
-        font-weight: bold;
-        margin-bottom: 10px;
-    }
-    .card-desc {
-        font-size: 16px;
-        margin-bottom: 20px;
-        color: #ddd;
-    }
-
-    /* Pulsanti blu con gradiente */
-    .card-link {
-        display: inline-block;
-        padding: 12px 20px;
-        font-size: 16px;
-        font-weight: bold;
-        color: #ffffff !important; /* testo bianco */
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.6);
-        background: linear-gradient(135deg, #1E90FF, #4682B4);
-        border-radius: 10px;
-        text-decoration: none;
-        transition: all 0.3s ease;
-    }
-    .card-link:hover {
-        background: linear-gradient(135deg, #4682B4, #1E90FF);
-        transform: scale(1.05);
-    }
-
-    /* Stile per il nuovo pulsante Beta */
-    .card-link-beta {
-        background: linear-gradient(135deg, #FF9900, #E68A00); /* Gradiente arancione */
-    }
-
-    .card-link-beta:hover {
-        background: linear-gradient(135deg, #E68A00, #FF9900); /* Gradiente inverso al passaggio del mouse */
-    }
-
-    /* Pulsante rosso con gradiente e testo bianco */
-    .card-link-red {
-        background: linear-gradient(135deg, #FF6347, #B22222);
-        color: #ffffff !important;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
-    }
-    .card-link-red:hover {
-        background: linear-gradient(135deg, #B22222, #FF6347);
-        transform: scale(1.05);
-    }
-
-    /* Box manuale utente con gradiente blu */
-    .manual-box {
-        background: linear-gradient(135deg, #1E90FF, #4682B4);
-        padding: 20px;
-        border-radius: 15px;
-        box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
-        text-align: center;
-        color: white;
-        margin-bottom: 20px;
-    }
-    </style>
-''', unsafe_allow_html=True)
-
-# --- Titolo in rettangolo blu gradiente ---
-#st.markdown('<div class="main-title">🎯 Hub Tornei Subbuteo</div>', unsafe_allow_html=True)
-#st.image("logo_superba.jpg")
-
-st.write("Benvenuto! Seleziona la modalità di torneo che vuoi gestire:")
-
-# --- Layout in due righe e due colonne per le 4 carte principali ---
-
-# Prima riga di carte
-col1, col2 = st.columns(2)
+# --- CARDS GRID ---
+# Utilizziamo le colonne per creare una griglia responsiva ma strutturata
+col1, space, col2 = st.columns([1, 0.05, 1])
 
 with col1:
     st.markdown('''
-        <div class="card">
-            <div class="card-title">🏁 Campionato / Fase Preliminare</div>
+        <div class="card" style="height: 100%;">
+            <div style="font-size: 3rem; margin-bottom: 15px;">🏁</div>
+            <div class="card-title">Campionato / Preliminari</div>
             <div class="card-desc">
-                Da usare per disputare un campionato o la <b>prima parte</b> di un torneo 
-                articolato che prevede una successiva fase finale.
+                Gestisci la fase a girone unico, campionati o le <b>qualificazioni</b> per i tornei maggiori. Classifiche automatiche e generazione giornate.
             </div>
-            <a class="card-link" href="https://torneo-subbuteo-superba-ita-all-db.streamlit.app/" target="_blank">Apri App</a>
+            <br>
+            <a class="card-link" href="https://torneo-subbuteo-superba-ita-all-db.streamlit.app/" target="_blank">
+                <span style="margin-right:8px;">▶</span> Avvia Modalità
+            </a>
         </div>
     ''', unsafe_allow_html=True)
 
 with col2:
     st.markdown('''
-        <div class="card">
-            <div class="card-title">🏆 Fase Finale</div>
+        <div class="card" style="height: 100%;">
+            <div style="font-size: 3rem; margin-bottom: 15px;">🏆</div>
+            <div class="card-title">Fase Finale Eliminatoria</div>
             <div class="card-desc">
-                Da selezionare per disputare la <b>fase finale</b> del torneo, 
-                che può essere organizzata a <b>Gironi</b> o ad <b>Eliminazione Diretta</b>.
+                Ideale per le fasi calienti del torneo. Gestisce i <b>Gironi</b> o l'<b>Eliminazione Diretta</b> (Quarti, Semifinali, Finali) con tabelloni automatici.
             </div>
-            <a class="card-link" href="https://torneo-subbuteo-FF-superba-ita-all-db.streamlit.app/" target="_blank">Apri App</a>
+            <br>
+            <a class="card-link" href="https://torneo-subbuteo-FF-superba-ita-all-db.streamlit.app/" target="_blank">
+                <span style="margin-right:8px;">▶</span> Avvia Modalità
+            </a>
         </div>
     ''', unsafe_allow_html=True)
 
-st.markdown("<br><br>", unsafe_allow_html=True)  # Spazio tra righe
+st.write("") # Spacer spaziatura
+st.write("")
+st.write("")
 
-# Seconda riga di carte
-col3, col4 = st.columns(2)
+col3, space2, col4 = st.columns([1, 0.05, 1])
 
 with col3:
     st.markdown('''
-        <div class="card">
-            <div class="card-title">🇨🇭 Torneo Svizzero x Club</div>
+        <div class="card" style="height: 100%;">
+            <div style="font-size: 3rem; margin-bottom: 15px;">🇨🇭</div>
+            <div class="card-title">Torneo Svizzero x Club</div>
             <div class="card-desc">
-                Torneo sviluppato con il <b>criterio svizzero</b>, perfetto per gestire 
-                competizioni equilibrate tra più squadre/club.
+                L'algoritmo svizzero accoppia giocatori dello stesso livello turno dopo turno, evitando sfide tra membri dello stesso club.
             </div>
-            <div class="card-link-container">
-                <a class="card-link" href="https://torneo-subbuteo-superba-svizzero-alldb.streamlit.app/" target="_blank">Apri App</a>
-                <a class="card-link card-link-beta" href="https://torneo-subbuteo-superba-new-version-svizzero-alldb.streamlit.app/" target="_blank">Apri App Beta ++</a>
+            <br>
+            <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
+                <a class="card-link" href="https://torneo-subbuteo-superba-svizzero-alldb.streamlit.app/" target="_blank">
+                    Versione Stabile
+                </a>
+                <a class="card-link card-link-beta" href="https://torneo-subbuteo-superba-new-version-svizzero-alldb.streamlit.app/" target="_blank">
+                    <span style="margin-right:5px;">⭐</span> Beta Premium
+                </a>
             </div>
         </div>
     ''', unsafe_allow_html=True)
 
 with col4:
     st.markdown('''
-        <div class="card">
-            <div class="card-title">🧑‍💻 Gestione Database Giocatori e Tornei Club</div>
+        <div class="card" style="height: 100%; border: 1px solid rgba(230,57,70,0.3);">
+            <div style="font-size: 3rem; margin-bottom: 15px;">⚙️</div>
+            <div class="card-title">Pannello Gestione Club</div>
             <div class="card-desc">
-                Permette di inserire, modificare e cancellare i giocatori affiliati al club. Cancellare Tornei.
+                Il database centrale. Inserisci giocatori, modifica le loro schede, o <b>cancella tornei</b> dal database del cloud in totale sicurezza.
             </div>
-            <a class="card-link card-link-red" href="https://edit-superba-club-all-db.streamlit.app/" target="_blank">Apri App</a>
+            <br>
+            <a class="card-link card-link-red" href="https://edit-superba-club-all-db.streamlit.app/" target="_blank" style="width: 80%;">
+                <span style="margin-right:8px;">🔓</span> Gestisci Database
+            </a>
         </div>
     ''', unsafe_allow_html=True)
 
-st.markdown("---")
+st.markdown("<hr style='margin: 3rem 0; opacity: 0.3;'>", unsafe_allow_html=True)
 
-# Container separato per il Manuale Utente
-with st.container():
+# --- INFO & MANUAL BOX ---
+col_manual, col_empty = st.columns([2, 1])
+with col_manual:
     st.markdown('''
-        <div class="manual-box">
-            <div class="card-title">📖 Manuale Utente</div>
-            <div class="card-desc" style="color:#f0f0f0;">
-                Consulta il manuale completo per usare al meglio tutte le funzionalità dell'Hub Tornei Subbuteo.
+        <div class="manual-box" style="display: flex; align-items: center; text-align: left;">
+            <div style="font-size: 4rem; margin-right: 25px;">📖</div>
+            <div>
+                <h3 style="margin-top:0; border: none; padding: 0; background: none; box-shadow: none; color: var(--color-primary-light);">Manuale Operativo dell'App</h3>
+                <p style="margin-bottom: 10px; color: var(--text-muted);">
+                    Hai dubbi o vuoi scoprire trucchetti per gestire al meglio le leghe? 
+                    Il manuale della Super Suite contiene screenshot, spiegazioni per i log e regole sulle formule di torneo.
+                </p>
             </div>
         </div>
     ''', unsafe_allow_html=True)
-
+    
+    # Download Button Integrato
     pdf_url = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/%F0%9F%93%96%20Manuale%20Utente_%20Hub%20tornei%20Subbuteo.pdf"
     
     try:
@@ -193,14 +128,20 @@ with st.container():
         r.raise_for_status()
         pdf_bytes = io.BytesIO(r.content)
         st.download_button(
-            label="⬇️ Scarica Manuale PDF",
+            label="⬇️ SCARICA IL MANUALE IN PDF",
             data=pdf_bytes,
-            file_name="Manuale_Utente_Hub_Tornei_Subbuteo.pdf",
-            mime="application/pdf"
+            file_name="Manuale_Utente_Super_Suite_Subbuteo.pdf",
+            mime="application/pdf",
+            type="primary",
+            width="stretch"
         )
     except Exception as e:
-        st.warning("Errore nel caricamento del PDF. Controlla la connessione o l'URL.")
+        st.error(f"⚠️ Impossibile caricare il PDF in questo momento. ({e})")
 
-# Footer leggero
-st.markdown("---")
-st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
+# Footer
+st.markdown("""
+<div style="text-align: center; margin-top: 4rem; padding-bottom: 2rem; color: var(--text-muted); font-size: 0.9rem;">
+    <b>Subbuteo Tournament Manager • Super Suite Edition</b><br>
+    Sviluppato con dedizione da <b>Legnaro72</b>
+</div>
+""", unsafe_allow_html=True)

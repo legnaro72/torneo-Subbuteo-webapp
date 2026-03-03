@@ -1383,7 +1383,7 @@ def main():
     # ✅ 1. 🕹️ Gestione Rapida (sempre in cima)
     st.sidebar.markdown("---")
     st.sidebar.subheader("🕹️ Gestione Rapida")
-    st.sidebar.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-tigullio-all-db.streamlit.app/", use_container_width=True)
+    st.sidebar.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-tigullio-all-db.streamlit.app/", width="stretch")
     st.sidebar.markdown("---")
     
     if not st.session_state['ui_show_pre']:
@@ -1398,7 +1398,7 @@ def main():
         if st.sidebar.button(
             "💾 Salva Torneo", 
             key="save_tournament_ko", 
-            use_container_width=True,
+            width="stretch",
             disabled=not has_write_access,
             help="Salva i risultati del torneo" + ("" if has_write_access else " (accesso in sola lettura)")
         ):
@@ -1411,7 +1411,7 @@ def main():
         if st.sidebar.button(
             "🏁 Termina Torneo", 
             key="terminate_tournament_ko", 
-            use_container_width=True,
+            width="stretch",
             disabled=not has_write_access,
             help="Termina il torneo corrente" + ("" if has_write_access else " (accesso in sola lettura)")
         ):
@@ -1443,7 +1443,7 @@ def main():
                 st.error("⛔ Accesso in sola lettura. Non è possibile terminare il torneo.")
         
         # Back to setup button - always enabled
-        if st.sidebar.button("⬅️ Torna a classifica e scelta fase finale", key="back_to_setup", use_container_width=True):
+        if st.sidebar.button("⬅️ Torna a classifica e scelta fase finale", key="back_to_setup", width="stretch"):
             reset_to_setup()
             st.rerun()
         
@@ -1468,7 +1468,7 @@ def main():
         
         # 📅 Visualizzazione incontri giocati
         with st.sidebar.expander("📅 Visualizzazione incontri giocati", expanded=False):
-            if st.button("📋 Mostra tutti gli incontri disputati", key="show_all_matches", use_container_width=True):
+            if st.button("📋 Mostra tutti gli incontri disputati", key="show_all_matches", width="stretch"):
                 st.session_state['show_all_ko_matches'] = True
                 st.rerun()
         
@@ -1477,7 +1477,7 @@ def main():
         # ✅ 4. 📤 Esportazione (in fondo)
         st.sidebar.subheader("📤 Esportazione")           
         if st.session_state.get('giornate_mode') == "ko" and 'rounds_ko' in st.session_state:
-            if st.sidebar.button("📄 Prepara PDF", key="prepare_pdf", use_container_width=True):
+            if st.sidebar.button("📄 Prepara PDF", key="prepare_pdf", width="stretch"):
                 pdf_bytes = generate_pdf_ko(st.session_state['rounds_ko'])
                 st.session_state['pdf_pronto'] = pdf_bytes
             if st.session_state.get('pdf_pronto'):
@@ -1486,7 +1486,7 @@ def main():
                     data=st.session_state['pdf_pronto'],
                     file_name="fase_finale_tabellone_ko.pdf",
                     mime="application/pdf",
-                    use_container_width=True
+                    width="stretch"
                 )
         else:
             st.sidebar.info("ℹ️ Nessun torneo KO attivo. Completa le partite per generare il PDF.")
@@ -1524,7 +1524,7 @@ def main():
                         </div>""",
                         unsafe_allow_html=True,
                     )
-                    if st.button("Carica fase finale esistente 📂", key="btn_carica_fase", use_container_width=True):
+                    if st.button("Carica fase finale esistente 📂", key="btn_carica_fase", width="stretch"):
                         st.session_state['opzione_selezione'] = "Continuare una fase finale esistente"
                         st.rerun()
 
@@ -1543,7 +1543,7 @@ def main():
                     if st.button(
                         "Crea nuova fase finale ✨", 
                         key="btn_nuova_fase", 
-                        use_container_width=True,
+                        width="stretch",
                         disabled=not has_write_access,
                         help="Non disponibile in modalità ospite/lettura" if not has_write_access else "Crea una nuova fase finale da un torneo preliminare",
                         on_click=lambda: st.error("⛔ Accesso negato. Solo gli utenti con permessi di scrittura possono creare nuove fasi finali.") if not has_write_access else None
@@ -1579,7 +1579,7 @@ def main():
                     st.markdown("### Crea un nuovo torneo")
                     st.markdown("Per creare una nuova fase finale, è necessario prima completare un torneo preliminare.")
                     # Lo stile CSS è già stato aggiunto in precedenza
-                    st.link_button("🏠 Vai alla gestione tornei", "https://farm-tornei-subbuteo-tigullio-all-db.streamlit.app/", use_container_width=True)
+                    st.link_button("🏠 Vai alla gestione tornei", "https://farm-tornei-subbuteo-tigullio-all-db.streamlit.app/", width="stretch")
                     return
                 else:
                     tornei_opzioni = {t['nome_torneo']: str(t['_id']) for t in tornei_trovati}
@@ -1652,7 +1652,7 @@ def main():
                 st.markdown("Per creare una nuova fase finale, seleziona l'opzione 'Crea nuova fase finale' dal menu principale.")
                 # Lo stile CSS è stato spostato all'inizio del file per essere applicato globalmente
                 
-                st.link_button("🏠 Vai alla gestione tornei", "https://farm-tornei-subbuteo-tigullio-all-db.streamlit.app/", use_container_width=True)
+                st.link_button("🏠 Vai alla gestione tornei", "https://farm-tornei-subbuteo-tigullio-all-db.streamlit.app/", width="stretch")
                 return
             else:
                     tornei_opzioni = {t['nome_torneo']: str(t['_id']) for t in tornei_trovati}
@@ -1777,7 +1777,7 @@ def main():
                     df_classifica = st.session_state['df_classifica_preliminare']
                 
                 st.markdown("<h3 style='text-align: center;'>Classifica Fase Preliminare</h3>", unsafe_allow_html=True)
-                st.dataframe(df_classifica, use_container_width=True)
+                st.dataframe(df_classifica, width="stretch")
                 st.divider()
 
                 st.header("🎲 Scegli la fase finale")

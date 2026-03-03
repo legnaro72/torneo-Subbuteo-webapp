@@ -637,7 +637,7 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
     # Usa la colonna 'Squadra' per applicare lo stile
     styled_df = df_girone.style.apply(highlight_withdrawn, axis=1)
 
-    st.dataframe(styled_df, use_container_width=True, hide_index=True)
+    st.dataframe(styled_df, width="stretch", hide_index=True)
 
 # -------------------------
 #  export PDF (NON MODIFICARE)
@@ -980,7 +980,7 @@ def main():
         
         # ✅ 2. ⚙ Opzioni Torneo
         st.sidebar.subheader("⚙️ Opzioni Torneo")
-        if st.sidebar.button("💾 Salva Torneo", key="save_tournament", use_container_width=True, disabled=st.session_state.get('read_only', True)):
+        if st.sidebar.button("💾 Salva Torneo", key="save_tournament", width="stretch", disabled=st.session_state.get('read_only', True)):
             if st.session_state.get('tournament_id'):
                 ok = aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
                 if ok:
@@ -990,7 +990,7 @@ def main():
             else:
                 st.sidebar.warning("⚠️ Impossibile salvare, ID torneo non trovato.")
         
-        if st.sidebar.button("🏠 Termina Torneo", key="reset_app", use_container_width=True):
+        if st.sidebar.button("🏠 Termina Torneo", key="reset_app", width="stretch"):
             st.session_state['sidebar_state_reset'] = True
             st.rerun()
         
@@ -1036,7 +1036,7 @@ def main():
             )
 
             # Bottone conferma abbandono
-            if st.button("⚠️ Confermami l'abbandono!", key="btn_abbandono", use_container_width=True):
+            if st.button("⚠️ Confermami l'abbandono!", key="btn_abbandono", width="stretch"):
                 if giocatori_selezionati:
                     gestisci_abbandoni(st.session_state['df_torneo'], giocatori_selezionati, tournaments_collection)
                     st.rerun()
@@ -1049,14 +1049,14 @@ def main():
             gironi_attivi = sorted(st.session_state['df_torneo']['Girone'].dropna().unique().tolist())
             if len(gironi_attivi) == 1:
                 girone_unico = gironi_attivi[0]
-                if st.button(f"📊 Apri Classifica ({girone_unico})", key="btn_classifica_sidebar_uni", use_container_width=True):
+                if st.button(f"📊 Apri Classifica ({girone_unico})", key="btn_classifica_sidebar_uni", width="stretch"):
                     st.session_state['mostra_classifica_girone'] = girone_unico
                     st.rerun()
             elif len(gironi_attivi) > 1:
                 gironi_sidebar = gironi_attivi.copy()
                 gironi_sidebar.insert(0, 'Nessuno')
                 girone_class_sel = st.selectbox("Seleziona Girone", gironi_sidebar, key="sidebar_classifica_girone")
-                if st.button("📱 Apri Classifica", key="btn_classifica_sidebar_multi", use_container_width=True):
+                if st.button("📱 Apri Classifica", key="btn_classifica_sidebar_multi", width="stretch"):
                     if girone_class_sel != 'Nessuno':
                         st.session_state['mostra_classifica_girone'] = girone_class_sel
                         st.rerun()
@@ -1167,7 +1167,7 @@ def main():
 
                 df_edit = st.data_editor(
                     df_show[display_cols],
-                    use_container_width=True,
+                    width="stretch",
                     num_rows="dynamic",
                     column_config=column_config
                 )
@@ -1278,7 +1278,7 @@ def main():
 
                     df_edit = st.data_editor(
                         df_show[display_cols],
-                        use_container_width=True,
+                        width="stretch",
                         num_rows="dynamic",
                         column_config=column_config
                     )
@@ -1387,7 +1387,7 @@ def main():
 
                     df_edit = st.data_editor(
                         df_show[display_cols],
-                        use_container_width=True,
+                        width="stretch",
                         num_rows="dynamic",
                         column_config=column_config
                     )
@@ -1410,7 +1410,7 @@ def main():
         # ✅ 5. 📤 Esportazione (in fondo)
         st.sidebar.subheader("📤 Esportazione")
         if classifica is not None and not classifica.empty:
-            if st.sidebar.button("📄 Prepara PDF", use_container_width=True):
+            if st.sidebar.button("📄 Prepara PDF", width="stretch"):
                 pdf_bytes = esporta_pdf(df, classifica, st.session_state['nome_torneo'])
                 st.session_state['pdf_pronto'] = pdf_bytes
             if st.session_state.get('pdf_pronto'):
@@ -1419,7 +1419,7 @@ def main():
                     data=st.session_state['pdf_pronto'],
                     file_name=f"torneo_{st.session_state['nome_torneo']}.pdf",
                     mime="application/pdf",
-                    use_container_width=True
+                    width="stretch"
                 )
         else:
             st.sidebar.info("ℹ️ Nessuna partita valida. Compila e valida i risultati per generare la classifica.")
@@ -1432,7 +1432,7 @@ def main():
                 st.subheader("🗺️ Navigazione Calendario")
             with col_head2:
                 # UX SUITE: Pulsante Classifica rapido nella pagina principale
-                if st.button("📊 Vedi Classifica", key="btn_classifica_main_quick", type="primary", use_container_width=True):
+                if st.button("📊 Vedi Classifica", key="btn_classifica_main_quick", type="primary", width="stretch"):
                     gironi_attivi = sorted(st.session_state['df_torneo']['Girone'].dropna().unique().tolist())
                     if gironi_attivi:
                         st.session_state['mostra_classifica_girone'] = st.session_state.get('girone_sel', gironi_attivi[0])
@@ -1553,7 +1553,7 @@ def main():
                         if tornei_disponibili:
                             tornei_map = {t['nome_torneo']: str(t['_id']) for t in tornei_disponibili}
                             nome_sel = st.selectbox("📦 Seleziona torneo esistente", list(tornei_map.keys()))
-                            if st.button("Carica torneo (MongoDB) 📂", key="btn_carica", use_container_width=True):
+                            if st.button("Carica torneo (MongoDB) 📂", key="btn_carica", width="stretch"):
                                 st.session_state['tournament_id'] = tornei_map[nome_sel]
                                 st.session_state['nome_torneo'] = nome_sel
                                 torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
@@ -1578,7 +1578,7 @@ def main():
                             unsafe_allow_html=True,
                         )
                         
-                        if st.button("Nuovo torneo ✨", key="btn_nuovo", use_container_width=True):
+                        if st.button("Nuovo torneo ✨", key="btn_nuovo", width="stretch"):
                             st.session_state['mostra_form_creazione'] = True
                             st.session_state['azione_scelta'] = 'crea'
                             st.rerun()
@@ -1672,7 +1672,7 @@ def main():
                 value=False
             )
             #inizio
-            if st.button("✅ Conferma Giocatori", use_container_width=True, disabled=st.session_state.get('read_only', True)):
+            if st.button("✅ Conferma Giocatori", width="stretch", disabled=st.session_state.get('read_only', True)):
                 if not verify_write_access():
                     return
 
@@ -1751,7 +1751,7 @@ def main():
                     st.session_state['gioc_info'][gioc]["Squadra"] = squadra_nuova
                     st.session_state['gioc_info'][gioc]["Potenziale"] = potenziale_nuovo
 
-                if st.button("✅ Conferma Squadre e Potenziali", use_container_width=True, disabled=st.session_state.get('read_only', True)):
+                if st.button("✅ Conferma Squadre e Potenziali", width="stretch", disabled=st.session_state.get('read_only', True)):
                     if not verify_write_access():
                         return
                     # Salva i dati delle squadre
@@ -1902,7 +1902,7 @@ def main():
                         st.session_state[f'manual_girone_{i+1}'] = giocatori_selezionati
                         gironi_manuali[girone_key] = giocatori_selezionati
 
-                    if st.button("✅ Conferma Gironi Manuali", use_container_width=True, disabled=st.session_state.get('read_only', True)):
+                    if st.button("✅ Conferma Gironi Manuali", width="stretch", disabled=st.session_state.get('read_only', True)):
                         if not verify_write_access():
                             return
                         # Verifica che tutti i giocatori siano stati assegnati
@@ -1937,7 +1937,7 @@ def main():
                             st.toast("✅ Gironi manuali confermati")
                             st.rerun()
 
-                if st.button("🏁 Genera Calendario", use_container_width=True, disabled=st.session_state.get('read_only', True)):
+                if st.button("🏁 Genera Calendario", width="stretch", disabled=st.session_state.get('read_only', True)):
                     if not verify_write_access():
                         return
                     if modalita_gironi == "Popola Gironi Manualmente" and not st.session_state.get('gironi_manuali_completi', False):

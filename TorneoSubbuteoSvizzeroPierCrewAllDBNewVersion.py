@@ -1365,7 +1365,7 @@ if not st.session_state.torneo_iniziato and st.session_state.setup_mode is None:
                     </div>""",
                 unsafe_allow_html=True,
             )
-            if st.button("Carica torneo 📂", key="btn_carica", use_container_width=True):
+            if st.button("Carica torneo 📂", key="btn_carica", width="stretch"):
                 st.session_state.setup_mode = "carica_db"
                 st.session_state.torneo_finito = False
                 st.rerun()
@@ -1380,7 +1380,7 @@ if not st.session_state.torneo_iniziato and st.session_state.setup_mode is None:
             )
             # Convert NumPy boolean to Python boolean for the disabled state
             is_disabled_new = bool(not verify_write_access())
-            if st.button("Nuovo torneo ✨", key="btn_nuovo", use_container_width=True, disabled=is_disabled_new):
+            if st.button("Nuovo torneo ✨", key="btn_nuovo", width="stretch", disabled=is_disabled_new):
                 if verify_write_access():
                     st.session_state.setup_mode = "nuovo"
                     st.session_state.nuovo_torneo_step = 0
@@ -1544,7 +1544,7 @@ if st.session_state.setup_mode == "nuovo":
         
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("Accetta giocatori ✅", key="next_step_1", use_container_width=True, type="primary"):
+            if st.button("Accetta giocatori ✅", key="next_step_1", width="stretch", type="primary"):
                 if len(st.session_state.giocatori_totali) != num_squadre:
                     st.error(f"❌ Il numero di giocatori selezionati ({len(st.session_state.giocatori_totali)}) non corrisponde al numero totale di partecipanti richiesto ({num_squadre}).")
                 else:
@@ -1572,7 +1572,7 @@ if st.session_state.setup_mode == "nuovo":
                     st.rerun()
 
         with col2:
-            if st.button("↩️ Indietro", use_container_width=True):
+            if st.button("↩️ Indietro", width="stretch"):
                 st.session_state.nuovo_torneo_step = 1
                 st.rerun()
 
@@ -1615,7 +1615,7 @@ if st.session_state.setup_mode == "nuovo":
 
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("Genera calendario ▶️", type="primary", use_container_width=True):
+            if st.button("Genera calendario ▶️", type="primary", width="stretch"):
                 df_squadre_aggiornato = []
                 for gioc, info in st.session_state['gioc_info'].items():
                     df_squadre_aggiornato.append({
@@ -1654,7 +1654,7 @@ if st.session_state.setup_mode == "nuovo":
                 st.rerun()
 
         with col2:
-            if st.button("↩️ Indietro", use_container_width=True):
+            if st.button("↩️ Indietro", width="stretch"):
                 st.session_state.nuovo_torneo_step = 1
                 st.rerun()
 
@@ -1696,7 +1696,7 @@ if st.session_state.torneo_iniziato:
         # Convert NumPy boolean to Python boolean for the disabled state
         is_disabled_save = bool(not verify_write_access())
         if st.sidebar.button("💾 Salva Torneo", 
-                            use_container_width=True, 
+                            width="stretch", 
                             type="primary",
                             disabled=is_disabled_save,
                             help="Salva il torneo" + ("" if verify_write_access() else " (accesso in sola lettura)")):
@@ -1720,7 +1720,7 @@ if st.session_state.torneo_iniziato:
 
     if st.sidebar.button("🏁 Termina Torneo", 
                         key="reset_app", 
-                        use_container_width=True,
+                        width="stretch",
                         disabled=is_disabled_finish,
                         help="Termina il torneo corrente" + ("" if verify_write_access() else " (accesso in sola lettura)")):
         if verify_write_access():
@@ -1757,7 +1757,7 @@ if st.session_state.torneo_iniziato:
 
     # ✅ 4. 📤 Esportazione (in fondo)
     st.sidebar.subheader("📤 Esportazione")
-    if st.sidebar.button("📄 Prepara PDF", key="prepare_pdf", use_container_width=True):
+    if st.sidebar.button("📄 Prepara PDF", key="prepare_pdf", width="stretch"):
         with st.spinner("Generazione PDF in corso..."):
             pdf_bytes = esporta_pdf(st.session_state.df_torneo, st.session_state.nome_torneo)
             if pdf_bytes:
@@ -1771,7 +1771,7 @@ if st.session_state.torneo_iniziato:
             data=st.session_state['pdf_pronto'],
             file_name=f"{st.session_state.nome_torneo}.pdf".replace(" ", "_"),
             mime="application/octet-stream",
-            use_container_width=True
+            width="stretch"
         )
 
 
@@ -1859,7 +1859,7 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
             st.info("Nessun incontro validato al momento.")
             
         # Pulsante per chiudere la tabella e tornare alla vista classica
-        if st.button("🔙 Torna alla vista classica", key="btn_chiudi_incontri", use_container_width=True):
+        if st.button("🔙 Torna alla vista classica", key="btn_chiudi_incontri", width="stretch"):
             st.session_state["mostra_incontri_disputati"] = False
             st.session_state.rerun_needed = True
     else:
@@ -1867,13 +1867,13 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
         with col_t1:
             st.markdown(f"### Turno {st.session_state.turno_attivo}")
         with col_t2:
-            if st.button("📋 Incontri", key="btn_mostra_tutti_incontri", use_container_width=True):
+            if st.button("📋 Incontri", key="btn_mostra_tutti_incontri", width="stretch"):
                 st.session_state["mostra_incontri_disputati"] = True
                 st.rerun()
         with col_t3:
             class_label = "Nascondi Classifica" if st.session_state.get('mostra_classifica') else "📊 Classifica"
             btn_type = "secondary" if st.session_state.get('mostra_classifica') else "primary"
-            if st.button(class_label, key="btn_mostra_classifica", type=btn_type, use_container_width=True):
+            if st.button(class_label, key="btn_mostra_classifica", type=btn_type, width="stretch"):
                 st.session_state.mostra_classifica = not st.session_state.get('mostra_classifica', False)
                 st.rerun()
     
@@ -1899,7 +1899,7 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
     if st.session_state.mostra_classifica:
         with st.expander("🏆 Classifica Attuale", expanded=True):
             if not classifica_attuale.empty:
-                st.dataframe(classifica_attuale, hide_index=True, use_container_width=True)
+                st.dataframe(classifica_attuale, hide_index=True, width="stretch")
             else:
                 st.info("Nessuna partita giocata per aggiornare la classifica.")
     
@@ -1930,7 +1930,7 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
                 
                 #if st.button("🔄 Genera Prossimo Turno",
                 if st.button("▶️ Genera prossimo turno", 
-                    use_container_width=True, 
+                    width="stretch", 
                     type="primary",
                     disabled=is_disabled_next,
                     help="Genera il prossimo turno" + ("" if verify_write_access() else " (accesso in sola lettura)")):
@@ -1992,7 +1992,7 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
                     
                     # Mostra la classifica completa
                     st.subheader("Classifica Finale")
-                    st.dataframe(classifica_attuale, hide_index=True, use_container_width=True)
+                    st.dataframe(classifica_attuale, hide_index=True, width="stretch")
                     
                     # Salva lo stato del torneo come terminato
                     st.session_state.torneo_finito = True
@@ -2027,7 +2027,7 @@ if st.session_state.torneo_finito:
     st.subheader("Classifica Finale 🥇")
     df_class = aggiorna_classifica(st.session_state.df_torneo)
     if not df_class.empty:
-        st.dataframe(df_class, hide_index=True, use_container_width=True)
+        st.dataframe(df_class, hide_index=True, width="stretch")
         vincitore = df_class.iloc[0]['Squadra']
 
         st.markdown(

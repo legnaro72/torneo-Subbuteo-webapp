@@ -47,7 +47,7 @@ def init_mongo_connections():
 
 # Mostra la schermata di autenticazione se non si è già autenticati
 if not st.session_state.get('authenticated', False):
-    auth.show_auth_screen(club="Superba")
+    auth.show_auth_screen(club="Tigullio")
     st.stop()
     
 
@@ -58,7 +58,7 @@ if None in (client_players, client_italiana, client_svizzera):
 
 # Inizializza le collezioni
 db_players = client_players["giocatori_subbuteo"]
-collection_players = db_players["superba_players"]
+collection_players = db_players["tigullio_players"]
 
 # Inizializza lo stato della sessione
 if 'edit_index' not in st.session_state:
@@ -100,8 +100,18 @@ def inject_css():
             border-radius: 20px;
             border: 1px solid var(--card-border);
             box-shadow: var(--card-shadow);
-            backdrop-filter: var(--glass-blur);
             margin-bottom: 30px;
+            backdrop-filter: var(--glass-blur);
+        }
+        
+        /* Titoli sezioni */
+        .section-header {
+            color: var(--color-primary-light);
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            border-left: 5px solid var(--color-accent);
+            padding-left: 15px;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -164,9 +174,9 @@ def salva_dati_su_mongo(df):
 
 # --- Sezione per la gestione dei tornei ---
 def carica_tornei_all_italiana():
-    """Carica solo i nomi dei tornei all'italiana dalla collezione Superba."""
+    """Carica solo i nomi dei tornei all'italiana dalla collezione Tigullio."""
     db_tornei = client_italiana["TorneiSubbuteo"]
-    collection_tornei = db_tornei["Superba"]
+    collection_tornei = db_tornei["Tigullio"]
     data = list(collection_tornei.find({}, {"nome_torneo": 1}))
     if data:
         df = pd.DataFrame(data)
@@ -178,15 +188,15 @@ def carica_tornei_all_italiana():
 
 def salva_tornei_all_italiana(df):
     db_tornei = client_italiana["TorneiSubbuteo"]
-    collection_tornei = db_tornei["Superba"]
+    collection_tornei = db_tornei["Tigullio"]
     collection_tornei.delete_many({})
     collection_tornei.insert_many(df.to_dict('records'))
     st.toast("Dati dei tornei all'italiana salvati con successo!")
 
 def carica_tornei_svizzeri():
-    """Carica solo i nomi dei tornei svizzeri dalla collezione SuperbaSvizzero."""
+    """Carica solo i nomi dei tornei svizzeri dalla collezione TigullioSvizzero."""
     db_tornei = client_svizzera["TorneiSubbuteo"]
-    collection_tornei = db_tornei["SuperbaSvizzero"]
+    collection_tornei = db_tornei["TigullioSvizzero"]
     data = list(collection_tornei.find({}, {"nome_torneo": 1}))
     if data:
         df = pd.DataFrame(data)
@@ -198,7 +208,7 @@ def carica_tornei_svizzeri():
 
 def salva_tornei_svizzeri(df):
     db_tornei = client_svizzera["TorneiSubbuteo"]
-    collection_tornei = db_tornei["SuperbaSvizzero"]
+    collection_tornei = db_tornei["TigullioSvizzero"]
     collection_tornei.delete_many({})
     collection_tornei.insert_many(df.to_dict('records'))
     st.toast("Dati dei tornei svizzeri salvati con successo!")
@@ -206,11 +216,11 @@ def salva_tornei_svizzeri(df):
 
 # Mostra la schermata di autenticazione se non si è già autenticati
 if not st.session_state.get('authenticated', False):
-    auth.show_auth_screen(club="Superba")
+    auth.show_auth_screen(club="Tigullio")
     st.stop()
 
 st.set_page_config(
-    page_title="Gestione Superba All-in-one", 
+    page_title="Gestione Tigullio All-in-one", 
     page_icon="⚽",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -241,7 +251,7 @@ inject_css()
 setup_audio_sidebar()
 setup_common_sidebar(show_user_info=True, show_hub_link=True)
 
-st.markdown("<div class='button-title'>⚽ Gestione Club e Tornei Superba 🏆</div>", unsafe_allow_html=True)
+st.markdown("<div class='button-title'>⚽ Gestione Club e Tornei Tigullio 🏆</div>", unsafe_allow_html=True)
 
 # Check user status and permissions
 current_user = auth.get_current_user()
@@ -422,7 +432,7 @@ def process_deletion_with_password(password, deletion_type, data):
 
         elif deletion_type == "tornei_ita":
             db_tornei = client_italiana["TorneiSubbuteo"]
-            collection_tornei = db_tornei["Superba"]
+            collection_tornei = db_tornei["Tigullio"]
             for torneo in data:
                 # Log before deletion
                 torneo_data = collection_tornei.find_one({"nome_torneo": torneo})
@@ -448,7 +458,7 @@ def process_deletion_with_password(password, deletion_type, data):
 
         elif deletion_type == "tornei_svizz":
             db_tornei = client_svizzera["TorneiSubbuteo"]
-            collection_tornei = db_tornei["SuperbaSvizzero"]
+            collection_tornei = db_tornei["TigullioSvizzero"]
             for torneo in data:
                 # Log before deletion
                 torneo_data = collection_tornei.find_one({"nome_torneo": torneo})
@@ -474,7 +484,7 @@ def process_deletion_with_password(password, deletion_type, data):
 
         elif deletion_type == "all_ita":
             db_tornei = client_italiana["TorneiSubbuteo"]
-            collection_tornei = db_tornei["Superba"]
+            collection_tornei = db_tornei["Tigullio"]
             tornei_da_cancellare = [t["nome_torneo"] for t in collection_tornei.find({}) if "campionato" not in t["nome_torneo"].lower()]
             
             # Get count before deletion for logging
@@ -505,7 +515,7 @@ def process_deletion_with_password(password, deletion_type, data):
 
         elif deletion_type == "all_svizz":
             db_tornei = client_svizzera["TorneiSubbuteo"]
-            collection_tornei = db_tornei["SuperbaSvizzero"]
+            collection_tornei = db_tornei["TigullioSvizzero"]
             tornei_da_cancellare = [t["nome_torneo"] for t in collection_tornei.find({}) if "campionato" not in t["nome_torneo"].lower()]
             
             # Get count before deletion for logging
@@ -537,12 +547,12 @@ def process_deletion_with_password(password, deletion_type, data):
         elif deletion_type == "all":
             # Chiamiamo le funzioni specifiche per applicare il filtro
             db_tornei_ita = client_italiana["TorneiSubbuteo"]
-            collection_tornei_ita = db_tornei_ita["Superba"]
+            collection_tornei_ita = db_tornei_ita["Tigullio"]
             tornei_prima_ita = list(collection_tornei_ita.find({}))
             tornei_da_cancellare_ita = [t["nome_torneo"] for t in tornei_prima_ita if "campionato" not in t["nome_torneo"].lower()]
             
             db_tornei_svizz = client_svizzera["TorneiSubbuteo"]
-            collection_tornei_svizz = db_tornei_svizz["SuperbaSvizzero"]
+            collection_tornei_svizz = db_tornei_svizz["TigullioSvizzero"]
             tornei_prima_svizz = list(collection_tornei_svizz.find({}))
             tornei_da_cancellare_svizz = [t["nome_torneo"] for t in tornei_prima_svizz if "campionato" not in t["nome_torneo"].lower()]
             
@@ -586,8 +596,7 @@ def process_deletion_with_password(password, deletion_type, data):
 
 # Logica di visualizzazione basata sullo stato
 if st.session_state.edit_index is None and st.session_state.confirm_delete["type"] is None:
-    st.markdown("<div class='section-container'>", unsafe_allow_html=True)
-    st.header("👥 Gestione Giocatori")
+    st.header("👥Gestione Giocatori")
     st.subheader("Lista giocatori")
     
     # Create a copy of the dataframe for editing
@@ -737,17 +746,16 @@ if st.session_state.edit_index is None and st.session_state.confirm_delete["type
                     st.button("🗑️ Elimina", on_click=confirm_delete_player, args=(idx, selected), key=f"del_{idx}")
 
     csv = st.session_state.df_giocatori.to_csv(index=False).encode("utf-8")
-    st.sidebar.download_button(
+    st.download_button(
         "📥 Scarica CSV giocatori aggiornato",
         data=csv,
-        file_name="giocatori_superba_modificato.csv",
+        file_name="giocatori_tigullio_modificato.csv",
         mime="text/csv",
     )
-    st.markdown("</div>", unsafe_allow_html=True) # Chiudi contenitore solo se siamo in questa vista
 
     # ---
-    st.markdown("<div class='section-container'>", unsafe_allow_html=True)
-    st.header("🏆 Gestione Tornei")
+    st.markdown("---")
+    st.header("🏆Gestione Tornei")
 
     col_del_all_ita, col_del_all_svizz, col_del_all = st.columns(3)
     with col_del_all_ita:
@@ -785,7 +793,6 @@ if st.session_state.edit_index is None and st.session_state.confirm_delete["type
             st.button("🗑️ Elimina Tornei Svizzeri selezionati", on_click=confirm_delete_torneo_svizzero, args=(selected_tornei_svizzeri,), key="del_svizzero_btn")
     else:
         st.info("Nessun torneo svizzero trovato.")
-    st.markdown("</div>", unsafe_allow_html=True) # Chiudi contenitore tornei
 
 
 elif st.session_state.edit_index is not None: # Logica di modifica/aggiunta giocatore
@@ -870,7 +877,8 @@ elif st.session_state.edit_index is not None: # Logica di modifica/aggiunta gioc
     col_save, col_cancel = st.columns(2)
     with col_save:
         if is_guest:
-            st.button("✅ Salva", disabled=True, help="La modifica non è permessa agli ospiti")
+            st.button(" Salva", disabled=True, help="Non disponibile per gli ospiti")
+            st.button("✅ Salva", disabled=True, help="Non disponibile per gli ospiti")
         else:
             if st.button("✅ Salva"):
                 save_player(giocatore, squadra, potenziale, ruolo)
