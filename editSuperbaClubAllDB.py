@@ -736,6 +736,7 @@ if st.session_state.edit_index is None and st.session_state.confirm_delete["type
                 with del_col:
                     st.button("🗑️ Elimina", on_click=confirm_delete_player, args=(idx, selected), key=f"del_{idx}")
 
+    csv = st.session_state.df_giocatori.to_csv(index=False).encode("utf-8")
     st.sidebar.download_button(
         "📥 Scarica CSV giocatori aggiornato",
         data=csv,

@@ -28,29 +28,21 @@ import os
 import auth_utils as auth
 from auth_utils import verify_write_access
 
+# Importa moduli comuni per stili, audio e componenti UI
+from common.styles import inject_all_styles
+from common.audio import (
+    autoplay_background_audio, autoplay_audio,
+    toggle_audio_callback, start_background_audio, setup_audio_sidebar
+)
+from common.ui_components import (
+    render_tournament_header, setup_common_sidebar,
+    setup_player_selection_mode, add_keep_alive
+)
 
 
-# Aggiungi lo script JavaScript per il keep-alive
-def add_keep_alive():
-    js = """
-    <script>
-    // Individua l'URL corretto dell'app Streamlit
-    const target = document.referrer || window.location.origin;
 
-    // Esegui un ping ogni 4 minuti (240000 ms)
-    setInterval(function() {
-        fetch(target, {
-            method: 'HEAD',
-            cache: 'no-store',
-            credentials: 'same-origin',
-            mode: 'no-cors'
-        }).then(() => {
-            console.log("Keep-alive sent:", new Date().toLocaleTimeString());
-        }).catch((err) => console.log("Keep-alive error", err));
-    }, 240000);
-    </script>
-    """
-    st.components.v1.html(js, height=0, width=0)
+# Keep-alive è ora importato da common.ui_components
+# add_keep_alive() — disponibile se necessario
 
 # Inizializza il keep-alive
 #add_keep_alive()
@@ -146,126 +138,11 @@ BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbu
 # CSS personalizzato
 # -------------------------
 st.markdown("""
-<style>
-    /* Stili per il contenitore principale */
-    .appview-container .main .block-container {
-        padding-top: 0rem;
-        padding-right: 1rem;
-        padding-left: 1rem;
-        padding-bottom: 0rem;
-    }
-
-    /* Stili per i pulsanti */
-    .stButton>button, 
-    .stDownloadButton>button {
-        background: linear-gradient(90deg, #457b9d, #1d3557); 
-        color: white; 
-        border-radius: 10px; 
-        padding: 0.55em 1.0em; 
-        font-weight: 700; 
-        border: 0; 
-        box-shadow: 0 4px 14px #00000022;
-        transition: all 0.2s ease;
-    }
-
-    .stButton>button:hover,
-    .stDownloadButton>button:hover { 
-        transform: translateY(-1px); 
-        box-shadow: 0 6px 18px #00000033; 
-    }
-
-    /* Stili per i link nella sidebar */
-    [data-testid="stSidebar"] .stLinkButton a {
-        color: white !important;
-        background: linear-gradient(90deg, #457b9d, #1d3557) !important;
-        border-radius: 10px !important;
-        padding: 0.55em 1.0em !important;
-        font-weight: 700 !important;
-        text-decoration: none !important;
-        transition: all 0.2s ease !important;
-        display: inline-block !important;
-        width: 100% !important;
-        text-align: center !important;
-        border: none !important;
-        box-shadow: 0 4px 14px #00000022 !important;
-    }
-
-    [data-testid="stSidebar"] .stLinkButton a:hover {
-        transform: translateY(-1px) !important;
-        box-shadow: 0 6px 18px #00000033 !important;
-    }
-
-    [data-testid="stSidebar"] .stLinkButton a:active {
-        transform: translateY(0) !important;
-    }
-
-    /* Stili per gli header */
-    .main .block-container h3 { 
-        color: white; 
-        font-weight: 700;
-        background: linear-gradient(90deg, #457b9d, #1d3557);
-        border-radius: 10px;
-        box-shadow: 0 4px 14px #00000022;
-        padding: 10px;
-        text-align: center;
-    }
-
-    /* Stili per la sidebar */
-    .css-1d391kg h3, 
-    [data-testid="stSidebar"] h3 {
-        color: #1d3557;
-        font-weight: 700;
-        background: none !important;
-        border-radius: 0 !important;
-        box-shadow: none !important;
-        padding: 0 !important;
-        text-align: left !important;
-    }
-
-    /* Gestione temi scuri */
-    @media (prefers-color-scheme: dark),
-           .stApp[data-theme="dark"],
-           html[data-theme="dark"],
-           body[data-theme="dark"] {
-        [data-testid="stSidebar"] h3,
-        .css-1d391kg h3,
-        [data-testid="stSidebar"] .element-container h3,
-        .css-1d391kg .element-container h3,
-        [data-testid="stSidebar"] div h3,
-        .css-1d391kg div h3,
-        [data-testid="stSidebar"] h3[class*="st-emotion-cache"],
-        [data-testid="stSidebar"] h3[class*="css"],
-        [data-testid="stSidebar"] h3[class*="element-container"],
-        [data-testid="stSidebar"] h3[class*="stMarkdown"],
-        [data-testid="stSidebar"] h3[class*="stSubheader"],
-        [data-testid="stSidebar"] h3[class*="stHeadingContainer"],
-        [data-testid="stSidebar"] h3[class*="stTitle"],
-        [data-testid="stSidebar"] .stMarkdown h3,
-        [data-testid="stSidebar"] .element-container h3,
-        [data-testid="stSidebar"] .stSubheader h3,
-        [data-testid="stSidebar"] .stHeadingContainer h3,
-        [data-testid="stSidebar"] .stTitle h3 {
-            color: #0078D4 !important;
-            font-weight: 700;
-            background: none !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            padding: 0 !important;
-            text-align: left !important;
-        }
-
-        /* Stili per hover/focus nella sidebar */
-        [data-testid="stSidebar"] h3:hover,
-        [data-testid="stSidebar"] h3:focus,
-        [data-testid="stSidebar"] h3:active,
-        [data-testid="stSidebar"] h3[style*="color"],
-        [data-testid="stSidebar"] h3[style*="color"]:hover,
-        [data-testid="stSidebar"] h3[style*="color"]:focus {
-            color: #0078D4 !important;
-        }
-    }
 </style>
 """, unsafe_allow_html=True)
+
+# Inietta tutti gli stili dal modulo condiviso
+inject_all_styles()
 
 # -------------------------
 # Connessione a MongoDB Atlas
@@ -325,139 +202,10 @@ else:
             L'applicazione funzionerà in modalità offline con funzionalità limitate.
             """)
 
-# -------------------------
-# Funzioni di utilità
-# -------------------------
-
-
-# FUNZIONE 1: Per l'audio di SOTTOFONDO con loop (VERS. PERSISTENTE JS FINALE)
-# =============================================================================
-# AUDIO DI SOTTOFONDO PERSISTENTE
-# =============================================================================
-#BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/Appenzeller%20Jodler.mp3"
-
-def autoplay_background_audio(audio_url: str):
-    import requests, base64
-
-    if "background_audio_data" not in st.session_state:
-        try:
-            response = requests.get(audio_url, timeout=10)
-            response.raise_for_status()
-            audio_data = response.content
-            st.session_state.background_audio_data = base64.b64encode(audio_data).decode("utf-8")
-        except Exception as e:
-            st.warning(f"Errore caricamento audio: {e}")
-            return False
-
-    b64 = st.session_state.background_audio_data
-
-    html_code = f"""
-    <script>
-    const audio_id = "subbuteo_background_audio";
-    let audio_element = document.getElementById(audio_id);
-
-    if (!audio_element) {{
-        // Crea una sola volta
-        audio_element = document.createElement("audio");
-        audio_element.id = audio_id;
-        audio_element.src = "data:audio/mp3;base64,{b64}";
-        audio_element.loop = true;
-        audio_element.autoplay = true;
-        audio_element.volume = 0.5;
-        document.body.appendChild(audio_element);
-        console.log("🎵 Audio creato");
-    }} else {{
-        console.log("🎵 Audio già presente, non ricreato");
-    }}
-
-    // Se è in pausa, prova a farlo ripartire
-    if (audio_element.paused) {{
-        audio_element.play().catch(e => {{
-            console.log("⚠️ Autoplay bloccato, ripartirà al primo click.");
-        }});
-    }}
-    </script>
-    """
-    st.components.v1.html(html_code, height=0, width=0, scrolling=False)
-    return True
-
-    """
-    Inietta un elemento <audio> persistente nel DOM con autoplay e loop.
-    Funziona anche dopo i rerun di Streamlit.
-    """
-    import requests, base64
-
-    # Scarica l'mp3 una sola volta in base64
-    if "background_audio_data" not in st.session_state:
-        try:
-            response = requests.get(audio_url, timeout=10)
-            response.raise_for_status()
-            audio_data = response.content
-            st.session_state.background_audio_data = base64.b64encode(audio_data).decode("utf-8")
-        except Exception as e:
-            st.warning(f"Errore caricamento audio: {e}")
-            return False
-
-    b64 = st.session_state.background_audio_data
-
-    js_code = f"""
-    <script>
-    const audio_id = "subbuteo_background_audio";
-    let audio_element = document.getElementById(audio_id);
-
-    // Se non esiste, crealo
-    if (!audio_element) {{
-        audio_element = new Audio("data:audio/mp3;base64,{b64}");
-        audio_element.id = audio_id;
-        audio_element.loop = true;
-        audio_element.volume = 0.5;
-        document.body.appendChild(audio_element);
-        console.log("🎵 Audio creato");
-    }}
-
-    // Se è in pausa, prova a ripartire
-    if (audio_element.paused) {{
-        audio_element.play().catch(e => {{
-            console.log("⚠️ Autoplay bloccato, ripartirà al primo click.");
-        }});
-    }}
-    </script>
-    """
-    st.components.v1.html(js_code, height=0, width=0, scrolling=False)
-    return True
-
-# Avvio audio (solo al primo run)
-#if "background_audio_started" not in st.session_state:
-#    autoplay_background_audio(BACKGROUND_AUDIO_URL)
-#    st.session_state.background_audio_started = True
-
-# Avvio audio ad ogni rerun. La logica JS all'interno di questa funzione
-# assicura che l'elemento audio nel browser venga creato una sola volta
-# e mantenuto attivo.
-
-if not st.session_state.bg_audio_disabled:
-    autoplay_background_audio(BACKGROUND_AUDIO_URL)   
-
-# FUNZIONE 2: Per l'audio che parte UNA SOLA volta (es. vittoria) - L'ORIGINALE
-
-def autoplay_audio(audio_data: bytes):
-    b64 = base64.b64encode(audio_data).decode("utf-8")
-    md = f"""
-        <audio autoplay="true">
-        <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
-        </audio>
-        """
-    st.markdown(md, unsafe_allow_html=True)
-
-def toggle_audio_callback():
-    """Funzione di callback per la checkbox dell'audio."""
-    # Questa funzione viene chiamata quando la checkbox cambia.
-    # Non ha bisogno di fare nulla, ma l'atto di chiamarla
-    # garantisce che st.session_state.bg_audio_disabled sia aggiornato
-    # prima del rerun.
-    pass
-        
 # ==============================================================================
+# Le funzioni audio sono ora importate da common.audio
+# Avvio audio di sottofondo
+start_background_audio(BACKGROUND_AUDIO_URL)
 
     
 def salva_torneo_su_db(action_type="salvataggio", details=None):
@@ -701,89 +449,167 @@ def carica_giocatori_da_db():
             st.error(f"❌ Errore durante la lettura dalla collection dei giocatori: {e}")
             return pd.DataFrame()
 
+from datetime import datetime
+import os
+
+class GazzettaPDF(FPDF):
+    def __init__(self, nome_torneo, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.nome_torneo = nome_torneo
+
+    def header(self):
+        # 🟦 Sfondo Header super istituzionale (Blu Navy vibrante)
+        self.set_fill_color(26, 54, 93)  
+        self.rect(0, 0, 210, 32, 'F')
+        
+        # 🟡 Linea dorata di accento sotto l'header
+        self.set_fill_color(212, 175, 55) 
+        self.rect(0, 32, 210, 1.5, 'F')
+        
+        # 🛡️ Logo "Superba" a sinistra
+        logo_path = "logo_superba.jpg"
+        start_x = 10
+        if os.path.exists(logo_path):
+            self.image(logo_path, 12, 5, 22)
+            start_x = 40
+            
+        # 📰 Titolo "Gazzettino" Ufficiale
+        self.set_xy(start_x, 8)
+        self.set_font("Arial", 'B', 24)
+        self.set_text_color(255, 255, 255)
+        self.cell(0, 10, "IL GAZZETTINO DELLA SUPERBA", border=0, ln=1, align='L')
+        
+        # 🏆 Sottotitolo (Nome del torneo - SVIZZERO)
+        self.set_x(start_x)
+        self.set_font("Arial", 'I', 11)
+        self.set_text_color(220, 225, 235)
+        data_stampa = datetime.now().strftime("%d/%m/%Y alle %H:%M")
+        self.cell(0, 6, f"Referto Ufficiale: {self.nome_torneo} (Svizzero) | Aggiornato il {data_stampa}", border=0, ln=1, align='L')
+        
+        self.ln(12)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_fill_color(26, 54, 93)  
+        self.rect(0, 287, 210, 10, 'F')
+        self.set_font('Arial', 'B', 8)
+        self.set_text_color(255, 255, 255)
+        self.cell(0, 10, f'Pagina {self.page_no()} - Generato automaticamente dal Gestionale Tornei Subbuteo', 0, 0, 'C')
+
 def esporta_pdf(df_torneo, nome_torneo):
     try:
-        pdf = FPDF()
+        pdf = GazzettaPDF(nome_torneo, orientation='P', unit='mm', format='A4')
+        pdf.set_auto_page_break(auto=True, margin=18)
         pdf.add_page()
         
-        # Titolo del torneo
-        pdf.set_font("Arial", "B", 16)
-        titolo = nome_torneo.encode("latin-1", "ignore").decode("latin-1")
-        pdf.cell(0, 15, titolo, ln=True, align="C")
-        
-        # Data di generazione
-        pdf.set_font("Arial", "I", 10)
-        pdf.cell(0, 8, f"Generato il: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=True, align="C")
-        pdf.ln(10)
+        # ======= 📊 SEZIONE CLASSIFICA =======
+        classifica_df = aggiorna_classifica(df_torneo)
+        if hasattr(classifica_df, "empty") and not classifica_df.empty:
+            pdf.set_font("Arial", 'B', 16)
+            pdf.set_fill_color(230, 235, 245)
+            pdf.set_text_color(26, 54, 93)
+            pdf.cell(0, 10, " CLASSIFICA SVIZZA GENERALE ", border=1, ln=True, fill=True, align='C')
+            pdf.ln(3)
+            
+            # Header
+            pdf.set_font("Arial", 'B', 11)
+            pdf.set_fill_color(26, 54, 93)
+            pdf.set_text_color(255, 255, 255)
+            header = ['Pos', 'Squadra/Giocatore', 'PTI', 'G', 'V', 'N', 'P', 'GF', 'GS', 'DR']
+            col_widths = [10, 65, 15, 10, 10, 10, 10, 10, 10, 15]
+            
+            for i, h in enumerate(header):
+                pdf.cell(col_widths[i], 8, h, border=1, align='C', fill=True)
+            pdf.ln()
 
-        # Sezione Partite
-        pdf.set_font("Arial", "B", 14)
-        pdf.cell(0, 10, "Partite", ln=True)
-        pdf.set_font("Arial", "", 11)
-        
+            # Righe Classifica
+            pdf.set_font("Arial", "", 10)
+            pdf.set_text_color(0, 0, 0)
+            for idx, (_, row) in enumerate(classifica_df.iterrows(), 1):
+                fill = (idx % 2 == 0)
+                pdf.set_fill_color(245, 248, 250) if fill else pdf.set_fill_color(255, 255, 255)
+                
+                sq = str(row['Squadra']).encode("latin-1", "ignore").decode("latin-1")
+                if len(sq) > 30: sq = sq[:28] + "..."
+                
+                pdf.cell(col_widths[0], 7, str(idx), border='LR', align='C', fill=fill)
+                pdf.set_font("Arial", 'B', 10)
+                pdf.cell(col_widths[1], 7, " " + sq, border='LR', align='L', fill=fill)
+                pdf.set_font("Arial", "", 10)
+                pdf.cell(col_widths[2], 7, str(row.get('Punti', row.get('PTI', ''))), border='LR', align='C', fill=fill)
+                pdf.cell(col_widths[3], 7, str(row.get('G', row.get('Partite', ''))), border='LR', align='C', fill=fill)
+                pdf.cell(col_widths[4], 7, str(row['Vittorie'] if 'Vittorie' in row else row.get('V', '')), border='LR', align='C', fill=fill)
+                pdf.cell(col_widths[5], 7, str(row['Pareggi'] if 'Pareggi' in row else row.get('N', '')), border='LR', align='C', fill=fill)
+                pdf.cell(col_widths[6], 7, str(row['Sconfitte'] if 'Sconfitte' in row else row.get('P', '')), border='LR', align='C', fill=fill)
+                pdf.cell(col_widths[7], 7, str(row.get('GolFatti', row.get('GF', ''))), border='LR', align='C', fill=fill)
+                pdf.cell(col_widths[8], 7, str(row.get('GolSubiti', row.get('GS', ''))), border='LR', align='C', fill=fill)
+                pdf.cell(col_widths[9], 7, str(row.get('DifferenzaReti', row.get('DR', ''))), border='LR', align='C', fill=fill)
+                pdf.ln()
+                
+            pdf.cell(sum(col_widths), 0, '', border='T', ln=True)
+            pdf.ln(10)
+
+        # ======= 🗓️ SEZIONE PARTITE =======
         turno_corrente = None
         for _, r in df_torneo.sort_values(by="Turno").iterrows():
             if turno_corrente != r["Turno"]:
                 turno_corrente = r["Turno"]
-                pdf.ln(5)
-                pdf.set_font("Arial", "B", 12)
-                pdf.cell(0, 8, f"Turno {turno_corrente}", ln=True)
-                pdf.set_font("Arial", "", 11)
-
-            casa = str(r["Casa"])
-            osp = str(r["Ospite"])
-            gc = str(r["GolCasa"])
-            go = str(r["GolOspite"])
-            
-            # Gestione caratteri speciali
-            casa = casa.encode("latin-1", "ignore").decode("latin-1")
-            osp = osp.encode("latin-1", "ignore").decode("latin-1")
-            
-            match_text = f"{casa} {gc} - {go} {osp}"
-            
-            # Colore in base allo stato della partita
-            if bool(r.get("Validata", False)):
-                pdf.set_text_color(0, 100, 0)  # Verde scuro per partite validate
-            else:
-                pdf.set_text_color(128, 128, 128)  # Grigio per partite non validate
-            
-            pdf.cell(0, 8, match_text, ln=True)
-
-        # Sezione Classifica
-        pdf.ln(15)
-        pdf.set_text_color(0, 0, 0)  # Ripristina il colore nero
-        pdf.set_font("Arial", "B", 14)
-        pdf.cell(0, 10, "Classifica", ln=True)
-        
-        classifica = aggiorna_classifica(df_torneo)
-        if not classifica.empty:
-            # Intestazione tabella
-            pdf.set_font("Arial", "B", 10)
-            header = ['Pos', 'Squadra', 'Punti', 'G', 'V', 'N', 'P', 'GF', 'GS', 'DR']
-            col_widths = [12, 50, 12, 8, 8, 8, 8, 8, 8, 8]
-            
-            # Intestazione con bordi
-            for i, h in enumerate(header):
-                pdf.cell(col_widths[i], 8, h, border=1, align='C')
-            pdf.ln()
-
-            # Dettagli classifica
-            pdf.set_font("Arial", "", 10)
-            for idx, (_, row) in enumerate(classifica.iterrows(), 1):
-                pdf.cell(col_widths[0], 8, str(idx), border=1, align='C')
-                pdf.cell(col_widths[1], 8, str(row['Squadra']).encode("latin-1", "ignore").decode("latin-1"), border=1)
-                pdf.cell(col_widths[2], 8, str(row['Punti']), border=1, align='C')
-                pdf.cell(col_widths[3], 8, str(row['G']), border=1, align='C')
-                pdf.cell(col_widths[4], 8, str(row['V']), border=1, align='C')
-                pdf.cell(col_widths[5], 8, str(row['N']), border=1, align='C')
-                pdf.cell(col_widths[6], 8, str(row['P']), border=1, align='C')
-                pdf.cell(col_widths[7], 8, str(row['GF']), border=1, align='C')
-                pdf.cell(col_widths[8], 8, str(row['GS']), border=1, align='C')
-                pdf.cell(col_widths[9], 8, str(row['DR']), border=1, align='C')
+                
+                if pdf.get_y() > 250:
+                    pdf.add_page()
+                else:
+                    pdf.ln(5)
+                    
+                pdf.set_font("Arial", 'B', 12)
+                pdf.set_fill_color(230, 235, 245)
+                pdf.set_text_color(26, 54, 93)
+                pdf.cell(0, 8, f" Turno {turno_corrente} ", ln=True, fill=True)
+                
+                pdf.set_font("Arial", 'B', 10)
+                pdf.set_fill_color(240, 240, 240)
+                pdf.set_text_color(100, 100, 100)
+                w_partite = [75, 40, 75]
+                pdf.cell(w_partite[0], 6, "Casa", border=1, align='C', fill=True)
+                pdf.cell(w_partite[1], 6, "Risultato", border=1, align='C', fill=True)
+                pdf.cell(w_partite[2], 6, "Ospite", border=1, align='C', fill=True)
                 pdf.ln()
 
+            if pdf.get_y() > 275:
+                pdf.add_page()
+
+            casa = str(r["Casa"]).encode("latin-1", "ignore").decode("latin-1")
+            osp = str(r["Ospite"]).encode("latin-1", "ignore").decode("latin-1")
+            if len(casa) > 35: casa = casa[:32] + "..."
+            if len(osp) > 35: osp = osp[:32] + "..."
+            
+            valida = bool(r.get("Validata", False))
+            gc = str(r["GolCasa"]) if pd.notna(r["GolCasa"]) and valida else ""
+            go = str(r["GolOspite"]) if pd.notna(r["GolOspite"]) and valida else ""
+            
+            res = f"{gc} - {go}" if valida else " - "
+            
+            pdf.set_fill_color(255, 255, 255)
+            
+            if valida: pdf.set_font("Arial", '', 10)
+            else: pdf.set_font("Arial", 'I', 10)
+            pdf.set_text_color(0, 0, 0)
+            pdf.cell(w_partite[0], 7, " " + casa, border='LR')
+            
+            pdf.set_font("Arial", 'B', 11)
+            pdf.set_text_color(42, 157, 143) if valida else pdf.set_text_color(128, 128, 128)
+            pdf.cell(w_partite[1], 7, res, border='L', align='C')
+            
+            if valida: pdf.set_font("Arial", '', 10)
+            else: pdf.set_font("Arial", 'I', 10)
+            pdf.set_text_color(0, 0, 0)
+            pdf.cell(w_partite[2], 7, " " + osp, border='LR', align='L')
+            
+            pdf.ln()
+            pdf.cell(sum(w_partite), 0, '', border='T')
+            pdf.set_xy(10, pdf.get_y()) # fix after zero height cell
+
         # Genera il PDF in memoria
-        return pdf.output(dest='S').encode('latin-1')
+        return bytes(pdf.output())
         
     except Exception as e:
         st.error(f"Errore durante la generazione del PDF: {str(e)}")
@@ -824,8 +650,8 @@ def aggiorna_classifica(df):
     if not isinstance(df, pd.DataFrame) or not colonne_richieste.issubset(set(df.columns)):
         # restituisci classifica vuota se non ci sono ancora partite
         return pd.DataFrame(columns=[
-            "Squadra", "Punti", "Partite", "Vittorie", "Pareggi", "Sconfitte",
-            "GolFatti", "GolSubiti", "DifferenzaReti"
+            "Squadra", "Punti", "G", "V", "N", "P",
+            "GF", "GS", "DR"
         ])
 
     stats = {}
@@ -1833,39 +1659,13 @@ if st.session_state.setup_mode == "nuovo":
                 st.rerun()
 
 # -------------------------
-# Sidebar
+# Sidebar — usa moduli condivisi
 # -------------------------
-# Debug: mostra utente autenticato e ruolo
-if st.session_state.get("authenticated"):
-    user = st.session_state.get("user", {})
-    #st.sidebar.markdown("---")
-    st.sidebar.markdown(f"**👤 Utente:** {user.get('username', '??')}")
-    st.sidebar.markdown(f"**🔑 Ruolo:** {user.get('role', '??')}")
-    st.sidebar.markdown("---")
+# User info
+setup_common_sidebar(show_user_info=True, show_hub_link=True)
 
-# Aggiungi questo codice nella tua sidebar (st.sidebar)
-# La logica è: se la check-box è SPUNTATA (True), l'audio è DISABILITATO (True)
-# Il check-box ha la massima compatibilità e risolve i problemi di visualizzazione
-#st.session_state.bg_audio_disabled = st.sidebar.checkbox(
-#    "Disabilita Audio di Sfondo",
-#    value=st.session_state.get('bg_audio_disabled', False),
-#    key='audio_checkbox_bg' # Usa una chiave univoca
-#)
-#st.sidebar.markdown("---")
-
-# ✅ 0. 🎵️ Gestione Audio Sottofondo 
-st.sidebar.subheader("🎵️ Gestione Audio Sottofondo")
-st.sidebar.checkbox(
-    "Disabilita audio di sottofondo🔊",
-    key="bg_audio_disabled",
-    on_change=toggle_audio_callback
-)
-st.sidebar.markdown("---")
-
-# ✅ 1. 🕹️ Gestione Rapida (in cima)
-st.sidebar.subheader("🕹️ Gestione Rapida")
-st.sidebar.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/", use_container_width=True)
-st.sidebar.markdown("---")
+# Audio di sottofondo
+setup_audio_sidebar()
 
 st.sidebar.subheader("👤 Mod Selezione Partecipanti")
 
@@ -1952,17 +1752,7 @@ if st.session_state.torneo_iniziato:
             key="radio_sidebar"
         )
     
-    # 📅 Visualizzazione incontri giocati e classifica
-    with st.sidebar.expander("📅 Visualizzazione incontri giocati e classifica", expanded=False):
-        if st.button("📋 Mostra tutti gli incontri disputati", key="btn_mostra_tutti_incontri", use_container_width=True):
-            st.session_state["mostra_incontri_disputati"] = True
-            st.rerun()
-            
-        # Aggiungi il pulsante per mostrare/nascondere la classifica
-        if st.button("📊 Mostra/Nascondi Classifica", key="btn_mostra_classifica", use_container_width=True):
-            st.session_state.mostra_classifica = not st.session_state.get('mostra_classifica', False)
-            st.rerun()
-
+    # 📅 Visualizzazione incontri giocati e classifica (spostati nella Main UI)
     st.sidebar.markdown("---")
 
     # ✅ 4. 📤 Esportazione (in fondo)
@@ -1971,16 +1761,18 @@ if st.session_state.torneo_iniziato:
         with st.spinner("Generazione PDF in corso..."):
             pdf_bytes = esporta_pdf(st.session_state.df_torneo, st.session_state.nome_torneo)
             if pdf_bytes:
+                st.session_state['pdf_pronto'] = pdf_bytes
                 st.sidebar.success("✅ PDF pronto per il download!")
-                st.sidebar.download_button(
-                    label="📥 Scarica PDF Torneo",
-                    data=pdf_bytes,
-                    file_name=f"{st.session_state.nome_torneo}.pdf".replace(" ", "_"),
-                    mime="application/octet-stream",
-                    use_container_width=True
-                )
             else:
                 st.sidebar.error("❌ Errore durante la generazione del PDF")
+    if st.session_state.get('pdf_pronto'):
+        st.sidebar.download_button(
+            label="📥 Scarica PDF Torneo",
+            data=st.session_state['pdf_pronto'],
+            file_name=f"{st.session_state.nome_torneo}.pdf".replace(" ", "_"),
+            mime="application/octet-stream",
+            use_container_width=True
+        )
 
 
     # Inizializza il keep-alive
@@ -2071,7 +1863,19 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
             st.session_state["mostra_incontri_disputati"] = False
             st.session_state.rerun_needed = True
     else:
-        st.markdown(f"### Turno {st.session_state.turno_attivo}")
+        col_t1, col_t2, col_t3 = st.columns([0.5, 0.25, 0.25], vertical_alignment="bottom")
+        with col_t1:
+            st.markdown(f"### Turno {st.session_state.turno_attivo}")
+        with col_t2:
+            if st.button("📋 Incontri", key="btn_mostra_tutti_incontri", use_container_width=True):
+                st.session_state["mostra_incontri_disputati"] = True
+                st.rerun()
+        with col_t3:
+            class_label = "Nascondi Classifica" if st.session_state.get('mostra_classifica') else "📊 Classifica"
+            btn_type = "secondary" if st.session_state.get('mostra_classifica') else "primary"
+            if st.button(class_label, key="btn_mostra_classifica", type=btn_type, use_container_width=True):
+                st.session_state.mostra_classifica = not st.session_state.get('mostra_classifica', False)
+                st.rerun()
     
     
     df_turno_corrente = st.session_state.df_torneo[st.session_state.df_torneo['Turno'] == st.session_state.turno_attivo].copy()

@@ -1,4 +1,4 @@
-from tkinter import N
+﻿from tkinter import N
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -43,6 +43,17 @@ import seaborn as sns
 # Importa il modulo di autenticazione centralizzato
 import auth_utils as auth
 from auth_utils import verify_write_access
+
+# Importa moduli comuni per stili, audio e componenti UI
+from common.styles import inject_all_styles
+from common.audio import (
+    autoplay_background_audio, autoplay_audio, 
+    toggle_audio_callback, start_background_audio, setup_audio_sidebar
+)
+from common.ui_components import (
+    render_tournament_header, setup_common_sidebar, 
+    setup_player_selection_mode, navigation_buttons
+)
 
 # Configurazione della pagina
 st.set_page_config(
@@ -117,166 +128,8 @@ def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
         return None
 
 # -------------------------
-# UTILITY
+# UTILITY — le funzioni audio, toggle e navigation_buttons sono ora importate da common/
 # -------------------------
-def toggle_audio_callback():
-    """Funzione di callback per la checkbox dell'audio."""
-    # Questa funzione viene chiamata quando la checkbox cambia.
-    # Non ha bisogno di fare nulla, ma l'atto di chiamarla
-    # garantisce che st.session_state.bg_audio_disabled sia aggiornato
-    # prima del rerun.
-    pass
-            
-def (audio_url: str):
-    import requests, base64
-
-    if "background_audio_data" not in st.session_state:
-        try:
-            response = requests.get(audio_url, timeout=10)
-            response.raise_for_status()
-            audio_data = response.content
-            st.session_state.background_audio_data = base64.b64encode(audio_data).decode("utf-8")
-        except Exception as e:
-            st.warning(f"Errore caricamento audio: {e}")
-            return False
-
-    b64 = st.session_state.background_audio_data
-
-    html_code = f"""
-    <script>
-    const audio_id = "subbuteo_background_audio";
-    let audio_element = document.getElementById(audio_id);
-
-    if (!audio_element) {{
-        // Crea una sola volta
-        audio_element = document.createElement("audio");
-        audio_element.id = audio_id;
-        audio_element.src = "data:audio/mp3;base64,{b64}";
-        audio_element.loop = true;
-        audio_element.autoplay = true;
-        audio_element.volume = 0.5;
-        document.body.appendChild(audio_element);
-        console.log("🎵 Audio creato");
-    }} else {{
-        console.log("🎵 Audio già presente, non ricreato");
-    }}
-
-    // Se è in pausa, prova a farlo ripartire
-    if (audio_element.paused) {{
-        audio_element.play().catch(e => {{
-            console.log("⚠️ Autoplay bloccato, ripartirà al primo click.");
-        }});
-    }}
-    </script>
-    """
-    st.components.v1.html(html_code, height=0, width=0, scrolling=False)
-    return True
-
-    """
-    Inietta un elemento <audio> persistente nel DOM con autoplay e loop.
-    Funziona anche dopo i rerun di Streamlit.
-    """
-    import requests, base64
-
-    # Scarica l'mp3 una sola volta in base64
-    if "background_audio_data" not in st.session_state:
-        try:
-            response = requests.get(audio_url, timeout=10)
-            response.raise_for_status()
-            audio_data = response.content
-            st.session_state.background_audio_data = base64.b64encode(audio_data).decode("utf-8")
-        except Exception as e:
-            st.warning(f"Errore caricamento audio: {e}")
-            return False
-
-    b64 = st.session_state.background_audio_data
-
-    js_code = f"""
-    <script>
-    const audio_id = "subbuteo_background_audio";
-    let audio_element = document.getElementById(audio_id);
-
-    // Se non esiste, crealo
-    if (!audio_element) {{
-        audio_element = new Audio("data:audio/mp3;base64,{b64}");
-        audio_element.id = audio_id;
-        audio_element.loop = true;
-        audio_element.volume = 0.5;
-        document.body.appendChild(audio_element);
-        console.log("🎵 Audio creato");
-    }}
-
-    // Se è in pausa, prova a ripartire
-    if (audio_element.paused) {{
-        audio_element.play().catch(e => {{
-            console.log("⚠️ Autoplay bloccato, ripartirà al primo click.");
-        }});
-    }}
-    </script>
-    """
-    st.components.v1.html(js_code, height=0, width=0, scrolling=False)
-    return True
-
-
-def autoplay_audio(audio_data: bytes):
-    b64 = base64.b64encode(audio_data).decode("utf-8")
-    md = f"""
-    <audio id="torneoAudio" preload="auto">
-        <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
-        Il tuo browser non supporta l'elemento audio.
-    </audio>
-    <script>
-    function playAudio() {{
-        const audio = document.getElementById('torneoAudio');
-        if (audio) {{
-            // Forza il caricamento dell'audio
-            audio.load();
-            
-            // Prova a riprodurre l'audio
-            const playPromise = audio.play();
-            
-            // Gestisci il caso in cui il browser blocchi la riproduzione automatica
-            if (playPromise !== undefined) {{
-                playPromise.catch(error => {{
-                    console.log('Errore riproduzione audio:', error);
-                    // Mostra un pulsante per attivare la riproduzione manuale
-                    const div = document.createElement('div');
-                    div.innerHTML = 
-                        '<button style="background-color: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;" ' +
-                        'onclick="document.getElementById(\\'torneoAudio\\').play().catch(e => console.log(e))">' +
-                        '🎵 Riproduci audio</button>';
-                    document.body.appendChild(div);
-                }});
-            }}
-        }}
-    }}
-    
-    // Prova a riprodurre quando la pagina è pronta
-    if (document.readyState === 'complete') {{
-        playAudio();
-    }} else {{
-        window.addEventListener('load', playAudio);
-        document.addEventListener('DOMContentLoaded', playAudio);
-    }}
-    </script>
-    """
-    st.components.v1.html(md, height=0)
-
-def navigation_buttons(label, value_key, min_val, max_val, key_prefix=""):
-    col1, col2, col3 = st.columns([1, 3, 1])
-    with col1:
-        if st.button("◀️", key=f"{key_prefix}_prev", use_container_width=True):
-            st.session_state[value_key] = max(min_val, st.session_state[value_key] - 1)
-            st.rerun()
-    with col2:
-        st.markdown(
-            f"<div style='text-align:center; font-weight:bold;'>{label} {st.session_state[value_key]}</div>",
-            unsafe_allow_html=True
-        )
-    with col3:
-        if st.button("▶️", key=f"{key_prefix}_next", use_container_width=True):
-            st.session_state[value_key] = min(max_val, st.session_state[value_key] + 1)
-            st.rerun()
 
 # -------------------------
 # FUNZIONI DI GESTIONE DATI SU MONGO
@@ -449,10 +302,12 @@ def aggiorna_classifica(df):
         if partite.empty:
             continue
         squadre = pd.unique(partite[['Casa', 'Ospite']].values.ravel())
-        stats = {s: {'Punti': 0, 'V': 0, 'P': 0, 'S': 0, 'GF': 0, 'GS': 0, 'DR': 0} for s in squadre}
+        stats = {s: {'Punti': 0, 'G': 0, 'V': 0, 'P': 0, 'S': 0, 'GF': 0, 'GS': 0, 'DR': 0} for s in squadre}
         for _, r in partite.iterrows():
             gc, go = int(r['GolCasa'] or 0), int(r['GolOspite'] or 0)
             casa, ospite = r['Casa'], r['Ospite']
+            stats[casa]['G'] += 1
+            stats[ospite]['G'] += 1
             stats[casa]['GF'] += gc; stats[casa]['GS'] += go
             stats[ospite]['GF'] += go; stats[ospite]['GS'] += gc
             if gc > go:
@@ -786,297 +641,200 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
 
 # -------------------------
 #  export PDF (NON MODIFICARE)
-# -------------------------
+from datetime import datetime
+import os
+
+class GazzettaPDF(FPDF):
+    def __init__(self, nome_torneo, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.nome_torneo = nome_torneo
+
+    def header(self):
+        # 🟦 Sfondo Header super istituzionale (Blu Navy vibrante)
+        self.set_fill_color(26, 54, 93)  
+        self.rect(0, 0, 210, 32, 'F')
+        
+        # 🟡 Linea dorata di accento sotto l'header
+        self.set_fill_color(212, 175, 55) 
+        self.rect(0, 32, 210, 1.5, 'F')
+        
+        # 🛡️ Logo "PierCrew" a sinistra (se disponibile)
+        logo_path = "logo_piercrew.jpg"
+        start_x = 10
+        if os.path.exists(logo_path):
+            self.image(logo_path, 12, 5, 22)
+            start_x = 40
+            
+        # 📰 Titolo "Gazzettino" Ufficiale
+        self.set_xy(start_x, 8)
+        self.set_font("Arial", 'B', 24)
+        self.set_text_color(255, 255, 255)
+        self.cell(0, 10, "IL GAZZETTINO DELLA SUPERBA", border=0, ln=1, align='L')
+        
+        # 🏆 Sottotitolo (Nome del torneo e data aggiornamento)
+        self.set_x(start_x)
+        self.set_font("Arial", 'I', 11)
+        self.set_text_color(220, 225, 235)
+        data_stampa = datetime.now().strftime("%d/%m/%Y alle %H:%M")
+        self.cell(0, 6, f"Referto Ufficiale: {self.nome_torneo} | Aggiornato il {data_stampa}", border=0, ln=1, align='L')
+        
+        self.ln(12)
+
+    def footer(self):
+        # Posizione a 1.5 cm dal fondo
+        self.set_y(-15)
+        
+        # 🟦 Bordo inferiore istituzionale (Blu Navy)
+        self.set_fill_color(26, 54, 93)  
+        self.rect(0, 287, 210, 10, 'F')
+        
+        self.set_font('Arial', 'B', 8)
+        self.set_text_color(255, 255, 255)
+        self.cell(0, 10, f'Pagina {self.page_no()} - Generato automaticamente dal Gestionale Tornei Subbuteo', 0, 0, 'C')
+
 def esporta_pdf(df_torneo, df_classifica, nome_torneo):
-    pdf = FPDF(orientation='P', unit='mm', format='A4')
-    pdf.set_auto_page_break(auto=False)
+    pdf = GazzettaPDF(nome_torneo, orientation='P', unit='mm', format='A4')
+    pdf.set_auto_page_break(auto=True, margin=18)
     pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(0, 10, f"Calendario e Classifiche {nome_torneo}", ln=True, align='C')
-    line_height = 6
-    margin_bottom = 15
-    page_height = 297
+    
     gironi = df_torneo['Girone'].dropna().unique()
-
+    
     for girone in gironi:
-        pdf.set_font("Arial", 'B', 14)
-        if pdf.get_y() + 8 + margin_bottom > page_height:
-            pdf.add_page()
-        pdf.cell(0, 8, f"{girone}", ln=True)
-
-        giornate = sorted(df_torneo[df_torneo['Girone'] == girone]['Giornata'].dropna().unique())
-        for g in giornate:
-            needed_space = 7 + line_height + line_height + margin_bottom
-            if pdf.get_y() + needed_space > page_height:
-                pdf.add_page()
-            pdf.set_font("Arial", 'B', 12)
-            pdf.cell(0, 7, f"Giornata {g}", ln=True)
-            pdf.set_font("Arial", 'B', 11)
-            headers = ["Casa", "Gol", "Gol", "Ospite"]
-            col_widths = [60, 20, 20, 60]
-
-            # intestazioni
-            for i, h in enumerate(headers):
-                pdf.cell(col_widths[i], 6, h, border=1, align='C')
-            pdf.ln()
-            pdf.set_font("Arial", '', 11)
-
-            partite = df_torneo[(df_torneo['Girone'] == girone) & (df_torneo['Giornata'] == g)]
-            for _, row in partite.iterrows():
-                if pdf.get_y() + line_height + margin_bottom > page_height:
-                    pdf.add_page()
-                    pdf.set_font("Arial", 'B', 12)
-                    pdf.cell(0, 7, f"Giornata {g} (continua)", ln=True)
-                    pdf.set_font("Arial", 'B', 11)
-                    for i, h in enumerate(headers):
-                        pdf.cell(col_widths[i], 6, h, border=1, align='C')
-                    pdf.ln()
-                    pdf.set_font("Arial", '', 11)
-
-                # fallback sicuro
-                casa   = str(row['Casa'])   if pd.notna(row['Casa'])   and str(row['Casa']).strip().lower() not in ["none", "nan"] else "-"
-                ospite = str(row['Ospite']) if pd.notna(row['Ospite']) and str(row['Ospite']).strip().lower() not in ["none", "nan"] else "-"
-                golc   = str(row['GolCasa'])   if pd.notna(row['GolCasa'])   else "-"
-                golo   = str(row['GolOspite']) if pd.notna(row['GolOspite']) else "-"
-
-                pdf.set_text_color(255, 0, 0) if not row['Valida'] else pdf.set_text_color(0, 0, 0)
-                pdf.cell(col_widths[0], 6, ("-" if (pd.isna(casa) or str(casa).strip().lower() in ("none", "nan", "")) else str(casa)), border=1)
-                pdf.cell(col_widths[1], 6, golc, border=1, align='C')
-                pdf.cell(col_widths[2], 6, golo, border=1, align='C')
-                pdf.cell(col_widths[3], 6, ospite, border=1)
-                pdf.ln()
-            pdf.ln(3)
-
-        # classifica girone
-        if pdf.get_y() + 40 + margin_bottom > page_height:
-            pdf.add_page()
-        pdf.set_font("Arial", 'B', 13)
-        pdf.cell(0, 8, f"Classifica {girone}", ln=True)
+        # ======= 📊 SEZIONE CLASSIFICA (Messa in alto per ovvia importanza) =======
+        pdf.set_font("Arial", 'B', 16)
+        pdf.set_fill_color(230, 235, 245) # Azzurrino per il titolo sezione
+        pdf.set_text_color(26, 54, 93)
+        pdf.cell(0, 10, f" CLASSIFICA: {str(girone).upper()} ", border=1, ln=True, fill=True, align='C')
+        pdf.ln(3)
 
         df_c = df_classifica[df_classifica['Girone'] == girone]
+        
+        # Table Header Classifica
         pdf.set_font("Arial", 'B', 11)
-        headers = ["Squadra", "Punti", "V", "P", "S", "GF", "GS", "DR"]
-        col_widths = [60, 15, 15, 15, 15, 15, 15, 15]
-        for i, h in enumerate(headers):
-            pdf.cell(col_widths[i], 6, h, border=1, align='C')
+        pdf.set_fill_color(26, 54, 93) # Sfondo scuro per header tabella
+        pdf.set_text_color(255, 255, 255) # Testo bianco
+        
+        headers_classifica = ["Pos", "Squadra", "PTI", "G", "V", "P", "S", "GF", "GS", "DR"]
+        widths_class = [10, 56, 12, 10, 10, 10, 10, 12, 12, 16]
+        
+        for i, h in enumerate(headers_classifica):
+            pdf.cell(widths_class[i], 8, h, border=1, align='C', fill=True)
         pdf.ln()
-        pdf.set_font("Arial", '', 11)
 
-        for _, r in df_c.iterrows():
-            if pdf.get_y() + line_height + margin_bottom > page_height:
-                pdf.add_page()
-                pdf.set_font("Arial", 'B', 11)
-                for i, h in enumerate(headers):
-                    pdf.cell(col_widths[i], 6, h, border=1, align='C')
-                pdf.ln()
-                pdf.set_font("Arial", '', 11)
+        # Table Body Classifica (con Zebra-striping)
+        pdf.set_font("Arial", '', 11)
+        pdf.set_text_color(0, 0, 0)
+        
+        for idx, (_, r) in enumerate(df_c.iterrows()):
+            fill = (idx % 2 == 0) # Righe alternate
+            pdf.set_fill_color(245, 248, 250) if fill else pdf.set_fill_color(255, 255, 255)
+            
             squadra = r['Squadra'] if pd.notna(r['Squadra']) else "-"
-            pdf.cell(col_widths[0], 6, squadra, border=1)
-            pdf.cell(col_widths[1], 6, str(r['Punti']), border=1, align='C')
-            pdf.cell(col_widths[2], 6, str(r['V']), border=1, align='C')
-            pdf.cell(col_widths[3], 6, str(r['P']), border=1, align='C')
-            pdf.cell(col_widths[4], 6, str(r['S']), border=1, align='C')
-            pdf.cell(col_widths[5], 6, str(r['GF']), border=1, align='C')
-            pdf.cell(col_widths[6], 6, str(r['GS']), border=1, align='C')
-            pdf.cell(col_widths[7], 6, str(r['DR']), border=1, align='C')
+            # Taglia i nomi troppo lunghi
+            if len(str(squadra)) > 30:
+                 squadra = str(squadra)[:27] + "..."
+                 
+            pdf.cell(widths_class[0], 7, str(idx+1), border='LR', align='C', fill=fill)
+            # Make team text slightly bold
+            pdf.set_font("Arial", 'B', 11)
+            pdf.cell(widths_class[1], 7, " " + str(squadra), border='LR', align='L', fill=fill)
+            pdf.set_font("Arial", '', 11)
+            pdf.cell(widths_class[2], 7, str(r['Punti']), border='LR', align='C', fill=fill)
+            pdf.cell(widths_class[3], 7, str(r.get('G', 0)), border='LR', align='C', fill=fill)
+            pdf.cell(widths_class[4], 7, str(r['V']), border='LR', align='C', fill=fill)
+            pdf.cell(widths_class[5], 7, str(r['P']), border='LR', align='C', fill=fill)
+            pdf.cell(widths_class[6], 7, str(r['S']), border='LR', align='C', fill=fill)
+            pdf.cell(widths_class[7], 7, str(r['GF']), border='LR', align='C', fill=fill)
+            pdf.cell(widths_class[8], 7, str(r['GS']), border='LR', align='C', fill=fill)
+            pdf.cell(widths_class[9], 7, str(r['DR']), border='LR', align='C', fill=fill)
             pdf.ln()
+            
+        # Draw bottom border of the table
+        pdf.cell(sum(widths_class), 0, '', border='T', ln=True)
         pdf.ln(10)
 
-    pdf_bytes = pdf.output(dest='S').encode('latin-1')
+        # ======= 🗓️ SEZIONE CALENDARIO E RISULTATI =======
+        giornate = sorted(df_torneo[df_torneo['Girone'] == girone]['Giornata'].dropna().unique())
+        for g in giornate:
+            # Controllo spazio residuo (se troppo stretto creiamo nuova pagina)
+            if pdf.get_y() > 250:
+                 pdf.add_page()
+                 
+            pdf.set_font("Arial", 'B', 12)
+            pdf.set_fill_color(230, 235, 245)
+            pdf.set_text_color(26, 54, 93)
+            # Intestazione Giornata esteticamente piacevole
+            pdf.cell(0, 8, f" Giornata {g} - {str(girone)} ", ln=True, fill=True)
+            
+            pdf.set_font("Arial", '', 10)
+            headers_calc = ["Casa", "Risultato", "Ospite", "Status"]
+            widths_calc = [60, 30, 60, 40]
+            
+            # Header tabellina Risultati
+            pdf.set_fill_color(240, 240, 240)
+            pdf.set_text_color(100, 100, 100)
+            for i, h in enumerate(headers_calc):
+                pdf.cell(widths_calc[i], 6, h, border=1, align='C', fill=True)
+            pdf.ln()
+            
+            pdf.set_text_color(0, 0, 0)
+            partite = df_torneo[(df_torneo['Girone'] == girone) & (df_torneo['Giornata'] == g)]
+            for idx_p, row in partite.iterrows():
+                fill = (idx_p % 2 == 0)
+                pdf.set_fill_color(248, 249, 250) if fill else pdf.set_fill_color(255, 255, 255)
+            
+                casa   = str(row['Casa'])   if pd.notna(row['Casa'])   and str(row['Casa']).strip().lower() not in ["none", "nan"] else "-"
+                ospite = str(row['Ospite']) if pd.notna(row['Ospite']) and str(row['Ospite']).strip().lower() not in ["none", "nan"] else "-"
+                golc   = str(row['GolCasa'])   if pd.notna(row['GolCasa'])   else " "
+                golo   = str(row['GolOspite']) if pd.notna(row['GolOspite']) else " "
+                
+                if len(casa) > 28: casa = casa[:25]+"..."
+                if len(ospite) > 28: ospite = ospite[:25]+"..."
+
+                valida = row.get('Valida', False)
+                status_Testo = " UFFICIALE " if valida else " DA GIOCARE "
+                res = f"{golc} - {golo}" if valida else " - "
+                
+                # Stampa Casa
+                if valida: pdf.set_font("Arial", '', 10) 
+                else: pdf.set_font("Arial", 'I', 10)
+                pdf.cell(widths_calc[0], 7, "  " + casa, border='LR', fill=fill)
+                
+                # Stampa Risultato
+                pdf.set_font("Arial", 'B', 11)
+                pdf.cell(widths_calc[1], 7, res, border='L', align='C', fill=fill)
+                
+                # Stampa Ospite
+                if valida: pdf.set_font("Arial", '', 10) 
+                else: pdf.set_font("Arial", 'I', 10)
+                pdf.cell(widths_calc[2], 7, "  " + ospite, border='LR', align='L', fill=fill)
+                
+                # Stampa Status (Verde se Ufficiale, Grigio se Da Giocare)
+                pdf.set_font("Arial", 'B', 8)
+                if valida:
+                    pdf.set_text_color(42, 157, 143) # Verde Scuro
+                else:
+                    pdf.set_text_color(180, 180, 180) # Grigio
+                    
+                pdf.cell(widths_calc[3], 7, status_Testo, border='R', align='C', fill=fill)
+                pdf.set_text_color(0, 0, 0) # reset
+                pdf.ln()
+                
+            pdf.cell(sum(widths_calc), 0, '', border='T', ln=True) # bottom line
+            pdf.ln(4)
+        pdf.add_page() # Forza una nuova pagina pulita per il prossimo girone (se ce n'è uno)
+
+    pdf_bytes = bytes(pdf.output())
     return pdf_bytes
 
 # -------------------------
-# APP UI: stile e layout
+# APP UI: stile e layout — CSS centralizzato in common/styles.py
 # -------------------------
 def inject_css():
-    st.markdown("""
-        <style>
-        /* --- STILI ESISTENTI (bottoni, pill, ecc.) --- */
-        ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
-        .big-title { 
-            text-align: center; 
-            font-size: calc(22px + (42 - 22) * ((100vw - 300px) / (1600 - 300)));
-            font-weight: 800; 
-            margin: 15px 0 10px; 
-            color: #e63946; 
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); 
-        }
-        .sub-title { font-size: 20px; font-weight: 700; margin-top: 10px; color: #1d3557; }
-        .stButton>button { background: linear-gradient(90deg, #457b9d, #1d3557); color: white; border-radius: 10px; padding: 0.55em 1.0em; font-weight: 700; border: 0; }
-        .stButton>button:hover { transform: translateY(-1px); box-shadow: 0 4px 14px #00000022; }
-        .stDownloadButton>button { background: linear-gradient(90deg, #2a9d8f, #21867a); color: white; border-radius: 10px; font-weight: 700; border: 0; }
-        .stDownloadButton>button:hover { transform: translateY(-1px); box-shadow: 0 4px 14px #00000022; }
-        .stDataFrame { border: 2px solid #f4a261; border-radius: 10px; }
-        .pill { display:inline-block; padding: 4px 10px; border-radius: 999px; background:#f1faee; color:#1d3557; font-weight:700; border:1px solid #a8dadc; }
+    inject_all_styles()  # Delega al modulo condiviso
+    return
 
-        @media (max-width: 768px) {
-            .st-emotion-cache-1f84s9j, .st-emotion-cache-1j0n4k { flex-direction: row; justify-content: center; }
-            .st-emotion-cache-1f84s9j > div, .st-emotion-cache-1j0n4k > div { flex: 1; padding: 0 5px; }
-        }
 
-        /* --- Sidebar subheaders --- */
-        /* FORZA IL COLORE BLU DI STREAMLIT INDIPENDENTEMENTE DAL TEMA */
-        [data-testid="stSidebar"] h3,
-        [data-testid="stSidebar"] .st-emotion-cache-1oe5cao,
-        [data-testid="stSidebar"] .st-emotion-cache-1oe5cao h3,
-        [data-testid="stSidebar"] .st-emotion-cache-1oe5cao .st-emotion-cache-1oe5cao {
-            color: #1E88E5 !important;
-            font-weight: 600 !important;
-        }
-        
-        /* Stile per i pulsanti di collegamento nella sidebar */
-        [data-testid="stSidebar"] .stLinkButton,
-        [data-testid="stSidebar"] .stLinkButton a,
-        [data-testid="stSidebar"] .stLinkButton a:visited,
-        [data-testid="stSidebar"] .stLinkButton a:hover,
-        [data-testid="stSidebar"] .stLinkButton a:active {
-            background: linear-gradient(90deg, #457b9d, #1d3557) !important;
-            color: white !important;
-            border: none !important;
-            border-radius: 10px !important;
-            padding: 0.5rem 1rem !important;
-            font-weight: 700 !important;
-            text-align: center !important;
-            text-decoration: none !important;
-            display: inline-block !important;
-            transition: all 0.3s ease !important;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
-            width: 100% !important;
-            margin: 5px 0 !important;
-        }
-
-        /* Stile al passaggio del mouse */
-        [data-testid="stSidebar"] .stLinkButton:hover,
-        [data-testid="stSidebar"] .stLinkButton a:hover {
-            transform: translateY(-1px) !important;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15) !important;
-        }
-
-        /* Stile al click */
-        [data-testid="stSidebar"] .stLinkButton:active,
-        [data-testid="stSidebar"] .stLinkButton a:active {
-            transform: translateY(0) !important;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
-        }
-
-        /* Stile per il tema scuro */
-        [data-testid="stSidebar"][data-baseweb="dark"] .stLinkButton,
-        [data-testid="stSidebar"][data-baseweb="dark"] .stLinkButton a,
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] .stLinkButton,
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] .stLinkButton a {
-            background: linear-gradient(90deg, #1d3557, #457b9d) !important;
-            color: white !important;
-        }
-
-        /* Stile per il tema scuro al passaggio del mouse */
-        [data-testid="stSidebar"][data-baseweb="dark"] .stLinkButton:hover,
-        [data-testid="stSidebar"][data-baseweb="dark"] .stLinkButton a:hover,
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] .stLinkButton:hover,
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] .stLinkButton a:hover {
-            background: linear-gradient(90deg, #1d3557, #3a6ea5) !important;
-        }
-        
-        
-        #<style>
-        /* celle compatte */
-        div[data-testid="stDataFrame"] td {
-            padding: 0.05rem 0.1rem !important;
-            font-size: 0.70rem !important;
-            white-space: nowrap !important;
-            text-overflow: ellipsis !important;
-            overflow: hidden !important;
-        }
-
-        /* intestazioni compatte */
-        div[data-testid="stDataFrame"] th {
-            padding: 0.05rem 0.1rem !important;
-            font-size: 0.70rem !important;
-            white-space: nowrap !important;
-        }
-
-        /* nascondi header prima colonna (checkbox) */
-        div[data-testid="stDataFrame"] th:first-child div {
-            display: none !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-    st.markdown("""
-        <style>
-        ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; }
-        .big-title { 
-            text-align: center; 
-            font-size: calc(22px + (42 - 22) * ((100vw - 300px) / (1600 - 300)));
-            font-weight: 800; 
-            margin: 15px 0 10px; 
-            color: #e63946; 
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); 
-        }
-        .sub-title { font-size: 20px; font-weight: 700; margin-top: 10px; color: #1d3557; }
-        .stButton>button { background: linear-gradient(90deg, #457b9d, #1d3557); color: white; border-radius: 10px; padding: 0.55em 1.0em; font-weight: 700; border: 0; }
-        .stButton>button:hover { transform: translateY(-1px); box-shadow: 0 4px 14px #00000022; }
-        .stDownloadButton>button { background: linear-gradient(90deg, #2a9d8f, #21867a); color: white; border-radius: 10px; font-weight: 700; border: 0; }
-        .stDownloadButton>button:hover { transform: translateY(-1px); box-shadow: 0 4px 14px #00000022; }
-        .stDataFrame { border: 2px solid #f4a261; border-radius: 10px; }
-        .pill { display:inline-block; padding: 4px 10px; border-radius: 999px; background:#f1faee; color:#1d3557; font-weight:700; border:1px solid #a8dadc; }
-        @media (max-width: 768px) {
-            .st-emotion-cache-1f84s9j, .st-emotion-cache-1j0n4k { flex-direction: row; justify-content: center; }
-            .st-emotion-cache-1f84s9j > div, .st-emotion-cache-1j0n4k > div { flex: 1; padding: 0 5px; }
-        }
-
-        /* Sidebar h3 styling - mantiene stile normale */
-        .css-1d391kg h3, [data-testid="stSidebar"] h3 {
-            color: #1d3557;
-            font-weight: 700;
-            background: none !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            padding: 0 !important;
-            text-align: left !important;
-        }
-
-        /* Tema scuro - sidebar subheaders bianchi con selettori più specifici */
-        @media (prefers-color-scheme: dark) {
-            [data-testid="stSidebar"] h3,
-            .css-1d391kg h3,
-            [data-testid="stSidebar"] .element-container h3,
-            .css-1d391kg .element-container h3 {
-                color: #ffffff !important;
-                background: none !important;
-            }
-        }
-
-        /* Streamlit dark theme - sidebar subheaders bianchi con priorità massima */
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] h3,
-        .stApp[data-theme="dark"] .css-1d391kg h3,
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] .element-container h3,
-        .stApp[data-theme="dark"] .css-1d391kg .element-container h3,
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] div h3,
-        .stApp[data-theme="dark"] .css-1d391kg div h3 {
-            color: #ffffff !important;
-            background: none !important;
-        }
-
-        /* Stili per i subheader nella sidebar - SEMPRE BLU */
-        [data-testid="stSidebar"] h3,
-        [data-testid="stSidebar"] .stMarkdown h3,
-        [data-testid="stSidebar"] div h3,
-        [data-testid="stSidebar"] .st-emotion-cache-1oe5cao,
-        [data-testid="stSidebar"] .st-emotion-cache-1oe5cao h3,
-        [data-testid="stSidebar"] .st-emotion-cache-1oe5cao .st-emotion-cache-1oe5cao,
-        [data-testid="stSidebar"] h3[class*="css"],
-        .css-1d391kg h3,
-        .stApp[data-testid="stSidebar"] h3,
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] h3,
-        .stApp[data-theme="dark"] .css-1d391kg h3,
-        html[data-theme="dark"] [data-testid="stSidebar"] h3,
-        body[data-theme="dark"] [data-testid="stSidebar"] h3,
-        .stApp[data-theme="dark"] [data-testid="stSidebar"] * h3,
-        .stApp[data-theme="dark"] .css-1d391kg * h3 {
-            color: #1E88E5 !important;
-            font-weight: 600 !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
 
 # -------------------------
 # APP
@@ -1208,32 +966,13 @@ def main():
         st.error("❌ Impossibile avviare l'applicazione. La connessione a MongoDB non è disponibile.")
         return
 
-    # Sidebar / Pagina
-    # ✅ 0. 🎵️ Gestione Audio Sottofondo 
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🎵️ Gestione Audio Sottofondo")
-    st.sidebar.checkbox(
-        "Disabilita audio di sottofondo🔊",
-        key="bg_audio_disabled",
-        on_change=toggle_audio_callback
-    )
+    # Sidebar / Pagina — usa moduli condivisi
+    # ✅ 0. 🎵️ Gestione Audio Sottofondo
+    setup_audio_sidebar()
 
-    # ✅ 1. 🕹 Gestione Rapida (sempre in cima)
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🕹️ Gestione Rapida")
-    st.sidebar.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-piercrew-all-db.streamlit.app/", use_container_width=True)
-    st.sidebar.markdown("---")
-    
-    # Nuovo blocco Mod Selezione Partecipanti (Requisito 1)
-    st.sidebar.subheader("👤 Mod Selezione Partecipanti")
-    # Checkbox per usare il Multiselect (default disabilitato)
-    st.session_state.usa_multiselect_giocatori = st.sidebar.checkbox(
-        "Utilizza 'Multiselect'",
-        value=st.session_state.get('usa_multiselect_giocatori', False),
-        key='sidebar_usa_multiselect_giocatori',
-        help="Disabilitato per usare la modalità 'Checkbox Individuali' (raccomandata)"
-    )
-    st.sidebar.markdown("---")
+    # ✅ 1. 🕹 Gestione Rapida + 👤 Mod Selezione Partecipanti
+    setup_common_sidebar(show_user_info=False)  # user info già mostrata sopra
+    setup_player_selection_mode()
     
     if st.session_state.get('calendario_generato', False):
         df = st.session_state['df_torneo']
@@ -1306,40 +1045,58 @@ def main():
         
         
         # 💬 Visualizzazione Classifica per girone
-        with st.sidebar.expander("💬 Visualizzazione Classifica per girone", expanded=False):
-            gironi_sidebar = sorted(df['Girone'].dropna().unique().tolist())
-            gironi_sidebar.insert(0, 'Nessuno')
-            girone_class_sel = st.selectbox("Seleziona Girone", gironi_sidebar, key="sidebar_classifica_girone")
-
-            if st.button("📱 Apri Classifica", key="btn_classifica_sidebar", use_container_width=True):
-                if girone_class_sel != 'Nessuno':
-                    st.session_state['mostra_classifica_girone'] = girone_class_sel
-                else:
-                    st.info("Seleziona un girone per visualizzare la classifica.")
+        with st.sidebar.expander("💬 Visualizzazione Classifica", expanded=False):
+            gironi_attivi = sorted(st.session_state['df_torneo']['Girone'].dropna().unique().tolist())
+            if len(gironi_attivi) == 1:
+                girone_unico = gironi_attivi[0]
+                if st.button(f"📊 Apri Classifica ({girone_unico})", key="btn_classifica_sidebar_uni", use_container_width=True):
+                    st.session_state['mostra_classifica_girone'] = girone_unico
+                    st.rerun()
+            elif len(gironi_attivi) > 1:
+                gironi_sidebar = gironi_attivi.copy()
+                gironi_sidebar.insert(0, 'Nessuno')
+                girone_class_sel = st.selectbox("Seleziona Girone", gironi_sidebar, key="sidebar_classifica_girone")
+                if st.button("📱 Apri Classifica", key="btn_classifica_sidebar_multi", use_container_width=True):
+                    if girone_class_sel != 'Nessuno':
+                        st.session_state['mostra_classifica_girone'] = girone_class_sel
+                        st.rerun()
+                    else:
+                        st.info("Seleziona un girone.")
+            else:
+                st.info("Nessun girone attivo.")
         
         st.sidebar.markdown("---")
-
-        # ✅ 4. 🔍 Filtra Partite
-        st.sidebar.subheader("🔍 Filtra Partite")
-        df = st.session_state['df_torneo'].copy()
         
-        filtro_principale = st.sidebar.radio(
-            "Visualizza:",
-            ('Nessuno', 'Stato partite', 'Giocatore', 'Girone'),
-            key='filtro_principale_selettore'
-        )
 
-        df_filtrato = pd.DataFrame() # Inizializza un DataFrame vuoto
+
+        st.markdown("---")
+        st.markdown("### 🔍 Ricerca e Filtri (Calendario Multi-Girone)")
+        df = st.session_state['df_torneo'].copy()
+        df_filtrato = pd.DataFrame()
+
+        # Usa pulsanti orizzontali in cima per il menu principale dei filtri
+        col_filt1, col_filt2 = st.columns([0.15, 0.85], vertical_alignment="center")
+        with col_filt1:
+            st.markdown("**Visualizza:**")
+        with col_filt2:
+            filtro_principale = st.radio(
+                "Visualizza:",
+                ('Nessuno', 'Stato partite', 'Giocatore', 'Girone'),
+                horizontal=True,
+                label_visibility="collapsed",
+                key='filtro_principale_selettore_main'
+            )
 
         if filtro_principale == 'Nessuno':
             # Non mostrare nessun dataframe qui, la navigazione del calendario si occuperà di questo
             pass
 
         elif filtro_principale == 'Stato partite':
-            stato = st.sidebar.radio(
+            stato = st.radio(
                 "Scegli lo stato:",
                 ('Giocate', 'Da Giocare'),
-                key='stato_selettore'
+                horizontal=True,
+                key='stato_selettore_main'
             )
             st.subheader(f"🗓️ Partite {stato.lower()}")
             
@@ -1430,22 +1187,26 @@ def main():
 
                 
         elif filtro_principale == 'Giocatore':
-            st.sidebar.markdown("#### 🧑‍💼 Filtra per Giocatore")
+            col_f1, col_f2, col_f3 = st.columns([1, 1, 1], vertical_alignment="bottom")
             giocatori = sorted(list(set(df['Casa'].unique().tolist() + df['Ospite'].unique().tolist())))
-            giocatore_scelto = st.sidebar.selectbox("Seleziona un giocatore", [''] + giocatori, key='filtro_giocatore_sel')
+            with col_f1:
+                giocatore_scelto = st.selectbox("🧑‍💼 Filtra per giocatore:", [''] + giocatori, key='filtro_giocatore_sel_main')
             if giocatore_scelto:
-                # Filtro stato partita
-                stato_gioc = st.sidebar.radio(
-                    "Stato partita:",
-                    ('Tutte', 'Giocate', 'Da Giocare'),
-                    key='stato_giocatore_radio'
-                )
-                # Filtro andata/ritorno
-                tipo_gioc = st.sidebar.radio(
-                    "Tipo:",
-                    ('Entrambe', 'Andata', 'Ritorno'),
-                    key='tipo_giocatore_radio'
-                )
+                with col_f2:
+                    stato_gioc = st.radio(
+                        "Stato partita:",
+                        ('Tutte', 'Giocate', 'Da Giocare'),
+                        horizontal=True,
+                        key='stato_giocatore_radio_main'
+                    )
+                with col_f3:
+                    # Filtro andata/ritorno
+                    tipo_gioc = st.radio(
+                        "Tipo:",
+                        ('Entrambe', 'Andata', 'Ritorno'),
+                        horizontal=True,
+                        key='tipo_giocatore_radio_main'
+                    )
                 st.subheader(f"🗓️ Partite per {giocatore_scelto}")
 
                 df_filtrato = df[(df['Casa'] == giocatore_scelto) | (df['Ospite'] == giocatore_scelto)]
@@ -1536,23 +1297,26 @@ def main():
 
                 
         elif filtro_principale == 'Girone':
-            st.sidebar.markdown("#### 🧩 Filtra per Girone")
+            col_g1, col_g2, col_g3 = st.columns([1, 1, 1], vertical_alignment="bottom")
             gironi_disponibili = sorted(df['Girone'].unique().tolist())
-            girone_scelto = st.sidebar.selectbox("Seleziona un girone", gironi_disponibili, key='filtro_girone_sel')
+            with col_g1:
+                girone_scelto = st.selectbox("🧩 Filtra per Girone:", gironi_disponibili, key='filtro_girone_sel_main')
             if girone_scelto:
-                # Filtro stato partita
-                stato_gir = st.sidebar.radio(
-                    "Stato partita:",
-                    ('Tutte', 'Giocate', 'Da Giocare'),
-                    key='stato_girone_radio'
-                )
-                # Filtro andata/ritorno
-                tipo_gir = st.sidebar.radio(
-                    "Tipo:",
-                    ('Entrambe', 'Andata', 'Ritorno'),
-                    key='tipo_girone_radio'
-                )
-                st.subheader(f"🗓️ Partite nel {girone_scelto}")
+                with col_g2:
+                    stato_gir = st.radio(
+                        "Stato partita:",
+                        ('Tutte', 'Giocate', 'Da Giocare'),
+                        horizontal=True,
+                        key='stato_girone_radio_main'
+                    )
+                with col_g3:
+                    tipo_gir = st.radio(
+                        "Tipo:",
+                        ('Entrambe', 'Andata', 'Ritorno'),
+                        horizontal=True,
+                        key='tipo_girone_radio_main'
+                    )
+                st.subheader(f"🗓️ Partite {girone_scelto}")
 
                 df_filtrato = df[df['Girone'] == girone_scelto]
 
@@ -1648,9 +1412,11 @@ def main():
         if classifica is not None and not classifica.empty:
             if st.sidebar.button("📄 Prepara PDF", use_container_width=True):
                 pdf_bytes = esporta_pdf(df, classifica, st.session_state['nome_torneo'])
+                st.session_state['pdf_pronto'] = pdf_bytes
+            if st.session_state.get('pdf_pronto'):
                 st.sidebar.download_button(
                     label="📥 Scarica PDF torneo",
-                    data=pdf_bytes,
+                    data=st.session_state['pdf_pronto'],
                     file_name=f"torneo_{st.session_state['nome_torneo']}.pdf",
                     mime="application/pdf",
                     use_container_width=True
@@ -1659,10 +1425,18 @@ def main():
             st.sidebar.info("ℹ️ Nessuna partita valida. Compila e valida i risultati per generare la classifica.")
 
         # Calendario (nessun filtro)
-        # Calendario (nessun filtro)
         st.markdown("---")
-        if st.session_state['filtro_attivo'] == 'Nessuno':
-            st.subheader("🗺️ Navigazione Calendario")
+        if filtro_principale == 'Nessuno':
+            col_head1, col_head2 = st.columns([3, 1], vertical_alignment="bottom")
+            with col_head1:
+                st.subheader("🗺️ Navigazione Calendario")
+            with col_head2:
+                # UX SUITE: Pulsante Classifica rapido nella pagina principale
+                if st.button("📊 Vedi Classifica", key="btn_classifica_main_quick", type="primary", use_container_width=True):
+                    gironi_attivi = sorted(st.session_state['df_torneo']['Girone'].dropna().unique().tolist())
+                    if gironi_attivi:
+                        st.session_state['mostra_classifica_girone'] = st.session_state.get('girone_sel', gironi_attivi[0])
+                        st.rerun()
             df = st.session_state['df_torneo']
 
             gironi = sorted(df['Girone'].dropna().unique().tolist())
@@ -2311,4 +2085,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -28,6 +28,16 @@ import math
 # Import auth utilities
 import auth_utils as auth
 
+# Importa moduli comuni per stili, audio e componenti UI
+from common.styles import inject_all_styles
+from common.audio import (
+    autoplay_background_audio, autoplay_audio,
+    toggle_audio_callback, start_background_audio, setup_audio_sidebar
+)
+from common.ui_components import (
+    render_tournament_header, setup_common_sidebar
+)
+
 # Silenzia solo il warning di deprecazione relativo a st.experimental_get_query_params
 warnings.filterwarnings(
     "ignore",
@@ -99,274 +109,9 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-st.markdown("""
-<style>
 
-ul, li { list-style-type: none !important; padding-left: 0 !important; margin-left: 0 !important; margin: 0 !important; padding: 0 !important; }
-.big-title { 
-    text-align: center; 
-    font-size: clamp(22px, 4vw, 42px); 
-    font-weight: 700; 
-    margin: 15px 0 10px; 
-    color: white; 
-    background: linear-gradient(90deg, #457b9d, #1d3557);
-    border-radius: 10px;
-    box-shadow: 0 4px 14px #00000022;
-    padding: 15px;
-    text-shadow: 0 1px 2px #0002; 
-}
-.sub-title { 
-    font-size: 20px; 
-    font-weight: 700; 
-    margin-top: 10px; 
-    color: white;
-    background: linear-gradient(90deg, #457b9d, #1d3557);
-    border-radius: 10px;
-    box-shadow: 0 4px 14px #00000022;
-    padding: 10px;
-    text-align: center;
-}
-.stButton>button { 
-    background: linear-gradient(90deg, #457b9d, #1d3557); 
-    color: white; 
-    border-radius: 10px; 
-    padding: 0.55em 1.0em; 
-    font-weight: 700; 
-    border: 0; 
-    box-shadow: 0 4px 14px #00000022;
-}
-.stButton>button:hover { 
-    transform: translateY(-1px); 
-    box-shadow: 0 6px 18px #00000033; 
-}
-.stDownloadButton>button { 
-    background: linear-gradient(90deg, #457b9d, #1d3557); 
-    color: white; 
-    border-radius: 10px; 
-    font-weight: 700; 
-    border: 0; 
-    box-shadow: 0 4px 14px #00000022;
-}
-.stDownloadButton>button:hover { 
-    transform: translateY(-1px); 
-    box-shadow: 0 6px 18px #00000033; 
-}
-.stDataFrame { border: 2px solid #f4a261; border-radius: 10px; }
-.pill { display:inline-block; padding: 4px 10px; border-radius: 999px; background:#f1faee; color:#1d3557; font-weight:700; border:1px solid #a8dadc; }
-.small-muted { font-size: 0.9rem; opacity: 0.8; }
-hr { margin: 0.6rem 0 1rem 0; }
-.main-title {
-    font-size: 2.5rem; 
-    font-weight: 700; 
-    text-align: center; 
-    margin-bottom: 2rem;
-    color: white;
-    background: linear-gradient(90deg, #457b9d, #1d3557);
-    border-radius: 10px;
-    box-shadow: 0 4px 14px #00000022;
-    padding: 20px;
-    animation: bounce 1s ease-in-out infinite alternate;
-}
-@keyframes bounce {
-  from { transform: translateY(0px); }
-  to { transform: translateY(-5px); }
-}
-/* Main content h3 styling */
-.main .block-container h3 { 
-    color: white; 
-    font-weight: 700;
-    background: linear-gradient(90deg, #457b9d, #1d3557);
-    border-radius: 10px;
-    box-shadow: 0 4px 14px #00000022;
-    padding: 10px;
-    text-align: center;
-}
-/* Sidebar h3 styling - keep default */
-.css-1d391kg h3, [data-testid="stSidebar"] h3 {
-    color: #1d3557;
-    font-weight: 700;
-    background: none !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    text-align: left !important;
-}
-.match-card {
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 10px;
-    background-color: #f9f9f9;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-.validation-status-ok { color: green; font-weight: bold; }
-.validation-status-nok { color: red; font-weight: bold; }
-
-/* Sidebar h3 styling - mantiene stile normale */
-.css-1d391kg h3, [data-testid="stSidebar"] h3 {
-    color: #1d3557;
-    font-weight: 700;
-    background: none !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    text-align: left !important;
-}
-
-/* Tema scuro - sidebar subheaders bianchi con selettori più specifici */
-@media (prefers-color-scheme: dark) {
-    [data-testid="stSidebar"] h3,
-    .css-1d391kg h3,
-    [data-testid="stSidebar"] .element-container h3,
-    .css-1d391kg .element-container h3 {
-        color: #ffffff !important;
-        background: none !important;
-    }
-}
-
-/* Streamlit dark theme - sidebar subheaders bianchi con priorità massima */
-.stApp[data-theme="dark"] [data-testid="stSidebar"] h3,
-.stApp[data-theme="dark"] .css-1d391kg h3,
-.stApp[data-theme="dark"] [data-testid="stSidebar"] .element-container h3,
-.stApp[data-theme="dark"] .css-1d391kg .element-container h3,
-.stApp[data-theme="dark"] [data-testid="stSidebar"] div h3,
-.stApp[data-theme="dark"] .css-1d391kg div h3 {
-    color: #ffffff !important;
-    background: none !important;
-}
-
-/* Selettori ancora più specifici per forzare il bianco sui subheader */
-html[data-theme="dark"] [data-testid="stSidebar"] h3,
-html[data-theme="dark"] .css-1d391kg h3,
-body[data-theme="dark"] [data-testid="stSidebar"] h3,
-body[data-theme="dark"] .css-1d391kg h3 {
-    color: #ffffff !important;
-}
-
-/* Override per tutti i possibili selettori di subheader nella sidebar */
-[data-testid="stSidebar"] h3[class*="css"],
-.css-1d391kg h3[class*="css"] {
-    color: #ffffff !important;
-}
-
-/* CSS con massima specificità per tema scuro */
-.stApp[data-theme="dark"] [data-testid="stSidebar"] * h3,
-.stApp[data-theme="dark"] .css-1d391kg * h3 {
-    color: #ffffff !important;
-}
-
-/* Approccio universale - forza bianco su TUTTI gli h3 della sidebar nel tema scuro */
-@media (prefers-color-scheme: dark) {
-    [data-testid="stSidebar"] h3 {
-        color: white !important;
-    }
-}
-
-.stApp[data-theme="dark"] [data-testid="stSidebar"] h3 {
-    color: white !important;
-}
-
-/* Selettore CSS universale per tutti gli elementi h3 nella sidebar */
-[data-testid="stSidebar"] h3,
-[data-testid="stSidebar"] .stMarkdown h3,
-[data-testid="stSidebar"] div h3 {
-    color: white !important;
-}
-
-/* Forza il colore blu per i subheader della sidebar in entrambi i temi */
-[data-testid="stSidebar"] h3,
-[data-testid="stSidebar"] h3[class*="st-emotion-cache"],
-[data-testid="stSidebar"] h3[class*="css"],
-[data-testid="stSidebar"] h3[class*="element-container"],
-[data-testid="stSidebar"] h3[class*="stMarkdown"],
-[data-testid="stSidebar"] h3[class*="stSubheader"],
-[data-testid="stSidebar"] h3[class*="stHeadingContainer"],
-[data-testid="stSidebar"] h3[class*="stTitle"],
-[data-testid="stSidebar"] .stMarkdown h3,
-[data-testid="stSidebar"] .element-container h3,
-[data-testid="stSidebar"] .stSubheader h3,
-[data-testid="stSidebar"] .stHeadingContainer h3,
-[data-testid="stSidebar"] .stTitle h3,
-.stApp[data-theme="light"] [data-testid="stSidebar"] h3,
-.stApp[data-theme="dark"] [data-testid="stSidebar"] h3,
-html[data-theme="light"] [data-testid="stSidebar"] h3,
-html[data-theme="dark"] [data-testid="stSidebar"] h3,
-body[data-theme="light"] [data-testid="stSidebar"] h3,
-body[data-theme="dark"] [data-testid="stSidebar"] h3 {
-    color: #0078D4 !important;
-    font-weight: 700;
-    background: none !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    text-align: left !important;
-}
-
-/* Rimuovi eventuali stili di hover o focus che potrebbero sovrascrivere */
-[data-testid="stSidebar"] h3:hover,
-[data-testid="stSidebar"] h3:focus,
-[data-testid="stSidebar"] h3:active {
-    color: #0078D4 !important;
-}
-
-/* Forza il colore anche per i temi personalizzati */
-[data-testid="stSidebar"] h3[style*="color"],
-[data-testid="stSidebar"] h3[style*="color"]:hover,
-[data-testid="stSidebar"] h3[style*="color"]:focus {
-    color: #0078D4 !important;
-}
-
-/* Stile per i pulsanti di collegamento nella sidebar */
-[data-testid="stSidebar"] .stLinkButton,
-[data-testid="stSidebar"] .stLinkButton a,
-[data-testid="stSidebar"] .stLinkButton a:visited,
-[data-testid="stSidebar"] .stLinkButton a:hover,
-[data-testid="stSidebar"] .stLinkButton a:active {
-    background: linear-gradient(90deg, #457b9d, #1d3557) !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 10px !important;
-    padding: 0.5rem 1rem !important;
-    font-weight: 700 !important;
-    text-align: center !important;
-    text-decoration: none !important;
-    display: inline-block !important;
-    transition: all 0.3s ease !important;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
-}
-
-/* Stile al passaggio del mouse */
-[data-testid="stSidebar"] .stLinkButton:hover,
-[data-testid="stSidebar"] .stLinkButton a:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
-}
-
-/* Stile al click */
-[data-testid="stSidebar"] .stLinkButton:active,
-[data-testid="stSidebar"] .stLinkButton a:active {
-    transform: translateY(0) !important;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
-}
-
-/* Stile per il tema scuro */
-[data-testid="stSidebar"][data-baseweb="dark"] .stLinkButton,
-[data-testid="stSidebar"][data-baseweb="dark"] .stLinkButton a,
-.stApp[data-theme="dark"] [data-testid="stSidebar"] .stLinkButton,
-.stApp[data-theme="dark"] [data-testid="stSidebar"] .stLinkButton a {
-    background: linear-gradient(90deg, #1d3557, #457b9d) !important;
-    color: white !important;
-}
-
-/* Stile per il tema scuro al passaggio del mouse */
-[data-testid="stSidebar"][data-baseweb="dark"] .stLinkButton:hover,
-[data-testid="stSidebar"][data-baseweb="dark"] .stLinkButton a:hover,
-.stApp[data-theme="dark"] [data-testid="stSidebar"] .stLinkButton:hover,
-.stApp[data-theme="dark"] [data-testid="stSidebar"] .stLinkButton a:hover {
-    background: linear-gradient(90deg, #1d3557, #3a6ea5) !important;
-}
-</style>
-""", unsafe_allow_html=True)
+# Inietta tutti gli stili dal modulo condiviso
+inject_all_styles()
 
 # ==============================================================================
 # 🛠️ UTILITY FUNZIONI
@@ -375,148 +120,11 @@ REQUIRED_COLS = ['Girone', 'Giornata', 'Casa', 'Ospite', 'GolCasa', 'GolOspite',
 db_name = "TorneiSubbuteo"
 col_name = "PierCrew"
 
-def autoplay_audio(audio_data: bytes):
-    try:
-        # Salva l'audio in un file temporaneo
-        with open("temp_audio.mp3", "wb") as f:
-            f.write(audio_data)
-        
-        # Usa il componente audio di Streamlit con autoplay
-        audio_file = open("temp_audio.mp3", 'rb')
-        audio_bytes = audio_file.read()
-        st.audio(audio_bytes, format='audio/mp3', start_time=0, autoplay=True)
-        
-        # Pulisci il file temporaneo
-        try:
-            os.remove("temp_audio.mp3")
-        except:
-            pass
-            
-    except Exception as e:
-        st.error(f"Errore nella riproduzione dell'audio: {e}")
-        # Fallback al metodo precedente
-        try:
-            b64 = base64.b64encode(audio_data).decode("utf-8")
-            md = f"""
-            <audio autoplay controls style="display:none">
-            <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
-            </audio>
-            """
-            st.markdown(md, unsafe_allow_html=True)
-        except:
-            st.warning("Impossibile riprodurre l'audio")
-            
-def toggle_audio_callback():
-    """Funzione di callback per la checkbox dell'audio."""
-    # Questa funzione viene chiamata quando la checkbox cambia.
-    # Non ha bisogno di fare nulla, ma l'atto di chiamarla
-    # garantisce che st.session_state.bg_audio_disabled sia aggiornato
-    # prima del rerun.
-    pass
-            
-def autoplay_background_audio(audio_url: str):
-    import requests, base64
+# Le funzioni audio (autoplay_audio, autoplay_background_audio, toggle_audio_callback)
+# sono ora importate da common.audio
 
-    if "background_audio_data" not in st.session_state:
-        try:
-            response = requests.get(audio_url, timeout=10)
-            response.raise_for_status()
-            audio_data = response.content
-            st.session_state.background_audio_data = base64.b64encode(audio_data).decode("utf-8")
-        except Exception as e:
-            st.warning(f"Errore caricamento audio: {e}")
-            return False
-
-    b64 = st.session_state.background_audio_data
-
-    html_code = f"""
-    <script>
-    const audio_id = "subbuteo_background_audio";
-    let audio_element = document.getElementById(audio_id);
-
-    if (!audio_element) {{
-        // Crea una sola volta
-        audio_element = document.createElement("audio");
-        audio_element.id = audio_id;
-        audio_element.src = "data:audio/mp3;base64,{b64}";
-        audio_element.loop = true;
-        audio_element.autoplay = true;
-        audio_element.volume = 0.5;
-        document.body.appendChild(audio_element);
-        console.log("🎵 Audio creato");
-    }} else {{
-        console.log("🎵 Audio già presente, non ricreato");
-    }}
-
-    // Se è in pausa, prova a farlo ripartire
-    if (audio_element.paused) {{
-        audio_element.play().catch(e => {{
-            console.log("⚠️ Autoplay bloccato, ripartirà al primo click.");
-        }});
-    }}
-    </script>
-    """
-    st.components.v1.html(html_code, height=0, width=0, scrolling=False)
-    return True
-
-    """
-    Inietta un elemento <audio> persistente nel DOM con autoplay e loop.
-    Funziona anche dopo i rerun di Streamlit.
-    """
-    import requests, base64
-
-    # Scarica l'mp3 una sola volta in base64
-    if "background_audio_data" not in st.session_state:
-        try:
-            response = requests.get(audio_url, timeout=10)
-            response.raise_for_status()
-            audio_data = response.content
-            st.session_state.background_audio_data = base64.b64encode(audio_data).decode("utf-8")
-        except Exception as e:
-            st.warning(f"Errore caricamento audio: {e}")
-            return False
-
-    b64 = st.session_state.background_audio_data
-
-    js_code = f"""
-    <script>
-    const audio_id = "subbuteo_background_audio";
-    let audio_element = document.getElementById(audio_id);
-
-    // Se non esiste, crealo
-    if (!audio_element) {{
-        audio_element = new Audio("data:audio/mp3;base64,{b64}");
-        audio_element.id = audio_id;
-        audio_element.loop = true;
-        audio_element.volume = 0.5;
-        document.body.appendChild(audio_element);
-        console.log("🎵 Audio creato");
-    }}
-
-    // Se è in pausa, prova a ripartire
-    if (audio_element.paused) {{
-        audio_element.play().catch(e => {{
-            console.log("⚠️ Autoplay bloccato, ripartirà al primo click.");
-        }});
-    }}
-    </script>
-    """
-    st.components.v1.html(js_code, height=0, width=0, scrolling=False)
-    return True
-
-# Avvio audio (solo al primo run)
-#if "background_audio_started" not in st.session_state:
-#    autoplay_background_audio(BACKGROUND_AUDIO_URL)
-#    st.session_state.background_audio_started = True
-
-# Avvio audio ad ogni rerun. La logica JS all'interno di questa funzione
-# assicura che l'elemento audio nel browser venga creato una sola volta
-# e mantenuto attivo.
-# Inizializza lo stato dell'audio se non esiste
-if "bg_audio_disabled" not in st.session_state:
-    st.session_state.bg_audio_disabled = False
-if not st.session_state.bg_audio_disabled:
-    autoplay_background_audio(BACKGROUND_AUDIO_URL)  
+# Avvio audio di sottofondo
+start_background_audio(BACKGROUND_AUDIO_URL)
 
 def check_csv_structure(df: pd.DataFrame) -> tuple[bool, str]:
     """Controlla che le colonne necessarie siano presenti nel DataFrame."""
@@ -562,7 +170,7 @@ def classifica_complessiva(df: pd.DataFrame) -> pd.DataFrame:
     squadre_ospite = set(partite['Ospite'].unique())
     all_squadre = list(squadre_casa.union(squadre_ospite))
     
-    stats = {s: {'Punti':0,'V':0,'P':0,'S':0,'GF':0,'GS':0,'DR':0} for s in all_squadre}
+    stats = {s: {'Punti':0,'G':0,'V':0,'P':0,'S':0,'GF':0,'GS':0,'DR':0} for s in all_squadre}
 
     for _, r in partite.iterrows():
         casa, osp = r['Casa'], r['Ospite']
@@ -570,8 +178,10 @@ def classifica_complessiva(df: pd.DataFrame) -> pd.DataFrame:
         
         # Gestisce i casi in cui una squadra potrebbe non aver giocato partite
         if casa in stats:
+            stats[casa]['G'] += 1
             stats[casa]['GF'] += gc; stats[casa]['GS'] += go
         if osp in stats:
+            stats[osp]['G'] += 1
             stats[osp]['GF'] += go; stats[osp]['GS'] += gc
         
         if gc > go:
@@ -686,10 +296,11 @@ def standings_from_matches(df: pd.DataFrame, key_group: str) -> pd.DataFrame:
         blocco['Ospite'] = blocco['Ospite'].astype(str).fillna('')
         
         squadre = pd.unique(blocco[['Casa','Ospite']].values.ravel())
-        stats = {s: {'Punti':0,'V':0,'P':0,'S':0,'GF':0,'GS':0,'DR':0} for s in squadre}
+        stats = {s: {'Punti':0,'G':0,'V':0,'P':0,'S':0,'GF':0,'GS':0,'DR':0} for s in squadre}
         for _, r in blocco.iterrows():
             c, o = r['Casa'], r['Ospite']
             gc, go = int(r['GolCasa']), int(r['GolOspite'])
+            stats[c]['G'] += 1; stats[o]['G'] += 1
             stats[c]['GF'] += gc; stats[c]['GS'] += go
             stats[o]['GF'] += go; stats[o]['GS'] += gc
             if gc > go:
@@ -711,102 +322,243 @@ def standings_from_matches(df: pd.DataFrame, key_group: str) -> pd.DataFrame:
 # ==============================================================================
 # 📄 FUNZIONI PER EXPORT PDF
 # ==============================================================================
+from datetime import datetime
+import os
+
+class GazzettaPDF(FPDF):
+    def __init__(self, mode_title, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.mode_title = mode_title
+
+    def header(self):
+        # 🟦 Sfondo Header super istituzionale (Blu Navy vibrante)
+        self.set_fill_color(26, 54, 93)  
+        self.rect(0, 0, 210, 32, 'F')
+        
+        # 🟡 Linea dorata di accento sotto l'header
+        self.set_fill_color(212, 175, 55) 
+        self.rect(0, 32, 210, 1.5, 'F')
+        
+        # 🛡️ Logo "PierCrew" a sinistra
+        logo_path = "logo_piercrew.jpg"
+        start_x = 10
+        if os.path.exists(logo_path):
+            self.image(logo_path, 12, 5, 22)
+            start_x = 40
+            
+        # 📰 Titolo "Gazzettino" Ufficiale
+        self.set_xy(start_x, 8)
+        self.set_font("Arial", 'B', 24)
+        self.set_text_color(255, 255, 255)
+        self.cell(0, 10, "IL GAZZETTINO DELLA SUPERBA", border=0, ln=1, align='L')
+        
+        # 🏆 Sottotitolo (Fasi Finali / Gironi preliminari)
+        self.set_x(start_x)
+        self.set_font("Arial", 'I', 11)
+        self.set_text_color(220, 225, 235)
+        data_stampa = datetime.now().strftime("%d/%m/%Y alle %H:%M")
+        torneo_name = st.session_state.get('tournament_name', 'Fasi Finali')
+        self.cell(0, 6, f"Referto: {torneo_name} ({self.mode_title}) | Del {data_stampa}", border=0, ln=1, align='L')
+        
+        self.ln(12)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_fill_color(26, 54, 93)  
+        self.rect(0, 287, 210, 10, 'F')
+        self.set_font('Arial', 'B', 8)
+        self.set_text_color(255, 255, 255)
+        self.cell(0, 10, f'Pagina {self.page_no()} - Generato automaticamente dal Gestionale Tornei Subbuteo', 0, 0, 'C')
+
 def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
-    """Genera un PDF con calendario e classifica dei gironi."""
-    pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=15)
+    """Genera un PDF con calendario e classifica dei gironi (Stylized)."""
+    pdf = GazzettaPDF("Fasi Finali - Gruppi", orientation='P', unit='mm', format='A4')
+    pdf.set_auto_page_break(auto=True, margin=18)
     pdf.add_page()
-    pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(0, 10, "Calendario e Classifiche Gironi", 0, 1, 'C')
-    pdf.set_font("Helvetica", "", 12)
 
     gironi = sorted(df_finale_gironi['Girone'].unique())
 
     for girone in gironi:
-        pdf.set_font("Helvetica", "B", 14)
-        pdf.set_text_color(255, 0, 0)
-        
         girone_blocco = df_finale_gironi[df_finale_gironi['Girone'] == girone]
-        is_complete = all(girone_blocco['Valida'])
         
-        pdf.cell(0, 10, f"Girone {girone}", 0, 1, 'L')
-        pdf.set_text_color(0, 0, 0)
+        # ======= 📊 SEZIONE CLASSIFICA =======
+        pdf.set_font("Arial", 'B', 16)
+        pdf.set_fill_color(230, 235, 245)
+        pdf.set_text_color(26, 54, 93)
+        pdf.cell(0, 10, f" CLASSIFICA: GIRONE {str(girone).upper()} ", border=1, ln=True, fill=True, align='C')
+        pdf.ln(3)
 
-        pdf.set_font("Helvetica", "B", 12)
-        pdf.cell(0, 10, "Classifica:", 0, 1, 'L')
-        pdf.set_font("Helvetica", "", 10)
-        
         classifica = standings_from_matches(girone_blocco, key_group='Girone')
-        
         if not classifica.empty:
             classifica = classifica.sort_values(by=['Punti', 'DR', 'GF', 'V', 'Squadra'], ascending=[False, False, False, False, True]).reset_index(drop=True)
             classifica.index = classifica.index + 1
             classifica.insert(0, 'Pos', classifica.index)
 
-            col_widths = [10, 40, 15, 15, 15, 15, 15, 15, 15]
-            headers = ["Pos", "Squadra", "Punti", "V", "P", "S", "GF", "GS", "DR"]
+            pdf.set_font("Arial", 'B', 11)
+            pdf.set_fill_color(26, 54, 93)
+            pdf.set_text_color(255, 255, 255)
+            headers = ["Pos", "Squadra", "PTI", "G", "V", "P", "S", "GF", "GS", "DR"]
+            col_widths = [10, 56, 12, 10, 10, 10, 10, 12, 12, 16]
             for i, h in enumerate(headers):
-                pdf.cell(col_widths[i], 7, h, 1, 0, 'C')
+                pdf.cell(col_widths[i], 8, h, border=1, align='C', fill=True)
             pdf.ln()
-            for _, r in classifica.iterrows():
-                for i, c in enumerate(headers):
-                    val = r.get(c, "N/A")
-                    if c == 'Pos':
-                        val = int(val)
-                    pdf.cell(col_widths[i], 7, str(val), 1, 0, 'C')
-                pdf.ln()
-        else:
-            pdf.cell(0, 7, "Nessuna partita validata in questo girone.", 0, 1)
-
-        pdf.ln(5)
-        pdf.set_font("Helvetica", "B", 12)
-        pdf.cell(0, 10, "Calendario partite:", 0, 1, 'L')
-        pdf.set_font("Helvetica", "", 10)
-
-        partite_girone = girone_blocco.sort_values(by='Giornata').reset_index(drop=True)
-        for idx, partita in partite_girone.iterrows():
-            if not is_complete and not partita['Valida']:
-                pdf.set_text_color(255, 0, 0)
-            else:
-                pdf.set_text_color(0, 0, 0)
             
-            res = f"{int(partita['GolCasa'])} - {int(partita['GolOspite'])}" if partita['Valida'] and pd.notna(partita['GolCasa']) and pd.notna(partita['GolOspite']) else " - "
-            pdf.cell(0, 7, f"Giornata {int(partita['Giornata'])}: {partita['Casa']} vs {partita['Ospite']} ({res})", 0, 1)
-        
-        pdf.set_text_color(0, 0, 0)
-        pdf.ln(5)
+            pdf.set_font("Arial", "", 11)
+            pdf.set_text_color(0, 0, 0)
+            for idx, (_, r) in enumerate(classifica.iterrows()):
+                fill = (idx % 2 == 0)
+                pdf.set_fill_color(245, 248, 250) if fill else pdf.set_fill_color(255, 255, 255)
+                
+                sq = str(r.get('Squadra', "N/A"))
+                if len(sq) > 30: sq = sq[:27] + "..."
+                
+                pdf.cell(col_widths[0], 7, str(int(r.get('Pos', 0))), border='LR', align='C', fill=fill)
+                pdf.set_font("Arial", 'B', 11)
+                pdf.cell(col_widths[1], 7, " " + sq, border='LR', align='L', fill=fill)
+                pdf.set_font("Arial", "", 11)
+                pdf.cell(col_widths[2], 7, str(r.get('Punti', 0)), border='LR', align='C', fill=fill)
+                pdf.cell(col_widths[3], 7, str(r.get('G', 0)), border='LR', align='C', fill=fill)
+                pdf.cell(col_widths[4], 7, str(r.get('V', 0)), border='LR', align='C', fill=fill)
+                pdf.cell(col_widths[5], 7, str(r.get('P', 0)), border='LR', align='C', fill=fill)
+                pdf.cell(col_widths[6], 7, str(r.get('S', 0)), border='LR', align='C', fill=fill)
+                pdf.cell(col_widths[7], 7, str(r.get('GF', 0)), border='LR', align='C', fill=fill)
+                pdf.cell(col_widths[8], 7, str(r.get('GS', 0)), border='LR', align='C', fill=fill)
+                pdf.cell(col_widths[9], 7, str(r.get('DR', 0)), border='LR', align='C', fill=fill)
+                pdf.ln()
 
-    #return bytes(pdf.output(dest='S'))
-    return pdf.output(dest='S').encode('latin-1')
+            pdf.cell(sum(col_widths), 0, '', border='T', ln=True)
+        else:
+            pdf.set_font("Arial", 'I', 11)
+            pdf.cell(0, 7, " Nessuna classifica calcolabile.", 0, 1)
+
+        pdf.ln(5)
+        
+        # ======= 🗓️ SEZIONE CALENDARIO =======
+        if pdf.get_y() > 240:
+             pdf.add_page()
+             
+        pdf.set_font("Arial", 'B', 12)
+        pdf.set_fill_color(230, 235, 245)
+        pdf.set_text_color(26, 54, 93)
+        pdf.cell(0, 8, f" Calendario Partite (GIRONE {girone}) ", ln=True, fill=True)
+        
+        pdf.set_font("Arial", 'B', 10)
+        pdf.set_fill_color(240, 240, 240)
+        pdf.set_text_color(100, 100, 100)
+        w_partite = [25, 65, 30, 65]
+        pdf.cell(w_partite[0], 6, "Giornata", border=1, align='C', fill=True)
+        pdf.cell(w_partite[1], 6, "Casa", border=1, align='C', fill=True)
+        pdf.cell(w_partite[2], 6, "Risultato", border=1, align='C', fill=True)
+        pdf.cell(w_partite[3], 6, "Ospite", border=1, align='C', fill=True)
+        pdf.ln()
+
+        pdf.set_text_color(0, 0, 0)
+        partite_girone = girone_blocco.sort_values(by='Giornata').reset_index(drop=True)
+        for idx_p, partita in partite_girone.iterrows():
+            if pdf.get_y() > 275:
+                pdf.add_page()
+            
+            fill = (idx_p % 2 == 0)
+            pdf.set_fill_color(248, 249, 250) if fill else pdf.set_fill_color(255, 255, 255)
+            
+            valida = bool(partita['Valida'])
+            gc = int(partita['GolCasa']) if valida and pd.notna(partita['GolCasa']) else ""
+            go = int(partita['GolOspite']) if valida and pd.notna(partita['GolOspite']) else ""
+            res = f"{gc} - {go}" if valida else " - "
+            
+            casa = str(partita['Casa'])
+            osp = str(partita['Ospite'])
+            if len(casa) > 30: casa = casa[:28]+"..."
+            if len(osp) > 30: osp = osp[:28]+"..."
+            
+            if valida: pdf.set_font("Arial", '', 10)
+            else: pdf.set_font("Arial", 'I', 10)
+            
+            pdf.cell(w_partite[0], 7, f" {int(partita['Giornata'])}", border='LR', align='C', fill=fill)
+            pdf.cell(w_partite[1], 7, " " + casa, border='LR', align='L', fill=fill)
+            
+            pdf.set_font("Arial", 'B', 11)
+            pdf.set_text_color(42, 157, 143) if valida else pdf.set_text_color(128, 128, 128)
+            pdf.cell(w_partite[2], 7, res, border='L', align='C', fill=fill)
+            
+            if valida: pdf.set_font("Arial", '', 10)
+            else: pdf.set_font("Arial", 'I', 10)
+            pdf.set_text_color(0, 0, 0)
+            pdf.cell(w_partite[3], 7, " " + osp, border='LR', align='L', fill=fill)
+            
+            pdf.ln()
+            
+        pdf.cell(sum(w_partite), 0, '', border='T', ln=True)
+        pdf.ln(5)
+    
+    return bytes(pdf.output())
 
 def generate_pdf_ko(rounds_ko: list[pd.DataFrame]) -> bytes:
-    """Genera un PDF con il tabellone a eliminazione diretta."""
-    pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=15)
+    """Genera un PDF con il tabellone a eliminazione diretta (Stylized)."""
+    pdf = GazzettaPDF("Eliminazione Diretta", orientation='P', unit='mm', format='A4')
+    pdf.set_auto_page_break(auto=True, margin=18)
     pdf.add_page()
-    pdf.set_font("Helvetica", "B", 16)
     
-    pdf.cell(0, 10, "Tabellone Eliminazione Diretta", 0, 1, 'C')
-    
-    for df_round in rounds_ko:
-        pdf.ln(5)
-        pdf.set_font("Helvetica", "B", 14)
-        pdf.cell(0, 10, df_round['Round'].iloc[0], 0, 1, 'L')
+    for _, df_round in enumerate(rounds_ko):
+        round_name = str(df_round['Round'].iloc[0])
         
-        pdf.set_font("Helvetica", "", 12)
-        for _, match in df_round.iterrows():
-            if not match['Valida']:
-                pdf.set_text_color(255, 0, 0)
-            else:
-                pdf.set_text_color(0, 0, 0)
-                
-            res = f"{int(match['GolA'])} - {int(match['GolB'])}" if match['Valida'] and pd.notna(match['GolA']) and pd.notna(match['GolB']) else " - "
-            pdf.cell(0, 7, f"Partita {int(match['Match'])}: {match['SquadraA']} vs {match['SquadraB']} ({res})", 0, 1)
+        if pdf.get_y() > 240:
+             pdf.add_page()
+             
+        pdf.set_font("Arial", 'B', 14)
+        pdf.set_fill_color(220, 225, 240)
+        pdf.set_text_color(26, 54, 93)
+        pdf.cell(0, 9, f" TURNO: {round_name.upper()} ", border=1, ln=True, fill=True, align='C')
+        
+        pdf.set_font("Arial", 'B', 10)
+        pdf.set_fill_color(240, 240, 240)
+        pdf.set_text_color(100, 100, 100)
+        w_partite = [20, 70, 30, 70]
+        pdf.cell(w_partite[0], 6, "ID", border=1, align='C', fill=True)
+        pdf.cell(w_partite[1], 6, "Casa", border=1, align='C', fill=True)
+        pdf.cell(w_partite[2], 6, "Risultato", border=1, align='C', fill=True)
+        pdf.cell(w_partite[3], 6, "Ospite", border=1, align='C', fill=True)
+        pdf.ln()
 
-    pdf.set_text_color(0, 0, 0)
-    #return pdf.output(dest='S').encode('latin1')
-    #return bytes(pdf.output(dest='S'))
-    return pdf.output(dest='S').encode('latin-1')
+        pdf.set_text_color(0, 0, 0)
+        for idx_p, (_, match) in enumerate(df_round.iterrows()):
+            if pdf.get_y() > 275:
+                pdf.add_page()
+                
+            fill = (idx_p % 2 == 0)
+            pdf.set_fill_color(248, 249, 250) if fill else pdf.set_fill_color(255, 255, 255)
+            
+            valida = bool(match['Valida'])
+            gc = int(match['GolA']) if valida and pd.notna(match['GolA']) else ""
+            go = int(match['GolB']) if valida and pd.notna(match['GolB']) else ""
+            res = f"{gc} - {go}" if valida else " - "
+            
+            casa = str(match['SquadraA'])
+            osp = str(match['SquadraB'])
+            if len(casa) > 35: casa = casa[:32]+"..."
+            if len(osp) > 35: osp = osp[:32]+"..."
+            
+            if valida: pdf.set_font("Arial", '', 10)
+            else: pdf.set_font("Arial", 'I', 10)
+            
+            pdf.cell(w_partite[0], 7, f" {int(match['Match'])}", border='LR', align='C', fill=fill)
+            pdf.cell(w_partite[1], 7, " " + casa, border='LR', align='L', fill=fill)
+            
+            pdf.set_font("Arial", 'B', 11)
+            pdf.set_text_color(42, 157, 143) if valida else pdf.set_text_color(128, 128, 128)
+            pdf.cell(w_partite[2], 7, res, border='L', align='C', fill=fill)
+            
+            if valida: pdf.set_font("Arial", '', 10)
+            else: pdf.set_font("Arial", 'I', 10)
+            pdf.set_text_color(0, 0, 0)
+            pdf.cell(w_partite[3], 7, " " + osp, border='LR', align='L', fill=fill)
+            
+            pdf.ln()
+            
+        pdf.cell(sum(w_partite), 0, '', border='T', ln=True)
+        pdf.ln(5)
+
+    return bytes(pdf.output())
 
 def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
     # Check if user has write access
@@ -904,6 +656,161 @@ def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
     # Only update the round data if user has write access
     if has_write_access:
         st.session_state['rounds_ko'][round_idx] = df_round.copy()
+
+def render_visual_bracket(rounds_ko, modalita_visualizzazione="squadre"):
+    """Renderizza un tabellone a eliminazione diretta (bracket) in HTML/CSS."""
+    if not rounds_ko:
+        return
+        
+    def parse_team_player(val):
+        if isinstance(val, str) and "-" in val:
+            squadra, giocatore = val.split("-", 1)
+            return squadra.strip(), giocatore.strip()
+        return str(val), ""
+    
+    html = '''<style>
+.bracket-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    overflow-x: auto;
+    padding: 20px 0;
+    font-family: 'Outfit', sans-serif;
+}
+.bracket-column {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    flex: 1;
+    min-width: 220px;
+    padding: 0 10px;
+}
+.bracket-match {
+    display: flex;
+    flex-direction: column;
+    background: var(--card-bg, #ffffff);
+    border: 1px solid var(--card-border, #ddd);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    margin: 10px 0;
+    overflow: hidden;
+    transition: transform 0.2s;
+}
+.bracket-match:hover {
+    transform: translateY(-2px);
+}
+.bracket-match-header {
+     background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+     color: white;
+     font-size: 0.75rem;
+     text-align: center;
+     padding: 4px;
+     font-weight: 800;
+     text-transform: uppercase;
+     letter-spacing: 1px;
+}
+.bracket-team {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    font-size: 0.9rem;
+}
+.bracket-team:last-child {
+    border-bottom: none;
+}
+.bracket-team.winner {
+    font-weight: 800;
+    background-color: rgba(42, 157, 143, 0.1);
+    color: var(--color-success, #2a9d8f);
+}
+.bracket-score {
+    background: #f1f3f5;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    color: #333;
+}
+
+/* Supporto Dark Mode automatico */
+[data-theme="dark"] .bracket-match {
+    background: rgba(16, 25, 48, 0.8);
+    border-color: rgba(255,255,255,0.1);
+}
+[data-theme="dark"] .bracket-team {
+    color: #e2e8f0;
+    border-bottom-color: rgba(255,255,255,0.05);
+}
+[data-theme="dark"] .bracket-score {
+    background: #2d3748;
+    color: #fff;
+}
+</style>
+<div class="bracket-container">
+'''
+    
+    for round_idx, df_round in enumerate(rounds_ko):
+        round_name = df_round['Round'].iloc[0] if not df_round.empty else f"Turno {round_idx+1}"
+        html += f'<div class="bracket-column" id="round-{round_idx}">'
+        html += f'<div style="text-align:center; font-weight:800; margin-bottom:10px; opacity:0.7;">{round_name.upper()}</div>'
+        for _, match in df_round.iterrows():
+            squadra_a, giocatore_a = parse_team_player(match['SquadraA'])
+            squadra_b, giocatore_b = parse_team_player(match['SquadraB'])
+            
+            nome_a = squadra_a if modalita_visualizzazione == "squadre" else (giocatore_a if modalita_visualizzazione == "giocatori" else f"{squadra_a} ({giocatore_a})")
+            nome_b = squadra_b if modalita_visualizzazione == "squadre" else (giocatore_b if modalita_visualizzazione == "giocatori" else f"{squadra_b} ({giocatore_b})")
+            if not nome_a: nome_a = "TBD"
+            if not nome_b: nome_b = "TBD"
+            
+            valida = bool(match.get('Valida', False))
+            gol_a = int(match['GolA']) if pd.notna(match['GolA']) and valida else ""
+            gol_b = int(match['GolB']) if pd.notna(match['GolB']) and valida else ""
+            
+            win_a = valida and (gol_a > gol_b)
+            win_b = valida and (gol_b > gol_a)
+            
+            html += f'''
+<div class="bracket-match">
+    <div class="bracket-team {'winner' if win_a else ''}">
+        <span>🏠 {nome_a}</span>
+        <span class="bracket-score">{gol_a}</span>
+    </div>
+    <div class="bracket-team {'winner' if win_b else ''}">
+        <span>🛫 {nome_b}</span>
+        <span class="bracket-score">{gol_b}</span>
+    </div>
+</div>
+'''
+        html += '</div>'
+    
+    # Check if there is a final winner
+    if rounds_ko:
+        last_round = rounds_ko[-1]
+        last_match = last_round.iloc[0] if not last_round.empty else None
+        if last_match is not None and last_match.get('Valida', False):
+            try:
+                gol_a = float(last_match['GolA'])
+                gol_b = float(last_match['GolB'])
+                if gol_a != gol_b:
+                    winner_raw = last_match['SquadraA'] if gol_a > gol_b else last_match['SquadraB']
+                    squadra_w, giocatore_w = parse_team_player(winner_raw)
+                    nome_w = squadra_w if modalita_visualizzazione == "squadre" else (giocatore_w if modalita_visualizzazione == "giocatori" else f"{squadra_w} ({giocatore_w})")
+                    html += f'''
+<div class="bracket-column" style="justify-content: center; align-items: center;">
+    <div class="bracket-match" style="border-color: #ffd700; border-width: 2px; transform: scale(1.1); box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);">
+        <div class="bracket-match-header" style="background: linear-gradient(135deg, #f6d365 0%, #fda085 100%); color: #333;">🏆 CAMPIONE</div>
+        <div class="bracket-team winner" style="justify-content: center; font-size: 1.2rem; padding: 20px;">
+            <span>{nome_w}</span>
+        </div>
+    </div>
+</div>
+'''
+            except:
+                pass
+    
+    html += '</div>'
+    st.markdown(html, unsafe_allow_html=True)
 # ==============================================================================
 # 🧠 FUNZIONI DI GESTIONE STATO E INTERAZIONE CON DB
 # ==============================================================================
@@ -1572,9 +1479,11 @@ def main():
         if st.session_state.get('giornate_mode') == "ko" and 'rounds_ko' in st.session_state:
             if st.sidebar.button("📄 Prepara PDF", key="prepare_pdf", use_container_width=True):
                 pdf_bytes = generate_pdf_ko(st.session_state['rounds_ko'])
+                st.session_state['pdf_pronto'] = pdf_bytes
+            if st.session_state.get('pdf_pronto'):
                 st.sidebar.download_button(
                     label="📥 Scarica PDF Torneo",
-                    data=pdf_bytes,
+                    data=st.session_state['pdf_pronto'],
                     file_name="fase_finale_tabellone_ko.pdf",
                     mime="application/pdf",
                     use_container_width=True
@@ -2150,6 +2059,11 @@ def main():
                         st.error("Dati del tabellone KO non trovati. Riprova.")
                         st.button("Torna indietro", on_click=reset_to_setup)
                         st.stop()
+                    
+                    # 🚀 RENDER VISUAL BRACKET
+                    visualizzazione_preferita = st.session_state.get("modalita_visualizzazione_ko", "squadre")
+                    render_visual_bracket(st.session_state['rounds_ko'], visualizzazione_preferita)
+                    st.divider()
                     
                     #inizio
                     if st.session_state.get('show_all_ko_matches', False):
