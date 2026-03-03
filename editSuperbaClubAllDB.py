@@ -73,23 +73,35 @@ if 'password_check' not in st.session_state:
 def inject_css():
     """CSS centralizzato — delega al modulo condiviso + stili specifici di questa app."""
     inject_all_styles()
-    # Stile specifico solo per questa pagina (button-title)
+    # Stile specifico solo per questa pagina con supporto Dark Mode
     st.markdown("""
         <style>
         .button-title {
-            background: linear-gradient(90deg, #457b9d, #1d3557);
+            background: linear-gradient(90deg, var(--color-primary-mid), var(--color-primary-dark));
             color: white !important;
-            padding: 15px 25px;
-            border-radius: 10px;
+            padding: 20px;
+            border-radius: 15px;
             text-align: center;
             margin: 20px 0;
-            box-shadow: 0 4px 14px #00000022;
-            transition: all 0.3s ease;
-            font-size: 2em;
-            font-weight: 700;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--card-border);
+            font-size: 2.2em;
+            font-weight: 800;
             text-decoration: none !important;
-            display: inline-block;
+            display: block;
             width: 100%;
+            animation: fadeInUp 0.8s ease-out;
+        }
+        
+        /* Contenitore per le sezioni */
+        .section-container {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 20px;
+            border: 1px solid var(--card-border);
+            box-shadow: var(--card-shadow);
+            backdrop-filter: var(--glass-blur);
+            margin-bottom: 30px;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -220,109 +232,7 @@ def reset_app_state():
 # Avvio audio di sottofondo
 start_background_audio(BACKGROUND_AUDIO_URL)
             
-def autoplay_background_audio(audio_url: str):
-    import requests, base64
-
-    if "background_audio_data" not in st.session_state:
-        try:
-            response = requests.get(audio_url, timeout=10)
-            response.raise_for_status()
-            audio_data = response.content
-            st.session_state.background_audio_data = base64.b64encode(audio_data).decode("utf-8")
-        except Exception as e:
-            st.warning(f"Errore caricamento audio: {e}")
-            return False
-
-    b64 = st.session_state.background_audio_data
-
-    html_code = f"""
-    <script>
-    const audio_id = "subbuteo_background_audio";
-    let audio_element = document.getElementById(audio_id);
-
-    if (!audio_element) {{
-        // Crea una sola volta
-        audio_element = document.createElement("audio");
-        audio_element.id = audio_id;
-        audio_element.src = "data:audio/mp3;base64,{b64}";
-        audio_element.loop = true;
-        audio_element.autoplay = true;
-        audio_element.volume = 0.5;
-        document.body.appendChild(audio_element);
-        console.log("🎵 Audio creato");
-    }} else {{
-        console.log("🎵 Audio già presente, non ricreato");
-    }}
-
-    // Se è in pausa, prova a farlo ripartire
-    if (audio_element.paused) {{
-        audio_element.play().catch(e => {{
-            console.log("⚠️ Autoplay bloccato, ripartirà al primo click.");
-        }});
-    }}
-    </script>
-    """
-    st.components.v1.html(html_code, height=0, width=0, scrolling=False)
-    return True
-
-    """
-    Inietta un elemento <audio> persistente nel DOM con autoplay e loop.
-    Funziona anche dopo i rerun di Streamlit.
-    """
-    import requests, base64
-
-    # Scarica l'mp3 una sola volta in base64
-    if "background_audio_data" not in st.session_state:
-        try:
-            response = requests.get(audio_url, timeout=10)
-            response.raise_for_status()
-            audio_data = response.content
-            st.session_state.background_audio_data = base64.b64encode(audio_data).decode("utf-8")
-        except Exception as e:
-            st.warning(f"Errore caricamento audio: {e}")
-            return False
-
-    b64 = st.session_state.background_audio_data
-
-    js_code = f"""
-    <script>
-    const audio_id = "subbuteo_background_audio";
-    let audio_element = document.getElementById(audio_id);
-
-    // Se non esiste, crealo
-    if (!audio_element) {{
-        audio_element = new Audio("data:audio/mp3;base64,{b64}");
-        audio_element.id = audio_id;
-        audio_element.loop = true;
-        audio_element.volume = 0.5;
-        document.body.appendChild(audio_element);
-        console.log("🎵 Audio creato");
-    }}
-
-    // Se è in pausa, prova a ripartire
-    if (audio_element.paused) {{
-        audio_element.play().catch(e => {{
-            console.log("⚠️ Autoplay bloccato, ripartirà al primo click.");
-        }});
-    }}
-    </script>
-    """
-    st.components.v1.html(js_code, height=0, width=0, scrolling=False)
-    return True
-
-# Avvio audio (solo al primo run)
-#if "background_audio_started" not in st.session_state:
-#    autoplay_background_audio(BACKGROUND_AUDIO_URL)
-#    st.session_state.background_audio_started = True
-
-# Avvio audio ad ogni rerun. La logica JS all'interno di questa funzione
-# assicura che l'elemento audio nel browser venga creato una sola volta
-# e mantenuto attivo.
-# Inizializza lo stato dell'audio se non esiste
-if "bg_audio_disabled" not in st.session_state:
-    st.session_state.bg_audio_disabled = False
-if not st.session_state.bg_audio_disabled:
-    autoplay_background_audio(BACKGROUND_AUDIO_URL)  
+# (Audio gestito tramite start_background_audio sopra — nessuna funzione locale duplicata)
 
 # Inietta gli stili CSS personalizzati
 inject_css()
@@ -331,7 +241,7 @@ inject_css()
 setup_audio_sidebar()
 setup_common_sidebar(show_user_info=True, show_hub_link=True)
 
-st.markdown("<h1 class='button-title'>👥 Gestione del Club e dei Tornei🏆</h1>", unsafe_allow_html=True)
+st.markdown("<div class='button-title'>⚽ Gestione Club e Tornei Superba 🏆</div>", unsafe_allow_html=True)
 
 # Check user status and permissions
 current_user = auth.get_current_user()
@@ -676,7 +586,8 @@ def process_deletion_with_password(password, deletion_type, data):
 
 # Logica di visualizzazione basata sullo stato
 if st.session_state.edit_index is None and st.session_state.confirm_delete["type"] is None:
-    st.header("👥Gestione Giocatori")
+    st.markdown("<div class='section-container'>", unsafe_allow_html=True)
+    st.header("👥 Gestione Giocatori")
     st.subheader("Lista giocatori")
     
     # Create a copy of the dataframe for editing
@@ -825,17 +736,17 @@ if st.session_state.edit_index is None and st.session_state.confirm_delete["type
                 with del_col:
                     st.button("🗑️ Elimina", on_click=confirm_delete_player, args=(idx, selected), key=f"del_{idx}")
 
-    csv = st.session_state.df_giocatori.to_csv(index=False).encode("utf-8")
-    st.download_button(
+    st.sidebar.download_button(
         "📥 Scarica CSV giocatori aggiornato",
         data=csv,
         file_name="giocatori_superba_modificato.csv",
         mime="text/csv",
     )
+    st.markdown("</div>", unsafe_allow_html=True) # Chiudi contenitore solo se siamo in questa vista
 
     # ---
-    st.markdown("---")
-    st.header("🏆Gestione Tornei")
+    st.markdown("<div class='section-container'>", unsafe_allow_html=True)
+    st.header("🏆 Gestione Tornei")
 
     col_del_all_ita, col_del_all_svizz, col_del_all = st.columns(3)
     with col_del_all_ita:
@@ -873,6 +784,7 @@ if st.session_state.edit_index is None and st.session_state.confirm_delete["type
             st.button("🗑️ Elimina Tornei Svizzeri selezionati", on_click=confirm_delete_torneo_svizzero, args=(selected_tornei_svizzeri,), key="del_svizzero_btn")
     else:
         st.info("Nessun torneo svizzero trovato.")
+    st.markdown("</div>", unsafe_allow_html=True) # Chiudi contenitore tornei
 
 
 elif st.session_state.edit_index is not None: # Logica di modifica/aggiunta giocatore
@@ -957,8 +869,7 @@ elif st.session_state.edit_index is not None: # Logica di modifica/aggiunta gioc
     col_save, col_cancel = st.columns(2)
     with col_save:
         if is_guest:
-            st.button(" Salva", disabled=True, help="Non disponibile per gli ospiti")
-            st.button("✅ Salva", disabled=True, help="Non disponibile per gli ospiti")
+            st.button("✅ Salva", disabled=True, help="La modifica non è permessa agli ospiti")
         else:
             if st.button("✅ Salva"):
                 save_player(giocatore, squadra, potenziale, ruolo)
