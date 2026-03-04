@@ -95,7 +95,7 @@ with col4:
                 Il database centrale. Inserisci giocatori, modifica le loro schede, o <b>cancella tornei</b> dal database del cloud in totale sicurezza.
             </div>
             <br>
-            <a class="card-link card-link-red" href="https://edit-piercrew-club-all-db.streamlit.app/" target="_blank" style="width: 80%;">
+            <a class="card-link card-link-red" href="https://edit-piercrew-club-all-db-new.streamlit.app/" target="_blank" style="width: 80%;">
                 <span style="margin-right:8px;">🔓</span> Gestisci Database
             </a>
         </div>
