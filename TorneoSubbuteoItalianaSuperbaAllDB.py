@@ -515,31 +515,18 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
                 st.success(f"✅ Risultato confermato: {st.session_state[key_golcasa]} - {st.session_state[key_golospite]}")
 
 def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzazione):
-    """Visualizzazione ultra-compatta — tutto su UNA riga: SquadraA [0] - [0] SquadraB [✓]"""
+    """Visualizzazione ultra-compatta — SquadraA [0] - [0] SquadraB [✓] con landscape forzato su mobile."""
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         return
 
     st.markdown(f"### ⚡ {girone_sel} - Giornata {giornata_sel} (Compatta)")
     
-    # ═══ CSS GLOBALE — Streamlit NON supporta scoping con div wrapper ═══
+    # ═══ JAVASCRIPT: forza orientamento landscape su mobile ═══
+    # ═══ CSS: nasconde +/- e compatta gli input ═══
+    # ═══ CSS: mostra avviso se il telefono è in portrait ═══
     st.markdown("""
         <style>
-        /* ===== FORZA LAYOUT ORIZZONTALE SU QUALSIASI LARGHEZZA ===== */
-        [data-testid="stHorizontalBlock"] {
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            align-items: center !important;
-            gap: 0 !important;
-            overflow-x: auto !important;       /* scroll se non ci sta */
-        }
-        [data-testid="column"] {
-            min-width: 0 !important;
-            flex-shrink: 1 !important;
-            padding: 0 !important;
-            width: auto !important;
-        }
-
         /* ===== NASCONDI STEPPER +/- ===== */
         div[data-testid="stNumberInput"] button {
             display: none !important;
@@ -555,43 +542,64 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
 
         /* ===== INPUT NUMERICI MICRO ===== */
         div[data-testid="stNumberInput"] {
-            max-width: 42px !important;
-            min-width: 32px !important;
+            max-width: 48px !important;
         }
         div[data-testid="stNumberInput"] div[data-baseweb="input"] {
             padding: 0 !important;
-            border-radius: 4px !important;
         }
         div[data-testid="stNumberInput"] input {
-            padding: 2px 0 !important;
+            padding: 3px 1px !important;
             text-align: center !important;
             font-weight: bold !important;
-            font-size: 0.9rem !important;
-            width: 100% !important;
+            font-size: 0.95rem !important;
         }
 
         /* ===== CHECKBOX COMPATTA ===== */
         div[data-testid="stCheckbox"] {
             margin-top: 0 !important;
-            padding: 0 !important;
-        }
-        div[data-testid="stCheckbox"] label {
-            padding: 0 !important;
         }
 
-        /* ===== RIDUZIONE PADDING CONTENITORE PRINCIPALE SU MOBILE ===== */
-        @media screen and (max-width: 640px) {
-            .appview-container .main .block-container {
-                padding-left: 0.3rem !important;
-                padding-right: 0.3rem !important;
-                max-width: 100% !important;
-            }
-            section[data-testid="stSidebar"] + div .block-container {
-                padding-left: 0.3rem !important;
-                padding-right: 0.3rem !important;
+        /* ===== AVVISO PORTRAIT — visibile solo su telefoni in verticale ===== */
+        .portrait-warning {
+            display: none;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: white;
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        @media screen and (max-width: 640px) and (orientation: portrait) {
+            .portrait-warning {
+                display: block !important;
             }
         }
         </style>
+        
+        <div class="portrait-warning">
+            📱🔄 Ruota il telefono in <b>ORIZZONTALE</b> per la vista compatta!
+        </div>
+        
+        <script>
+        // Tenta di bloccare l'orientamento in landscape (funziona solo se in fullscreen/PWA)
+        try {
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('landscape').catch(function(e) {
+                    // Silenzioso: su browser normali non è supportato senza fullscreen
+                    console.log('Landscape lock non disponibile:', e.message);
+                });
+            }
+        } catch(e) {
+            console.log('Screen Orientation API non supportata');
+        }
+        </script>
     """, unsafe_allow_html=True)
 
     for idx, row in df_giornata.iterrows():
