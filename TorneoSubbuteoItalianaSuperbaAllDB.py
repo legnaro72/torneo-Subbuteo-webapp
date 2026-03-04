@@ -515,29 +515,76 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
                 st.success(f"✅ Risultato confermato: {st.session_state[key_golcasa]} - {st.session_state[key_golospite]}")
 
 def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzazione):
-    """Visualizzazione ultra-compatta per inserimento rapido su una singola riga."""
+    """Visualizzazione ultra-compatta per inserimento rapido — mobile-friendly."""
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         return
 
     st.markdown(f"### ⚡ {girone_sel} - Giornata {giornata_sel} (Vista Compatta)")
     
-    # CSS per compattare i widget
+    # CSS scoped SOLO per il container compact — NON tocca il resto dell'app
     st.markdown("""
-    <style>
-    .compact-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 5px 0;
-        border-bottom: 1px solid rgba(255,255,255,0.05);
-    }
-    /* Riduciamo il padding degli input in questa vista */
-    div[data-testid="stHorizontalBlock"] {
-        align-items: center;
-    }
-    </style>
+        <style>
+        /* ===== COMPACT MATCH VIEW — MOBILE FRIENDLY ===== */
+
+        /* Nascondi i pulsanti + e - degli input numerici OVUNQUE nella compact view */
+        .compact-match-zone div[data-testid="stNumberInput"] button {
+            display: none !important;
+        }
+        
+        /* Input numerici stretti e centrati */
+        .compact-match-zone div[data-testid="stNumberInput"] div[data-baseweb="input"] {
+            padding: 0 !important;
+            min-width: 40px !important;
+            max-width: 52px !important;
+        }
+        .compact-match-zone div[data-testid="stNumberInput"] input {
+            padding: 4px 2px !important;
+            text-align: center !important;
+            font-weight: bold !important;
+            font-size: 1.05rem !important;
+        }
+
+        /* Forza riga orizzontale anche su schermi stretti */
+        .compact-match-zone [data-testid="stHorizontalBlock"] {
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+            gap: 0.15rem !important;
+        }
+        .compact-match-zone [data-testid="column"] {
+            min-width: 0 !important;
+            flex-shrink: 1 !important;
+            padding: 0 2px !important;
+        }
+
+        /* Checkbox compatta */
+        .compact-match-zone div[data-testid="stCheckbox"] {
+            margin-top: 0 !important;
+            justify-content: center;
+        }
+        .compact-match-zone div[data-testid="stCheckbox"] label {
+            font-size: 0 !important;   /* nascondi testo, rimane solo il box */
+        }
+        .compact-match-zone div[data-testid="stCheckbox"] label span[data-testid="stCheckboxLabel"] {
+            display: none !important;
+        }
+
+        /* Etichetta partita centrata */
+        .compact-match-label {
+            text-align: center;
+            font-weight: 700;
+            font-size: 0.85rem;
+            padding: 2px 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        </style>
     """, unsafe_allow_html=True)
+
+    # Wrapper per scoping CSS
+    st.markdown('<div class="compact-match-zone">', unsafe_allow_html=True)
 
     for idx, row in df_giornata.iterrows():
         casa, gio_c = parse_team_player(row['Casa'])
@@ -550,31 +597,48 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
         else:
             label_c, label_o = f"{casa} ({gio_c})", f"{osp} ({gio_o})"
 
-        # Chiavi sincronizzate
+        # Chiavi sincronizzate con la vista standard
         key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
         key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
         key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
 
-        # Singola riga compatta
-        c1, c2, c3, c4, c5 = st.columns([3, 0.8, 0.8, 3, 1])
+        # Singola riga ULTRA compatta: TeamA [0] vs [0] TeamB [V]
+        # Usiamo 6 colonne: TeamA | ScoreA | vs | ScoreB | TeamB | Checkbox
+        cols = st.columns([2.2, 0.6, 0.4, 0.6, 2.2, 0.5])
         
-        with c1:
-            st.markdown(f"<div style='text-align:right; font-weight:600;'>{label_c}</div>", unsafe_allow_html=True)
+        with cols[0]:
+            st.markdown(f"<div class='compact-match-label' style='text-align:right;'>{label_c}</div>", unsafe_allow_html=True)
         
-        with c2:
-            st.number_input("GC", 0, 20, key=f"comp_{key_golcasa}", value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0, label_visibility="collapsed", disabled=row['Valida'])
+        with cols[1]:
+            st.number_input("GC", 0, 20, key=f"comp_{key_golcasa}",
+                            value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
+                            label_visibility="collapsed", disabled=row['Valida'])
             st.session_state[key_golcasa] = st.session_state[f"comp_{key_golcasa}"]
         
-        with c3:
-            st.number_input("GO", 0, 20, key=f"comp_{key_golospite}", value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0, label_visibility="collapsed", disabled=row['Valida'])
+        with cols[2]:
+            st.markdown("<div style='text-align:center; font-weight:bold; padding-top:8px;'>vs</div>",
+                        unsafe_allow_html=True)
+            
+        with cols[3]:
+            st.number_input("GO", 0, 20, key=f"comp_{key_golospite}",
+                            value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
+                            label_visibility="collapsed", disabled=row['Valida'])
             st.session_state[key_golospite] = st.session_state[f"comp_{key_golospite}"]
 
-        with c4:
-            st.markdown(f"<div style='text-align:left; font-weight:600;'>{label_o}</div>", unsafe_allow_html=True)
-            
-        with c5:
-            st.checkbox("Valida", key=f"comp_{key_valida}", value=bool(row['Valida']), label_visibility="collapsed", disabled=st.session_state.get('read_only', False))
+        with cols[4]:
+            st.markdown(f"<div class='compact-match-label' style='text-align:left;'>{label_o}</div>", unsafe_allow_html=True)
+
+        with cols[5]:
+            st.checkbox("✅", key=f"comp_{key_valida}", value=bool(row['Valida']),
+                        label_visibility="collapsed",
+                        disabled=st.session_state.get('read_only', False))
             st.session_state[key_valida] = st.session_state[f"comp_{key_valida}"]
+
+        # Sottile separatore tra partite
+        st.markdown("<hr style='margin:2px 0; opacity:0.1;'>", unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
                 
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     try:
