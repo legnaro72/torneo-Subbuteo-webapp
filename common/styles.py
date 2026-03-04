@@ -390,6 +390,38 @@ def inject_all_styles():
     st.markdown(CSS_SIDEBAR, unsafe_allow_html=True)
     st.markdown(CSS_MATCH_CARDS, unsafe_allow_html=True)
     
+    # 📱 MOBILE-SPECIFIC: nasconde +/- stepper e compatta input su schermi piccoli
+    CSS_MOBILE = """
+    <style>
+    @media screen and (max-width: 768px) {
+        /* Nascondi pulsanti + e - sui number_input per evitare che occupino spazio */
+        div[data-testid="stNumberInput"] button {
+            display: none !important;
+        }
+        
+        /* Input numerici più compatti */
+        div[data-testid="stNumberInput"] div[data-baseweb="input"] {
+            padding: 0 !important;
+            min-width: 42px !important;
+            max-width: 56px !important;
+        }
+        div[data-testid="stNumberInput"] input {
+            padding: 4px 2px !important;
+            text-align: center !important;
+            font-weight: bold !important;
+            font-size: 1rem !important;
+        }
+        
+        /* Riduci padding del layout su mobile */
+        .appview-container .main .block-container {
+            padding-left: 0.8rem !important;
+            padding-right: 0.8rem !important;
+        }
+    }
+    </style>
+    """
+    st.markdown(CSS_MOBILE, unsafe_allow_html=True)
+    
     # 🌙 JS robusto per rilevare il tema dark di Streamlit
     # Legge la variabile interna --text-color di Streamlit (che NON sovrascriviamo)
     # e il color-scheme del <html> per determinare se è dark mode.
