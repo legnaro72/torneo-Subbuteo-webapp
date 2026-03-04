@@ -355,6 +355,11 @@ import time
 import re # Aggiungi la libreria 're' per le espressioni regolari
 
 
+def parse_team_player(val):
+    if isinstance(val, str) and "-" in val:
+        squadra, giocatore = val.split("-", 1)
+        return squadra.strip(), giocatore.strip()
+    return val, ""
 
 def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizzazione):
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
@@ -370,14 +375,6 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizza
         st.warning("⚠️ Dati delle squadre non trovati. Assicurati che il torneo sia stato inizializzato correttamente.")
     
     for idx, row in df_giornata.iterrows():
-        # Logica per analizzare la stringa "Squadra(Giocatore)"
-        # Parsing locale per "Squadra-Giocatore"
-        def parse_team_player(val):
-            if isinstance(val, str) and "-" in val:
-                squadra, giocatore = val.split("-", 1)
-                return squadra.strip(), giocatore.strip()
-            return val, ""
-
         squadra_casa, giocatore_casa = parse_team_player(row['Casa'])
         squadra_ospite, giocatore_ospite = parse_team_player(row['Ospite'])
         
@@ -433,6 +430,152 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizza
                 st.success("✅ Partita validata!")
             else:
                 st.warning("⚠️ Partita non ancora validata.")
+
+def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzazione):
+    """Visualizzazione ultra-moderna (stile bracket card) per inserimento risultati."""
+    df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
+    if df_giornata.empty:
+        return
+
+    st.markdown(f"### 🏆 {girone_sel} - Giornata {giornata_sel} (Vista Premium)")
+    
+    # CSS locale per la vista premium
+    st.markdown("""
+    <style>
+    .match-header-premium {
+        background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        text-align: center;
+        padding: 4px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        border-radius: 8px 8px 0 0;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: -16px;
+        margin-left: -16px;
+        margin-right: -16px;
+        margin-bottom: 15px;
+    }
+    .team-name-premium {
+        font-weight: 700;
+        font-size: 1.1rem;
+        padding-top: 5px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    for idx, row in df_giornata.iterrows():
+        # Parsing dei nomi
+        casa, gio_c = parse_team_player(row['Casa'])
+        osp, gio_o = parse_team_player(row['Ospite'])
+        
+        # Etichette in base alla modalità
+        if modalita_visualizzazione == 'giocatori':
+            label_c, label_o = gio_c, gio_o
+        elif modalita_visualizzazione == 'squadre':
+            label_c, label_o = casa, osp
+        else:
+            label_c, label_o = f"{casa} ({gio_c})", f"{osp} ({gio_o})"
+
+        # Card Premium con Streamlit
+        with st.container(border=True):
+            # Header della card
+            st.markdown(f"<div class='match-header-premium'>GIRONE {girone_sel} • MATCH {idx+1}</div>", unsafe_allow_html=True)
+            
+            # Prepariamo le chiavi (SINCRONIZZATE con la vista standard)
+            key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+            key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+            key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+            
+            # Layout su 4 colonne: Casa | Score1 | Score2 | Ospite
+            c1, c2, c3, c4 = st.columns([3, 1, 1, 3])
+            
+            with c1:
+                st.markdown(f"<div style='text-align:right;' class='team-name-premium'>🏠 {label_c}</div>", unsafe_allow_html=True)
+            
+            with c2:
+                # Usiamo le stesse chiavi per sincronizzare istantaneamente le due viste
+                st.number_input("GC", 0, 20, key=f"prem_{key_golcasa}", value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0, label_visibility="collapsed", disabled=row['Valida'])
+                st.session_state[key_golcasa] = st.session_state[f"prem_{key_golcasa}"]
+            
+            with c3:
+                st.number_input("GO", 0, 20, key=f"prem_{key_golospite}", value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0, label_visibility="collapsed", disabled=row['Valida'])
+                st.session_state[key_golospite] = st.session_state[f"prem_{key_golospite}"]
+
+            with c4:
+                st.markdown(f"<div style='text-align:left;' class='team-name-premium'>{label_o} 🛫</div>", unsafe_allow_html=True)
+            
+            # Riga Validazione
+            v1, v2 = st.columns([6, 1.5])
+            with v2:
+                st.checkbox("Valida Risultato ✅", key=f"prem_{key_valida}", value=bool(row['Valida']), disabled=st.session_state.get('read_only', False))
+                st.session_state[key_valida] = st.session_state[f"prem_{key_valida}"]
+            
+            if st.session_state.get(key_valida):
+                st.success(f"✅ Risultato confermato: {st.session_state[key_golcasa]} - {st.session_state[key_golospite]}")
+
+def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzazione):
+    """Visualizzazione ultra-compatta per inserimento rapido su una singola riga."""
+    df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
+    if df_giornata.empty:
+        return
+
+    st.markdown(f"### ⚡ {girone_sel} - Giornata {giornata_sel} (Vista Compatta)")
+    
+    # CSS per compattare i widget
+    st.markdown("""
+    <style>
+    .compact-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 5px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    /* Riduciamo il padding degli input in questa vista */
+    div[data-testid="stHorizontalBlock"] {
+        align-items: center;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    for idx, row in df_giornata.iterrows():
+        casa, gio_c = parse_team_player(row['Casa'])
+        osp, gio_o = parse_team_player(row['Ospite'])
+        
+        if modalita_visualizzazione == 'giocatori':
+            label_c, label_o = gio_c, gio_o
+        elif modalita_visualizzazione == 'squadre':
+            label_c, label_o = casa, osp
+        else:
+            label_c, label_o = f"{casa} ({gio_c})", f"{osp} ({gio_o})"
+
+        # Chiavi sincronizzate
+        key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+        key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+        key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+
+        # Singola riga compatta
+        c1, c2, c3, c4, c5 = st.columns([3, 0.8, 0.8, 3, 1])
+        
+        with c1:
+            st.markdown(f"<div style='text-align:right; font-weight:600;'>{label_c}</div>", unsafe_allow_html=True)
+        
+        with c2:
+            st.number_input("GC", 0, 20, key=f"comp_{key_golcasa}", value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0, label_visibility="collapsed", disabled=row['Valida'])
+            st.session_state[key_golcasa] = st.session_state[f"comp_{key_golcasa}"]
+        
+        with c3:
+            st.number_input("GO", 0, 20, key=f"comp_{key_golospite}", value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0, label_visibility="collapsed", disabled=row['Valida'])
+            st.session_state[key_golospite] = st.session_state[f"comp_{key_golospite}"]
+
+        with c4:
+            st.markdown(f"<div style='text-align:left; font-weight:600;'>{label_o}</div>", unsafe_allow_html=True)
+            
+        with c5:
+            st.checkbox("Valida", key=f"comp_{key_valida}", value=bool(row['Valida']), label_visibility="collapsed", disabled=st.session_state.get('read_only', False))
+            st.session_state[key_valida] = st.session_state[f"comp_{key_valida}"]
                 
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     try:
@@ -998,6 +1141,17 @@ def main():
             st.session_state['sidebar_state_reset'] = True
             st.rerun()
         
+        # --- FUNZIONI DI SINCRONIZZAZIONE ---
+        def sync_tipo_vista(source_key):
+            val = st.session_state[source_key].lower()
+            st.session_state['tipo_vista_selezionata'] = val
+            # Forza l'altro widget a riflettere il valore resettandone la chiave se necessario
+            # (In realtà basta aggiornare la variabile di stato usata nell'index)
+
+        def sync_usa_bottoni(source_key):
+            val = st.session_state[source_key]
+            st.session_state['usa_bottoni_sidebar'] = val
+        
         st.sidebar.markdown("---")
         
         # ✅ 3. 🔧 Utility (sezione principale con sottosezioni)
@@ -1007,7 +1161,7 @@ def main():
         with st.sidebar.expander("🔎 Visualizzazione incontri", expanded=False):
             # Radio button per formato incontri
             modalita_visualizzazione_sidebar = st.radio(
-                "Formato incontri:",
+                "Formato nomi:",
                 ("Completa", "Solo squadre", "Solo giocatori"),
                 index=1,
                 key="modalita_visualizzazione_sidebar",
@@ -1021,10 +1175,30 @@ def main():
             }
             st.session_state['modalita_scelta_sidebar'] = mappa_modalita[modalita_visualizzazione_sidebar]
             
+            st.markdown("---")
+            
+            # Radio button per tipo di vista (Sincronizzato con la pagina principale)
+            current_view = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
+            st.radio(
+                "Tipo di vista:",
+                ("Compact", "Premium", "Standard"),
+                index=("Compact", "Premium", "Standard").index(current_view),
+                key="tipo_vista_sidebar_widget",
+                on_change=sync_tipo_vista,
+                args=("tipo_vista_sidebar_widget",)
+            )
+            
+            st.markdown("---")
+            
             # Checkbox "Navigazione giornate con bottoni"
-            st.session_state['usa_bottoni_sidebar'] = st.checkbox(
+            # Sincronizzato con la pagina principale
+            current_nav = st.session_state.get('usa_bottoni_sidebar', False)
+            st.checkbox(
                 "🎛️ Navigazione giornate con bottoni", 
-                key="modalita_navigazione_sidebar"
+                value=current_nav,
+                key="modalita_navigazione_sidebar",
+                on_change=sync_usa_bottoni,
+                args=("modalita_navigazione_sidebar",)
             )
         
         # 🏃‍♂ Gestione abbandoni
@@ -1073,6 +1247,34 @@ def main():
 
         st.markdown("---")
         st.markdown("### 🔍 Ricerca e Filtri (Calendario Multi-Girone)")
+        
+        # ✅ SELETTORE VISTA + NAVIGAZIONE BOTTONI
+        col_v1, col_v2, col_v3 = st.columns([0.15, 0.45, 0.4], vertical_alignment="center")
+        with col_v1:
+            st.markdown("**Stile Vista:**")
+        with col_v2:
+            current_view_main = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
+            st.radio(
+                "Stile Vista:",
+                ("Compact", "Premium", "Standard"),
+                index=("Compact", "Premium", "Standard").index(current_view_main),
+                horizontal=True,
+                label_visibility="collapsed",
+                key="tipo_vista_main_widget",
+                on_change=sync_tipo_vista,
+                args=("tipo_vista_main_widget",)
+            )
+        
+        with col_v3:
+            current_nav_main = st.session_state.get('usa_bottoni_sidebar', False)
+            st.checkbox(
+                "🎛️ Naviga a bottoni", 
+                value=current_nav_main,
+                key="modalita_navigazione_main_widget",
+                on_change=sync_usa_bottoni,
+                args=("modalita_navigazione_main_widget",)
+            )
+
         df = st.session_state['df_torneo'].copy()
         df_filtrato = pd.DataFrame()
 
@@ -1522,7 +1724,14 @@ def main():
             
             # Richiama la funzione con il parametro di visualizzazione corretto
             if giornate_correnti:
-                mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
+                vista_scelta = st.session_state.get('tipo_vista_selezionata', 'compact')
+                
+                if vista_scelta == 'compact':
+                    mostra_calendario_compact(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
+                elif vista_scelta == 'premium':
+                    mostra_calendario_premium(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
+                else: # standard
+                    mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
             else:
                 st.info("Seleziona un girone per visualizzare il calendario.")
 
