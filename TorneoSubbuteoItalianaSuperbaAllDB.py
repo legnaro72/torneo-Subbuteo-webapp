@@ -1,4 +1,4 @@
-﻿import streamlit as st
+import streamlit as st
 
 # Configurazione pagina (DEVE essere il primo comando Streamlit)
 st.set_page_config(
@@ -113,7 +113,6 @@ def reset_app_state():
 # -------------------------
 # FUNZIONI CONNESSIONE MONGO (SENZA SUCCESS VERDI)
 # -------------------------
-@st.cache_resource
 def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
     """
     Se show_ok=True mostra un messaggio di ok.
@@ -979,6 +978,20 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
 # -------------------------
 def inject_css():
     inject_all_styles()  # Delega al modulo condiviso
+    # Override locale ultra-aggressivo per rimuovere lo spazio vuoto in alto (solo Superba)
+    st.html("""
+        <style>
+        header[data-testid="stHeader"] {
+            display: none !important;
+        }
+        .stAppViewBlockContainer {
+            padding-top: 1rem !important;
+        }
+        .stMainBlockContainer {
+            padding-top: 1rem !important;
+        }
+        </style>
+    """)
     return
 
 
@@ -987,6 +1000,9 @@ def inject_css():
 # APP
 # -------------------------
 def main():
+    # Iniezione immediata del CSS per evitare il gap in alto
+    inject_css()
+
     # Mostra la schermata di autenticazione
     #authenticated = auth.show_auth_screen()
     #if not authenticated:
@@ -1028,10 +1044,9 @@ def main():
     # Inizializza lo stato dell'audio se non esiste
     if "bg_audio_disabled" not in st.session_state:
         st.session_state.bg_audio_disabled = False
-    if not st.session_state.bg_audio_disabled:
-        autoplay_background_audio(BACKGROUND_AUDIO_URL)  
     
-    inject_css()
+    # L'avvio dell'audio è stato spostato dopo il titolo per evitare gap in alto
+    
 
 
     # Connessioni (senza messaggi verdi)
@@ -1105,6 +1120,10 @@ def main():
             <h1 style='color:white; margin:0; font-weight:700;'>🇮🇹⚽ Torneo Superba – Gestione Gironi 🏆🇮🇹</h1>
         </div>
         """, unsafe_allow_html=True)
+
+    # Avvio audio di sottofondo 
+    if not st.session_state.bg_audio_disabled:
+        autoplay_background_audio(BACKGROUND_AUDIO_URL)
 
    
     df_master = carica_giocatori_da_db(players_collection)
