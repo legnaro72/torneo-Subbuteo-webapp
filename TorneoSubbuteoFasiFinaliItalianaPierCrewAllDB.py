@@ -355,7 +355,7 @@ class GazzettaPDF(FPDF):
         self.set_xy(start_x, 8)
         self.set_font("Arial", 'B', 24)
         self.set_text_color(255, 255, 255)
-        self.cell(0, 10, "IL GAZZETTINO DELLA SUPERBA", border=0, ln=1, align='L')
+        self.cell(0, 10, "IL GAZZETTINO DEL PIER CREW", border=0, ln=1, align='L')
         
         # 🏆 Sottotitolo (Fasi Finali / Gironi preliminari)
         self.set_x(start_x)
