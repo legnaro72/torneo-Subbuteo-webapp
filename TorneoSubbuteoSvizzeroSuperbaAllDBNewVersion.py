@@ -577,14 +577,28 @@ def esporta_pdf(df_torneo, nome_torneo):
             if pdf.get_y() > 275:
                 pdf.add_page()
 
-            casa = str(r["Casa"]).encode("latin-1", "ignore").decode("latin-1")
-            osp = str(r["Ospite"]).encode("latin-1", "ignore").decode("latin-1")
+            def safe_val(v, default=""):
+                if isinstance(v, pd.Series): v = v.iloc[0] if not v.empty else default
+                if isinstance(v, (list, tuple)): v = v[0] if len(v) > 0 else default
+                try:
+                    if pd.isna(v): return default
+                except: pass
+                s_v = str(v).strip()
+                if s_v.lower() in ["none", "nan", "<na>", ""]: return default
+                return s_v
+
+            casa = safe_val(r.get("Casa"), "-").encode("latin-1", "ignore").decode("latin-1")
+            osp = safe_val(r.get("Ospite"), "-").encode("latin-1", "ignore").decode("latin-1")
+            
             if len(casa) > 35: casa = casa[:32] + "..."
             if len(osp) > 35: osp = osp[:32] + "..."
             
             valida = bool(r.get("Validata", False))
-            gc = str(r["GolCasa"]) if pd.notna(r["GolCasa"]) and valida else ""
-            go = str(r["GolOspite"]) if pd.notna(r["GolOspite"]) and valida else ""
+            
+            gc_val = safe_val(r.get("GolCasa"))
+            go_val = safe_val(r.get("GolOspite"))
+            gc = str(int(float(gc_val))) if valida and gc_val.replace('.', '', 1).isdigit() else ""
+            go = str(int(float(go_val))) if valida and go_val.replace('.', '', 1).isdigit() else ""
             
             res = f"{gc} - {go}" if valida else " - "
             
