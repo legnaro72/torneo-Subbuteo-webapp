@@ -15,8 +15,7 @@ import requests
 def autoplay_background_audio(audio_url: str) -> bool:
     """
     Inietta un elemento <audio> persistente nel DOM con autoplay e loop.
-    L'audio viene scaricato una sola volta e poi cachato nel session_state.
-    Funziona anche dopo i rerun di Streamlit.
+    Utilizza direttamente l'URL per evitare MemoryError dovuti a stringhe base64 giganti.
     
     Args:
         audio_url: URL raw dell'mp3 da riprodurre.
@@ -24,19 +23,6 @@ def autoplay_background_audio(audio_url: str) -> bool:
     Returns:
         True se l'audio è stato iniettato correttamente, False altrimenti.
     """
-    # Scarica l'mp3 una sola volta e cachalo in base64
-    if "background_audio_data" not in st.session_state:
-        try:
-            response = requests.get(audio_url, timeout=10)
-            response.raise_for_status()
-            audio_data = response.content
-            st.session_state.background_audio_data = base64.b64encode(audio_data).decode("utf-8")
-        except Exception as e:
-            st.warning(f"Errore caricamento audio: {e}")
-            return False
-
-    b64 = st.session_state.background_audio_data
-
     # Iniezione JS nel corpo principale (non in un iframe) per persistenza reale
     html_code = f"""
     <div id="audio-container" style="display:none;"></div>
@@ -44,13 +30,14 @@ def autoplay_background_audio(audio_url: str) -> bool:
         // Funzione per avviare l'audio se non già presente nel window superiore
         (function() {{
             const AUDIO_ID = "subbuteo_bg_audio";
+            const AUDIO_URL = "{audio_url}";
             
             // Proviamo a usare window.top o window.parent per massima persistenza
             const targetWindow = window.parent || window;
             
             if (!targetWindow.subbuteoAudioInstance) {{
                 console.log("🎵 Inizializzazione nuova istanza audio...");
-                const audio = new Audio("data:audio/mp3;base64,{b64}");
+                const audio = new Audio(AUDIO_URL);
                 audio.id = AUDIO_ID;
                 audio.loop = true;
                 audio.volume = 0.5;
@@ -60,7 +47,6 @@ def autoplay_background_audio(audio_url: str) -> bool:
                 
                 audio.play().catch(err => {{
                     console.log("⚠️ Autoplay bloccato dal browser. Partirà al primo click.");
-                    // Tentativo di play al primo click sull'intera pagina
                     const playOnClick = () => {{
                         audio.play();
                         document.removeEventListener('click', playOnClick);
@@ -68,7 +54,15 @@ def autoplay_background_audio(audio_url: str) -> bool:
                     document.addEventListener('click', playOnClick);
                 }});
             }} else {{
-                console.log("🎵 Audio già attivo nel contesto globale.");
+                // Se l'URL è cambiato, aggiorna la sorgente
+                if (targetWindow.subbuteoAudioInstance.src !== AUDIO_URL && AUDIO_URL.startsWith("http")) {{
+                     targetWindow.subbuteoAudioInstance.src = AUDIO_URL;
+                     targetWindow.subbuteoAudioInstance.load();
+                     if (!targetWindow.subbuteoAudioInstance.userPaused) {{
+                         targetWindow.subbuteoAudioInstance.play().catch(() => {{}});
+                     }}
+                }}
+
                 // Assicuriamoci che stia suonando (se non mutato)
                 if (targetWindow.subbuteoAudioInstance.paused && !targetWindow.subbuteoAudioInstance.userPaused) {{
                     targetWindow.subbuteoAudioInstance.play().catch(() => {{}});
