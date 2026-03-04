@@ -3,7 +3,7 @@ pandas
 numpy
 pymongo
 pytz
-fpdf
+fpdf2
 requests
 certifi
 Pillow
