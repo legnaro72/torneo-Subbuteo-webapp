@@ -461,47 +461,7 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
         font-size: 1.1rem;
         padding-top: 5px;
     }
-
-    /* ===== AVVISO PORTRAIT — visibile solo su telefoni in verticale ===== */
-    .portrait-warning {
-        display: none;
-        background: linear-gradient(135deg, #ff6b35, #f7931e);
-        color: white;
-        text-align: center;
-        padding: 12px;
-        border-radius: 8px;
-        font-weight: 700;
-        font-size: 0.9rem;
-        margin-bottom: 10px;
-        animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
-    }
-    @media screen and (max-width: 640px) and (orientation: portrait) {
-        .portrait-warning {
-            display: block !important;
-        }
-    }
     </style>
-    
-    <div class="portrait-warning">
-        📱🔄 Ruota il telefono in <b>ORIZZONTALE</b> per la vista premium!
-    </div>
-    
-    <script>
-    // Tenta di bloccare l'orientamento in landscape (funziona solo se in fullscreen/PWA)
-    try {
-        if (screen.orientation && screen.orientation.lock) {
-            screen.orientation.lock('landscape').catch(function(e) {
-                console.log('Landscape lock non disponibile:', e.message);
-            });
-        }
-    } catch(e) {
-        console.log('Screen Orientation API non supportata');
-    }
-    </script>
     """, unsafe_allow_html=True)
 
     for idx, row in df_giornata.iterrows():
@@ -555,93 +515,17 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
                 st.success(f"✅ Risultato confermato: {st.session_state[key_golcasa]} - {st.session_state[key_golospite]}")
 
 def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzazione):
-    """Visualizzazione ultra-compatta — SquadraA [0] - [0] SquadraB [✓] con landscape forzato su mobile."""
+    """Visualizzazione ultra-compatta con tabella editabile — funziona su qualsiasi schermo."""
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         return
 
     st.markdown(f"### ⚡ {girone_sel} - Giornata {giornata_sel} (Compatta)")
     
-    # ═══ JAVASCRIPT: forza orientamento landscape su mobile ═══
-    # ═══ CSS: nasconde +/- e compatta gli input ═══
-    # ═══ CSS: mostra avviso se il telefono è in portrait ═══
-    st.markdown("""
-        <style>
-        /* ===== NASCONDI STEPPER +/- ===== */
-        div[data-testid="stNumberInput"] button {
-            display: none !important;
-        }
-        div[data-testid="stNumberInput"] input::-webkit-outer-spin-button,
-        div[data-testid="stNumberInput"] input::-webkit-inner-spin-button {
-            -webkit-appearance: none !important;
-            margin: 0 !important;
-        }
-        div[data-testid="stNumberInput"] input[type="number"] {
-            -moz-appearance: textfield !important;
-        }
-
-        /* ===== INPUT NUMERICI MICRO ===== */
-        div[data-testid="stNumberInput"] {
-            max-width: 48px !important;
-        }
-        div[data-testid="stNumberInput"] div[data-baseweb="input"] {
-            padding: 0 !important;
-        }
-        div[data-testid="stNumberInput"] input {
-            padding: 3px 1px !important;
-            text-align: center !important;
-            font-weight: bold !important;
-            font-size: 0.95rem !important;
-        }
-
-        /* ===== CHECKBOX COMPATTA ===== */
-        div[data-testid="stCheckbox"] {
-            margin-top: 0 !important;
-        }
-
-        /* ===== AVVISO PORTRAIT — visibile solo su telefoni in verticale ===== */
-        .portrait-warning {
-            display: none;
-            background: linear-gradient(135deg, #ff6b35, #f7931e);
-            color: white;
-            text-align: center;
-            padding: 12px;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 0.9rem;
-            margin-bottom: 10px;
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-        @media screen and (max-width: 640px) and (orientation: portrait) {
-            .portrait-warning {
-                display: block !important;
-            }
-        }
-        </style>
-        
-        <div class="portrait-warning">
-            📱🔄 Ruota il telefono in <b>ORIZZONTALE</b> per la vista compatta!
-        </div>
-        
-        <script>
-        // Tenta di bloccare l'orientamento in landscape (funziona solo se in fullscreen/PWA)
-        try {
-            if (screen.orientation && screen.orientation.lock) {
-                screen.orientation.lock('landscape').catch(function(e) {
-                    // Silenzioso: su browser normali non è supportato senza fullscreen
-                    console.log('Landscape lock non disponibile:', e.message);
-                });
-            }
-        } catch(e) {
-            console.log('Screen Orientation API non supportata');
-        }
-        </script>
-    """, unsafe_allow_html=True)
-
+    # Prepara i dati per la tabella editabile
+    edit_rows = []
+    row_keys = []  # per sincronizzare i risultati con le chiavi standard
+    
     for idx, row in df_giornata.iterrows():
         casa, gio_c = parse_team_player(row['Casa'])
         osp, gio_o = parse_team_player(row['Ospite'])
@@ -652,41 +536,46 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
             label_c, label_o = casa, osp
         else:
             label_c, label_o = f"{casa} ({gio_c})", f"{osp} ({gio_o})"
-
-        # Chiavi sincronizzate con la vista standard/premium
-        key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
-        key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
-        key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
-
-        # ═══ TUTTO SU UNA RIGA: SquadraA [0] - [0] SquadraB [✓] ═══
-        c1, c2, c3, c4, c5, c6 = st.columns([3, 0.8, 0.3, 0.8, 3, 0.7])
         
-        with c1:
-            st.markdown(f"<div style='text-align:right; font-weight:700; font-size:0.78rem; padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{label_c}</div>", unsafe_allow_html=True)
+        edit_rows.append({
+            'Casa': label_c,
+            'GC': int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
+            'GO': int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
+            'Ospite': label_o,
+            '✓': bool(row['Valida'])
+        })
         
-        with c2:
-            st.number_input("GC", 0, 20, key=f"comp_{key_golcasa}",
-                            value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
-                            label_visibility="collapsed", disabled=row['Valida'])
-            st.session_state[key_golcasa] = st.session_state[f"comp_{key_golcasa}"]
-        
-        with c3:
-            st.markdown("<div style='text-align:center; font-weight:bold; font-size:0.8rem; padding-top:6px;'>-</div>", unsafe_allow_html=True)
-            
-        with c4:
-            st.number_input("GO", 0, 20, key=f"comp_{key_golospite}",
-                            value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
-                            label_visibility="collapsed", disabled=row['Valida'])
-            st.session_state[key_golospite] = st.session_state[f"comp_{key_golospite}"]
-
-        with c5:
-            st.markdown(f"<div style='text-align:left; font-weight:700; font-size:0.78rem; padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{label_o}</div>", unsafe_allow_html=True)
-
-        with c6:
-            st.checkbox("✓", key=f"comp_{key_valida}", value=bool(row['Valida']),
-                        label_visibility="collapsed",
-                        disabled=st.session_state.get('read_only', False))
-            st.session_state[key_valida] = st.session_state[f"comp_{key_valida}"]
+        row_keys.append({
+            'key_golcasa': f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}",
+            'key_golospite': f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}",
+            'key_valida': f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+        })
+    
+    df_edit = pd.DataFrame(edit_rows)
+    
+    # Tabella editabile — NON usa st.columns, quindi non si impila su mobile
+    edited_df = st.data_editor(
+        df_edit,
+        column_config={
+            'Casa': st.column_config.TextColumn('🏠 Casa', disabled=True, width='medium'),
+            'GC': st.column_config.NumberColumn('⚽', min_value=0, max_value=20, width='small'),
+            'GO': st.column_config.NumberColumn('⚽', min_value=0, max_value=20, width='small'),
+            'Ospite': st.column_config.TextColumn('🛫 Ospite', disabled=True, width='medium'),
+            '✓': st.column_config.CheckboxColumn('✓', width='small',
+                                                   disabled=st.session_state.get('read_only', False)),
+        },
+        hide_index=True,
+        use_container_width=True,
+        num_rows="fixed",
+        key=f"compact_editor_{girone_sel}_{giornata_sel}"
+    )
+    
+    # Sincronizza i valori editati con le chiavi standard/premium
+    for i, keys in enumerate(row_keys):
+        if i < len(edited_df):
+            st.session_state[keys['key_golcasa']] = int(edited_df.iloc[i]['GC'])
+            st.session_state[keys['key_golospite']] = int(edited_df.iloc[i]['GO'])
+            st.session_state[keys['key_valida']] = bool(edited_df.iloc[i]['✓'])
 
                 
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):

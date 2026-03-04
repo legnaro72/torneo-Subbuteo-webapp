@@ -1,4 +1,3 @@
-﻿from tkinter import N
 import streamlit as st
 
 # Configurazione pagina (DEVE essere il primo comando Streamlit)
@@ -114,7 +113,6 @@ def reset_app_state():
 # -------------------------
 # FUNZIONI CONNESSIONE MONGO (SENZA SUCCESS VERDI)
 # -------------------------
-@st.cache_resource
 def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
     """
     Se show_ok=True mostra un messaggio di ok.
@@ -356,6 +354,11 @@ import time
 import re # Aggiungi la libreria 're' per le espressioni regolari
 
 
+def parse_team_player(val):
+    if isinstance(val, str) and "-" in val:
+        squadra, giocatore = val.split("-", 1)
+        return squadra.strip(), giocatore.strip()
+    return val, ""
 
 def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizzazione):
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
@@ -371,14 +374,6 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizza
         st.warning("⚠️ Dati delle squadre non trovati. Assicurati che il torneo sia stato inizializzato correttamente.")
     
     for idx, row in df_giornata.iterrows():
-        # Logica per analizzare la stringa "Squadra(Giocatore)"
-        # Parsing locale per "Squadra-Giocatore"
-        def parse_team_player(val):
-            if isinstance(val, str) and "-" in val:
-                squadra, giocatore = val.split("-", 1)
-                return squadra.strip(), giocatore.strip()
-            return val, ""
-
         squadra_casa, giocatore_casa = parse_team_player(row['Casa'])
         squadra_ospite, giocatore_ospite = parse_team_player(row['Ospite'])
         
@@ -434,6 +429,265 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizza
                 st.success("✅ Partita validata!")
             else:
                 st.warning("⚠️ Partita non ancora validata.")
+
+def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzazione):
+    """Visualizzazione ultra-moderna (stile bracket card) per inserimento risultati."""
+    df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
+    if df_giornata.empty:
+        return
+
+    st.markdown(f"### 🏆 {girone_sel} - Giornata {giornata_sel} (Vista Premium)")
+    
+    # CSS locale per la vista premium
+    st.markdown("""
+    <style>
+    .match-header-premium {
+        background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        text-align: center;
+        padding: 4px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        border-radius: 8px 8px 0 0;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: -16px;
+        margin-left: -16px;
+        margin-right: -16px;
+        margin-bottom: 15px;
+    }
+    .team-name-premium {
+        font-weight: 700;
+        font-size: 1.1rem;
+        padding-top: 5px;
+    }
+
+    /* ===== AVVISO PORTRAIT — visibile solo su telefoni in verticale ===== */
+    .portrait-warning {
+        display: none;
+        background: linear-gradient(135deg, #ff6b35, #f7931e);
+        color: white;
+        text-align: center;
+        padding: 12px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        margin-bottom: 10px;
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+    @media screen and (max-width: 640px) and (orientation: portrait) {
+        .portrait-warning {
+            display: block !important;
+        }
+    }
+    </style>
+    
+    <div class="portrait-warning">
+        📱🔄 Ruota il telefono in <b>ORIZZONTALE</b> per la vista premium!
+    </div>
+    
+    <script>
+    // Tenta di bloccare l'orientamento in landscape (funziona solo se in fullscreen/PWA)
+    try {
+        if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(function(e) {
+                console.log('Landscape lock non disponibile:', e.message);
+            });
+        }
+    } catch(e) {
+        console.log('Screen Orientation API non supportata');
+    }
+    </script>
+    """, unsafe_allow_html=True)
+
+    for idx, row in df_giornata.iterrows():
+        # Parsing dei nomi
+        casa, gio_c = parse_team_player(row['Casa'])
+        osp, gio_o = parse_team_player(row['Ospite'])
+        
+        # Etichette in base alla modalità
+        if modalita_visualizzazione == 'giocatori':
+            label_c, label_o = gio_c, gio_o
+        elif modalita_visualizzazione == 'squadre':
+            label_c, label_o = casa, osp
+        else:
+            label_c, label_o = f"{casa} ({gio_c})", f"{osp} ({gio_o})"
+
+        # Card Premium con Streamlit
+        with st.container(border=True):
+            # Header della card
+            st.markdown(f"<div class='match-header-premium'>GIRONE {girone_sel} • MATCH {idx+1}</div>", unsafe_allow_html=True)
+            
+            # Prepariamo le chiavi (SINCRONIZZATE con la vista standard)
+            key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+            key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+            key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+            
+            # Layout su 4 colonne: Casa | Score1 | Score2 | Ospite
+            c1, c2, c3, c4 = st.columns([3, 1, 1, 3])
+            
+            with c1:
+                st.markdown(f"<div style='text-align:right;' class='team-name-premium'>🏠 {label_c}</div>", unsafe_allow_html=True)
+            
+            with c2:
+                # Usiamo le stesse chiavi per sincronizzare istantaneamente le due viste
+                st.number_input("GC", 0, 20, key=f"prem_{key_golcasa}", value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0, label_visibility="collapsed", disabled=row['Valida'])
+                st.session_state[key_golcasa] = st.session_state[f"prem_{key_golcasa}"]
+            
+            with c3:
+                st.number_input("GO", 0, 20, key=f"prem_{key_golospite}", value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0, label_visibility="collapsed", disabled=row['Valida'])
+                st.session_state[key_golospite] = st.session_state[f"prem_{key_golospite}"]
+
+            with c4:
+                st.markdown(f"<div style='text-align:left;' class='team-name-premium'>{label_o} 🛫</div>", unsafe_allow_html=True)
+            
+            # Riga Validazione
+            v1, v2 = st.columns([6, 1.5])
+            with v2:
+                st.checkbox("Valida Risultato ✅", key=f"prem_{key_valida}", value=bool(row['Valida']), disabled=st.session_state.get('read_only', False))
+                st.session_state[key_valida] = st.session_state[f"prem_{key_valida}"]
+            
+            if st.session_state.get(key_valida):
+                st.success(f"✅ Risultato confermato: {st.session_state[key_golcasa]} - {st.session_state[key_golospite]}")
+
+def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzazione):
+    """Visualizzazione ultra-compatta — SquadraA [0] - [0] SquadraB [✓] con landscape forzato su mobile."""
+    df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
+    if df_giornata.empty:
+        return
+
+    st.markdown(f"### ⚡ {girone_sel} - Giornata {giornata_sel} (Compatta)")
+    
+    # ═══ JAVASCRIPT: forza orientamento landscape su mobile ═══
+    # ═══ CSS: nasconde +/- e compatta gli input ═══
+    # ═══ CSS: mostra avviso se il telefono è in portrait ═══
+    st.markdown("""
+        <style>
+        /* ===== NASCONDI STEPPER +/- ===== */
+        div[data-testid="stNumberInput"] button {
+            display: none !important;
+        }
+        div[data-testid="stNumberInput"] input::-webkit-outer-spin-button,
+        div[data-testid="stNumberInput"] input::-webkit-inner-spin-button {
+            -webkit-appearance: none !important;
+            margin: 0 !important;
+        }
+        div[data-testid="stNumberInput"] input[type="number"] {
+            -moz-appearance: textfield !important;
+        }
+
+        /* ===== INPUT NUMERICI MICRO ===== */
+        div[data-testid="stNumberInput"] {
+            max-width: 48px !important;
+        }
+        div[data-testid="stNumberInput"] div[data-baseweb="input"] {
+            padding: 0 !important;
+        }
+        div[data-testid="stNumberInput"] input {
+            padding: 3px 1px !important;
+            text-align: center !important;
+            font-weight: bold !important;
+            font-size: 0.95rem !important;
+        }
+
+        /* ===== CHECKBOX COMPATTA ===== */
+        div[data-testid="stCheckbox"] {
+            margin-top: 0 !important;
+        }
+
+        /* ===== AVVISO PORTRAIT — visibile solo su telefoni in verticale ===== */
+        .portrait-warning {
+            display: none;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: white;
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        @media screen and (max-width: 640px) and (orientation: portrait) {
+            .portrait-warning {
+                display: block !important;
+            }
+        }
+        </style>
+        
+        <div class="portrait-warning">
+            📱🔄 Ruota il telefono in <b>ORIZZONTALE</b> per la vista compatta!
+        </div>
+        
+        <script>
+        // Tenta di bloccare l'orientamento in landscape (funziona solo se in fullscreen/PWA)
+        try {
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('landscape').catch(function(e) {
+                    // Silenzioso: su browser normali non è supportato senza fullscreen
+                    console.log('Landscape lock non disponibile:', e.message);
+                });
+            }
+        } catch(e) {
+            console.log('Screen Orientation API non supportata');
+        }
+        </script>
+    """, unsafe_allow_html=True)
+
+    for idx, row in df_giornata.iterrows():
+        casa, gio_c = parse_team_player(row['Casa'])
+        osp, gio_o = parse_team_player(row['Ospite'])
+        
+        if modalita_visualizzazione == 'giocatori':
+            label_c, label_o = gio_c, gio_o
+        elif modalita_visualizzazione == 'squadre':
+            label_c, label_o = casa, osp
+        else:
+            label_c, label_o = f"{casa} ({gio_c})", f"{osp} ({gio_o})"
+
+        # Chiavi sincronizzate con la vista standard/premium
+        key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+        key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+        key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+
+        # ═══ TUTTO SU UNA RIGA: SquadraA [0] - [0] SquadraB [✓] ═══
+        c1, c2, c3, c4, c5, c6 = st.columns([3, 0.8, 0.3, 0.8, 3, 0.7])
+        
+        with c1:
+            st.markdown(f"<div style='text-align:right; font-weight:700; font-size:0.78rem; padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{label_c}</div>", unsafe_allow_html=True)
+        
+        with c2:
+            st.number_input("GC", 0, 20, key=f"comp_{key_golcasa}",
+                            value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
+                            label_visibility="collapsed", disabled=row['Valida'])
+            st.session_state[key_golcasa] = st.session_state[f"comp_{key_golcasa}"]
+        
+        with c3:
+            st.markdown("<div style='text-align:center; font-weight:bold; font-size:0.8rem; padding-top:6px;'>-</div>", unsafe_allow_html=True)
+            
+        with c4:
+            st.number_input("GO", 0, 20, key=f"comp_{key_golospite}",
+                            value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
+                            label_visibility="collapsed", disabled=row['Valida'])
+            st.session_state[key_golospite] = st.session_state[f"comp_{key_golospite}"]
+
+        with c5:
+            st.markdown(f"<div style='text-align:left; font-weight:700; font-size:0.78rem; padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{label_o}</div>", unsafe_allow_html=True)
+
+        with c6:
+            st.checkbox("✓", key=f"comp_{key_valida}", value=bool(row['Valida']),
+                        label_visibility="collapsed",
+                        disabled=st.session_state.get('read_only', False))
+            st.session_state[key_valida] = st.session_state[f"comp_{key_valida}"]
+
                 
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     try:
@@ -837,6 +1091,20 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
 # -------------------------
 def inject_css():
     inject_all_styles()  # Delega al modulo condiviso
+    # Override locale ultra-aggressivo per rimuovere lo spazio vuoto in alto (solo PierCrew)
+    st.html("""
+        <style>
+        header[data-testid="stHeader"] {
+            display: none !important;
+        }
+        .stAppViewBlockContainer {
+            padding-top: 1rem !important;
+        }
+        .stMainBlockContainer {
+            padding-top: 1rem !important;
+        }
+        </style>
+    """)
     return
 
 
@@ -845,6 +1113,9 @@ def inject_css():
 # APP
 # -------------------------
 def main():
+    # Iniezione immediata del CSS per evitare il gap in alto
+    inject_css()
+
     # Mostra la schermata di autenticazione
     #authenticated = auth.show_auth_screen()
     #if not authenticated:
@@ -886,10 +1157,9 @@ def main():
     # Inizializza lo stato dell'audio se non esiste
     if "bg_audio_disabled" not in st.session_state:
         st.session_state.bg_audio_disabled = False
-    if not st.session_state.bg_audio_disabled:
-        autoplay_background_audio(BACKGROUND_AUDIO_URL)  
     
-    inject_css()
+    # L'avvio dell'audio è stato spostato dopo il titolo per evitare gap in alto
+    
 
 
     # Connessioni (senza messaggi verdi)
@@ -964,6 +1234,10 @@ def main():
         </div>
         """, unsafe_allow_html=True)
 
+    # Avvio audio di sottofondo 
+    if not st.session_state.bg_audio_disabled:
+        autoplay_background_audio(BACKGROUND_AUDIO_URL)
+
    
     df_master = carica_giocatori_da_db(players_collection)
 
@@ -999,6 +1273,17 @@ def main():
             st.session_state['sidebar_state_reset'] = True
             st.rerun()
         
+        # --- FUNZIONI DI SINCRONIZZAZIONE ---
+        def sync_tipo_vista(source_key):
+            val = st.session_state[source_key].lower()
+            st.session_state['tipo_vista_selezionata'] = val
+            # Forza l'altro widget a riflettere il valore resettandone la chiave se necessario
+            # (In realtà basta aggiornare la variabile di stato usata nell'index)
+
+        def sync_usa_bottoni(source_key):
+            val = st.session_state[source_key]
+            st.session_state['usa_bottoni_sidebar'] = val
+        
         st.sidebar.markdown("---")
         
         # ✅ 3. 🔧 Utility (sezione principale con sottosezioni)
@@ -1008,7 +1293,7 @@ def main():
         with st.sidebar.expander("🔎 Visualizzazione incontri", expanded=False):
             # Radio button per formato incontri
             modalita_visualizzazione_sidebar = st.radio(
-                "Formato incontri:",
+                "Formato nomi:",
                 ("Completa", "Solo squadre", "Solo giocatori"),
                 index=1,
                 key="modalita_visualizzazione_sidebar",
@@ -1022,10 +1307,30 @@ def main():
             }
             st.session_state['modalita_scelta_sidebar'] = mappa_modalita[modalita_visualizzazione_sidebar]
             
+            st.markdown("---")
+            
+            # Radio button per tipo di vista (Sincronizzato con la pagina principale)
+            current_view = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
+            st.radio(
+                "Tipo di vista:",
+                ("Compact", "Premium", "Standard"),
+                index=("Compact", "Premium", "Standard").index(current_view),
+                key="tipo_vista_sidebar_widget",
+                on_change=sync_tipo_vista,
+                args=("tipo_vista_sidebar_widget",)
+            )
+            
+            st.markdown("---")
+            
             # Checkbox "Navigazione giornate con bottoni"
-            st.session_state['usa_bottoni_sidebar'] = st.checkbox(
+            # Sincronizzato con la pagina principale
+            current_nav = st.session_state.get('usa_bottoni_sidebar', False)
+            st.checkbox(
                 "🎛️ Navigazione giornate con bottoni", 
-                key="modalita_navigazione_sidebar"
+                value=current_nav,
+                key="modalita_navigazione_sidebar",
+                on_change=sync_usa_bottoni,
+                args=("modalita_navigazione_sidebar",)
             )
         
         # 🏃‍♂ Gestione abbandoni
@@ -1070,12 +1375,38 @@ def main():
             else:
                 st.info("Nessun girone attivo.")
         
-        st.sidebar.markdown("---")
-        
 
 
         st.markdown("---")
         st.markdown("### 🔍 Ricerca e Filtri (Calendario Multi-Girone)")
+        
+        # ✅ SELETTORE VISTA + NAVIGAZIONE BOTTONI
+        col_v1, col_v2, col_v3 = st.columns([0.15, 0.45, 0.4], vertical_alignment="center")
+        with col_v1:
+            st.markdown("**Stile Vista:**")
+        with col_v2:
+            current_view_main = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
+            st.radio(
+                "Stile Vista:",
+                ("Compact", "Premium", "Standard"),
+                index=("Compact", "Premium", "Standard").index(current_view_main),
+                horizontal=True,
+                label_visibility="collapsed",
+                key="tipo_vista_main_widget",
+                on_change=sync_tipo_vista,
+                args=("tipo_vista_main_widget",)
+            )
+        
+        with col_v3:
+            current_nav_main = st.session_state.get('usa_bottoni_sidebar', False)
+            st.checkbox(
+                "🎛️ Naviga a bottoni", 
+                value=current_nav_main,
+                key="modalita_navigazione_main_widget",
+                on_change=sync_usa_bottoni,
+                args=("modalita_navigazione_main_widget",)
+            )
+
         df = st.session_state['df_torneo'].copy()
         df_filtrato = pd.DataFrame()
 
@@ -1525,7 +1856,14 @@ def main():
             
             # Richiama la funzione con il parametro di visualizzazione corretto
             if giornate_correnti:
-                mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
+                vista_scelta = st.session_state.get('tipo_vista_selezionata', 'compact')
+                
+                if vista_scelta == 'compact':
+                    mostra_calendario_compact(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
+                elif vista_scelta == 'premium':
+                    mostra_calendario_premium(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
+                else: # standard
+                    mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
             else:
                 st.info("Seleziona un girone per visualizzare il calendario.")
 

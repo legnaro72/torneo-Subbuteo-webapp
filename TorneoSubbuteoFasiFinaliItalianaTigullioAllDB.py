@@ -568,6 +568,7 @@ def generate_pdf_ko(rounds_ko: list[pd.DataFrame]) -> bytes:
 def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
     # Check if user has write access
     has_write_access = st.session_state.get("user", {}).get("role") not in ["ospite", "lettura"]
+    tipo_vista = st.session_state.get('tipo_vista_selezionata', 'compact').lower()
     
     st.markdown(f"### {df_round['Round'].iloc[0]}")
     st.markdown("---")
@@ -585,67 +586,136 @@ def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
             return squadra.strip(), giocatore.strip()
         return val, ""
 
+    if tipo_vista in ['compact', 'premium']:
+        st.markdown("""
+        <style>
+        div[data-testid="stNumberInput"] button { display: none !important; }
+        div[data-testid="stNumberInput"] input::-webkit-outer-spin-button,
+        div[data-testid="stNumberInput"] input::-webkit-inner-spin-button {
+            -webkit-appearance: none !important; margin: 0 !important;
+        }
+        div[data-testid="stNumberInput"] input[type="number"] { -moz-appearance: textfield !important; }
+        div[data-testid="stNumberInput"] { max-width: 48px !important; }
+        div[data-testid="stNumberInput"] div[data-baseweb="input"] { padding: 0 !important; }
+        div[data-testid="stNumberInput"] input {
+            padding: 3px 1px !important; text-align: center !important;
+            font-weight: bold !important; font-size: 0.95rem !important;
+        }
+        div[data-testid="stCheckbox"] { margin-top: 0 !important; }
+
+        .portrait-warning {
+            display: none; background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: white; text-align: center; padding: 12px; border-radius: 8px;
+            font-weight: 700; font-size: 0.9rem; margin-bottom: 10px; animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        @media screen and (max-width: 640px) and (orientation: portrait) {
+            .portrait-warning { display: block !important; }
+        }
+        </style>
+        <div class="portrait-warning">
+            📱🔄 Ruota il telefono in <b>ORIZZONTALE</b> per la vista ottimizzata!
+        </div>
+        <script>
+        try { if (screen.orientation && screen.orientation.lock) { screen.orientation.lock('landscape').catch(()=>{}); } } catch(e) {}
+        </script>
+        """, unsafe_allow_html=True)
+        
+        if tipo_vista == 'premium':
+            st.markdown("""
+            <style>
+            .match-header-premium {
+                background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
+                color: white; text-align: center; padding: 4px; font-size: 0.75rem;
+                font-weight: 800; border-radius: 8px 8px 0 0; text-transform: uppercase;
+                letter-spacing: 1px; margin-top: -16px; margin-left: -16px; margin-right: -16px; margin-bottom: 15px;
+            }
+            .team-name-premium { font-weight: 700; font-size: 1.1rem; padding-top: 5px; }
+            </style>
+            """, unsafe_allow_html=True)
+
     for idx, match in df_temp.iterrows():
-        with st.container(border=True):
-            key_gol_a = f"ko_gola_{round_idx}_{idx}"
-            key_gol_b = f"ko_golb_{round_idx}_{idx}"
-            key_valida = f"ko_valida_{round_idx}_{idx}"
+        key_gol_a = f"ko_gola_{round_idx}_{idx}"
+        key_gol_b = f"ko_golb_{round_idx}_{idx}"
+        key_valida = f"ko_valida_{round_idx}_{idx}"
 
-            if key_gol_a not in st.session_state:
-                st.session_state[key_gol_a] = int(match['GolA']) if pd.notna(match['GolA']) else 0
-            if key_gol_b not in st.session_state:
-                st.session_state[key_gol_b] = int(match['GolB']) if pd.notna(match['GolB']) else 0
-            if key_valida not in st.session_state:
-                st.session_state[key_valida] = bool(match['Valida']) if pd.notna(match['Valida']) else False
+        if key_gol_a not in st.session_state:
+            st.session_state[key_gol_a] = int(match['GolA']) if pd.notna(match['GolA']) else 0
+        if key_gol_b not in st.session_state:
+            st.session_state[key_gol_b] = int(match['GolB']) if pd.notna(match['GolB']) else 0
+        if key_valida not in st.session_state:
+            st.session_state[key_valida] = bool(match['Valida']) if pd.notna(match['Valida']) else False
 
-            # --- Parsing locale ---
-            squadra_a, giocatore_a = parse_team_player(match['SquadraA'])
-            squadra_b, giocatore_b = parse_team_player(match['SquadraB'])
+        squadra_a, giocatore_a = parse_team_player(match['SquadraA'])
+        squadra_b, giocatore_b = parse_team_player(match['SquadraB'])
 
-            # --- Visualizzazione dinamica ---
-            if modalita_visualizzazione == "completa":
-                stringa_incontro = f"🏠{squadra_a} ({giocatore_a}) 🆚 {squadra_b} ({giocatore_b})🛫"
-            elif modalita_visualizzazione == "giocatori":
-                stringa_incontro = f"🏠{giocatore_a} 🆚 {giocatore_b}🛫"
-            else:  # "squadre" o default
-                stringa_incontro = f"🏠{squadra_a} 🆚 {squadra_b}🛫"
-
-            st.markdown(f"<h3 style='text-align:center;'>⚽ Partita</h3>", unsafe_allow_html=True)
-            st.markdown(f"<p style='text-align:center; font-weight:bold;'>{stringa_incontro}</p>", unsafe_allow_html=True)
-
-            c_score1, c_score2 = st.columns(2)
-            with c_score1:
-                st.number_input(
-                    "Gol Casa",
-                    min_value=0, max_value=20,
-                    key=key_gol_a,
-                    disabled=st.session_state[key_valida] or not has_write_access,  # Disable if validated or read-only
-                    label_visibility="hidden"
-                )
-            with c_score2:
-                st.number_input(
-                    "Gol Ospite",
-                    min_value=0, max_value=20,
-                    key=key_gol_b,
-                    disabled=st.session_state[key_valida] or not has_write_access,  # Disable if validated or read-only
-                    label_visibility="hidden"
-                )
-
-            st.markdown("---")
+        if modalita_visualizzazione == "completa":
+            label_a = f"{squadra_a} ({giocatore_a})"
+            label_b = f"{squadra_b} ({giocatore_b})"
+        elif modalita_visualizzazione == "giocatori":
+            label_a = giocatore_a
+            label_b = giocatore_b
+        else:
+            label_a = squadra_a
+            label_b = squadra_b
             
-            # Show validation checkbox only if user has write access
-            if has_write_access:
-                st.checkbox(
-                    "✅ Valida Risultato",
-                    key=key_valida,
-                    disabled=not has_write_access
-                )
+        is_disabled = st.session_state[key_valida] or not has_write_access
+
+        if tipo_vista == 'compact':
+            c1, c2, c3, c4, c5, c6 = st.columns([3, 0.8, 0.3, 0.8, 3, 0.7])
+            with c1:
+                st.markdown(f"<div style='text-align:right; font-weight:700; font-size:0.78rem; padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{label_a}</div>", unsafe_allow_html=True)
+            with c2:
+                st.number_input("Gol Casa", min_value=0, max_value=20, key=key_gol_a, disabled=is_disabled, label_visibility="collapsed")
+            with c3:
+                st.markdown("<div style='text-align:center; font-weight:bold; font-size:0.8rem; padding-top:6px;'>-</div>", unsafe_allow_html=True)
+            with c4:
+                st.number_input("Gol Ospite", min_value=0, max_value=20, key=key_gol_b, disabled=is_disabled, label_visibility="collapsed")
+            with c5:
+                st.markdown(f"<div style='text-align:left; font-weight:700; font-size:0.78rem; padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{label_b}</div>", unsafe_allow_html=True)
+            with c6:
+                if has_write_access:
+                    st.checkbox("✓", key=key_valida, disabled=not has_write_access, label_visibility="collapsed")
+                    
+        elif tipo_vista == 'premium':
+            with st.container(border=True):
+                st.markdown(f"<div class='match-header-premium'>ROUND {round_idx} • MATCH {idx+1}</div>", unsafe_allow_html=True)
+                c1, c2, c3, c4 = st.columns([3, 1, 1, 3])
+                with c1:
+                    st.markdown(f"<div style='text-align:right;' class='team-name-premium'>🏠 {label_a}</div>", unsafe_allow_html=True)
+                with c2:
+                    st.number_input("Gol Casa", min_value=0, max_value=20, key=key_gol_a, disabled=is_disabled, label_visibility="collapsed")
+                with c3:
+                    st.number_input("Gol Ospite", min_value=0, max_value=20, key=key_gol_b, disabled=is_disabled, label_visibility="collapsed")
+                with c4:
+                    st.markdown(f"<div style='text-align:left;' class='team-name-premium'>{label_b} 🛫</div>", unsafe_allow_html=True)
+                
+                v1, v2 = st.columns([6, 1.5])
+                with v2:
+                    if has_write_access:
+                        st.checkbox("Valida ✅", key=key_valida, disabled=not has_write_access)
+        
+        else: # Standard
+            with st.container(border=True):
+                stringa_incontro = f"🏠{label_a} 🆚 {label_b}🛫"
+                st.markdown("<h3 style='text-align:center;'>⚽ Partita</h3>", unsafe_allow_html=True)
+                st.markdown(f"<p style='text-align:center; font-weight:bold;'>{stringa_incontro}</p>", unsafe_allow_html=True)
+                
+                c_score1, c_score2 = st.columns(2)
+                with c_score1:
+                    st.number_input("Gol Casa", min_value=0, max_value=20, key=key_gol_a, disabled=is_disabled, label_visibility="hidden")
+                with c_score2:
+                    st.number_input("Gol Ospite", min_value=0, max_value=20, key=key_gol_b, disabled=is_disabled, label_visibility="hidden")
+                
+                st.markdown("---")
+                if has_write_access:
+                    st.checkbox("✅ Valida Risultato", key=key_valida, disabled=not has_write_access)
+
+        if not has_write_access:
+            if st.session_state.get(key_valida, False):
+                if tipo_vista == 'standard': st.success("✅ Partita validata")
             else:
-                # Show a message if the match is validated in read-only mode
-                if st.session_state.get(key_valida, False):
-                    st.success("✅ Partita validata")
-                else:
-                    st.info("⏳ Partita in corso...")
+                if tipo_vista == 'standard': st.info("⏳ Partita in corso...")
 
             # Update the round data with current state
             df_round.loc[idx, 'GolA'] = st.session_state[key_gol_a]
@@ -1457,6 +1527,11 @@ def main():
         
         st.sidebar.markdown("---")
         
+        # --- FUNZIONI DI SINCRONIZZAZIONE ---
+        def sync_tipo_vista(source_key):
+            val = st.session_state[source_key].lower()
+            st.session_state['tipo_vista_selezionata'] = val
+
         # ✅ 3. 🔧 Utility (sezione principale con sottosezioni)
         st.sidebar.subheader("🔧 Utility")
         
@@ -1472,6 +1547,16 @@ def main():
                     "giocatori": "Solo giocatori"
                 }[x],
                 key="modalita_visualizzazione_ko"
+            )
+            st.markdown("---")
+            current_view = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
+            st.radio(
+                "Tipo di vista:",
+                ("Compact", "Premium", "Standard"),
+                index=("Compact", "Premium", "Standard").index(current_view),
+                key="tipo_vista_sidebar_widget",
+                on_change=sync_tipo_vista,
+                args=("tipo_vista_sidebar_widget",)
             )
         
         # 📅 Visualizzazione incontri giocati
@@ -2180,6 +2265,19 @@ def main():
                     else:
                         # --- SOLO round attivo ---
                         if st.session_state['rounds_ko']:
+                            st.markdown("---")
+                            tipo_vista_corrente = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
+                            st.radio(
+                                "Seleziona la vista del calendario:",
+                                ("Compact", "Premium", "Standard"),
+                                index=("Compact", "Premium", "Standard").index(tipo_vista_corrente),
+                                key="tipo_vista_main_widget",
+                                horizontal=True,
+                                label_visibility="collapsed",
+                                on_change=sync_tipo_vista,
+                                args=("tipo_vista_main_widget",)
+                            )
+
                             current_round_df = st.session_state['rounds_ko'][-1]
                             render_round(current_round_df, len(st.session_state['rounds_ko']) - 1, st.session_state.get("modalita_visualizzazione_ko", "squadre"))
                             

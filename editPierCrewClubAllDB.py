@@ -1,6 +1,7 @@
 ﻿import streamlit as st
 
 # Configurazione pagina (DEVE essere il primo comando Streamlit)
+# Configurazione pagina spostata all'inizio
 st.set_page_config(
     page_title="Gestione Club PierCrew",
     page_icon="⚽",
@@ -109,18 +110,8 @@ def inject_css():
             border-radius: 20px;
             border: 1px solid var(--card-border);
             box-shadow: var(--card-shadow);
-            margin-bottom: 30px;
             backdrop-filter: var(--glass-blur);
-        }
-        
-        /* Titoli sezioni */
-        .section-header {
-            color: var(--color-primary-light);
-            font-size: 1.8em;
-            font-weight: 700;
-            margin-bottom: 20px;
-            border-left: 5px solid var(--color-accent);
-            padding-left: 15px;
+            margin-bottom: 30px;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -605,7 +596,8 @@ def process_deletion_with_password(password, deletion_type, data):
 
 # Logica di visualizzazione basata sullo stato
 if st.session_state.edit_index is None and st.session_state.confirm_delete["type"] is None:
-    st.header("👥Gestione Giocatori")
+    st.markdown("<div class='section-container'>", unsafe_allow_html=True)
+    st.header("👥 Gestione Giocatori")
     st.subheader("Lista giocatori")
     
     # Create a copy of the dataframe for editing
@@ -755,16 +747,17 @@ if st.session_state.edit_index is None and st.session_state.confirm_delete["type
                     st.button("🗑️ Elimina", on_click=confirm_delete_player, args=(idx, selected), key=f"del_{idx}")
 
     csv = st.session_state.df_giocatori.to_csv(index=False).encode("utf-8")
-    st.download_button(
+    st.sidebar.download_button(
         "📥 Scarica CSV giocatori aggiornato",
         data=csv,
         file_name="giocatori_piercrew_modificato.csv",
         mime="text/csv",
     )
+    st.markdown("</div>", unsafe_allow_html=True) # Chiudi contenitore solo se siamo in questa vista
 
     # ---
-    st.markdown("---")
-    st.header("🏆Gestione Tornei")
+    st.markdown("<div class='section-container'>", unsafe_allow_html=True)
+    st.header("🏆 Gestione Tornei")
 
     col_del_all_ita, col_del_all_svizz, col_del_all = st.columns(3)
     with col_del_all_ita:
@@ -802,6 +795,7 @@ if st.session_state.edit_index is None and st.session_state.confirm_delete["type
             st.button("🗑️ Elimina Tornei Svizzeri selezionati", on_click=confirm_delete_torneo_svizzero, args=(selected_tornei_svizzeri,), key="del_svizzero_btn")
     else:
         st.info("Nessun torneo svizzero trovato.")
+    st.markdown("</div>", unsafe_allow_html=True) # Chiudi contenitore tornei
 
 
 elif st.session_state.edit_index is not None: # Logica di modifica/aggiunta giocatore
@@ -886,8 +880,7 @@ elif st.session_state.edit_index is not None: # Logica di modifica/aggiunta gioc
     col_save, col_cancel = st.columns(2)
     with col_save:
         if is_guest:
-            st.button(" Salva", disabled=True, help="Non disponibile per gli ospiti")
-            st.button("✅ Salva", disabled=True, help="Non disponibile per gli ospiti")
+            st.button("✅ Salva", disabled=True, help="La modifica non è permessa agli ospiti")
         else:
             if st.button("✅ Salva"):
                 save_player(giocatore, squadra, potenziale, ruolo)

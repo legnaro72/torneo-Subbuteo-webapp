@@ -1197,149 +1197,194 @@ def init_results_temp_from_df(df):
 
 def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visualizzazione):
     """Visualizza gli incontri del turno attivo e permette di inserire e validare i risultati."""
+    tipo_vista = st.session_state.get('tipo_vista_selezionata', 'compact').lower()
+    
+    if tipo_vista in ['compact', 'premium']:
+        st.markdown("""
+        <style>
+        div[data-testid="stNumberInput"] button { display: none !important; }
+        div[data-testid="stNumberInput"] input::-webkit-outer-spin-button,
+        div[data-testid="stNumberInput"] input::-webkit-inner-spin-button {
+            -webkit-appearance: none !important; margin: 0 !important;
+        }
+        div[data-testid="stNumberInput"] input[type="number"] { -moz-appearance: textfield !important; }
+        div[data-testid="stNumberInput"] { max-width: 48px !important; }
+        div[data-testid="stNumberInput"] div[data-baseweb="input"] { padding: 0 !important; }
+        div[data-testid="stNumberInput"] input {
+            padding: 3px 1px !important; text-align: center !important;
+            font-weight: bold !important; font-size: 0.95rem !important;
+        }
+        div[data-testid="stCheckbox"] { margin-top: 0 !important; }
+
+        .portrait-warning {
+            display: none; background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: white; text-align: center; padding: 12px; border-radius: 8px;
+            font-weight: 700; font-size: 0.9rem; margin-bottom: 10px; animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        @media screen and (max-width: 640px) and (orientation: portrait) {
+            .portrait-warning { display: block !important; }
+        }
+        </style>
+        <div class="portrait-warning">
+            📱🔄 Ruota il telefono in <b>ORIZZONTALE</b> per la vista ottimizzata!
+        </div>
+        <script>
+        try { if (screen.orientation && screen.orientation.lock) { screen.orientation.lock('landscape').catch(()=>{}); } } catch(e) {}
+        </script>
+        """, unsafe_allow_html=True)
+        
+        if tipo_vista == 'premium':
+            st.markdown("""
+            <style>
+            .match-header-premium {
+                background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
+                color: white; text-align: center; padding: 4px; font-size: 0.75rem;
+                font-weight: 800; border-radius: 8px 8px 0 0; text-transform: uppercase;
+                letter-spacing: 1px; margin-top: -16px; margin-left: -16px; margin-right: -16px; margin-bottom: 15px;
+            }
+            .team-name-premium { font-weight: 700; font-size: 1.1rem; padding-top: 5px; }
+            </style>
+            """, unsafe_allow_html=True)
+
     for i, riga in df_turno_corrente.iterrows():
-        with st.container(border=True):
-            casa = riga['Casa']
-            ospite = riga['Ospite']
-            key_gc = f"gc_{turno_attivo}_{casa}_{ospite}"
-            key_go = f"go_{turno_attivo}_{casa}_{ospite}"
-            key_val = f"val_{turno_attivo}_{casa}_{ospite}"
-            valida_key = f"valida_{turno_attivo}_{casa}_{ospite}"
+        casa = riga['Casa']
+        ospite = riga['Ospite']
+        key_gc = f"gc_{turno_attivo}_{casa}_{ospite}"
+        key_go = f"go_{turno_attivo}_{casa}_{ospite}"
+        key_val = f"val_{turno_attivo}_{casa}_{ospite}"
+        valida_key = f"valida_{turno_attivo}_{casa}_{ospite}"
 
-            # Recupera i dati di squadra e giocatore per la visualizzazione
-            # Gestione CASA
-            if casa == "RIPOSA" or st.session_state.df_squadre[st.session_state.df_squadre['Squadra'] == casa].empty:
-                info_casa = {"Squadra": "RIPOSA", "Giocatore": "—"}
-            else:
-                info_casa = st.session_state.df_squadre[
-                    st.session_state.df_squadre['Squadra'] == casa
-                ].iloc[0]
+        # Gestione CASA
+        if casa == "RIPOSA" or st.session_state.df_squadre[st.session_state.df_squadre['Squadra'] == casa].empty:
+            info_casa = {"Squadra": "RIPOSA", "Giocatore": "—"}
+        else:
+            info_casa = st.session_state.df_squadre[st.session_state.df_squadre['Squadra'] == casa].iloc[0]
 
-            # Gestione OSPITE
-            if ospite == "RIPOSA" or st.session_state.df_squadre[st.session_state.df_squadre['Squadra'] == ospite].empty:
-                info_ospite = {"Squadra": "RIPOSA", "Giocatore": "—"}
-            else:
-                info_ospite = st.session_state.df_squadre[
-                    st.session_state.df_squadre['Squadra'] == ospite
-                ].iloc[0]
+        # Gestione OSPITE
+        if ospite == "RIPOSA" or st.session_state.df_squadre[st.session_state.df_squadre['Squadra'] == ospite].empty:
+            info_ospite = {"Squadra": "RIPOSA", "Giocatore": "—"}
+        else:
+            info_ospite = st.session_state.df_squadre[st.session_state.df_squadre['Squadra'] == ospite].iloc[0]
 
+        nome_squadra_casa = info_casa['Squadra']
+        nome_giocatore_casa = info_casa['Giocatore']
+        nome_squadra_ospite = info_ospite['Squadra']
+        nome_giocatore_ospite = info_ospite['Giocatore']
 
+        if modalita_visualizzazione == 'Squadre':
+            label_c, label_o = nome_squadra_casa, nome_squadra_ospite
+        elif modalita_visualizzazione == 'Giocatori':
+            label_c, label_o = nome_giocatore_casa, nome_giocatore_ospite
+        else:
+            label_c, label_o = f"{nome_squadra_casa} ({nome_giocatore_casa})", f"{nome_squadra_ospite} ({nome_giocatore_ospite})"
 
-            nome_squadra_casa = info_casa['Squadra']
-            nome_giocatore_casa = info_casa['Giocatore']
-            nome_squadra_ospite = info_ospite['Squadra']
-            nome_giocatore_ospite = info_ospite['Giocatore']
-            
-            st.markdown(f"<p style='text-align:center; font-size:1.2rem; font-weight:bold;'>⚽ Partita</p>", unsafe_allow_html=True)
-            
-            match_string = ""
-            if modalita_visualizzazione == 'Squadre':
-                match_string = f"{nome_squadra_casa} 🆚 {nome_squadra_ospite}"
-            elif modalita_visualizzazione == 'Giocatori':
-                match_string = f"{nome_giocatore_casa} 🆚 {nome_giocatore_ospite}"
-            elif modalita_visualizzazione == 'Completa':
-                match_string = f"{nome_squadra_casa} ({nome_giocatore_casa}) 🆚 {nome_squadra_ospite} ({nome_giocatore_ospite})"
+        gol_casa_iniziale = riga.get('GolCasa', 0)
+        gol_ospite_iniziale = riga.get('GolOspite', 0)
+        validata_iniziale = bool(riga.get('Validata', False))
+
+        if key_gc not in st.session_state.risultati_temp:
+            st.session_state.risultati_temp[key_gc] = gol_casa_iniziale
+        if key_go not in st.session_state.risultati_temp:
+            st.session_state.risultati_temp[key_go] = gol_ospite_iniziale
+        if key_val not in st.session_state.risultati_temp:
+            st.session_state.risultati_temp[key_val] = validata_iniziale
+
+        is_disabled = st.session_state.risultati_temp.get(key_val, False)
+        
+        # --- UI Rendering in base al tipo di vista ---
+        if tipo_vista == 'compact':
+            c1, c2, c3, c4, c5, c6 = st.columns([3, 0.8, 0.3, 0.8, 3, 0.7])
+            with c1:
+                st.markdown(f"<div style='text-align:right; font-weight:700; font-size:0.78rem; padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{label_c}</div>", unsafe_allow_html=True)
+            with c2:
+                st.session_state.risultati_temp[key_gc] = st.number_input("GC", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_gc], key=key_gc, label_visibility="collapsed", disabled=is_disabled)
+            with c3:
+                st.markdown("<div style='text-align:center; font-weight:bold; font-size:0.8rem; padding-top:6px;'>-</div>", unsafe_allow_html=True)
+            with c4:
+                st.session_state.risultati_temp[key_go] = st.number_input("GO", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_go], key=key_go, label_visibility="collapsed", disabled=is_disabled)
+            with c5:
+                st.markdown(f"<div style='text-align:left; font-weight:700; font-size:0.78rem; padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{label_o}</div>", unsafe_allow_html=True)
+            with c6:
+                validata_checkbox = st.checkbox("✓", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key, label_visibility="collapsed")
                 
-            st.markdown(f"<p style='text-align:center; font-weight:bold;'>🏠{match_string}🛫</p>", unsafe_allow_html=True)
-
-            # 💡 MODIFICA QUI 💡
-            # Usa il valore del DataFrame per inizializzare l'input se non è già nello stato temporaneo
-            gol_casa_iniziale = riga.get('GolCasa', 0)
-            gol_ospite_iniziale = riga.get('GolOspite', 0)
-            validata_iniziale = bool(riga.get('Validata', False))
-
-            if key_gc not in st.session_state.risultati_temp:
-                st.session_state.risultati_temp[key_gc] = gol_casa_iniziale
-            if key_go not in st.session_state.risultati_temp:
-                st.session_state.risultati_temp[key_go] = gol_ospite_iniziale
-            if key_val not in st.session_state.risultati_temp:
-                st.session_state.risultati_temp[key_val] = validata_iniziale
-            
-            c_score1, c_score2 = st.columns(2)
-            with c_score1:
-                st.session_state.risultati_temp[key_gc] = st.number_input(
-                    f"Gol {casa}",
-                    min_value=0,
-                    value=st.session_state.risultati_temp[key_gc], # Usa il valore salvato in session_state
-                    key=key_gc,
-                    disabled=st.session_state.risultati_temp.get(key_val, False)
-                )
-            with c_score2:
-                st.session_state.risultati_temp[key_go] = st.number_input(
-                    f"Gol {ospite}",
-                    min_value=0,
-                    value=st.session_state.risultati_temp[key_go], # Usa il valore salvato in session_state
-                    key=key_go,
-                    disabled=st.session_state.risultati_temp.get(key_val, False)
-                )
-            
-            st.markdown("---")
-            validata_checkbox = st.checkbox(
-                "✅ Valida Risultato",
-                value=st.session_state.risultati_temp.get(key_val, False),
-                key=valida_key
-            )
-            
-            # Aggiorna il risultato quando la checkbox cambia stato
-            if validata_checkbox != st.session_state.risultati_temp.get(key_val, False):
-                # Controlla i permessi di scrittura prima di procedere
-                if validata_checkbox and not verify_write_access():
-                    st.error("⛔ Accesso in sola lettura. Non è possibile validare la partita.")
-                    # Ripristina lo stato precedente della checkbox senza fare refresh
-                    st.session_state.risultati_temp[key_val] = False
-                    # Usa una chiave unica per forzare il refresh solo della checkbox
-                    st.session_state[f"{valida_key}_force_update"] = not st.session_state.get(f"{valida_key}_force_update", False)
-                    # Esci senza fare rerun()
-                    return
+        elif tipo_vista == 'premium':
+            with st.container(border=True):
+                st.markdown(f"<div class='match-header-premium'>TURNO {turno_attivo} • MATCH {i+1}</div>", unsafe_allow_html=True)
+                c1, c2, c3, c4 = st.columns([3, 1, 1, 3])
+                with c1:
+                    st.markdown(f"<div style='text-align:right;' class='team-name-premium'>🏠 {label_c}</div>", unsafe_allow_html=True)
+                with c2:
+                    st.session_state.risultati_temp[key_gc] = st.number_input("GC", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_gc], key=key_gc, label_visibility="collapsed", disabled=is_disabled)
+                with c3:
+                    st.session_state.risultati_temp[key_go] = st.number_input("GO", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_go], key=key_go, label_visibility="collapsed", disabled=is_disabled)
+                with c4:
+                    st.markdown(f"<div style='text-align:left;' class='team-name-premium'>{label_o} 🛫</div>", unsafe_allow_html=True)
+                v1, v2 = st.columns([6, 1.5])
+                with v2:
+                    validata_checkbox = st.checkbox("Valida ✅", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key)
                     
-                # Aggiorna solo lo stato di questa partita
-                st.session_state.risultati_temp[key_val] = validata_checkbox
+        else: # Standard
+            with st.container(border=True):
+                st.markdown("<p style='text-align:center; font-size:1.2rem; font-weight:bold;'>⚽ Partita</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='text-align:center; font-weight:bold;'>🏠{label_c} 🆚 {label_o}🛫</p>", unsafe_allow_html=True)
+                c_score1, c_score2 = st.columns(2)
+                with c_score1:
+                    st.session_state.risultati_temp[key_gc] = st.number_input(f"Gol {casa}", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_gc], key=key_gc, disabled=is_disabled)
+                with c_score2:
+                    st.session_state.risultati_temp[key_go] = st.number_input(f"Gol {ospite}", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_go], key=key_go, disabled=is_disabled)
+                st.markdown("---")
+                validata_checkbox = st.checkbox("✅ Valida Risultato", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key)
+
+        # DB UPDATE LOGIC
+        if validata_checkbox != st.session_state.risultati_temp.get(key_val, False):
+            if validata_checkbox and not verify_write_access():
+                st.error("⛔ Accesso in sola lettura. Non è possibile validare la partita.")
+                st.session_state.risultati_temp[key_val] = False
+                st.session_state[f"{valida_key}_force_update"] = not st.session_state.get(f"{valida_key}_force_update", False)
+                return
                 
-                # Trova l'indice esatto della partita corrente
-                partita_idx = df_turno_corrente[df_turno_corrente['Casa'] == casa].index
+            st.session_state.risultati_temp[key_val] = validata_checkbox
+            partita_idx = df_turno_corrente[df_turno_corrente['Casa'] == casa].index
+            
+            if validata_checkbox:
+                df_turno_corrente.loc[partita_idx, 'GolCasa'] = st.session_state.risultati_temp.get(key_gc, 0)
+                df_turno_corrente.loc[partita_idx, 'GolOspite'] = st.session_state.risultati_temp.get(key_go, 0)
+                df_turno_corrente.loc[partita_idx, 'Validata'] = True
+                st.session_state.df_torneo.loc[partita_idx, ['GolCasa', 'GolOspite', 'Validata']] = df_turno_corrente.loc[partita_idx, ['GolCasa', 'GolOspite', 'Validata']]
                 
-                if validata_checkbox:
-                    # Salva i risultati nel DataFrame quando viene validato
-                    df_turno_corrente.loc[partita_idx, 'GolCasa'] = st.session_state.risultati_temp.get(key_gc, 0)
-                    df_turno_corrente.loc[partita_idx, 'GolOspite'] = st.session_state.risultati_temp.get(key_go, 0)
-                    df_turno_corrente.loc[partita_idx, 'Validata'] = True
-                    st.session_state.df_torneo.loc[partita_idx, ['GolCasa', 'GolOspite', 'Validata']] = df_turno_corrente.loc[partita_idx, ['GolCasa', 'GolOspite', 'Validata']]
-                    
-                    if salva_torneo_su_db(
-                        action_type="validazione_risultato",
-                        details={
-                            "partita": f"{casa} vs {ospite}",
-                            "risultato": f"{df_turno_corrente.loc[partita_idx, 'GolCasa']}-{df_turno_corrente.loc[partita_idx, 'GolOspite']}",
-                            "turno": st.session_state.turno_attivo
-                        }
-                    ):
-                        pass #st.toast(f"✅ Partita {casa} vs {ospite} validata e salvata!")
-                    else:
-                        st.error("❌ Errore durante il salvataggio del risultato")
+                if salva_torneo_su_db(
+                    action_type="validazione_risultato",
+                    details={
+                        "partita": f"{casa} vs {ospite}",
+                        "risultato": f"{df_turno_corrente.loc[partita_idx, 'GolCasa'].values[0]}-{df_turno_corrente.loc[partita_idx, 'GolOspite'].values[0]}",
+                        "turno": st.session_state.turno_attivo
+                    }
+                ):
+                    pass # Success
                 else:
-                    # Rimuovi la validazione se deselezionata
-                    df_turno_corrente.loc[partita_idx, 'Validata'] = False
-                    st.session_state.df_torneo.loc[partita_idx, 'Validata'] = False
-                    
-                    if salva_torneo_su_db(
-                        action_type="rimozione_validazione",
-                        details={
-                            "partita": f"{casa} vs {ospite}",
-                            "turno": st.session_state.turno_attivo
-                        }
-                    ):
-                        st.info(f"⚠️ Validazione rimossa per {casa} vs {ospite}")
-                    else:
-                        st.error("❌ Errore durante il salvataggio delle modifiche")
-                
-                # Forza l'aggiornamento dell'interfaccia
-                st.rerun()
-            
-            # Mostra stato validazione
-            if st.session_state.risultati_temp.get(key_val, False):
-                pass #st.toast("✅ Partita validata!")
+                    st.error("❌ Errore durante il salvataggio del risultato")
             else:
-                st.warning("⚠️ Partita non ancora validata.")
+                df_turno_corrente.loc[partita_idx, 'Validata'] = False
+                st.session_state.df_torneo.loc[partita_idx, 'Validata'] = False
+                
+                if salva_torneo_su_db(
+                    action_type="rimozione_validazione",
+                    details={
+                        "partita": f"{casa} vs {ospite}",
+                        "turno": st.session_state.turno_attivo
+                    }
+                ):
+                    st.info(f"⚠️ Validazione rimossa per {casa} vs {ospite}")
+                else:
+                    st.error("❌ Errore durante il salvataggio delle modifiche")
+            
+            st.rerun()
+        
+        if st.session_state.risultati_temp.get(key_val, False):
+            pass
+        elif tipo_vista == 'standard':
+            st.warning("⚠️ Partita non ancora validata.")
 
 # -------------------------
 # Header grafico
@@ -1737,11 +1782,13 @@ if st.session_state.torneo_iniziato:
             st.error("⛔ Accesso in sola lettura. Non è possibile terminare il torneo.")
 
 
+    # --- FUNZIONI DI SINCRONIZZAZIONE ---
+    def sync_tipo_vista(source_key):
+        val = st.session_state[source_key].lower()
+        st.session_state['tipo_vista_selezionata'] = val
+
     # ✅ 3. 🔧 Utility (sezione principale con sottosezioni)
     st.sidebar.subheader("🔧 Utility")
-    
-   
-    
     
     # 🔎 Visualizzazione incontri
     with st.sidebar.expander("🔎 Visualizzazione incontri", expanded=False):
@@ -1750,6 +1797,16 @@ if st.session_state.torneo_iniziato:
             options=["Squadre", "Giocatori", "Completa"],
             index=["Squadre", "Giocatori", "Completa"].index(st.session_state.modalita_visualizzazione),
             key="radio_sidebar"
+        )
+        st.markdown("---")
+        current_view = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
+        st.radio(
+            "Tipo di vista:",
+            ("Compact", "Premium", "Standard"),
+            index=("Compact", "Premium", "Standard").index(current_view),
+            key="tipo_vista_sidebar_widget",
+            on_change=sync_tipo_vista,
+            args=("tipo_vista_sidebar_widget",)
         )
     
     # 📅 Visualizzazione incontri giocati e classifica (spostati nella Main UI)
@@ -1883,6 +1940,19 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
     if df_turno_corrente.empty:
         st.warning("⚠️ Non ci sono partite in questo turno. Torna indietro per aggiungere giocatori o carica un altro torneo.")
     else:
+        st.markdown("---")
+        tipo_vista_corrente = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
+        st.radio(
+            "Seleziona la vista del calendario:",
+            ("Compact", "Premium", "Standard"),
+            index=("Compact", "Premium", "Standard").index(tipo_vista_corrente),
+            key="tipo_vista_main_widget",
+            horizontal=True,
+            label_visibility="collapsed",
+            on_change=sync_tipo_vista,
+            args=("tipo_vista_main_widget",)
+        )
+
         # Passa il nuovo parametro alla funzione
         visualizza_incontri_attivi(df_turno_corrente, st.session_state.turno_attivo, st.session_state.modalita_visualizzazione)
 
