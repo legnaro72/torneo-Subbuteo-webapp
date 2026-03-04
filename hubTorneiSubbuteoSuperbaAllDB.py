@@ -76,11 +76,8 @@ with col3:
             </div>
             <br>
             <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
-                <a class="card-link" href="https://torneo-subbuteo-superba-svizzero-alldb.streamlit.app/" target="_blank">
-                    Versione Stabile
-                </a>
-                <a class="card-link card-link-beta" href="https://torneo-subbuteo-superba-new-version-svizzero-alldb.streamlit.app/" target="_blank">
-                    <span style="margin-right:5px;">⭐</span> Beta Premium
+                <a class="card-link" href="https://torneo-subbuteo-superba-new-version-svizzero-alldb.streamlit.app/" target="_blank">
+                    <span style="margin-right:8px;">▶</span> Avvia Modalità
                 </a>
             </div>
         </div>

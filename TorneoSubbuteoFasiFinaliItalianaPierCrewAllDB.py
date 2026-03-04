@@ -466,13 +466,25 @@ def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
             fill = (idx_p % 2 == 0)
             pdf.set_fill_color(248, 249, 250) if fill else pdf.set_fill_color(255, 255, 255)
             
-            valida = bool(partita['Valida'])
-            gc = int(partita['GolCasa']) if valida and pd.notna(partita['GolCasa']) else ""
-            go = int(partita['GolOspite']) if valida and pd.notna(partita['GolOspite']) else ""
+            def safe_val(v, default=""):
+                if isinstance(v, pd.Series): v = v.iloc[0] if not v.empty else default
+                if isinstance(v, (list, tuple)): v = v[0] if len(v) > 0 else default
+                try:
+                    if pd.isna(v): return default
+                except: pass
+                s_v = str(v).strip()
+                if s_v.lower() in ["none", "nan", "<na>", ""]: return default
+                return s_v
+
+            valida = bool(partita.get('Valida', False))
+            gc_val = safe_val(partita.get('GolCasa'))
+            go_val = safe_val(partita.get('GolOspite'))
+            gc = int(float(gc_val)) if valida and gc_val.replace('.', '', 1).isdigit() else ""
+            go = int(float(go_val)) if valida and go_val.replace('.', '', 1).isdigit() else ""
             res = f"{gc} - {go}" if valida else " - "
             
-            casa = str(partita['Casa'])
-            osp = str(partita['Ospite'])
+            casa = safe_val(partita.get('Casa'), "-")
+            osp = safe_val(partita.get('Ospite'), "-")
             if len(casa) > 30: casa = casa[:28]+"..."
             if len(osp) > 30: osp = osp[:28]+"..."
             
@@ -533,13 +545,25 @@ def generate_pdf_ko(rounds_ko: list[pd.DataFrame]) -> bytes:
             fill = (idx_p % 2 == 0)
             pdf.set_fill_color(248, 249, 250) if fill else pdf.set_fill_color(255, 255, 255)
             
-            valida = bool(match['Valida'])
-            gc = int(match['GolA']) if valida and pd.notna(match['GolA']) else ""
-            go = int(match['GolB']) if valida and pd.notna(match['GolB']) else ""
+            def safe_val(v, default=""):
+                if isinstance(v, pd.Series): v = v.iloc[0] if not v.empty else default
+                if isinstance(v, (list, tuple)): v = v[0] if len(v) > 0 else default
+                try:
+                    if pd.isna(v): return default
+                except: pass
+                s_v = str(v).strip()
+                if s_v.lower() in ["none", "nan", "<na>", ""]: return default
+                return s_v
+
+            valida = bool(match.get('Valida', False))
+            gc_val = safe_val(match.get('GolA'))
+            go_val = safe_val(match.get('GolB'))
+            gc = int(float(gc_val)) if valida and gc_val.replace('.', '', 1).isdigit() else ""
+            go = int(float(go_val)) if valida and go_val.replace('.', '', 1).isdigit() else ""
             res = f"{gc} - {go}" if valida else " - "
             
-            casa = str(match['SquadraA'])
-            osp = str(match['SquadraB'])
+            casa = safe_val(match.get('SquadraA'), "-")
+            osp = safe_val(match.get('SquadraB'), "-")
             if len(casa) > 35: casa = casa[:32]+"..."
             if len(osp) > 35: osp = osp[:32]+"..."
             

@@ -1042,10 +1042,20 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
                 fill = (idx_p % 2 == 0)
                 pdf.set_fill_color(248, 249, 250) if fill else pdf.set_fill_color(255, 255, 255)
             
-                casa   = str(row['Casa'])   if pd.notna(row['Casa'])   and str(row['Casa']).strip().lower() not in ["none", "nan"] else "-"
-                ospite = str(row['Ospite']) if pd.notna(row['Ospite']) and str(row['Ospite']).strip().lower() not in ["none", "nan"] else "-"
-                golc   = str(row['GolCasa'])   if pd.notna(row['GolCasa'])   else " "
-                golo   = str(row['GolOspite']) if pd.notna(row['GolOspite']) else " "
+                def safe_val(v, default="-"):
+                    if isinstance(v, pd.Series): v = v.iloc[0] if not v.empty else default
+                    if isinstance(v, (list, tuple)): v = v[0] if len(v) > 0 else default
+                    try:
+                        if pd.isna(v): return default
+                    except: pass
+                    s_v = str(v).strip()
+                    if s_v.lower() in ["none", "nan", "<na>", ""]: return default
+                    return s_v
+
+                casa   = safe_val(row.get('Casa'), "-")
+                ospite = safe_val(row.get('Ospite'), "-")
+                golc   = safe_val(row.get('GolCasa'), " ")
+                golo   = safe_val(row.get('GolOspite'), " ")
                 
                 if len(casa) > 28: casa = casa[:25]+"..."
                 if len(ospite) > 28: ospite = ospite[:25]+"..."
