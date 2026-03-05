@@ -103,15 +103,12 @@ def inject_css():
             animation: fadeInUp 0.8s ease-out;
         }
         
-        /* Contenitore per le sezioni */
-        .section-container {
-            background: var(--card-bg);
-            padding: 25px;
-            border-radius: 20px;
-            border: 1px solid var(--card-border);
-            box-shadow: var(--card-shadow);
-            backdrop-filter: var(--glass-blur);
-            margin-bottom: 30px;
+        /* Override locale ultra-aggressivo per rimuovere lo spazio vuoto in alto (solo Tigullio) */
+        .stAppViewBlockContainer {
+            padding-top: 1rem !important;
+        }
+        .stMainBlockContainer {
+            padding-top: 1rem !important;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -219,12 +216,7 @@ if not st.session_state.get('authenticated', False):
     auth.show_auth_screen(club="Tigullio")
     st.stop()
 
-st.set_page_config(
-    page_title="Gestione Tigullio All-in-one", 
-    page_icon="⚽",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# Configurazione pagina già impostata all'inizio
 
 def reset_app_state():
     """Resetta lo stato dell'applicazione"""
@@ -247,9 +239,17 @@ start_background_audio(BACKGROUND_AUDIO_URL)
 # Inietta gli stili CSS personalizzati
 inject_css()
 
+# Debug: mostra utente autenticato e ruolo manualmete per metterlo in cima alla sidebar
+if st.session_state.get("authenticated"):
+    user = st.session_state.get("user", {})
+    st.sidebar.markdown(f"**👤 Utente:** {user.get('username', '??')}")
+    st.sidebar.markdown(f"**🔑 Ruolo:** {user.get('role', '??')}")
+
+HUB_URL = "https://farm-tornei-subbuteo-tigullio-all-db.streamlit.app/"
+
 # Sidebar — usa moduli condivisi
 setup_audio_sidebar()
-setup_common_sidebar(show_user_info=True, show_hub_link=True)
+setup_common_sidebar(show_user_info=False, show_hub_link=True, hub_url=HUB_URL)
 
 st.markdown("<div class='button-title'>⚽ Gestione Club e Tornei Tigullio 🏆</div>", unsafe_allow_html=True)
 
