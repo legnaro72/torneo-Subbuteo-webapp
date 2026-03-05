@@ -1923,137 +1923,144 @@ def main():
                     #1st.session_state['mostra_form_creazione'] = False
                     #1st.session_state['azione_scelta'] = None
                     #1st.rerun()
-            st.markdown("---")
-            st.header("🆕 Dettagli Nuovo Torneo")
-            nome_default = f"TorneoSubbuteo_{datetime.now().strftime('%d%m%Y')}"
-            nome_torneo = st.text_input("📝 Nome del torneo", value=st.session_state.get("nome_torneo", nome_default), key="nome_torneo_input")
-            st.session_state["nome_torneo"] = nome_torneo
-            num_gironi = st.number_input("🔢 Numero di gironi", 1, 8, value=st.session_state.get("num_gironi", 1), key="num_gironi_input")
-            st.session_state["num_gironi"] = num_gironi
-            tipo_calendario = st.selectbox("📅 Tipo calendario", ["Solo andata", "Andata e ritorno"], key="tipo_calendario_input")
-            st.session_state["tipo_calendario"] = tipo_calendario
-            n_giocatori = st.number_input("👥 Numero giocatori", 3, 64, value=st.session_state.get("n_giocatori", 3), key="n_giocatori_input")
-            st.session_state["n_giocatori"] = n_giocatori
+            # ── STEP 1: Dettagli Nuovo Torneo + Selezione Giocatori ──
+            # Nasconde questa sezione dopo la conferma dei giocatori
+            if not st.session_state.get('giocatori_confermati', False):
+                st.markdown("---")
+                st.header("🆕 Dettagli Nuovo Torneo")
+                nome_default = f"TorneoSubbuteo_{datetime.now().strftime('%d%m%Y')}"
+                nome_torneo = st.text_input("📝 Nome del torneo", value=st.session_state.get("nome_torneo", nome_default), key="nome_torneo_input")
+                st.session_state["nome_torneo"] = nome_torneo
+                num_gironi = st.number_input("🔢 Numero di gironi", 1, 8, value=st.session_state.get("num_gironi", 1), key="num_gironi_input")
+                st.session_state["num_gironi"] = num_gironi
+                tipo_calendario = st.selectbox("📅 Tipo calendario", ["Solo andata", "Andata e ritorno"], key="tipo_calendario_input")
+                st.session_state["tipo_calendario"] = tipo_calendario
+                n_giocatori = st.number_input("👥 Numero giocatori", 3, 64, value=st.session_state.get("n_giocatori", 3), key="n_giocatori_input")
+                st.session_state["n_giocatori"] = n_giocatori
 
-            st.markdown("### 👥 Seleziona Giocatori")
-            amici = df_master['Giocatore'].tolist() if not df_master.empty else []
-            
-            # Aggiungi checkbox per importare tutti i giocatori
-            importa_tutti = st.checkbox("Importa tutti i giocatori del Club", key="importa_tutti_giocatori")
-            
-            # Se il checkbox è selezionato, seleziona automaticamente tutti i giocatori
-            if importa_tutti:
-                amici_selezionati = amici
-                st.session_state["n_giocatori"] = len(amici)  # Aggiorna automaticamente il numero di partecipanti
-                st.session_state["amici_selezionati"] = amici  # Salva la selezione
-            else:
-                # Usa il valore corretto per il controllo della modalità
-                usa_multiselect = st.session_state.get('usa_multiselect_giocatori', False)
+                st.markdown("### 👥 Seleziona Giocatori")
+                amici = df_master['Giocatore'].tolist() if not df_master.empty else []
                 
-                if usa_multiselect:
-                    # Modalità MULTISELECT
-                    amici_selezionati = st.multiselect(
-                        "Seleziona giocatori dal database", 
-                        sorted(amici),   # già ordinati alfabeticamente
-                        default=st.session_state.get("amici_selezionati", []), 
-                        key="amici_multiselect"
-                    )
+                # Aggiungi checkbox per importare tutti i giocatori
+                importa_tutti = st.checkbox("Importa tutti i giocatori del Club", key="importa_tutti_giocatori")
+                
+                # Se il checkbox è selezionato, seleziona automaticamente tutti i giocatori
+                if importa_tutti:
+                    amici_selezionati = amici
+                    st.session_state["n_giocatori"] = len(amici)  # Aggiorna automaticamente il numero di partecipanti
+                    st.session_state["amici_selezionati"] = amici  # Salva la selezione
                 else:
-                    # Modalità CHECKBOX INDIVIDUALI
-                    st.markdown("### Seleziona i giocatori")
-                    amici_selezionati = st.session_state.get("amici_selezionati", []).copy()
+                    # Usa il valore corretto per il controllo della modalità
+                    usa_multiselect = st.session_state.get('usa_multiselect_giocatori', False)
                     
-                    # Crea una griglia di checkbox (3 colonne)
-                    cols = st.columns(3)
-                    for i, giocatore in enumerate(sorted(amici)):
-                        with cols[i % 3]:
-                            # Usa il valore corrente dalla lista dei selezionati come default
-                            is_checked = giocatore in amici_selezionati
-                            if st.checkbox(giocatore, value=is_checked, key=f"chk_{giocatore}"):
-                                if giocatore not in amici_selezionati:
-                                    amici_selezionati.append(giocatore)
-                            else:
-                                if giocatore in amici_selezionati:
-                                    amici_selezionati.remove(giocatore)
-                    
-                    # Aggiorna la lista dei giocatori selezionati nella sessione
-                    st.session_state["amici_selezionati"] = amici_selezionati
-
-
-            num_supplementari = st.session_state["n_giocatori"] - len(amici_selezionati)
-            if num_supplementari < 0:
-                st.warning(f"⚠️ Hai selezionato più giocatori ({len(amici_selezionati)}) del numero partecipanti ({st.session_state['n_giocatori']}). Riduci la selezione.")
-                return
-
-            st.markdown(f"🙋‍♂️ Giocatori ospiti da aggiungere: **{max(0, num_supplementari)}**")
-            giocatori_supplementari = []
-            if 'giocatori_supplementari_list' not in st.session_state:
-                st.session_state['giocatori_supplementari_list'] = [''] * max(0, num_supplementari)
-
-            for i in range(max(0, num_supplementari)):
-                nome_ospite = st.text_input(f"Nome ospite {i+1}", value=st.session_state['giocatori_supplementari_list'][i], key=f"ospite_{i}")
-                st.session_state['giocatori_supplementari_list'][i] = nome_ospite
-                if nome_ospite:
-                    giocatori_supplementari.append(nome_ospite.strip())
-                    
-            # Opzione post-selezione: popolare il campo "Nome squadra" con il nome del giocatore
-            usa_nomi_giocatori = st.checkbox(
-                "Usa i nomi dei giocatori come nomi delle squadre",
-                key="usa_nomi_giocatori",
-                value=False
-            )
-            #inizio
-            if st.button("✅ Conferma Giocatori", width="stretch", disabled=st.session_state.get('read_only', True)):
-                if not verify_write_access():
-                    return
-
-                # unisci selezione DB + giocatori ospiti
-                giocatori_scelti = amici_selezionati + [g for g in giocatori_supplementari if g]
-                # controllo minimo 3 giocatori
-                if len(set(giocatori_scelti)) < 3:
-                    st.warning("⚠️ Inserisci almeno 3 giocatori diversi.")
-                    return
-
-                # salva la lista definitiva (rimuove duplicati preservando l'ordine)
-                # dict.fromkeys mantiene l'ordine in Python >= 3.7
-                st.session_state['giocatori_selezionati_definitivi'] = list(dict.fromkeys(giocatori_scelti))
-
-                st.session_state['mostra_assegnazione_squadre'] = True
-                st.session_state['mostra_gironi'] = False
-                st.session_state['gironi_manuali_completi'] = False
-                st.session_state['giocatori_confermati'] = True
-
-                # Ricostruisce gioc_info preservando potenziale e altri attributi dal DB,
-                # ma — se l'opzione è attiva — imposta Squadra = nome del giocatore
-                st.session_state['gioc_info'] = {}
-                usa_nomi = st.session_state.get('usa_nomi_giocatori', False)
-
-                for gioc in st.session_state['giocatori_selezionati_definitivi']:
-                    if not df_master.empty and 'Giocatore' in df_master.columns and gioc in df_master['Giocatore'].values:
-                        row = df_master[df_master['Giocatore'] == gioc].iloc[0]
-                        squadra_default = row.get('Squadra', "")
-                        # compatibilità col nome colonna Potenziale (es. 'Potenziale')
-                        try:
-                            potenziale_default = int(row.get('Potenziale', row.get('potenziale', 4)))
-                        except Exception:
-                            potenziale_default = 4
+                    if usa_multiselect:
+                        # Modalità MULTISELECT
+                        amici_selezionati = st.multiselect(
+                            "Seleziona giocatori dal database", 
+                            sorted(amici),   # già ordinati alfabeticamente
+                            default=st.session_state.get("amici_selezionati", []), 
+                            key="amici_multiselect"
+                        )
                     else:
-                        squadra_default = ""
-                        potenziale_default = 4
+                        # Modalità CHECKBOX INDIVIDUALI
+                        st.markdown("### Seleziona i giocatori")
+                        amici_selezionati = st.session_state.get("amici_selezionati", []).copy()
+                        
+                        # Crea una griglia di checkbox (3 colonne)
+                        cols = st.columns(3)
+                        for i, giocatore in enumerate(sorted(amici)):
+                            with cols[i % 3]:
+                                # Usa il valore corrente dalla lista dei selezionati come default
+                                is_checked = giocatore in amici_selezionati
+                                if st.checkbox(giocatore, value=is_checked, key=f"chk_{giocatore}"):
+                                    if giocatore not in amici_selezionati:
+                                        amici_selezionati.append(giocatore)
+                                else:
+                                    if giocatore in amici_selezionati:
+                                        amici_selezionati.remove(giocatore)
+                        
+                        # Aggiorna la lista dei giocatori selezionati nella sessione
+                        st.session_state["amici_selezionati"] = amici_selezionati
 
-                    # se l'opzione è attiva, sovrascrivo SOLO il nome della squadra con il nome del giocatore
-                    if usa_nomi:
-                        squadra_default = gioc
 
-                    st.session_state['gioc_info'][gioc] = {"Squadra": squadra_default, "Potenziale": potenziale_default}
+                num_supplementari = st.session_state["n_giocatori"] - len(amici_selezionati)
+                if num_supplementari < 0:
+                    st.warning(f"⚠️ Hai selezionato più giocatori ({len(amici_selezionati)}) del numero partecipanti ({st.session_state['n_giocatori']}). Riduci la selezione.")
+                    return
 
-                st.toast("✅ Giocatori confermati")
-                st.rerun()
+                st.markdown(f"🙋‍♂️ Giocatori ospiti da aggiungere: **{max(0, num_supplementari)}**")
+                giocatori_supplementari = []
+                if 'giocatori_supplementari_list' not in st.session_state:
+                    st.session_state['giocatori_supplementari_list'] = [''] * max(0, num_supplementari)
 
-            #
+                for i in range(max(0, num_supplementari)):
+                    nome_ospite = st.text_input(f"Nome ospite {i+1}", value=st.session_state['giocatori_supplementari_list'][i], key=f"ospite_{i}")
+                    st.session_state['giocatori_supplementari_list'][i] = nome_ospite
+                    if nome_ospite:
+                        giocatori_supplementari.append(nome_ospite.strip())
+                        
+                # Opzione post-selezione: popolare il campo "Nome squadra" con il nome del giocatore
+                usa_nomi_giocatori = st.checkbox(
+                    "Usa i nomi dei giocatori come nomi delle squadre",
+                    key="usa_nomi_giocatori",
+                    value=False
+                )
+                #inizio
+                if st.button("✅ Conferma Giocatori", width="stretch", disabled=st.session_state.get('read_only', True)):
+                    if not verify_write_access():
+                        return
 
+                    # unisci selezione DB + giocatori ospiti
+                    giocatori_scelti = amici_selezionati + [g for g in giocatori_supplementari if g]
+                    # controllo minimo 3 giocatori
+                    if len(set(giocatori_scelti)) < 3:
+                        st.warning("⚠️ Inserisci almeno 3 giocatori diversi.")
+                        return
 
-            if st.session_state.get('mostra_assegnazione_squadre', False):
+                    # salva la lista definitiva (rimuove duplicati preservando l'ordine)
+                    # dict.fromkeys mantiene l'ordine in Python >= 3.7
+                    st.session_state['giocatori_selezionati_definitivi'] = list(dict.fromkeys(giocatori_scelti))
+
+                    st.session_state['mostra_assegnazione_squadre'] = True
+                    st.session_state['mostra_gironi'] = False
+                    st.session_state['gironi_manuali_completi'] = False
+                    st.session_state['giocatori_confermati'] = True
+
+                    # Ricostruisce gioc_info preservando potenziale e altri attributi dal DB,
+                    # ma — se l'opzione è attiva — imposta Squadra = nome del giocatore
+                    st.session_state['gioc_info'] = {}
+                    usa_nomi = st.session_state.get('usa_nomi_giocatori', False)
+
+                    for gioc in st.session_state['giocatori_selezionati_definitivi']:
+                        if not df_master.empty and 'Giocatore' in df_master.columns and gioc in df_master['Giocatore'].values:
+                            row = df_master[df_master['Giocatore'] == gioc].iloc[0]
+                            squadra_default = row.get('Squadra', "")
+                            # compatibilità col nome colonna Potenziale (es. 'Potenziale')
+                            try:
+                                potenziale_default = int(row.get('Potenziale', row.get('potenziale', 4)))
+                            except Exception:
+                                potenziale_default = 4
+                        else:
+                            squadra_default = ""
+                            potenziale_default = 4
+
+                        # se l'opzione è attiva, sovrascrivo SOLO il nome della squadra con il nome del giocatore
+                        if usa_nomi:
+                            squadra_default = gioc
+
+                        st.session_state['gioc_info'][gioc] = {"Squadra": squadra_default, "Potenziale": potenziale_default}
+
+                    st.toast("✅ Giocatori confermati")
+                    st.rerun()
+            # ── FINE STEP 1 ──
+
+            # ── STEP 2: Modifica Squadra e Potenziale ──
+            if st.session_state.get('mostra_assegnazione_squadre', False) and not st.session_state.get('mostra_gironi', False):
+                # Bottone Indietro per tornare alla selezione giocatori
+                if st.button("⬅️ Torna alla selezione giocatori", key="back_to_players"):
+                    st.session_state['giocatori_confermati'] = False
+                    st.session_state['mostra_assegnazione_squadre'] = False
+                    st.rerun()
                 st.markdown("---")
                 st.markdown("### ⚽ Modifica Squadra e Potenziale")
                 st.markdown("Assegna una squadra e un valore di potenziale a ciascun giocatore.")
@@ -2134,7 +2141,14 @@ def main():
                     st.toast("✅ Squadre e potenziali confermati")
                     st.rerun()
 
+            # ── STEP 3: Gironi e Generazione Calendario ──
             if st.session_state.get('mostra_gironi', False):
+                # Bottone Indietro per tornare alla modifica squadre/potenziali
+                if st.button("⬅️ Torna a Squadre e Potenziali", key="back_to_squads"):
+                    st.session_state['mostra_gironi'] = False
+                    st.session_state['mostra_assegnazione_squadre'] = True
+                    st.session_state['gironi_manuali_completi'] = False
+                    st.rerun()
                 st.markdown("---")
                 st.markdown("### 🧩 Modalità di creazione dei gironi")
                 
