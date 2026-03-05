@@ -1,4 +1,4 @@
-import streamlit as st
+﻿import streamlit as st
 
 # Configurazione pagina (DEVE essere il primo comando Streamlit)
 # Configurazione pagina spostata all'inizio

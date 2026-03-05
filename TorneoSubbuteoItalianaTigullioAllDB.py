@@ -1104,9 +1104,6 @@ def inject_css():
     # Override locale ultra-aggressivo per rimuovere lo spazio vuoto in alto (solo Tigullio)
     st.html("""
         <style>
-        header[data-testid="stHeader"] {
-            display: none !important;
-        }
         .stAppViewBlockContainer {
             padding-top: 1rem !important;
         }
