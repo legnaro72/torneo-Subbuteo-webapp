@@ -1468,8 +1468,8 @@ def main():
         """, unsafe_allow_html=True)
     # ✅ Configurazione Sidebar (Modulo Comune)
     # L'audio e le info utente sono ora gestiti internamente ai componenti comuni
-    setup_audio_sidebar()
     setup_common_sidebar(show_user_info=True, hub_url=HUB_URL)
+    setup_audio_sidebar()
     
     if not st.session_state['ui_show_pre']:
         # Back to setup button - always enabled (specifico per Fasi Finali)

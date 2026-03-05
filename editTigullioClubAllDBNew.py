@@ -248,8 +248,8 @@ if st.session_state.get("authenticated"):
 HUB_URL = "https://farm-tornei-subbuteo-tigullio-all-db.streamlit.app/"
 
 # Sidebar — usa moduli condivisi
-setup_audio_sidebar()
 setup_common_sidebar(show_user_info=False, show_hub_link=True, hub_url=HUB_URL)
+setup_audio_sidebar()
 
 st.markdown("<div class='button-title'>⚽ Gestione Club e Tornei Tigullio 🏆</div>", unsafe_allow_html=True)
 
