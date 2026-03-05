@@ -71,6 +71,7 @@ from common.ui_components import (
 # ==============================================================================
 # Definisci la tua URL raw per l'audio di sfondo
 BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/Gianna%20Nannini%20%26%20Edoardo%20Bennato%20-%20UNESTATE%20ITALIANA%20(Videoclip%20Italia%2090).mp3"
+HUB_URL = "https://farm-tornei-subbuteo-tigullio-all-db.streamlit.app/"
 
 # -------------------------
 # GESTIONE DELLO STATO E FUNZIONI INIZIALI
@@ -1252,33 +1253,13 @@ def main():
         st.error("❌ Impossibile avviare l'applicazione. La connessione a MongoDB non è disponibile.")
         return
 
-    # Sidebar / Pagina — usa moduli condivisi
-    # ✅ 0. 🎵️ Gestione Audio Sottofondo
-    setup_audio_sidebar()
-
     # ✅ 1. 🕹 Gestione Rapida + 👤 Mod Selezione Partecipanti
-    setup_common_sidebar(show_user_info=False)  # user info già mostrata sopra
+    setup_common_sidebar(show_user_info=False, hub_url=HUB_URL)  # user info già mostrata sopra
     setup_player_selection_mode()
     
     if st.session_state.get('calendario_generato', False):
         df = st.session_state['df_torneo']
         classifica = aggiorna_classifica(df)
-        
-        # ✅ 2. ⚙ Opzioni Torneo
-        st.sidebar.subheader("⚙️ Opzioni Torneo")
-        if st.sidebar.button("💾 Salva Torneo", key="save_tournament", width="stretch", disabled=st.session_state.get('read_only', True)):
-            if st.session_state.get('tournament_id'):
-                ok = aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
-                if ok:
-                    st.sidebar.success("✅ Torneo salvato con successo!")
-                else:
-                    st.sidebar.error("❌ Errore durante il salvataggio.")
-            else:
-                st.sidebar.warning("⚠️ Impossibile salvare, ID torneo non trovato.")
-        
-        if st.sidebar.button("🏠 Termina Torneo", key="reset_app", width="stretch"):
-            st.session_state['sidebar_state_reset'] = True
-            st.rerun()
         
         # --- FUNZIONI DI SINCRONIZZAZIONE ---
         def sync_tipo_vista(source_key):

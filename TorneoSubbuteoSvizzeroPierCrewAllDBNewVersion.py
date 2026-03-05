@@ -48,10 +48,11 @@ from common.ui_components import (
 #add_keep_alive()
 
 
-# Mostra la schermata di autenticazione se non si è già autenticati
 if not st.session_state.get('authenticated', False):
     auth.show_auth_screen(club="PierCrew")
     st.stop()
+
+HUB_URL = "https://farm-tornei-subbuteo-piercrew-all-db.streamlit.app/"
 
 # Configurazione della pagina già impostata all'inizio
 
@@ -1721,7 +1722,7 @@ if st.session_state.setup_mode == "nuovo":
 # Sidebar — usa moduli condivisi
 # -------------------------
 # User info
-setup_common_sidebar(show_user_info=True, show_hub_link=True)
+setup_common_sidebar(show_user_info=True, show_hub_link=True, hub_url=HUB_URL)
 
 # Audio di sottofondo
 setup_audio_sidebar()

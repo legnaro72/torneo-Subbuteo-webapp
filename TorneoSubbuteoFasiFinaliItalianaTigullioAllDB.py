@@ -78,6 +78,7 @@ def reset_app_state():
 # ==============================================================================
 # Definisci la tua URL raw per l'audio di sfondo
 BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/⚽️%20UEFA%20Champions%20League%20🏆%20[TESTO%20originale%20+%20traduzione%20HQ]%20-%20NEW%20VERSION.mp3"
+HUB_URL = "https://farm-tornei-subbuteo-tigullio-all-db.streamlit.app/"
 
 # ==============================================================================
 
@@ -1465,86 +1466,13 @@ def main():
             <h1 style='color:white; font-weight:700;'>🇮🇹⚽ Fase Finale Torneo Subbuteo 🏆🇮🇹</h1>
         </div>
         """, unsafe_allow_html=True)
-    # Sidebar (tutti i pulsanti qui)
-    # Debug: mostra utente autenticato e ruolo
-    if st.session_state.get("authenticated"):
-        user = st.session_state.get("user", {})
-        st.sidebar.markdown("---")
-        st.sidebar.markdown(f"**👤 Utente:** {user.get('username', '??')}")
-        st.sidebar.markdown(f"**🔑 Ruolo:** {user.get('role', '??')}")
-        st.sidebar.markdown("---")
-    # ✅ 0. 🎵️ Gestione Audio Sottofondo 
-    st.sidebar.subheader("🎵️ Gestione Audio Sottofondo")
-    st.sidebar.checkbox(
-        "Disabilita audio di sottofondo🔊",
-        key="bg_audio_disabled",
-        on_change=toggle_audio_callback
-    )
-
-    
-    # ✅ 1. 🕹️ Gestione Rapida (sempre in cima)
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🕹️ Gestione Rapida")
-    st.sidebar.link_button("➡️ Vai a Hub Tornei", "https://farm-tornei-subbuteo-tigullio-all-db.streamlit.app/", width="stretch")
-    st.sidebar.markdown("---")
+    # ✅ Configurazione Sidebar (Modulo Comune)
+    # L'audio e le info utente sono ora gestiti internamente ai componenti comuni
+    setup_audio_sidebar()
+    setup_common_sidebar(show_user_info=True, hub_url=HUB_URL)
     
     if not st.session_state['ui_show_pre']:
-        
-        # ✅ 2. ⚙️ Opzioni Torneo
-        st.sidebar.subheader("⚙️ Opzioni Torneo")
-        
-        # Check if user has write access
-        has_write_access = st.session_state.get("user", {}).get("role") not in ["ospite", "lettura"]
-        
-        # Save Tournament button - disabled in read-only mode
-        if st.sidebar.button(
-            "💾 Salva Torneo", 
-            key="save_tournament_ko", 
-            width="stretch",
-            disabled=not has_write_access,
-            help="Salva i risultati del torneo" + ("" if has_write_access else " (accesso in sola lettura)")
-        ):
-            if has_write_access:
-                salva_risultati_ko()
-            else:
-                st.error("⛔ Accesso in sola lettura. Non è possibile salvare le modifiche.")
-        
-        # Terminate Tournament button - disabled in read-only mode
-        if st.sidebar.button(
-            "🏁 Termina Torneo", 
-            key="terminate_tournament_ko", 
-            width="stretch",
-            disabled=not has_write_access,
-            help="Termina il torneo corrente" + ("" if has_write_access else " (accesso in sola lettura)")
-        ):
-            if has_write_access:
-                # Log dell'azione di terminazione torneo
-                username = st.session_state.get('user', {}).get('username', 'sconosciuto')
-                tournament_id = st.session_state.get('tournament_id', 'sconosciuto')
-                
-                # Prepara i dettagli del torneo per il log
-                torneo_details = {
-                    "tipo_operazione": "terminazione_torneo",
-                    "stato": "torneo_terminato",
-                    "vincitore": st.session_state.get('vincitore_torneo', 'Nessun vincitore definito'),
-                    "data_terminazione": datetime.datetime.now().isoformat(),
-                    "round_corrente": st.session_state.get('round_corrente', 'Nessun round attivo')
-                }
-                
-                # Log dell'azione
-                log.log_action(
-                    username=username,
-                    action="termina_torneo",
-                    torneo=tournament_id,
-                    details=torneo_details
-                )
-                
-                st.session_state.update({"vincitore_torneo": "Torneo terminato manualmente"})
-                st.toast("✅ Torneo terminato con successo!")
-            else:
-                st.error("⛔ Accesso in sola lettura. Non è possibile terminare il torneo.")
-        
-        # Back to setup button - always enabled
+        # Back to setup button - always enabled (specifico per Fasi Finali)
         if st.sidebar.button("⬅️ Torna a classifica e scelta fase finale", key="back_to_setup", width="stretch"):
             reset_to_setup()
             st.rerun()
