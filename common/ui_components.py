@@ -72,7 +72,6 @@ def setup_common_sidebar(show_user_info: bool = True, show_hub_link: bool = True
             hub_url,
             use_container_width=True
         )
-        st.sidebar.markdown("---")
 
 
 
@@ -81,6 +80,7 @@ def setup_player_selection_mode():
     Aggiunge la sezione di selezione modalità partecipanti nella sidebar.
     Gestisce Multiselect vs Checkbox individuali.
     """
+    st.sidebar.markdown("---")
     st.sidebar.subheader("👤 Mod Selezione Partecipanti")
     st.session_state.usa_multiselect_giocatori = st.sidebar.checkbox(
         "Utilizza 'Multiselect'",
@@ -88,7 +88,6 @@ def setup_player_selection_mode():
         key='sidebar_usa_multiselect_giocatori',
         help="Disabilitato per usare la modalità 'Checkbox Individuali' (raccomandata)"
     )
-    st.sidebar.markdown("---")
 
 
 # ==============================================================================
