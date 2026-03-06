@@ -1727,25 +1727,10 @@ setup_common_sidebar(show_user_info=True, show_hub_link=True, hub_url=HUB_URL)
 # Audio di sottofondo
 setup_audio_sidebar()
 
-st.sidebar.subheader("👤 Mod Selezione Partecipanti")
-
-# 🔀 Modalità selezione giocatori
-if "modalita_selezione_giocatori" not in st.session_state:
-    st.session_state.modalita_selezione_giocatori = "Checkbox singole"
-# Crea la checkbox per attivare la modalità Multiselect
-# Il valore di default è False, corrispondente a "Checkbox singole"
-use_multiselect = st.sidebar.checkbox(
-    "Utilizza 'Multiselect'",
-    value=(st.session_state.modalita_selezione_giocatori == "Multiselect")
-)
-
-# Se cambia rispetto allo stato salvato → aggiorna e forza rerun
-nuova_modalita = "Multiselect" if use_multiselect else "Checkbox singole"
-if nuova_modalita != st.session_state.modalita_selezione_giocatori:
-    st.session_state.modalita_selezione_giocatori = nuova_modalita
-    st.rerun()
-
-
+# ✅ 1. 🕹 Gestione Rapida + 👤 Mod Selezione Partecipanti
+setup_player_selection_mode()
+# Mappa il valore per compatibilità interna se necessario (o refactor)
+st.session_state.modalita_selezione_giocatori = "Multiselect" if st.session_state.get('usa_multiselect_giocatori', False) else "Checkbox singole"
 
 if st.session_state.torneo_iniziato:
     #st.sidebar.info(f"Torneo in corso: **{st.session_state.nome_torneo}**")
