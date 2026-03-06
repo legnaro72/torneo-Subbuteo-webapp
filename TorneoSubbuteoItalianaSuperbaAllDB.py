@@ -1255,6 +1255,7 @@ def main():
 
     # ✅ 1. 🕹 Gestione Rapida + 👤 Mod Selezione Partecipanti
     setup_common_sidebar(show_user_info=False, hub_url=HUB_URL)  # user info già mostrata sopra
+    setup_audio_sidebar()
     setup_player_selection_mode()
     
     if st.session_state.get('calendario_generato', False):
