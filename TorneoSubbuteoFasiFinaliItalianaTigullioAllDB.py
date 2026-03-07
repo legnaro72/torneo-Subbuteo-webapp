@@ -2,10 +2,10 @@ import streamlit as st
 
 # Configurazione pagina (DEVE essere il primo comando Streamlit)
 st.set_page_config(
-    page_title="⚽ Fase Finale Torneo Subbuteo",
+    page_title="Torneo Subbuteo Fasi Finali",
     layout="wide",
     page_icon="🏆",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 import base64
@@ -44,7 +44,8 @@ from common.audio import (
     toggle_audio_callback, start_background_audio, setup_audio_sidebar
 )
 from common.ui_components import (
-    render_tournament_header, setup_common_sidebar
+    render_tournament_header, setup_common_sidebar,
+    enable_session_keepalive
 )
 
 # Silenzia solo il warning di deprecazione relativo a st.experimental_get_query_params
@@ -1419,6 +1420,9 @@ def main():
     if not st.session_state.get('authenticated', False):
         auth.show_auth_screen(club="Tigullio")
         return
+        
+    # Attiva il keep-alive per evitare il timeout della sessione
+    enable_session_keepalive()
         
     if st.session_state.get('sidebar_state_reset', False):
         reset_app_state()

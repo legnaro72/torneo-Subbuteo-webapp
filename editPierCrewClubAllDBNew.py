@@ -6,7 +6,7 @@ st.set_page_config(
     page_title="Gestione Club PierCrew",
     page_icon="⚽",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 import pandas as pd
@@ -24,7 +24,7 @@ from common.audio import (
     autoplay_background_audio, toggle_audio_callback,
     start_background_audio, setup_audio_sidebar
 )
-from common.ui_components import setup_common_sidebar
+from common.ui_components import setup_common_sidebar, enable_session_keepalive
 
 # Dati di connessione a MongoDB forniti dall'utente
 MONGO_URI_PLAYERS = "mongodb+srv://massimilianoferrando:Legnaro21!$@cluster0.t3750lc.mongodb.net/?retryWrites=true&w=majority"
@@ -38,8 +38,9 @@ MONGO_URI_TOURNEMENTS_CH = "mongodb+srv://massimilianoferrando:Legnaro21!$@clust
 BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/Gli%20Amici%20(Remastered%202007).mp3"
 
 
+@st.cache_resource
 def init_mongo_connections():
-    """Inizializza le connessioni MongoDB con gestione degli errori"""
+    """Inizializza le connessioni MongoDB con gestione degli errori (cached per sessione)"""
     try:
         client_players = MongoClient(MONGO_URI_PLAYERS, server_api=ServerApi('1'), tlsCAFile=certifi.where())
         client_italiana = MongoClient(MONGO_URI_TOURNEMENTS, server_api=ServerApi('1'), tlsCAFile=certifi.where())
@@ -59,6 +60,9 @@ def init_mongo_connections():
 if not st.session_state.get('authenticated', False):
     auth.show_auth_screen(club="PierCrew")
     st.stop()
+    
+# Attiva il keep-alive per evitare il timeout della sessione
+enable_session_keepalive()
     
 
 # Inizializza le connessioni MongoDB
@@ -814,31 +818,49 @@ elif st.session_state.edit_index is not None: # Logica di modifica/aggiunta gioc
         default_potenziale = st.session_state.df_giocatori.at[idx, "Potenziale"]
         default_ruolo = st.session_state.df_giocatori.at[idx, "Ruolo"]
 
-    giocatore = st.text_input("Nome Giocatore", value=default_giocatore, key="giocatore_input")
-    squadra = st.text_input("Squadra", value=default_squadra, key="squadra_input")
-    potenziale = st.slider("Potenziale", 1, 10, default_potenziale, key="potenziale_input")
-    # Get valid role or default to 'R' if invalid
-    valid_roles = ["R", "W", "A"]
-    default_role = default_ruolo if pd.notna(default_ruolo) and str(default_ruolo).strip() in valid_roles else "R"
-    
-    # Only show role selector for admins
-    if is_admin:
-        ruolo = st.selectbox(
-            "Ruolo", 
-            options=valid_roles, 
-            format_func=lambda x: {"R": "Reader (sola lettura)", "W": "Writer (lettura/scrittura)", "A": "Amministratore"}[x],
-            index=valid_roles.index(default_role),
-            key="ruolo_input"
-        )
-    else:
-        # Non-admin users see the role as read-only text
-        ruolo = default_role
-        ruolo_display = {"R": "Reader (sola lettura)", "W": "Writer (lettura/scrittura)", "A": "Amministratore"}.get(default_role, "Reader (sola lettura)")
-        st.text_input("Ruolo", value=ruolo_display, disabled=True)
+    # Usa st.form per evitare rerun ad ogni modifica degli input
+    with st.form(key="form_giocatore"):
+        giocatore = st.text_input("Nome Giocatore", value=default_giocatore, key="giocatore_input")
+        squadra = st.text_input("Squadra", value=default_squadra, key="squadra_input")
+        potenziale = st.slider("Potenziale", 1, 10, default_potenziale, key="potenziale_input")
+        # Get valid role or default to 'R' if invalid
+        valid_roles = ["R", "W", "A"]
+        default_role = default_ruolo if pd.notna(default_ruolo) and str(default_ruolo).strip() in valid_roles else "R"
+        
+        # Only show role selector for admins
+        if is_admin:
+            ruolo = st.selectbox(
+                "Ruolo", 
+                options=valid_roles, 
+                format_func=lambda x: {"R": "Reader (sola lettura)", "W": "Writer (lettura/scrittura)", "A": "Amministratore"}[x],
+                index=valid_roles.index(default_role),
+                key="ruolo_input"
+            )
+        else:
+            # Non-admin users see the role as read-only text
+            ruolo = default_role
+            ruolo_display = {"R": "Reader (sola lettura)", "W": "Writer (lettura/scrittura)", "A": "Amministratore"}.get(default_role, "Reader (sola lettura)")
+            st.text_input("Ruolo", value=ruolo_display, disabled=True)
+
+        col_save, col_cancel = st.columns(2)
+        with col_save:
+            if is_guest:
+                submitted = st.form_submit_button("✅ Salva", disabled=True, help="La modifica non è permessa agli ospiti")
+            else:
+                submitted = st.form_submit_button("✅ Salva")
+        with col_cancel:
+            cancelled = st.form_submit_button("❌ Annulla")
+
+    # Azioni post-form (fuori dal form per evitare problemi)
+    if submitted and not is_guest:
+        save_player(giocatore, squadra, potenziale, ruolo)
+    if cancelled:
+        st.session_state.edit_index = None
+        st.rerun()
 
     if st.session_state.edit_index != -1:  # Only show in edit mode, not in add mode
         if is_admin:
-            if st.button(" Reset Password", help="Resetta la password dell'utente e imposta SetPwd a 0"):
+            if st.button("🔑 Reset Password", help="Resetta la password dell'utente e imposta SetPwd a 0"):
                 idx = st.session_state.edit_index
                 giocatore = st.session_state.df_giocatori.iloc[idx]["Giocatore"]
                 
@@ -872,22 +894,10 @@ elif st.session_state.edit_index is not None: # Logica di modifica/aggiunta gioc
                     }
                 )
                 
-                st.toast(" Password resettata con successo!")
+                st.toast("🔑 Password resettata con successo!")
                 st.rerun()
         else:
             st.warning("Solo l'amministratore può resettare le password")
-
-    col_save, col_cancel = st.columns(2)
-    with col_save:
-        if is_guest:
-            st.button("✅ Salva", disabled=True, help="La modifica non è permessa agli ospiti")
-        else:
-            if st.button("✅ Salva"):
-                save_player(giocatore, squadra, potenziale, ruolo)
-    with col_cancel:
-        if st.button("❌ Annulla"):
-            st.session_state.edit_index = None
-            st.rerun()
 
 elif st.session_state.confirm_delete["type"] is not None:
     # Confirmation and password logic for deletions

@@ -3,10 +3,10 @@ from logging_utils import log_action
 
 # Configurazione della pagina DEVE essere la PRIMA operazione Streamlit
 st.set_page_config(
-    page_title="Torneo Subbuteo - Svizzero",
+    page_title="Torneo Subbuteo Svizzero",
     page_icon="⚽",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Solo DOPO si possono importare le altre dipendenze

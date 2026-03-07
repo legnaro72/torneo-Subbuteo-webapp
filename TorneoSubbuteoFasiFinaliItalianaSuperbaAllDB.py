@@ -2,10 +2,10 @@ import streamlit as st
 
 # Configurazione pagina (DEVE essere il primo comando Streamlit)
 st.set_page_config(
-    page_title="⚽ Fase Finale Torneo Subbuteo",
+    page_title="Torneo Subbuteo Fasi Finali",
     layout="wide",
     page_icon="🏆",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 import base64
