@@ -36,21 +36,16 @@ from common.audio import (
 )
 from common.ui_components import (
     render_tournament_header, setup_common_sidebar,
-    setup_player_selection_mode, add_keep_alive
+    setup_player_selection_mode, enable_session_keepalive
 )
-
-
-
-# Keep-alive è ora importato da common.ui_components
-# add_keep_alive() — disponibile se necessario
-
-# Inizializza il keep-alive
-#add_keep_alive()
 
 
 if not st.session_state.get('authenticated', False):
     auth.show_auth_screen(club="Superba")
     st.stop()
+
+# Attiva il sistema di keep-alive per mantenere la sessione durante le partite
+enable_session_keepalive()
 
 HUB_URL = "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/"
 
@@ -126,15 +121,6 @@ BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbu
 # ==============================================================================
 
 
-# ==============================================================================
-# ISTRUZIONE DEFINITIVA: AVVIO AUDIO DI SOTTOFONDO PERSISTENTE
-# ==============================================================================
-# Definisci la tua URL raw per l'audio di sfondo
-BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/Appenzeller%20Jodler.mp3"
-
-# ==============================================================================
-
-
 # -------------------------
 # CSS personalizzato
 # -------------------------
@@ -148,60 +134,53 @@ inject_all_styles()
 # -------------------------
 # Connessione a MongoDB Atlas
 # -------------------------
-
-def check_internet_connection():
-    try:
-        import socket
-        socket.create_connection(("8.8.8.8", 53), timeout=5)
-        return True
-    except OSError:
-        return False
+from common.db_utils import check_internet_connection as _check_internet
 
 players_collection = None
 tournaments_collection = None
 
-if not check_internet_connection():
+if not _check_internet():
     st.sidebar.error("❌ Nessuna connessione Internet rilevata. Verifica la tua connessione e riprova.")
 else:
-    with st.spinner("Connessione a MongoDB..."):
-        try:
-            MONGO_URI = st.secrets.get("MONGO_URI")
-            if not MONGO_URI:
-                st.sidebar.warning("⚠️ Chiave MONGO_URI non trovata nei segreti di Streamlit.")
-            else:
-                server_api = ServerApi('1')
-                client = MongoClient(MONGO_URI, 
-                                  server_api=server_api,
-                                  connectTimeoutMS=5000,  # 5 secondi di timeout
-                                  socketTimeoutMS=5000,
-                                  serverSelectionTimeoutMS=5000)
-                
-                # Test connessione
-                client.admin.command('ping')
-                
-                # Connessione per i giocatori
-                db_players = client.get_database("giocatori_subbuteo")
-                players_collection = db_players.get_collection("superba_players")
-                _ = players_collection.find_one()
-
-                # Connessione per i tornei
-                db_tournaments = client.get_database("TorneiSubbuteo")
-                tournaments_collection = db_tournaments.get_collection("SuperbaSvizzero")
-                _ = tournaments_collection.find_one()
-                
-                #st.sidebar.success("✅ Connessione a MongoDB Atlas riuscita!")
-                
-        except Exception as e:
-            st.sidebar.error(f"❌ Errore di connessione a MongoDB: {e}")
-            st.sidebar.warning("""
-            **Risoluzione problemi:**
-            1. Verifica la tua connessione Internet
-            2. Controlla il file .streamlit/secrets.toml
-            3. Assicurati che l'IP sia nella whitelist di MongoDB Atlas
-            4. Controlla che il tuo account MongoDB Atlas sia attivo
+    # Usa @st.cache_resource per evitare di ricreare il client ad ogni rerun
+    @st.cache_resource
+    def _get_svizzero_client(uri):
+        """Crea e cache il client MongoDB per il torneo svizzero."""
+        return MongoClient(uri, 
+                          server_api=ServerApi('1'),
+                          connectTimeoutMS=5000,
+                          socketTimeoutMS=5000,
+                          serverSelectionTimeoutMS=5000)
+    
+    try:
+        MONGO_URI = st.secrets.get("MONGO_URI")
+        if not MONGO_URI:
+            st.sidebar.warning("⚠️ Chiave MONGO_URI non trovata nei segreti di Streamlit.")
+        else:
+            client = _get_svizzero_client(MONGO_URI)
             
-            L'applicazione funzionerà in modalità offline con funzionalità limitate.
-            """)
+            # Test connessione (leggero)
+            client.admin.command('ping')
+            
+            # Connessione per i giocatori
+            db_players = client.get_database("giocatori_subbuteo")
+            players_collection = db_players.get_collection("superba_players")
+
+            # Connessione per i tornei
+            db_tournaments = client.get_database("TorneiSubbuteo")
+            tournaments_collection = db_tournaments.get_collection("SuperbaSvizzero")
+            
+    except Exception as e:
+        st.sidebar.error(f"❌ Errore di connessione a MongoDB: {e}")
+        st.sidebar.warning("""
+        **Risoluzione problemi:**
+        1. Verifica la tua connessione Internet
+        2. Controlla il file .streamlit/secrets.toml
+        3. Assicurati che l'IP sia nella whitelist di MongoDB Atlas
+        4. Controlla che il tuo account MongoDB Atlas sia attivo
+        
+        L'applicazione funzionerà in modalità offline con funzionalità limitate.
+        """)
 
 # ==============================================================================
 # Le funzioni audio sono ora importate da common.audio
@@ -426,16 +405,11 @@ def carica_torneo_da_db(nome_torneo):
         st.error(f"❌ Errore durante il caricamento del torneo: {str(e)}")
         return False
         
+@st.cache_data(ttl=60)
 def carica_giocatori_da_db():
+    """Carica giocatori dal DB (cached per 60 secondi per fluidità)."""
     if 'players_collection' in globals() and players_collection is not None:
         try:
-            count = players_collection.count_documents({})
-            if count == 0:
-                st.warning("⚠️ La collection 'superba_players' è vuota o non esiste. Non è stato caricato alcun giocatore.")
-                return pd.DataFrame()
-            else:
-                st.info(f"✅ Trovati {count} giocatori nel database. Caricamento in corso...")
-            
             df = pd.DataFrame(list(players_collection.find()))
             
             if '_id' in df.columns:
@@ -449,6 +423,7 @@ def carica_giocatori_da_db():
         except Exception as e:
             st.error(f"❌ Errore durante la lettura dalla collection dei giocatori: {e}")
             return pd.DataFrame()
+    return pd.DataFrame()
 
 from datetime import datetime
 import os
@@ -1509,8 +1484,11 @@ if st.session_state.setup_mode == "carica_db":
 if st.session_state.setup_mode == "nuovo":
     st.markdown("#### ✨ Crea nuovo torneo — passo per passo")
     if st.session_state.nuovo_torneo_step == 0:
-        suffisso = st.text_input("Dai un nome al tuo torneo", value="", placeholder="Es. 'Campionato Invernale'")
-        if st.button("Prossimo passo ➡️", key="next_step_0", type="primary"):
+        # Usa st.form per il nome del torneo per evitare rerun durante la digitazione
+        with st.form(key="form_nome_torneo"):
+            suffisso = st.text_input("Dai un nome al tuo torneo", value="", placeholder="Es. 'Campionato Invernale'")
+            submitted = st.form_submit_button("Prossimo passo ➡️", type="primary")
+        if submitted:
             st.session_state.nome_torneo = f"Torneo Subbuteo Svizzero - {suffisso.strip()}" if suffisso.strip() else "Torneo Subbuteo - Sistema Svizzero"
             st.session_state.nuovo_torneo_step = 1
             st.rerun()
@@ -1831,11 +1809,7 @@ if st.session_state.torneo_iniziato:
             width="stretch"
         )
 
-
-    # Inizializza il keep-alive
-    #add_keep_alive()
-
-# -------------------------
+    # -------------------------
 # Interfaccia Utente Torneo
 # -------------------------
 if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
@@ -1965,13 +1939,19 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
     classifica_attuale = aggiorna_classifica(st.session_state.df_torneo)
     
         
-    # Se la classifica è visibile, la mostriamo in un espandibile
-    if st.session_state.mostra_classifica:
-        with st.expander("🏆 Classifica Attuale", expanded=True):
-            if not classifica_attuale.empty:
-                st.dataframe(classifica_attuale, hide_index=True, width="stretch")
-            else:
-                st.info("Nessuna partita giocata per aggiornare la classifica.")
+    # Se la classifica è visibile, la mostriamo
+    # Usa @st.fragment per aggiornare solo questa sezione senza rerun completo
+    @st.fragment
+    def mostra_classifica_fragment():
+        if st.session_state.mostra_classifica:
+            with st.expander("🏆 Classifica Attuale", expanded=True):
+                classifica = aggiorna_classifica(st.session_state.df_torneo)
+                if not classifica.empty:
+                    st.dataframe(classifica, hide_index=True, width="stretch")
+                else:
+                    st.info("Nessuna partita giocata per aggiornare la classifica.")
+    
+    mostra_classifica_fragment()
     
     # Manteniamo il layout a due colonne per il prossimo turno
     col_next = st.columns([1])[0]  # Creiamo una colonna singola per il pulsante del prossimo turno

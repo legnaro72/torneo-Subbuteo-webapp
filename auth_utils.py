@@ -19,7 +19,9 @@ PLAYERS_COLLECTION3 = "tigullio_players"
 DB_Login = "Log"
 LOG_COLLECTION = "Login"
 
+@st.cache_resource
 def get_mongo_client():
+    """Crea e cache il client MongoDB (una sola volta per sessione)."""
     return MongoClient(MONGO_URI,
                      server_api=ServerApi('1'),
                      connectTimeoutMS=5000,

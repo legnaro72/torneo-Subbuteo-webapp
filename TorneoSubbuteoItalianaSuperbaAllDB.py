@@ -60,7 +60,8 @@ from common.audio import (
 )
 from common.ui_components import (
     render_tournament_header, setup_common_sidebar, 
-    setup_player_selection_mode, navigation_buttons
+    setup_player_selection_mode, navigation_buttons,
+    enable_session_keepalive
 )
 
 # Configurazione della pagina
@@ -114,13 +115,19 @@ def reset_app_state():
 # -------------------------
 # FUNZIONI CONNESSIONE MONGO (SENZA SUCCESS VERDI)
 # -------------------------
+@st.cache_resource
+def _get_italiana_client(uri):
+    """Crea e cache il client MongoDB per evitare riconnessioni ad ogni rerun."""
+    return MongoClient(uri, server_api=ServerApi('1'))
+
 def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
     """
     Se show_ok=True mostra un messaggio di ok.
     Di default è False per evitare i badge verdi.
+    Usa un client cached per massima fluidità.
     """
     try:
-        client = MongoClient(uri, server_api=ServerApi('1'))
+        client = _get_italiana_client(uri)
         db = client.get_database(db_name)
         col = db.get_collection(collection_name)
         _ = col.find_one({})
@@ -138,11 +145,13 @@ def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
 # -------------------------
 # FUNZIONI DI GESTIONE DATI SU MONGO
 # -------------------------
-def carica_giocatori_da_db(players_collection):
-    if players_collection is None:
+@st.cache_data(ttl=60)
+def carica_giocatori_da_db(_players_collection):
+    """Carica giocatori dal DB (cached per 60 secondi per fluidità)."""
+    if _players_collection is None:
         return pd.DataFrame()
     try:
-        df = pd.DataFrame(list(players_collection.find({}, {"_id": 0})))
+        df = pd.DataFrame(list(_players_collection.find({}, {"_id": 0})))
         return df if not df.empty else pd.DataFrame()
     except Exception as e:
         st.error(f"❌ Errore durante la lettura dei giocatori: {e}")
@@ -880,7 +889,9 @@ def gestisci_abbandoni(df_torneo, giocatori_da_ritirare, tournaments_collection)
     return df
 
 # --- CLASSIFICA ---
+@st.fragment
 def mostra_classifica_stilizzata(df_classifica, girone_sel):
+    """Mostra la classifica stilizzata (aggiornabile indipendentemente grazie a @st.fragment)."""
     if df_classifica is None or df_classifica.empty:
         st.info("⚽ Nessuna partita validata")
         return
@@ -1133,6 +1144,9 @@ def main():
     if not st.session_state.get('authenticated', False):
         auth.show_auth_screen(club="Superba")
         st.stop()   # blocca tutto finché non sei loggato
+
+    # Attiva il sistema di keep-alive per mantenere la sessione durante le partite
+    enable_session_keepalive()
 
     # Debug: mostra utente autenticato e ruolo
     if st.session_state.get("authenticated"):
