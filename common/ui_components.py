@@ -122,29 +122,76 @@ def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, k
 
 
 # ==============================================================================
-# 🔄 KEEP-ALIVE (anti sleep per Streamlit Cloud)
+# 🔄 KEEP-ALIVE — Sistema di mantenimento attivo della sessione Streamlit
+# ==============================================================================
+#
+# Garantisce che l'applicazione Streamlit rimanga connessa e utilizzabile
+# senza richiedere una nuova autenticazione anche in assenza di interazioni
+# utente per almeno 30 minuti (es. durante una partita di Subbuteo).
+#
+# Meccanismo a doppio heartbeat (ogni 3 minuti):
+#   1. Simulazione evento mousemove → mantiene attiva la WebSocket
+#   2. Fetch HTTP verso l'URL dell'app → mantiene attiva la sessione server
+#
+# Compatibile con: Streamlit Cloud, VPS, Docker, PaaS.
 # ==============================================================================
 
-def add_keep_alive(interval_ms: int = 240000):
+def enable_session_keepalive(interval_ms: int = 180000):
     """
-    Inietta un keep-alive JavaScript per evitare che la sessione Streamlit vada in sleep.
-    
+    Inietta un heartbeat JavaScript invisibile per mantenere la sessione attiva.
+
+    Il sistema si attiva una sola volta per sessione e genera attività periodica
+    invisibile che impedisce:
+      - timeout della WebSocket Streamlit
+      - inattività della sessione
+      - disconnessione dell'utente
+
     Args:
-        interval_ms: Intervallo in millisecondi fra i ping (default: 4 minuti).
+        interval_ms: Intervallo in millisecondi fra gli heartbeat (default: 180000 = 3 minuti).
+                     Con 3 minuti di intervallo si ottengono ~7 heartbeat in 20 minuti,
+                     garantendo margine rispetto al timeout tipico di Streamlit (10-15 min).
     """
-    js = f"""
-    <script>
-    const target = document.referrer || window.location.origin;
-    setInterval(function() {{
-        fetch(target, {{
-            method: 'HEAD',
-            cache: 'no-store',
-            credentials: 'same-origin',
-            mode: 'no-cors'
-        }}).then(() => {{
-            console.log("Keep-alive sent:", new Date().toLocaleTimeString());
-        }}).catch((err) => console.log("Keep-alive error", err));
-    }}, {interval_ms});
-    </script>
+    # Guard: si attiva una sola volta per sessione
+    if "keepalive_initialized" in st.session_state:
+        return
+
+    st.session_state.keepalive_initialized = True
+
+    import streamlit.components.v1 as components
+    components.html(
+        f"""
+        <script>
+
+        function streamlitHeartbeat() {{
+
+            // 1. Simula un evento utente per mantenere attiva la WebSocket
+            window.parent.dispatchEvent(new Event("mousemove"));
+
+            // 2. Effettua una richiesta HTTP per mantenere attiva la sessione server
+            fetch(window.parent.location.href, {{
+                method: "GET",
+                cache: "no-store",
+                mode: "no-cors"
+            }}).catch(function() {{}});
+
+        }}
+
+        // Esecuzione heartbeat ogni {interval_ms} ms (default: 3 minuti)
+        setInterval(streamlitHeartbeat, {interval_ms});
+
+        </script>
+        """,
+        height=0, width=0
+    )
+
+
+def add_keep_alive(interval_ms: int = 180000):
     """
-    components.html(js, height=0, width=0)
+    Wrapper retrocompatibile per enable_session_keepalive().
+    Mantiene compatibilità con il codice esistente che importa add_keep_alive.
+
+    Args:
+        interval_ms: Intervallo in millisecondi fra gli heartbeat (default: 3 minuti).
+    """
+    enable_session_keepalive(interval_ms)
+

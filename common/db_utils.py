@@ -25,9 +25,23 @@ def check_internet_connection() -> bool:
         return False
 
 
+@st.cache_resource
+def _get_mongo_client(uri: str):
+    """Crea e cache il client MongoDB (una sola volta per sessione)."""
+    return MongoClient(
+        uri,
+        server_api=ServerApi('1'),
+        connectTimeoutMS=5000,
+        socketTimeoutMS=5000,
+        serverSelectionTimeoutMS=5000,
+        tlsCAFile=certifi.where()
+    )
+
+
 def init_mongo_connection(uri: str, db_name: str, collection_name: str, show_ok: bool = False):
     """
     Inizializza la connessione a MongoDB e ritorna la collection.
+    Usa un client cached per evitare riconnessioni ad ogni rerun.
     
     Args:
         uri: Stringa di connessione MongoDB.
@@ -39,14 +53,7 @@ def init_mongo_connection(uri: str, db_name: str, collection_name: str, show_ok:
         La collection MongoDB, oppure None se la connessione fallisce.
     """
     try:
-        client = MongoClient(
-            uri,
-            server_api=ServerApi('1'),
-            connectTimeoutMS=5000,
-            socketTimeoutMS=5000,
-            serverSelectionTimeoutMS=5000,
-            tlsCAFile=certifi.where()
-        )
+        client = _get_mongo_client(uri)
         client.admin.command('ping')
         db = client[db_name]
         collection = db[collection_name]
@@ -59,10 +66,22 @@ def init_mongo_connection(uri: str, db_name: str, collection_name: str, show_ok:
         return None
 
 
+@st.cache_resource
+def _get_mongo_client_direct(uri: str):
+    """Crea e cache il client MongoDB diretto (senza certifi)."""
+    return MongoClient(
+        uri,
+        server_api=ServerApi('1'),
+        connectTimeoutMS=5000,
+        socketTimeoutMS=5000,
+        serverSelectionTimeoutMS=5000
+    )
+
+
 def init_mongo_direct(uri: str, db_name: str, collection_name: str):
     """
     Connessione diretta per il Torneo Svizzero (senza certifi path esplicito).
-    Ritorna (players_collection, tournaments_collection) per il flusso specifico.
+    Usa un client cached per evitare riconnessioni ad ogni rerun.
     
     Args:
         uri: Stringa di connessione MongoDB.
@@ -73,13 +92,7 @@ def init_mongo_direct(uri: str, db_name: str, collection_name: str):
         La collection MongoDB, oppure None se la connessione fallisce.
     """
     try:
-        client = MongoClient(
-            uri,
-            server_api=ServerApi('1'),
-            connectTimeoutMS=5000,
-            socketTimeoutMS=5000,
-            serverSelectionTimeoutMS=5000
-        )
+        client = _get_mongo_client_direct(uri)
         client.admin.command('ping')
         db = client.get_database(db_name)
         collection = db.get_collection(collection_name)
@@ -90,20 +103,22 @@ def init_mongo_direct(uri: str, db_name: str, collection_name: str):
         return None
 
 
-def carica_giocatori_da_db(players_collection) -> pd.DataFrame:
+@st.cache_data(ttl=60)
+def carica_giocatori_da_db(_players_collection) -> pd.DataFrame:
     """
     Carica i giocatori dal database e li ritorna come DataFrame.
+    Cached con TTL di 60 secondi per evitare query ripetute ad ogni rerun.
     
     Args:
-        players_collection: Collection MongoDB dei giocatori.
+        _players_collection: Collection MongoDB dei giocatori (prefisso _ per non-hashable).
     
     Returns:
         DataFrame con colonne [Giocatore, Squadra, Potenziale, ...].
     """
-    if players_collection is None:
+    if _players_collection is None:
         return pd.DataFrame()
     try:
-        df = pd.DataFrame(list(players_collection.find()))
+        df = pd.DataFrame(list(_players_collection.find()))
         if '_id' in df.columns:
             df = df.drop(columns=['_id'])
         if 'Giocatore' not in df.columns:
@@ -115,27 +130,29 @@ def carica_giocatori_da_db(players_collection) -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def carica_tornei_da_db(tournaments_collection, prefix: list = None) -> list:
+@st.cache_data(ttl=120)
+def carica_tornei_da_db(_tournaments_collection, prefix: tuple = None) -> list:
     """
     Carica l'elenco dei tornei dal DB, eventualmente filtrando per prefisso.
+    Cached con TTL di 120 secondi per evitare query ripetute.
     
     Args:
-        tournaments_collection: Collection MongoDB dei tornei.
-        prefix: Lista di prefissi per filtrare i nomi (opzionale).
+        _tournaments_collection: Collection MongoDB dei tornei (prefisso _ per non-hashable).
+        prefix: Tupla di prefissi per filtrare i nomi (opzionale, tupla per hashability).
     
     Returns:
         Lista di dizionari con _id e nome_torneo.
     """
-    if tournaments_collection is None:
+    if _tournaments_collection is None:
         return []
     try:
         if prefix:
             import re
             patterns = [re.compile(f"^{p}", re.IGNORECASE) for p in prefix]
             query = {"$or": [{"nome_torneo": {"$regex": p}} for p in patterns]}
-            tornei = list(tournaments_collection.find(query, {"nome_torneo": 1}))
+            tornei = list(_tournaments_collection.find(query, {"nome_torneo": 1}))
         else:
-            tornei = list(tournaments_collection.find({}, {"nome_torneo": 1}))
+            tornei = list(_tournaments_collection.find({}, {"nome_torneo": 1}))
         return tornei
     except Exception as e:
         st.error(f"❌ Errore caricamento elenco tornei: {e}")
