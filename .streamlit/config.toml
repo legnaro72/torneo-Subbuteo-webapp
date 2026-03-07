@@ -2,8 +2,8 @@
 gatherUsageStats = false
 
 [server]
-# Timeout in secondi prima che una sessione inattiva venga chiusa
-cookie_expiry = 86400   # ad esempio: 24 ore
+# Timeout di sessione gestito ora a livello di server/heartbeat in js
+
 
 [theme]
 # Dark theme di base — gli utenti possono switchare da Settings
