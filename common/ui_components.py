@@ -105,17 +105,72 @@ def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, k
         max_val: Valore massimo.
         key_prefix: Prefisso per le chiavi dei bottoni (per evitare conflitti).
     """
-    col1, col2, col3 = st.columns([1, 3, 1])
+    # Stili CSS iniettati usando la logica advanced :has per non influenzare altre colonne.
+    # Questo compatta la navigazione tutto in un'unica riga anche per smartphone
+    st.markdown("""
+        <style>
+        /* 1. Blocchiamo il blocco in orizzontale e lo teniamo compatto al centro */
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 10px !important;
+            width: 100% !important;
+        }
+        
+        /* 2. Le colonne stesse si restringono al proprio minuscolo contenuto, annullando i calcoli percentuali di Streamlit */
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"] {
+            width: auto !important;
+            flex: 0 1 auto !important;
+            min-width: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        
+        /* 3. CRUCIALE PER MOBILE: Streamlit forza i bottoni al 100% su smartphone. Annulliamo questa regola. */
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) div[data-testid="stButton"] {
+            width: auto !important;
+            display: flex !important;
+            justify-content: center !important;
+        }
+        
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) button {
+            width: auto !important;
+            min-width: 40px !important;
+            padding: 0.2rem 0.6rem !important;
+            margin: 0 !important;
+            min-height: 2.5rem !important;
+            height: auto !important;
+        }
+        p {
+          margin-bottom: 0px;  
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     current = st.session_state.get(value_key, min_val)
+    
+    # Abbreviazione intelligente per mobile (es: Giornata 14 -> Gio 14)
+    display_label = label
+    if label.lower() == "giornata":
+        display_label = "Gio"
+    elif label.lower() == "turno":
+        display_label = "T"
+        
+    col1, col2, col3 = st.columns(3)
+    
     with col1:
-        if st.button("⬅️", key=f"{key_prefix}nav_prev_{value_key}"):
+        if st.button("◀️", key=f"{key_prefix}nav_prev_{value_key}"):
             if current > min_val:
                 st.session_state[value_key] = current - 1
                 st.rerun()
     with col2:
-        st.markdown(f"**{label}: {current}**")
+        # Il div con classe .nav-btn-marker viene usato dal CSS :has() per individuare questa determinata fila di colonne
+        st.markdown(f"<div class='nav-btn-marker' style='text-align:center; font-weight:bold; font-size:1.2rem; padding-top:4px;'>{display_label} {current}</div>", unsafe_allow_html=True)
     with col3:
-        if st.button("➡️", key=f"{key_prefix}nav_next_{value_key}"):
+        if st.button("▶️", key=f"{key_prefix}nav_next_{value_key}"):
             if current < max_val:
                 st.session_state[value_key] = current + 1
                 st.rerun()
