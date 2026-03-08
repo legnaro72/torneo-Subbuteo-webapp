@@ -75,7 +75,7 @@ def setup_common_sidebar(show_user_info: bool = True, show_hub_link: bool = True
 
 
 
-def setup_player_selection_mode():
+def setup_player_selection_mode(on_change=None, args=None):
     """
     Aggiunge la sezione di selezione modalità partecipanti nella sidebar.
     Gestisce Multiselect vs Checkbox individuali.
@@ -84,9 +84,11 @@ def setup_player_selection_mode():
     st.sidebar.subheader("👤 Mod Selezione Partecipanti")
     st.session_state.usa_multiselect_giocatori = st.sidebar.checkbox(
         "Utilizza 'Multiselect'",
-        value=st.session_state.get('usa_multiselect_giocatori', False),
+        value=st.session_state.get('usa_multiselect_giocatori', True),
         key='sidebar_usa_multiselect_giocatori',
-        help="Disabilitato per usare la modalità 'Checkbox Individuali' (raccomandata)"
+        help="Disabilitato per usare la modalità 'Checkbox Individuali' (raccomandata)",
+        on_change=on_change,
+        args=args
     )
 
 
@@ -105,17 +107,80 @@ def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, k
         max_val: Valore massimo.
         key_prefix: Prefisso per le chiavi dei bottoni (per evitare conflitti).
     """
-    col1, col2, col3 = st.columns([1, 3, 1])
+    # Stili CSS iniettati usando la logica advanced :has per non influenzare altre colonne.
+    # Questo compatta la navigazione tutto in un'unica riga anche per smartphone
+    st.markdown("""
+        <style>
+        /* Forza la riga su mobile, impedendo l'accatastamento verticale standard di Streamlit */
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 2px !important;
+        }
+        
+        /* BOTTONI LATERALI: si espandono al massimo occupando lo spazio rimanente */
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:first-child,
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:last-child {
+            width: auto !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        /* NUMERO CENTRALE: bloccato rigidamente in una gabbia di 40 pixel al massimo. Vietato rubare spazio! */
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:nth-child(2) {
+            width: 40px !important;
+            flex: 0 0 40px !important;
+            min-width: 40px !important;
+            max-width: 40px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        
+        /* I bottoni si allargano */
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) button {
+            width: 100% !important;
+            min-width: 0 !important;
+            padding: 0.2rem 0 !important;
+            margin: 0 !important;
+        }
+        
+        /* Allineamento testo numerico stringato in centro */
+        .nav-btn-marker {
+            text-align: center;
+            font-weight: 900;
+            font-size: 1.5rem;
+            line-height: 1.5rem;
+            width: 100%;
+        }
+        p {
+          margin-bottom: 0px;  
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     current = st.session_state.get(value_key, min_val)
+    
+    # Rimuoviamo il testo "Gio" / "Turno" come richiesto, lasciando solo il NUEMRO (es. "1", "2") per attaccare i bottoni
+    display_label = str(current)
+        
+    # Usiamo proporzioni Streamlit anche nel codice Python per fargli capire nativamente che il centro è minuscolo
+    col1, col2, col3 = st.columns([5, 1, 5])
+    
     with col1:
-        if st.button("⬅️", key=f"{key_prefix}nav_prev_{value_key}"):
+        if st.button("◀️", key=f"{key_prefix}nav_prev_{value_key}", use_container_width=True):
             if current > min_val:
                 st.session_state[value_key] = current - 1
                 st.rerun()
     with col2:
-        st.markdown(f"**{label}: {current}**")
+        # Il testo al centro conterrà solo il numero
+        st.markdown(f"<div class='nav-btn-marker'>{display_label}</div>", unsafe_allow_html=True)
     with col3:
-        if st.button("➡️", key=f"{key_prefix}nav_next_{value_key}"):
+        if st.button("▶️", key=f"{key_prefix}nav_next_{value_key}", use_container_width=True):
             if current < max_val:
                 st.session_state[value_key] = current + 1
                 st.rerun()
