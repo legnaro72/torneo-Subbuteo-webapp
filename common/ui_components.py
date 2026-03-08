@@ -109,40 +109,39 @@ def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, k
     # Questo compatta la navigazione tutto in un'unica riga anche per smartphone
     st.markdown("""
         <style>
-        /* 1. Blocchiamo il blocco in orizzontale e lo teniamo compatto al centro */
+        /* Forza la riga su mobile, impedendo l'accatastamento verticale standard di Streamlit */
         div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             align-items: center !important;
             justify-content: center !important;
-            gap: 10px !important;
-            width: 100% !important;
+            gap: 5px !important;
         }
         
-        /* 2. Le colonne stesse si restringono al proprio minuscolo contenuto, annullando i calcoli percentuali di Streamlit */
+        /* Assegna esattamente 1/3 di spazio a ciascun elemento per massima stabilità */
         div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"] {
-            width: auto !important;
-            flex: 0 1 auto !important;
+            width: 33.33% !important;
+            flex: 1 1 33.33% !important;
             min-width: 0 !important;
             padding: 0 !important;
             margin: 0 !important;
         }
         
-        /* 3. CRUCIALE PER MOBILE: Streamlit forza i bottoni al 100% su smartphone. Annulliamo questa regola. */
-        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) div[data-testid="stButton"] {
-            width: auto !important;
-            display: flex !important;
-            justify-content: center !important;
+        /* Forza i bottoni ad occupare il loro 33% in modo armonico senza "esplodere" o venire tagliati */
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) button {
+            width: 100% !important;
+            min-width: 0 !important;
+            padding: 0.2rem 0 !important;
+            margin: 0 !important;
         }
         
-        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) button {
-            width: auto !important;
-            min-width: 40px !important;
-            padding: 0.2rem 0.6rem !important;
-            margin: 0 !important;
-            min-height: 2.5rem !important;
-            height: auto !important;
+        /* Sistema l'allineamento del testo numerico per essere centrato perfettamente */
+        .nav-btn-marker {
+            text-align: center;
+            font-weight: 900;
+            font-size: 1.5rem;
+            line-height: 1.5rem;
         }
         p {
           margin-bottom: 0px;  
@@ -152,25 +151,21 @@ def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, k
 
     current = st.session_state.get(value_key, min_val)
     
-    # Abbreviazione intelligente per mobile (es: Giornata 14 -> Gio 14)
-    display_label = label
-    if label.lower() == "giornata":
-        display_label = "Gio"
-    elif label.lower() == "turno":
-        display_label = "T"
+    # Rimuoviamo il testo "Gio" / "Turno" come richiesto, lasciando solo il NUEMRO (es. "1", "2") per attaccare i bottoni
+    display_label = str(current)
         
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3 = st.columns([1, 1, 1])
     
     with col1:
-        if st.button("◀️", key=f"{key_prefix}nav_prev_{value_key}"):
+        if st.button("◀️", key=f"{key_prefix}nav_prev_{value_key}", use_container_width=True):
             if current > min_val:
                 st.session_state[value_key] = current - 1
                 st.rerun()
     with col2:
-        # Il div con classe .nav-btn-marker viene usato dal CSS :has() per individuare questa determinata fila di colonne
-        st.markdown(f"<div class='nav-btn-marker' style='text-align:center; font-weight:bold; font-size:1.2rem; padding-top:4px;'>{display_label} {current}</div>", unsafe_allow_html=True)
+        # Il testo al centro conterrà solo il numero
+        st.markdown(f"<div class='nav-btn-marker'>{display_label}</div>", unsafe_allow_html=True)
     with col3:
-        if st.button("▶️", key=f"{key_prefix}nav_next_{value_key}"):
+        if st.button("▶️", key=f"{key_prefix}nav_next_{value_key}", use_container_width=True):
             if current < max_val:
                 st.session_state[value_key] = current + 1
                 st.rerun()
