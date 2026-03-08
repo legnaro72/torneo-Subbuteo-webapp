@@ -1568,7 +1568,7 @@ setup_audio_sidebar()
 # ✅ 1. 🕹 Gestione Rapida + 👤 Mod Selezione Partecipanti
 setup_player_selection_mode()
 # Mappa il valore per compatibilità interna se necessario (o refactor)
-st.session_state.modalita_selezione_giocatori = "Multiselect" if st.session_state.get('usa_multiselect_giocatori', False) else "Checkbox singole"
+st.session_state.modalita_selezione_giocatori = "Multiselect" if st.session_state.get('usa_multiselect_giocatori', True) else "Checkbox singole"
 
 if st.session_state.torneo_iniziato:
 
@@ -1582,19 +1582,30 @@ if st.session_state.torneo_iniziato:
 
     # --- FUNZIONI DI SINCRONIZZAZIONE ---
     def sync_tipo_vista(source_key):
-        val = st.session_state[source_key].lower()
-        st.session_state['tipo_vista_selezionata'] = val
+        val = st.session_state[source_key]
+        st.session_state['tipo_vista_selezionata'] = val.lower()
+        st.session_state['tipo_vista_sidebar_widget'] = val
+        st.session_state['tipo_vista_main_widget'] = val
+        
+    def sync_modalita_visualizzazione(source_key):
+        val = st.session_state[source_key]
+        st.session_state.modalita_visualizzazione = val
+        st.session_state['radio_sidebar'] = val
+        st.session_state['radio_main'] = val
+
 
     # ✅ 3. 🔧 Utility (sezione principale con sottosezioni)
     st.sidebar.subheader("🔧 Utility")
     
     # 🔎 Visualizzazione incontri
     with st.sidebar.expander("🔎 Visualizzazione incontri", expanded=False):
-        st.session_state.modalita_visualizzazione = st.radio(
+        st.radio(
             "Formato incontri:",
             options=["Squadre", "Giocatori", "Completa"],
             index=["Squadre", "Giocatori", "Completa"].index(st.session_state.modalita_visualizzazione),
-            key="radio_sidebar"
+            key="radio_sidebar",
+            on_change=sync_modalita_visualizzazione,
+            args=("radio_sidebar",)
         )
         st.markdown("---")
         current_view = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
@@ -1736,16 +1747,30 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
     else:
         st.markdown("---")
         tipo_vista_corrente = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
-        st.radio(
-            "Seleziona la vista del calendario:",
-            ("Compact", "Premium", "Standard"),
-            index=("Compact", "Premium", "Standard").index(tipo_vista_corrente),
-            key="tipo_vista_main_widget",
-            horizontal=True,
-            label_visibility="collapsed",
-            on_change=sync_tipo_vista,
-            args=("tipo_vista_main_widget",)
-        )
+        
+        col_v1, col_v2 = st.columns([0.5, 0.5])
+        with col_v1:
+            st.radio(
+                "Vista Calendario:",
+                ("Compact", "Premium", "Standard"),
+                index=("Compact", "Premium", "Standard").index(tipo_vista_corrente),
+                key="tipo_vista_main_widget",
+                horizontal=True,
+                label_visibility="collapsed",
+                on_change=sync_tipo_vista,
+                args=("tipo_vista_main_widget",)
+            )
+        with col_v2:
+            st.radio(
+                "Formato Incontri:",
+                options=["Squadre", "Giocatori", "Completa"],
+                index=["Squadre", "Giocatori", "Completa"].index(st.session_state.modalita_visualizzazione),
+                key="radio_main",
+                horizontal=True,
+                label_visibility="collapsed",
+                on_change=sync_modalita_visualizzazione,
+                args=("radio_main",)
+            )
 
         # Passa il nuovo parametro alla funzione
         visualizza_incontri_attivi(df_turno_corrente, st.session_state.turno_attivo, st.session_state.modalita_visualizzazione)

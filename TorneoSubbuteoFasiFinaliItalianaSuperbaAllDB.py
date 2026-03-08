@@ -1485,24 +1485,35 @@ def main():
         
         # --- FUNZIONI DI SINCRONIZZAZIONE ---
         def sync_tipo_vista(source_key):
-            val = st.session_state[source_key].lower()
-            st.session_state['tipo_vista_selezionata'] = val
+            val = st.session_state[source_key]
+            st.session_state['tipo_vista_selezionata'] = val.lower()
+            st.session_state['tipo_vista_sidebar_widget'] = val
+            st.session_state['tipo_vista_main_widget'] = val
+            
+        def sync_modalita_visualizzazione_ko(source_key):
+            val = st.session_state[source_key]
+            st.session_state['modalita_visualizzazione_ko'] = val
+            st.session_state['radio_sidebar_ko'] = val
+            st.session_state['radio_main_ko'] = val
+
 
         # ✅ 3. 🔧 Utility (sezione principale con sottosezioni)
         st.sidebar.subheader("🔧 Utility")
         
         # 🔎 Visualizzazione incontri
         with st.sidebar.expander("🔎 Visualizzazione incontri", expanded=False):
-            modalita_visualizzazione = st.radio(
+            st.radio(
                 "Formato incontri tabellone:",
                 options=["squadre", "completa", "giocatori"],
-                index=0,
+                index=["squadre", "completa", "giocatori"].index(st.session_state.get("modalita_visualizzazione_ko", "squadre")),
                 format_func=lambda x: {
                     "squadre": "Solo squadre",
                     "completa": "Squadra + Giocatore",
                     "giocatori": "Solo giocatori"
                 }[x],
-                key="modalita_visualizzazione_ko"
+                key="radio_sidebar_ko",
+                on_change=sync_modalita_visualizzazione_ko,
+                args=("radio_sidebar_ko",)
             )
             st.markdown("---")
             current_view = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
@@ -1893,47 +1904,56 @@ def main():
                     if 'gironi_manuali' not in st.session_state or len(st.session_state.gironi_manuali) != num_gironi:
                         st.session_state.gironi_manuali = gironi_auto
                     
-                    # Mostra le multi-select box per ogni girone
-                    st.subheader("👥Composizione gironi")
-                    st.info("Modifica la composizione dei gironi se necessario")
+                    # Mostra la composizione manuale solo se c'è più di un girone
+                    if num_gironi > 1:
+                        # Mostra le multi-select box per ogni girone
+                        st.subheader("👥Composizione gironi")
+                        st.info("Modifica la composizione dei gironi se necessario")
+                        
+                        # Crea due colonne per mostrare i gironi in modo più ordinato
+                        col1, col2 = st.columns(2)
+                        
+                        # Mostra i gironi in due colonne
+                        for i, (girone, squadre) in enumerate(st.session_state.gironi_manuali.items()):
+                            with (col1 if i % 2 == 0 else col2):
+                                st.markdown(f"#### {girone}")
+                                
+                                # Mostra le squadre già nel girone
+                                for squadra in squadre:
+                                    st.markdown(f"- {squadra}")
+                                
+                                # Mostra le squadre disponibili per l'aggiunta
+                                altre_squadre = [s for s in qualificati 
+                                              if s not in [sq for g, sqs in st.session_state.gironi_manuali.items() 
+                                                         for sq in sqs] or s in squadre]
+                                
+                                # Seleziona le squadre da aggiungere/rimuovere
+                                squadre_selezionate = st.multiselect(
+                                    f"Modifica {girone}",
+                                    options=altre_squadre,
+                                    default=squadre,
+                                    key=f"girone_{i}",
+                                    format_func=lambda x: f"{x} (già in altro girone)" 
+                                                       if x not in squadre and x in [sq for g, sqs in st.session_state.gironi_manuali.items() 
+                                                                                  for sq in sqs] 
+                                                       else x
+                                )
+                                
+                                # Aggiorna il girone con le squadre selezionate
+                                st.session_state.gironi_manuali[girone] = squadre_selezionate
+                                
+                                # Mostra il numero di squadre nel girone
+                                st.caption(f"{len(squadre_selezionate)} squadre selezionate")
                     
-                    # Crea due colonne per mostrare i gironi in modo più ordinato
-                    col1, col2 = st.columns(2)
-                    
-                    # Mostra i gironi in due colonne
-                    for i, (girone, squadre) in enumerate(st.session_state.gironi_manuali.items()):
-                        with (col1 if i % 2 == 0 else col2):
-                            st.markdown(f"#### {girone}")
-                            
-                            # Mostra le squadre già nel girone
-                            for squadra in squadre:
-                                st.markdown(f"- {squadra}")
-                            
-                            # Mostra le squadre disponibili per l'aggiunta
-                            altre_squadre = [s for s in qualificati 
-                                          if s not in [sq for g, sqs in st.session_state.gironi_manuali.items() 
-                                                     for sq in sqs] or s in squadre]
-                            
-                            # Seleziona le squadre da aggiungere/rimuovere
-                            squadre_selezionate = st.multiselect(
-                                f"Modifica {girone}",
-                                options=altre_squadre,
-                                default=squadre,
-                                key=f"girone_{i}",
-                                format_func=lambda x: f"{x} (già in altro girone)" 
-                                                   if x not in squadre and x in [sq for g, sqs in st.session_state.gironi_manuali.items() 
-                                                                              for sq in sqs] 
-                                                   else x
-                            )
-                            
-                            # Aggiorna il girone con le squadre selezionate
-                            st.session_state.gironi_manuali[girone] = squadre_selezionate
-                            
-                            # Mostra il numero di squadre nel girone
-                            st.caption(f"{len(squadre_selezionate)} squadre selezionate")
-                    
-                    # Pulsante per generare i gironi con la configurazione attuale
-                    if st.button("🔄 Genera calendario gironi"):
+                    # Pulsante per generare i gironi - Visibile se > 1 girone o automatico se 1
+                    bottone_generazione = False
+                    if num_gironi > 1:
+                        bottone_generazione = st.button("🔄 Genera calendario gironi")
+                    else:
+                        st.info("ℹ️ Essendoci un solo girone, la composizione sarà automatica.")
+                        bottone_generazione = st.button("🔄 Genera calendario girone unico")
+
+                    if bottone_generazione:
                         # Log dell'azione di generazione calendario gironi
                         username = st.session_state.get('user', {}).get('username', 'sconosciuto')
                         tournament_id = st.session_state.get('tournament_id', 'sconosciuto')
@@ -2112,6 +2132,24 @@ def main():
                     
                     # 🚀 RENDER VISUAL BRACKET
                     visualizzazione_preferita = st.session_state.get("modalita_visualizzazione_ko", "squadre")
+                    
+                    # Selector sync in main page
+                    st.radio(
+                        "Formato tabellone:",
+                        options=["squadre", "completa", "giocatori"],
+                        index=["squadre", "completa", "giocatori"].index(visualizzazione_preferita),
+                        format_func=lambda x: {
+                            "squadre": "Solo squadre",
+                            "completa": "Squadra + Giocatore",
+                            "giocatori": "Solo giocatori"
+                        }[x],
+                        key="radio_main_ko",
+                        horizontal=True,
+                        label_visibility="collapsed",
+                        on_change=sync_modalita_visualizzazione_ko,
+                        args=("radio_main_ko",)
+                    )
+                    
                     render_visual_bracket(st.session_state['rounds_ko'], visualizzazione_preferita)
                     st.divider()
                     

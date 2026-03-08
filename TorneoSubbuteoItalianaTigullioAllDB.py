@@ -92,13 +92,15 @@ DEFAULT_STATE = {
     'gironi_manuali_completi': False,
     'giocatori_selezionati_definitivi': [],
     'gioc_info': {},
-    'usa_bottoni': False,
+    'usa_bottoni_sidebar': True, # Default True = Pulsanti Navigazione
     'filtro_attivo': 'Nessuno',  # stato per i filtri
     'azione_scelta': None,   # <-- aggiunta
     'giocatori_ritirati': [],
-    'usa_multiselect_giocatori': False,  # REQUISITO 1: Default False = Checkbox Individuali
-    'usa_nomi_come_squadre': False,     # REQUISITO 4
-    'bg_audio_disabled': False
+    'usa_multiselect_giocatori': True,  # Default True = Multiselect Giocatori
+    'usa_nomi_come_squadre': False,
+    'bg_audio_disabled': False,
+    'tipo_vista_selezionata': 'compact',
+    'modalita_scelta_sidebar': 'squadre'
 }
 
 for key, value in DEFAULT_STATE.items():
@@ -184,6 +186,12 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
             # Salva l'ID del torneo nella sessione
             st.session_state['tournament_id'] = str(torneo_data['_id'])
             st.session_state['nome_torneo'] = torneo_data.get('nome_torneo', 'Torneo senza nome')
+            # Forza le impostazioni di default richieste dall'utente quando carica
+            st.session_state['usa_bottoni_sidebar'] = True
+            st.session_state['modalita_navigazione_sidebar'] = True
+            st.session_state['modalita_navigazione_main_widget'] = True
+            st.session_state['tipo_vista_selezionata'] = 'compact'
+            st.session_state['usa_multiselect_giocatori'] = True
         return torneo_data
     except Exception as e:
         st.error(f"❌ Errore caricamento torneo: {e}")
@@ -1226,6 +1234,10 @@ def main():
                 if torneo_doc:
                     st.session_state['tournament_id'] = str(torneo_doc['_id'])
                     st.session_state['nome_torneo'] = torneo_doc.get('nome_torneo', torneo_param)
+                    # Forza le impostazioni di default richieste dall'utente al caricamento automatico
+                    st.session_state['usa_bottoni_sidebar'] = True
+                    st.session_state['tipo_vista_selezionata'] = 'compact'
+                    st.session_state['usa_multiselect_giocatori'] = True
                     torneo_data = carica_torneo_da_db(
                         tournaments_collection, st.session_state['tournament_id']
                     )
@@ -1267,10 +1279,18 @@ def main():
         st.error("❌ Impossibile avviare l'applicazione. La connessione a MongoDB non è disponibile.")
         return
 
+    # --- FUNZIONI DI SINCRONIZZAZIONE GLOBALI ---
+    def sync_multiselect(source_key):
+        val = st.session_state[source_key]
+        st.session_state['usa_multiselect_giocatori'] = val
+        st.session_state['sidebar_usa_multiselect_giocatori'] = val
+        if 'usa_multiselect_giocatori_main_widget' in st.session_state:
+            st.session_state['usa_multiselect_giocatori_main_widget'] = val
+
     # ✅ 1. 🕹 Gestione Rapida + 👤 Mod Selezione Partecipanti
     setup_common_sidebar(show_user_info=False, hub_url=HUB_URL)  # user info già mostrata sopra
     setup_audio_sidebar()
-    setup_player_selection_mode()
+    setup_player_selection_mode(on_change=sync_multiselect, args=("sidebar_usa_multiselect_giocatori",))
     
     if st.session_state.get('calendario_generato', False):
         df = st.session_state['df_torneo']
@@ -1278,14 +1298,27 @@ def main():
         
         # --- FUNZIONI DI SINCRONIZZAZIONE ---
         def sync_tipo_vista(source_key):
-            val = st.session_state[source_key].lower()
-            st.session_state['tipo_vista_selezionata'] = val
-            # Forza l'altro widget a riflettere il valore resettandone la chiave se necessario
-            # (In realtà basta aggiornare la variabile di stato usata nell'index)
+            val = st.session_state[source_key]
+            st.session_state['tipo_vista_selezionata'] = val.lower()
+            st.session_state['tipo_vista_sidebar_widget'] = val
+            st.session_state['tipo_vista_main_widget'] = val
 
         def sync_usa_bottoni(source_key):
             val = st.session_state[source_key]
             st.session_state['usa_bottoni_sidebar'] = val
+            st.session_state['modalita_navigazione_sidebar'] = val
+            st.session_state['modalita_navigazione_main_widget'] = val
+            
+        def sync_modalita_visualizzazione(source_key):
+            val = st.session_state[source_key]
+            mappa_modalita = {
+                "Completa": "completa",
+                "Solo squadre": "squadre",
+                "Solo giocatori": "giocatori"
+            }
+            st.session_state['modalita_scelta_sidebar'] = mappa_modalita[val]
+            st.session_state['modalita_visualizzazione_sidebar'] = val
+            st.session_state['modalita_visualizzazione_main_widget'] = val
         
         st.sidebar.markdown("---")
         
@@ -1295,20 +1328,21 @@ def main():
         # 🔎 Visualizzazione incontri
         with st.sidebar.expander("🔎 Visualizzazione incontri", expanded=False):
             # Radio button per formato incontri
-            modalita_visualizzazione_sidebar = st.radio(
+            # Radio button per formato nomi
+            current_names = "Solo squadre"
+            inv_mappa = {"completa": "Completa", "squadre": "Solo squadre", "giocatori": "Solo giocatori"}
+            if 'modalita_scelta_sidebar' in st.session_state:
+                current_names = inv_mappa.get(st.session_state['modalita_scelta_sidebar'], "Solo squadre")
+                
+            st.radio(
                 "Formato nomi:",
                 ("Completa", "Solo squadre", "Solo giocatori"),
-                index=1,
+                index=("Completa", "Solo squadre", "Solo giocatori").index(current_names),
                 key="modalita_visualizzazione_sidebar",
+                on_change=sync_modalita_visualizzazione,
+                args=("modalita_visualizzazione_sidebar",),
                 horizontal=False
             )
-            # Mappa il valore del radio button
-            mappa_modalita = {
-                "Completa": "completa",
-                "Solo squadre": "squadre",
-                "Solo giocatori": "giocatori"
-            }
-            st.session_state['modalita_scelta_sidebar'] = mappa_modalita[modalita_visualizzazione_sidebar]
             
             st.markdown("---")
             
@@ -1383,10 +1417,10 @@ def main():
         st.markdown("---")
         st.markdown("### 🔍 Ricerca e Filtri (Calendario Multi-Girone)")
         
-        # ✅ SELETTORE VISTA + NAVIGAZIONE BOTTONI
-        col_v1, col_v2, col_v3 = st.columns([0.15, 0.45, 0.4], vertical_alignment="center")
+        # ✅ SELETTORE VISTA + NAVIGAZIONE BOTTONI + FORMATO NOMI
+        col_v1, col_v2, col_v3, col_v4 = st.columns([0.15, 0.35, 0.25, 0.25], vertical_alignment="center")
         with col_v1:
-            st.markdown("**Stile Vista:**")
+            st.markdown("**Visualizzazione:**")
         with col_v2:
             current_view_main = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
             st.radio(
@@ -1397,11 +1431,30 @@ def main():
                 label_visibility="collapsed",
                 key="tipo_vista_main_widget",
                 on_change=sync_tipo_vista,
-                args=("tipo_vista_main_widget",)
+                args=("tipo_vista_main_widget",),
+                help="Scegli lo stile di visualizzazione del calendario"
             )
         
         with col_v3:
-            current_nav_main = st.session_state.get('usa_bottoni_sidebar', False)
+            current_names_main = "Solo squadre"
+            inv_mappa = {"completa": "Completa", "squadre": "Solo squadre", "giocatori": "Solo giocatori"}
+            if 'modalita_scelta_sidebar' in st.session_state:
+                current_names_main = inv_mappa.get(st.session_state['modalita_scelta_sidebar'], "Solo squadre")
+                
+            st.radio(
+                "Formato Nomi:",
+                ("Completa", "Solo squadre", "Solo giocatori"),
+                index=("Completa", "Solo squadre", "Solo giocatori").index(current_names_main),
+                horizontal=True,
+                label_visibility="collapsed",
+                key="modalita_visualizzazione_main_widget",
+                on_change=sync_modalita_visualizzazione,
+                args=("modalita_visualizzazione_main_widget",),
+                help="Scegli se vedere squadre, giocatori o entrambi"
+            )
+
+        with col_v4:
+            current_nav_main = st.session_state.get('usa_bottoni_sidebar', True)
             st.checkbox(
                 "🎛️ Naviga a bottoni", 
                 value=current_nav_main,
@@ -1957,7 +2010,19 @@ def main():
                 amici = df_master['Giocatore'].tolist() if not df_master.empty else []
                 
                 # Aggiungi checkbox per importare tutti i giocatori
-                importa_tutti = st.checkbox("Importa tutti i giocatori del Club", key="importa_tutti_giocatori")
+                c1, c2 = st.columns([0.5, 0.5])
+                with c1:
+                    importa_tutti = st.checkbox("Importa tutti i giocatori del Club", key="importa_tutti_giocatori")
+                with c2:
+                    current_ms = st.session_state.get('usa_multiselect_giocatori', True)
+                    st.checkbox(
+                        "Utilizza 'Multiselect'", 
+                        value=current_ms,
+                        key="usa_multiselect_giocatori_main_widget",
+                        on_change=sync_multiselect,
+                        args=("usa_multiselect_giocatori_main_widget",),
+                        help="Sincronizzato con l'impostazione nella sidebar"
+                    )
                 
                 # Se il checkbox è selezionato, seleziona automaticamente tutti i giocatori
                 if importa_tutti:
@@ -2220,11 +2285,15 @@ def main():
                                 st.markdown(f"- {coppia} - {dettagli['potenziale']}⭐")
                 
                 st.markdown("---")
-                modalita_gironi = st.radio(
-                    "Scegli come popolare i gironi", 
-                    ["Popola Gironi Automaticamente", "Popola Gironi Manualmente"], 
-                    key="modo_gironi_radio"
-                )
+                st.markdown("---")
+                if st.session_state.get('num_gironi', 1) > 1:
+                    modalita_gironi = st.radio(
+                        "Scegli come popolare i gironi", 
+                        ["Popola Gironi Automaticamente", "Popola Gironi Manualmente"], 
+                        key="modo_gironi_radio"
+                    )
+                else:
+                    modalita_gironi = "Popola Gironi Automaticamente"
 
                 if modalita_gironi == "Popola Gironi Manualmente":
                     st.warning("⚠️ Se hai modificato il numero di giocatori, assicurati che i gironi manuali siano coerenti prima di generare il calendario.")
