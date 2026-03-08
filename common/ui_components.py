@@ -116,19 +116,29 @@ def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, k
             flex-wrap: nowrap !important;
             align-items: center !important;
             justify-content: center !important;
-            gap: 5px !important;
+            gap: 15px !important;
         }
         
-        /* Assegna esattamente 1/3 di spazio a ciascun elemento per massima stabilità */
-        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"] {
-            width: 33.33% !important;
-            flex: 1 1 33.33% !important;
+        /* I due bottoni ai lati prendono TUTTO lo spazio possibile disponibile in parti uguali */
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:first-child,
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:last-child {
+            width: auto !important;
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        /* La colonna centrale con il numero occupa solo lo spazio stretto necessario per il numero stesso */
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:nth-child(2) {
+            width: fit-content !important;
+            flex: 0 0 auto !important;
             min-width: 0 !important;
             padding: 0 !important;
             margin: 0 !important;
         }
         
-        /* Forza i bottoni ad occupare il loro 33% in modo armonico senza "esplodere" o venire tagliati */
+        /* I bottoni si allargano alla massima ampiezza del proprio genitore (che ora prenderà quasi mezzo schermo) */
         div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) button {
             width: 100% !important;
             min-width: 0 !important;
