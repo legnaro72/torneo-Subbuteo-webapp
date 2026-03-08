@@ -105,77 +105,17 @@ def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, k
         max_val: Valore massimo.
         key_prefix: Prefisso per le chiavi dei bottoni (per evitare conflitti).
     """
-    # Stili CSS iniettati usando la logica advanced :has per non influenzare altre colonne.
-    # Questo compatta la navigazione tutto in un'unica riga anche per smartphone
-    st.markdown("""
-        <style>
-        /* Forza la riga su mobile, impedendo l'accatastamento verticale standard di Streamlit */
-        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            align-items: center !important;
-            justify-content: center !important;
-            gap: 15px !important;
-        }
-        
-        /* I due bottoni ai lati prendono TUTTO lo spazio possibile disponibile in parti uguali */
-        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:first-child,
-        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:last-child {
-            width: auto !important;
-            flex: 1 1 0% !important;
-            min-width: 0 !important;
-            padding: 0 !important;
-            margin: 0 !important;
-        }
-
-        /* La colonna centrale con il numero occupa solo lo spazio stretto necessario per il numero stesso */
-        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:nth-child(2) {
-            width: fit-content !important;
-            flex: 0 0 auto !important;
-            min-width: 0 !important;
-            padding: 0 !important;
-            margin: 0 !important;
-        }
-        
-        /* I bottoni si allargano alla massima ampiezza del proprio genitore (che ora prenderà quasi mezzo schermo) */
-        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) button {
-            width: 100% !important;
-            min-width: 0 !important;
-            padding: 0.2rem 0 !important;
-            margin: 0 !important;
-        }
-        
-        /* Sistema l'allineamento del testo numerico per essere centrato perfettamente */
-        .nav-btn-marker {
-            text-align: center;
-            font-weight: 900;
-            font-size: 1.5rem;
-            line-height: 1.5rem;
-        }
-        p {
-          margin-bottom: 0px;  
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
+    col1, col2, col3 = st.columns([1, 3, 1])
     current = st.session_state.get(value_key, min_val)
-    
-    # Rimuoviamo il testo "Gio" / "Turno" come richiesto, lasciando solo il NUEMRO (es. "1", "2") per attaccare i bottoni
-    display_label = str(current)
-        
-    col1, col2, col3 = st.columns([1, 1, 1])
-    
     with col1:
-        if st.button("◀️", key=f"{key_prefix}nav_prev_{value_key}", use_container_width=True):
+        if st.button("⬅️", key=f"{key_prefix}nav_prev_{value_key}"):
             if current > min_val:
                 st.session_state[value_key] = current - 1
                 st.rerun()
     with col2:
-        # Il testo al centro conterrà solo il numero
-        st.markdown(f"<div class='nav-btn-marker'>{display_label}</div>", unsafe_allow_html=True)
+        st.markdown(f"**{label}: {current}**")
     with col3:
-        if st.button("▶️", key=f"{key_prefix}nav_next_{value_key}", use_container_width=True):
+        if st.button("➡️", key=f"{key_prefix}nav_next_{value_key}"):
             if current < max_val:
                 st.session_state[value_key] = current + 1
                 st.rerun()
