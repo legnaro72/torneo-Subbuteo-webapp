@@ -355,27 +355,29 @@ class GazzettaPDF(FPDF):
             
         # 📰 Titolo "Gazzettino" Ufficiale
         self.set_xy(start_x, 8)
-        self.set_font("Arial", 'B', 24)
+        self.set_font("helvetica", 'B', 24)
         self.set_text_color(255, 255, 255)
-        self.cell(0, 10, "IL GAZZETTINO DEL PIER CREW", border=0, ln=1, align='L')
+        self.cell(0, 10, "IL GAZZETTINO DEL PIER CREW", border=0, align='L', new_x="LMARGIN", new_y="NEXT")
         
         # 🏆 Sottotitolo (Fasi Finali / Gironi preliminari)
         self.set_x(start_x)
-        self.set_font("Arial", 'I', 11)
+        self.set_font("helvetica", 'I', 11)
         self.set_text_color(220, 225, 235)
         data_stampa = datetime.now().strftime("%d/%m/%Y alle %H:%M")
+        import streamlit as st
         torneo_name = st.session_state.get('tournament_name', 'Fasi Finali')
-        self.cell(0, 6, f"Referto: {torneo_name} ({self.mode_title}) | Del {data_stampa}", border=0, ln=1, align='L')
+        self.cell(0, 6, f"Referto: {torneo_name} ({self.mode_title}) | Del {data_stampa}", border=0, align='L', new_x="LMARGIN", new_y="NEXT")
         
         self.ln(12)
 
     def footer(self):
-        self.set_y(-15)
+        self.set_y(-10)
         self.set_fill_color(26, 54, 93)  
         self.rect(0, 287, 210, 10, 'F')
-        self.set_font('Arial', 'B', 8)
+        self.set_font('helvetica', 'B', 8)
         self.set_text_color(255, 255, 255)
-        self.cell(0, 10, f'Pagina {self.page_no()} - Generato automaticamente dal Gestionale Tornei Subbuteo', 0, 0, 'C')
+        self.set_y(-8)
+        self.cell(0, 6, f'Pagina {self.page_no()} - Generato automaticamente dal Gestionale Tornei Subbuteo', align='C', new_x="LMARGIN", new_y="NEXT")
 
 def generate_pdf_gironi(df_finale_gironi: pd.DataFrame) -> bytes:
     """Genera un PDF con calendario e classifica dei gironi (Stylized)."""
@@ -517,6 +519,17 @@ def generate_pdf_ko(rounds_ko: list[pd.DataFrame]) -> bytes:
     pdf = GazzettaPDF("Eliminazione Diretta", orientation='P', unit='mm', format='A4')
     pdf.set_auto_page_break(auto=True, margin=18)
     pdf.add_page()
+    
+    import streamlit as st
+    if st.session_state.get('vincitore_torneo'):
+        vincitore = st.session_state['vincitore_torneo']
+        pdf.set_fill_color(255, 215, 0)
+        pdf.set_text_color(0, 0, 0) 
+        pdf.set_font('helvetica', 'B', 16)
+        testo_banner = f"*** CAMPIONE ASSOLUTO: {vincitore} ***"
+        pdf.ln(3)
+        pdf.cell(0, 15, testo_banner, border=1, fill=True, align='C', new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(5)
     
     for _, df_round in enumerate(rounds_ko):
         round_name = str(df_round['Round'].iloc[0])
@@ -1394,6 +1407,30 @@ def salva_risultati_ko():
         
         if not st.session_state['tournament_name'].startswith('finito_'):
             nuovo_nome = f"finito_{st.session_state['tournament_name']}"
+            
+            # --- AGGIORNAMENTO PALMARES SUPERBA ---
+            try:
+                from palmares_utils import register_win
+                from pymongo import MongoClient
+                import certifi
+                # Connessione al DB giocatori (PierCrew_players)
+                client_pl = MongoClient(st.secrets["MONGO_URI"], tlsCAFile=certifi.where())
+                db_pl = client_pl["giocatori_subbuteo"]
+                players_col_pl = db_pl["piercrew_players"]
+                
+                vincitore = winners[0] # Il vincitore è già estratto qui
+                
+                register_win(
+                    db_players_col=players_col_pl,
+                    winner_name=vincitore,
+                    tournament_name=st.session_state['tournament_name'],
+                    tournament_type="fasi_finali",
+                    mode_fasi_finali="eliminazione_diretta"
+                )
+            except Exception as e:
+                print(f"[PALMARES] Errore: {e}")
+            # --- FINE PALMARES ---
+
             rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
             st.session_state['tournament_name'] = nuovo_nome
             
@@ -1470,6 +1507,69 @@ def main():
             <h1 style='color:white; font-weight:700;'>🇮🇹⚽ Fase Finale Torneo Subbuteo 🏆🇮🇹</h1>
         </div>
         """, unsafe_allow_html=True)
+
+    # --- PULSANTE "CELEBRA VINCITORE" AL TOP ---
+    if st.session_state.get('vincitore_torneo'):
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.markdown('<div class="celebra-btn-container"></div>', unsafe_allow_html=True)
+            st.markdown("""
+            <style>
+            div.element-container:has(.celebra-btn-container) + div.element-container div.stButton > button {
+                height: 80px;
+                border-radius: 40px;
+                background: linear-gradient(90deg, #FFD700, #FFA500) !important;
+                color: black !important;
+                border: 4px solid #FF8C00 !important;
+                box-shadow: 0 8px 15px rgba(0,0,0,0.3) !important;
+                transition: all 0.3s ease 0s;
+            }
+            div.element-container:has(.celebra-btn-container) + div.element-container div.stButton > button:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 12px 20px rgba(0,0,0,0.4) !important;
+            }
+            div.element-container:has(.celebra-btn-container) + div.element-container div.stButton > button p {
+                font-size: 24px !important;
+                font-weight: 800 !important;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+            if st.button("🏆 Celebra Vincitore 🎉", use_container_width=True, key="btn_celebra_vincitore_ff_top"):
+                st.session_state['_celebra_vincitore_ff'] = True
+                st.rerun()
+
+        if st.session_state.get('_celebra_vincitore_ff', False):
+            st.session_state['_celebra_vincitore_ff'] = False
+            st.markdown(
+                f"""
+                <div style='background:linear-gradient(90deg, gold, orange); 
+                             padding:20px; 
+                             border-radius:12px; 
+                             text-align:center; 
+                             color:black; 
+                             font-size:28px; 
+                             font-weight:bold;
+                             margin-top:10px;
+                             margin-bottom:20px;'>
+                    🏆 Il vincitore del torneo è {st.session_state['vincitore_torneo']}! 🎉
+                 </div>
+                 """, unsafe_allow_html=True)                        
+            st.balloons()
+            try:
+                import requests
+                audio_url = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3"
+                response = requests.get(audio_url, timeout=10) 
+                response.raise_for_status() 
+                autoplay_audio(response.content)
+            except Exception:
+                pass
+            placeholder_c = st.empty()
+            for _ in range(3):
+                import time
+                with placeholder_c.container():
+                    st.balloons()
+                    time.sleep(1)
     # ✅ Configurazione Sidebar (Modulo Comune)
     # L'audio e le info utente sono ora gestiti internamente ai componenti comuni
     setup_common_sidebar(show_user_info=True, hub_url=HUB_URL)
@@ -2310,22 +2410,7 @@ def main():
                     # Questo è il nuovo blocco da aggiungere in fondo
                     
                     if st.session_state.get('vincitore_torneo'):
-                        #st.markdown("<br><br>", unsafe_allow_html=True)
-                        #st.success(f"🏆 Il vincitore del torneo è: **{st.session_state['vincitore_torneo']}** 🎉")
-                        st.markdown(
-                            f"""
-                            <div style='background:linear-gradient(90deg, gold, orange); 
-                                         padding:20px; 
-                                         border-radius:12px; 
-                                         text-align:center; 
-                                         color:black; 
-                                         font-size:28px; 
-                                         font-weight:bold;
-                                         margin-top:20px;'>
-                                🏆 Il vincitore del torneo {st.session_state['vincitore_torneo']}! 🎉
-                             </div>
-                             """, unsafe_allow_html=True)                        
-                        st.balloons()
+                        st.markdown("---")
                         st.link_button("🏠 Vai alla gestione tornei", "https://farm-tornei-subbuteo-piercrew-all-db.streamlit.app/")
     # Footer leggero
     st.markdown("---")

@@ -803,6 +803,37 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
             st.session_state['torneo_completato'] = True
             st.session_state['classifica_finale'] = classifica_finale
             st.session_state['show_redirect_button'] = True 
+            
+            # --- PALMARES SUPERBA ---
+            try:
+                from palmares_utils import register_win
+                from pymongo import MongoClient
+                import certifi
+                client_pl = MongoClient(st.secrets["MONGO_URI"], tlsCAFile=certifi.where())
+                db_pl = client_pl["giocatori_subbuteo"]
+                players_col = db_pl["tigullio_players"]
+                
+                num_gironi_palmares = len(df['Girone'].unique()) if 'Girone' in df.columns else 1
+                
+                for girone_name in df['Girone'].unique():
+                    gir_classifica = classifica_finale[classifica_finale['Girone'] == girone_name]
+                    if not gir_classifica.empty:
+                        vincitore_str = gir_classifica.iloc[0]['Squadra']
+                        # parse_team_player ritorna (squadra, giocatore)
+                        squadra_est, giocatore_est = parse_team_player(vincitore_str)
+                        nome_giocatore = giocatore_est if giocatore_est else vincitore_str
+                        
+                        register_win(
+                            db_players_col=players_col, 
+                            winner_name=nome_giocatore, 
+                            tournament_name=st.session_state['nome_torneo'], 
+                            tournament_type="italiana", 
+                            num_gironi=num_gironi_palmares
+                        )
+            except Exception as e:
+                print(f"[PALMARES] Errore salvataggio palmares: {e}")
+            # --- FINE PALMARES ---
+            
             st.toast(f"🏁 Torneo completato e salvato come {nome_completato} ✅")
 
         return True
@@ -946,35 +977,56 @@ class GazzettaPDF(FPDF):
             
         # 📰 Titolo "Gazzettino" Ufficiale
         self.set_xy(start_x, 8)
-        self.set_font("Arial", 'B', 24)
+        self.set_font("helvetica", 'B', 24)
         self.set_text_color(255, 255, 255)
-        self.cell(0, 10, "IL GAZZETTINO DEL TIGULLIO", border=0, ln=1, align='L')
+        self.cell(0, 10, "IL GAZZETTINO DEL TIGULLIO", border=0, align='L', new_x="LMARGIN", new_y="NEXT")
         
         # 🏆 Sottotitolo (Nome del torneo e data aggiornamento)
         self.set_x(start_x)
-        self.set_font("Arial", 'I', 11)
+        self.set_font("helvetica", 'I', 11)
         self.set_text_color(220, 225, 235)
         data_stampa = datetime.now().strftime("%d/%m/%Y alle %H:%M")
-        self.cell(0, 6, f"Referto Ufficiale: {self.nome_torneo} | Aggiornato il {data_stampa}", border=0, ln=1, align='L')
+        self.cell(0, 6, f"Referto Ufficiale: {self.nome_torneo} | Aggiornato il {data_stampa}", border=0, align='L', new_x="LMARGIN", new_y="NEXT")
         
         self.ln(12)
 
     def footer(self):
-        # Posizione a 1.5 cm dal fondo
-        self.set_y(-15)
+        # Posizione a 10 mm dal fondo
+        self.set_y(-10)
         
         # 🟦 Bordo inferiore istituzionale (Blu Navy)
         self.set_fill_color(26, 54, 93)  
         self.rect(0, 287, 210, 10, 'F')
         
-        self.set_font('Arial', 'B', 8)
+        self.set_font('helvetica', 'B', 8)
         self.set_text_color(255, 255, 255)
-        self.cell(0, 10, f'Pagina {self.page_no()} - Generato automaticamente dal Gestionale Tornei Subbuteo', 0, 0, 'C')
+        self.set_y(-8)
+        self.cell(0, 6, f'Pagina {self.page_no()} - Generato automaticamente dal Gestionale Tornei Subbuteo', align='C', new_x="LMARGIN", new_y="NEXT")
 
 def esporta_pdf(df_torneo, df_classifica, nome_torneo):
     pdf = GazzettaPDF(nome_torneo, orientation='P', unit='mm', format='A4')
     pdf.set_auto_page_break(auto=True, margin=18)
     pdf.add_page()
+    
+    # --- NUOVO: BANNER VINCITORI ---
+    if 'Valida' in df_torneo.columns and df_torneo['Valida'].all():
+        pdf.set_fill_color(255, 215, 0) # Oro festivo
+        pdf.set_text_color(0, 0, 0) 
+        pdf.set_font('helvetica', 'B', 16)
+        
+        vincitori = []
+        for girone in df_classifica['Girone'].unique():
+            primo = df_classifica[df_classifica['Girone'] == girone].iloc[0]['Squadra']
+            if len(df_classifica['Girone'].unique()) > 1:
+                vincitori.append(f"{girone}: {primo}")
+            else:
+                vincitori.append(f"{primo}")
+                
+        testo_banner = "*** CAMPIONI DEL TORNEO: " + " - ".join(vincitori) + " ***"
+        
+        pdf.ln(3)
+        pdf.cell(0, 15, testo_banner, border=1, fill=True, align='C', new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(5)
     
     gironi = df_torneo['Girone'].dropna().unique()
     
@@ -1267,6 +1319,85 @@ def main():
             <h1 style='color:white; margin:0; font-weight:700;'>🇮🇹⚽ Torneo Tigullio – Gestione Gironi 🏆🇮🇹</h1>
         </div>
         """, unsafe_allow_html=True)
+
+    # --- PULSANTE "CELEBRA VINCITORE" AL TOP ---
+    df_torneo_check = st.session_state.get('df_torneo', pd.DataFrame())
+    if (st.session_state.get('calendario_generato', False) 
+        and not df_torneo_check.empty 
+        and 'Valida' in df_torneo_check.columns 
+        and df_torneo_check['Valida'].all()):
+        
+        classifica_celebra = aggiorna_classifica(df_torneo_check)
+        if not classifica_celebra.empty:
+            vincitori_celebra = []
+            for girone in classifica_celebra['Girone'].unique():
+                primo = classifica_celebra[classifica_celebra['Girone'] == girone].iloc[0]['Squadra']
+                vincitori_celebra.append(f"🏅 {girone}: {primo}")
+            vincitori_str_celebra = ", ".join(vincitori_celebra)
+            
+            # Spazio per staccare dal titolo
+            st.markdown("<br><br>", unsafe_allow_html=True)
+            
+            # Bottone centrato sotto il titolo e gigante
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                st.markdown('<div class="celebra-btn-container"></div>', unsafe_allow_html=True)
+                st.markdown("""
+                <style>
+                div.element-container:has(.celebra-btn-container) + div.element-container div.stButton > button {
+                    height: 80px;
+                    border-radius: 40px;
+                    background: linear-gradient(90deg, #FFD700, #FFA500) !important;
+                    color: black !important;
+                    border: 4px solid #FF8C00 !important;
+                    box-shadow: 0 8px 15px rgba(0,0,0,0.3) !important;
+                    transition: all 0.3s ease 0s;
+                }
+                div.element-container:has(.celebra-btn-container) + div.element-container div.stButton > button:hover {
+                    transform: translateY(-3px);
+                    box-shadow: 0 12px 20px rgba(0,0,0,0.4) !important;
+                }
+                div.element-container:has(.celebra-btn-container) + div.element-container div.stButton > button p {
+                    font-size: 24px !important;
+                    font-weight: 800 !important;
+                }
+                </style>
+                """, unsafe_allow_html=True)
+                if st.button("🏆 Celebra Vincitore 🎉", use_container_width=True, key="btn_celebra_vincitore_top"):
+                    st.session_state['_celebra_vincitore'] = True
+                    st.rerun()
+            
+            if st.session_state.get('_celebra_vincitore', False):
+                st.session_state['_celebra_vincitore'] = False
+                st.markdown(
+                    f"""
+                    <div style='background:linear-gradient(90deg, gold, orange);
+                                padding:20px;
+                                border-radius:12px;
+                                text-align:center;
+                                color:black;
+                                font-size:28px;
+                                font-weight:bold;
+                                margin-top:10px;
+                                margin-bottom:20px;'>
+                        🎉 Torneo Completato! Vincitori → {vincitori_str_celebra}
+                    </div>
+                    """, unsafe_allow_html=True)
+                st.balloons()
+                try:
+                    import requests
+                    audio_url = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3"
+                    response = requests.get(audio_url, timeout=10)
+                    response.raise_for_status()
+                    autoplay_audio(response.content)
+                except Exception:
+                    pass
+                placeholder_c = st.empty()
+                for _ in range(3):
+                    import time
+                    with placeholder_c.container():
+                        st.balloons()
+                        time.sleep(1)
 
     # Avvio audio di sottofondo 
     if not st.session_state.bg_audio_disabled:
@@ -2508,6 +2639,7 @@ def main():
             # Questo bottone chiamerà la funzione di reindirizzamento
             if st.button("👉 Vai alle Fasi Finali", use_container_width=True):
                 redirect_to_final_phase(f"completato_{st.session_state['nome_torneo']}")
+
     # Footer leggero
     st.markdown("---")
     st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")

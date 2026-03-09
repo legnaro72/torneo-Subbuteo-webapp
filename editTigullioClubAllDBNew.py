@@ -10,7 +10,7 @@ st.set_page_config(
 )
 
 import pandas as pd
-from pymongo import MongoClient, UpdateOne, InsertOne
+from pymongo import MongoClient, UpdateOne, InsertOne, DeleteOne
 from pymongo.server_api import ServerApi
 import certifi
 from fpdf import FPDF
@@ -86,11 +86,11 @@ IS_SUPERBA = "tigullio" in collection_players.name.lower()
 # ==============================================================================
 CAMPI_TROFEI = {
     "NCampionatiVinti": 0,
-    "listaCampionatiVinti": "",
+    "listaCampionatiVinti": [],
     "NGironiFFVinti": 0,
-    "listaGironiFFVinti": "",
+    "listaGironiFFVinti": [],
     "NFFElimDirettaVinte": 0,
-    "listaFFElimDirettaVinte": ""
+    "listaFFElimDirettaVinte": []
 }
 
 def migra_campi_trofei():
@@ -101,12 +101,26 @@ def migra_campi_trofei():
         return
     try:
         for campo, default in CAMPI_TROFEI.items():
-            result = collection_players.update_many(
+            # 1. Crea i campi se non esistono
+            collection_players.update_many(
                 {campo: {"$exists": False}},
                 {"$set": {campo: default}}
             )
-            if result.modified_count > 0:
-                st.toast(f"Migrazione: campo '{campo}' aggiunto a {result.modified_count} giocatori")
+            # 2. Migra le stringhe in liste se necessario
+            if isinstance(default, list):
+                # Trova tutti i documenti dove il campo è una stringa
+                cursor = collection_players.find({campo: {"$type": "string"}})
+                for doc in cursor:
+                    val_str = doc.get(campo, "")
+                    # Converti CSV in lista pulita se è una stringa
+                    if isinstance(val_str, str):
+                        val_list = [v.strip() for v in val_str.split(",") if v.strip()]
+                    elif isinstance(val_str, list):
+                        val_list = val_str
+                    else:
+                        val_list = []
+                    collection_players.update_one({"_id": doc["_id"]}, {"$set": {campo: val_list}})
+                    
         st.session_state['_migrazione_trofei_eseguita'] = True
     except Exception as e:
         st.warning(f"Avviso migrazione trofei: {e}")
@@ -171,9 +185,11 @@ def carica_dati_da_mongo():
         # Converti colonne numeriche trofei
         for col_num in ["NCampionatiVinti", "NGironiFFVinti", "NFFElimDirettaVinte"]:
             df[col_num] = pd.to_numeric(df[col_num], errors='coerce').fillna(0).astype(int)
-        # Converti colonne lista trofei in stringhe
+        # Converti colonne lista trofei assicurando che siano liste; per il display nel DF usiamo stringa
         for col_str in ["listaCampionatiVinti", "listaGironiFFVinti", "listaFFElimDirettaVinte"]:
-            df[col_str] = df[col_str].fillna("").astype(str)
+            df[col_str] = df[col_str].apply(lambda x: x if isinstance(x, list) else [])
+            # Creiamo una versione stringa solo per la visualizzazione tabellare se necessario, 
+            # ma il DF nel session state deve mantenere le liste per la logica di update.
         if "Giocatore" in df.columns:
             return df.sort_values(by="Giocatore").reset_index(drop=True)
     return pd.DataFrame(columns=["Giocatore", "Squadra", "Potenziale"] + list(CAMPI_TROFEI.keys()))
@@ -233,6 +249,13 @@ def salva_dati_su_mongo(df):
                 if campo not in record or record[campo] is None:
                     record[campo] = default
             operazioni.append(InsertOne(record))
+            
+    # Trova i giocatori eliminati (presenti nel DB ma rimossi dal dataframe)
+    giocatori_nel_df = set([str(g).strip() for g in df["Giocatore"].dropna().tolist() if str(g).strip() != ""])
+    giocatori_da_eliminare = set(dati_esistenti.keys()) - giocatori_nel_df
+    
+    for giocatore in giocatori_da_eliminare:
+        operazioni.append(DeleteOne({"Giocatore": giocatore}))
     
     # Esegui le operazioni in batch
     if operazioni:
@@ -344,22 +367,22 @@ class GazzettaClubPDF(FPDF):
             start_x = 40
         # Titolo
         self.set_xy(start_x, 8)
-        self.set_font("Arial", 'B', 24)
+        self.set_font("helvetica", 'B', 24)
         self.set_text_color(255, 255, 255)
-        self.cell(0, 10, "IL GAZZETTINO DEL TIGULLIO", border=0, ln=1, align='L')
+        self.cell(0, 10, "IL GAZZETTINO DEL TIGULLIO", border=0, new_x="LMARGIN", new_y="NEXT", align='L')
         # Sottotitolo
         self.set_x(start_x)
-        self.set_font("Arial", 'I', 11)
+        self.set_font("helvetica", 'I', 11)
         self.set_text_color(220, 225, 235)
         data_stampa = datetime.now().strftime("%d/%m/%Y alle %H:%M")
-        self.cell(0, 6, f"Composizione Club Tigullio | Aggiornato il {data_stampa}", border=0, ln=1, align='L')
+        self.cell(0, 6, f"Composizione Club Tigullio | Aggiornato il {data_stampa}", border=0, new_x="LMARGIN", new_y="NEXT", align='L')
         self.ln(12)
 
     def footer(self):
         self.set_y(-15)
         self.set_fill_color(26, 54, 93)
         self.rect(0, 287, 210, 10, 'F')
-        self.set_font('Arial', 'B', 8)
+        self.set_font('helvetica', 'B', 8)
         self.set_text_color(255, 255, 255)
         self.cell(0, 10, f'Pagina {self.page_no()} - La Gazzetta della Tigullio - Gestionale Club Subbuteo', 0, 0, 'C')
 
@@ -396,18 +419,18 @@ def genera_pdf_club(df_giocatori, df_tornei_ita, df_tornei_svizzeri, is_tigullio
     pdf.add_page()
 
     # ======= SEZIONE ROSA GIOCATORI =======
-    pdf.set_font("Arial", 'B', 18)
+    pdf.set_font("helvetica", 'B', 18)
     pdf.set_fill_color(230, 235, 245)
     pdf.set_text_color(26, 54, 93)
-    pdf.cell(0, 12, " ROSA GIOCATORI ", border=1, ln=True, fill=True, align='C')
+    pdf.cell(0, 12, " ROSA GIOCATORI ", border=1, new_x="LMARGIN", new_y="NEXT", fill=True, align='C')
     pdf.ln(3)
 
     num_giocatori = len(df_giocatori)
     pot_medio = df_giocatori['Potenziale'].mean() if not df_giocatori.empty and 'Potenziale' in df_giocatori.columns else 0
 
-    pdf.set_font("Arial", 'I', 10)
+    pdf.set_font("helvetica", 'I', 10)
     pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 6, f"Totale tesserati: {num_giocatori} | Potenziale medio: {pot_medio:.1f}/10", ln=True, align='C')
+    pdf.cell(0, 6, f"Totale tesserati: {num_giocatori} | Potenziale medio: {pot_medio:.1f}/10", new_x="LMARGIN", new_y="NEXT", align='C')
     pdf.ln(3)
 
     if not df_giocatori.empty:
@@ -456,19 +479,19 @@ def genera_pdf_club(df_giocatori, df_tornei_ita, df_tornei_svizzeri, is_tigullio
 
         pdf.cell(sum(widths), 0, '', border='T', ln=True)
     else:
-        pdf.set_font("Arial", 'I', 11)
+        pdf.set_font("helvetica", 'I', 11)
         pdf.set_text_color(150, 150, 150)
-        pdf.cell(0, 10, "Nessun giocatore registrato.", ln=True, align='C')
+        pdf.cell(0, 10, "Nessun giocatore registrato.", new_x="LMARGIN", new_y="NEXT", align='C')
 
     pdf.ln(8)
 
     # ======= DISTRIBUZIONE POTENZIALE =======
     if not df_giocatori.empty and 'Potenziale' in df_giocatori.columns:
         pdf.add_page()
-        pdf.set_font("Arial", 'B', 14)
+        pdf.set_font("helvetica", 'B', 14)
         pdf.set_fill_color(230, 235, 245)
         pdf.set_text_color(26, 54, 93)
-        pdf.cell(0, 10, " DISTRIBUZIONE POTENZIALE ", border=1, ln=True, fill=True, align='C')
+        pdf.cell(0, 10, " DISTRIBUZIONE POTENZIALE ", border=1, new_x="LMARGIN", new_y="NEXT", fill=True, align='C')
         pdf.ln(3)
         pdf.set_text_color(0, 0, 0)
         pot_counts = df_giocatori['Potenziale'].value_counts().sort_index(ascending=False)
@@ -493,103 +516,83 @@ def genera_pdf_club(df_giocatori, df_tornei_ita, df_tornei_svizzeri, is_tigullio
     # ======= SEZIONE PALMARES (SOLO SUPERBA) =======
     if is_tigullio and not df_giocatori.empty:
         pdf.add_page()
-        pdf.set_font("Arial", 'B', 18)
+        pdf.set_font("helvetica", 'B', 18)
         pdf.set_fill_color(230, 235, 245)
         pdf.set_text_color(26, 54, 93)
-        pdf.cell(0, 12, " PALMARES GIOCATORI ", border=1, ln=True, fill=True, align='C')
+        pdf.cell(0, 12, " PALMARES GIOCATORI ", border=1, new_x="LMARGIN", new_y="NEXT", fill=True, align='C')
         pdf.ln(3)
         
-        # Header tabella palmares
-        pdf.set_font("Arial", 'B', 8)
-        pdf.set_fill_color(26, 54, 93)
-        pdf.set_text_color(255, 255, 255)
-        h_palm = ["Giocatore", "Camp.", "Campionati Vinti", "Gir.FF", "Gironi FF Vinti", "Elim.", "Eliminaz. Dirette Vinte"]
-        w_palm = [32, 10, 52, 10, 42, 10, 50]
-        for i, h in enumerate(h_palm):
-            pdf.cell(w_palm[i], 7, h, border=1, align='C', fill=True)
-        pdf.ln()
-        
-        # Ordina per totale trofei
         df_palm = df_giocatori.copy()
         for c in ["NCampionatiVinti", "NGironiFFVinti", "NFFElimDirettaVinte"]:
             if c in df_palm.columns:
                 df_palm[c] = pd.to_numeric(df_palm[c], errors='coerce').fillna(0).astype(int)
             else:
                 df_palm[c] = 0
-        for c in ["listaCampionatiVinti", "listaGironiFFVinti", "listaFFElimDirettaVinte"]:
-            if c in df_palm.columns:
-                df_palm[c] = df_palm[c].fillna("").astype(str)
-            else:
-                df_palm[c] = ""
-        
-        df_palm["_tot"] = df_palm["NCampionatiVinti"] + df_palm["NGironiFFVinti"] + df_palm["NFFElimDirettaVinte"]
-        df_palm = df_palm.sort_values("_tot", ascending=False).reset_index(drop=True)
-        
-        pdf.set_font("Arial", '', 8)
-        pdf.set_text_color(0, 0, 0)
-        
-        for idx, (_, r) in enumerate(df_palm.iterrows()):
-            fill = (idx % 2 == 0)
-            pdf.set_fill_color(245, 248, 250) if fill else pdf.set_fill_color(255, 255, 255)
+                
+        def draw_sub_table(title, count_col, list_col, title_color):
+            df_sub = df_palm[df_palm[count_col] > 0].sort_values(by=count_col, ascending=False).reset_index(drop=True)
+            if df_sub.empty:
+                return
             
-            nome = _safe(r.get("Giocatore", "-"))[:18]
-            n_camp = str(int(r.get("NCampionatiVinti", 0)))
-            l_camp = _safe(r.get("listaCampionatiVinti", ""))[:30]
-            n_gir = str(int(r.get("NGironiFFVinti", 0)))
-            l_gir = _safe(r.get("listaGironiFFVinti", ""))[:24]
-            n_elim = str(int(r.get("NFFElimDirettaVinte", 0)))
-            l_elim = _safe(r.get("listaFFElimDirettaVinte", ""))[:28]
+            pdf.set_font("helvetica", 'B', 12)
+            pdf.set_fill_color(*title_color)
+            pdf.set_text_color(255, 255, 255)
+            pdf.cell(0, 8, f" {title} ", border=1, new_x="LMARGIN", new_y="NEXT", fill=True, align='L')
             
-            pdf.set_font("Arial", 'B', 8)
-            pdf.cell(w_palm[0], 6, " " + nome, border='LR', align='L', fill=fill)
-            pdf.set_font("Arial", '', 8)
-            
-            # Colora numeri > 0 in oro
-            if int(r.get("NCampionatiVinti", 0)) > 0:
-                pdf.set_text_color(212, 175, 55)
-                pdf.set_font("Arial", 'B', 8)
-            pdf.cell(w_palm[1], 6, n_camp, border='LR', align='C', fill=fill)
-            pdf.set_text_color(0, 0, 0)
-            pdf.set_font("Arial", '', 7)
-            pdf.cell(w_palm[2], 6, " " + l_camp, border='LR', align='L', fill=fill)
-            
-            pdf.set_font("Arial", '', 8)
-            if int(r.get("NGironiFFVinti", 0)) > 0:
-                pdf.set_text_color(42, 157, 143)
-                pdf.set_font("Arial", 'B', 8)
-            pdf.cell(w_palm[3], 6, n_gir, border='LR', align='C', fill=fill)
-            pdf.set_text_color(0, 0, 0)
-            pdf.set_font("Arial", '', 7)
-            pdf.cell(w_palm[4], 6, " " + l_gir, border='LR', align='L', fill=fill)
-            
-            pdf.set_font("Arial", '', 8)
-            if int(r.get("NFFElimDirettaVinte", 0)) > 0:
-                pdf.set_text_color(200, 80, 80)
-                pdf.set_font("Arial", 'B', 8)
-            pdf.cell(w_palm[5], 6, n_elim, border='LR', align='C', fill=fill)
-            pdf.set_text_color(0, 0, 0)
-            pdf.set_font("Arial", '', 7)
-            pdf.cell(w_palm[6], 6, " " + l_elim, border='LR', align='L', fill=fill)
-            
+            w_sub = [45, 15, 130]
+            pdf.set_font("helvetica", 'B', 9)
+            pdf.set_fill_color(26, 54, 93)
+            pdf.set_text_color(255, 255, 255)
+            pdf.cell(w_sub[0], 7, "Giocatore", border=1, align='C', fill=True)
+            pdf.cell(w_sub[1], 7, "Tot", border=1, align='C', fill=True)
+            pdf.cell(w_sub[2], 7, "Tornei Vinti", border=1, align='C', fill=True)
             pdf.ln()
-        
-        pdf.cell(sum(w_palm), 0, '', border='T', ln=True)
-        pdf.ln(5)
+            
+            pdf.set_font("helvetica", '', 9)
+            pdf.set_text_color(0, 0, 0)
+            
+            for idx_s, (_, row_s) in enumerate(df_sub.iterrows()):
+                fill_s = (idx_s % 2 == 0)
+                pdf.set_fill_color(245, 248, 250) if fill_s else pdf.set_fill_color(255, 255, 255)
+                
+                nome_s = _safe(row_s.get("Giocatore", "-"))[:28]
+                n_vinti_s = str(int(row_s.get(count_col, 0)))
+                l_raw_s = row_s.get(list_col, [])
+                l_str_s = (", ".join(l_raw_s) if isinstance(l_raw_s, list) else str(l_raw_s))[:85]
+                
+                pdf.set_font("helvetica", 'B', 9)
+                pdf.cell(w_sub[0], 7, " " + nome_s, border='LR', align='L', fill=fill_s)
+                
+                pdf.set_font("helvetica", 'B', 10)
+                pdf.set_text_color(*title_color)
+                pdf.cell(w_sub[1], 7, n_vinti_s, border='LR', align='C', fill=fill_s)
+                
+                pdf.set_text_color(0, 0, 0)
+                pdf.set_font("helvetica", '', 8)
+                pdf.cell(w_sub[2], 7, " " + l_str_s, border='LR', align='L', fill=fill_s)
+                pdf.ln()
+                
+            pdf.cell(sum(w_sub), 0, '', border='T', new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(5)
+
+        draw_sub_table("CAMPIONATI VINTI", "NCampionatiVinti", "listaCampionatiVinti", (212, 175, 55))
+        draw_sub_table("FASI FINALI A GIRONI VINTE", "NGironiFFVinti", "listaGironiFFVinti", (42, 157, 143))
+        draw_sub_table("ELIMINAZIONE DIRETTA VINTE", "NFFElimDirettaVinte", "listaFFElimDirettaVinte", (200, 80, 80))
 
     # ======= SEZIONE TORNEI =======
     pdf.add_page()
-    pdf.set_font("Arial", 'B', 18)
+    pdf.set_font("helvetica", 'B', 18)
     pdf.set_fill_color(230, 235, 245)
     pdf.set_text_color(26, 54, 93)
-    pdf.cell(0, 12, " ARCHIVIO TORNEI ", border=1, ln=True, fill=True, align='C')
+    pdf.cell(0, 12, " ARCHIVIO TORNEI ", border=1, new_x="LMARGIN", new_y="NEXT", fill=True, align='C')
     pdf.ln(5)
 
     # Tornei All'Italiana
-    pdf.set_font("Arial", 'B', 14)
+    pdf.set_font("helvetica", 'B', 14)
     pdf.set_fill_color(26, 54, 93)
     pdf.set_text_color(255, 255, 255)
     num_ita = len(df_tornei_ita) if not df_tornei_ita.empty else 0
-    pdf.cell(0, 9, f"  TORNEI ALL'ITALIANA ({num_ita})", border=1, ln=True, fill=True, align='L')
+    pdf.cell(0, 9, f"  TORNEI ALL'ITALIANA ({num_ita})", border=1, new_x="LMARGIN", new_y="NEXT", fill=True, align='L')
     pdf.ln(2)
     if not df_tornei_ita.empty:
         pdf.set_font("Arial", '', 10)
@@ -610,19 +613,19 @@ def genera_pdf_club(df_giocatori, df_tornei_ita, df_tornei_svizzeri, is_tigullio
             pdf.set_text_color(0, 0, 0)
         pdf.cell(176, 0, '', border='T', ln=True)
     else:
-        pdf.set_font("Arial", 'I', 10)
+        pdf.set_font("helvetica", 'I', 10)
         pdf.set_text_color(150, 150, 150)
-        pdf.cell(0, 8, "Nessun torneo all'italiana registrato.", ln=True, align='C')
+        pdf.cell(0, 8, "Nessun torneo all'italiana registrato.", new_x="LMARGIN", new_y="NEXT", align='C')
     pdf.ln(8)
 
     # Tornei Svizzeri
     if pdf.get_y() > 230:
         pdf.add_page()
-    pdf.set_font("Arial", 'B', 14)
+    pdf.set_font("helvetica", 'B', 14)
     pdf.set_fill_color(26, 54, 93)
     pdf.set_text_color(255, 255, 255)
     num_svizz = len(df_tornei_svizzeri) if not df_tornei_svizzeri.empty else 0
-    pdf.cell(0, 9, f"  TORNEI SVIZZERI ({num_svizz})", border=1, ln=True, fill=True, align='L')
+    pdf.cell(0, 9, f"  TORNEI SVIZZERI ({num_svizz})", border=1, new_x="LMARGIN", new_y="NEXT", fill=True, align='L')
     pdf.ln(2)
     if not df_tornei_svizzeri.empty:
         pdf.set_font("Arial", '', 10)
@@ -643,18 +646,18 @@ def genera_pdf_club(df_giocatori, df_tornei_ita, df_tornei_svizzeri, is_tigullio
             pdf.set_text_color(0, 0, 0)
         pdf.cell(176, 0, '', border='T', ln=True)
     else:
-        pdf.set_font("Arial", 'I', 10)
+        pdf.set_font("helvetica", 'I', 10)
         pdf.set_text_color(150, 150, 150)
-        pdf.cell(0, 8, "Nessun torneo svizzero registrato.", ln=True, align='C')
+        pdf.cell(0, 8, "Nessun torneo svizzero registrato.", new_x="LMARGIN", new_y="NEXT", align='C')
     pdf.ln(8)
 
     # ======= RIEPILOGO FINALE =======
     if pdf.get_y() > 240:
         pdf.add_page()
-    pdf.set_font("Arial", 'B', 14)
+    pdf.set_font("helvetica", 'B', 14)
     pdf.set_fill_color(212, 175, 55)
     pdf.set_text_color(26, 54, 93)
-    pdf.cell(0, 10, " RIEPILOGO CLUB ", border=1, ln=True, fill=True, align='C')
+    pdf.cell(0, 10, " RIEPILOGO CLUB ", border=1, new_x="LMARGIN", new_y="NEXT", fill=True, align='C')
     pdf.ln(3)
     pdf.set_text_color(0, 0, 0)
     stats = [
@@ -671,8 +674,8 @@ def genera_pdf_club(df_giocatori, df_tornei_ita, df_tornei_svizzeri, is_tigullio
         pdf.cell(76, 7, value + "  ", border='RTB', align='R')
         pdf.ln()
 
-    # Output: old fpdf restituisce stringa con dest='S'
-    return pdf.output(dest='S').encode('latin-1')
+    # Output: fpdf2 restituisce bytes/bytearray
+    return bytes(pdf.output())
 
 
 st.markdown("<div class='button-title'>⚽ Gestione Club e Tornei Tigullio 🏆</div>", unsafe_allow_html=True)
@@ -1133,31 +1136,31 @@ if st.session_state.edit_index is None and st.session_state.confirm_delete["type
                 riga = df[df["Giocatore"] == sel_giocatore].iloc[0]
                 
                 n_camp = int(riga.get("NCampionatiVinti", 0))
-                l_camp = str(riga.get("listaCampionatiVinti", "")).strip()
+                l_camp_list = riga.get("listaCampionatiVinti", [])
                 n_gir = int(riga.get("NGironiFFVinti", 0))
-                l_gir = str(riga.get("listaGironiFFVinti", "")).strip()
+                l_gir_list = riga.get("listaGironiFFVinti", [])
                 n_elim = int(riga.get("NFFElimDirettaVinte", 0))
-                l_elim = str(riga.get("listaFFElimDirettaVinte", "")).strip()
+                l_elim_list = riga.get("listaFFElimDirettaVinte", [])
                 
                 col_t1, col_t2, col_t3 = st.columns(3)
                 
                 with col_t1:
                     if n_camp > 0:
-                        nomi = ", ".join([n.strip() for n in l_camp.split(",") if n.strip()])
+                        nomi = ", ".join(l_camp_list) if isinstance(l_camp_list, list) else str(l_camp_list)
                         st.success(f"🥇 **{n_camp} Campionati vinti**\n\n{nomi}")
                     else:
                         st.info("🥇 **0 Campionati vinti**")
                 
                 with col_t2:
                     if n_gir > 0:
-                        nomi = ", ".join([n.strip() for n in l_gir.split(",") if n.strip()])
+                        nomi = ", ".join(l_gir_list) if isinstance(l_gir_list, list) else str(l_gir_list)
                         st.success(f"🏅 **{n_gir} Gironi FF vinti**\n\n{nomi}")
                     else:
                         st.info("🏅 **0 Gironi FF vinti**")
                 
                 with col_t3:
                     if n_elim > 0:
-                        nomi = ", ".join([n.strip() for n in l_elim.split(",") if n.strip()])
+                        nomi = ", ".join(l_elim_list) if isinstance(l_elim_list, list) else str(l_elim_list)
                         st.success(f"⚡ **{n_elim} Elim. Diretta vinte**\n\n{nomi}")
                     else:
                         st.info("⚡ **0 Elim. Diretta vinte**")
