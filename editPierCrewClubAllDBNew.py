@@ -78,6 +78,43 @@ if None in (client_players, client_italiana, client_svizzera):
 db_players = client_players["giocatori_subbuteo"]
 collection_players = db_players["piercrew_players"]
 
+# Rileva se siamo nel club PierCrew per mostrare il Palmares (solo per PierCrew)
+IS_SUPERBA = "piercrew" in collection_players.name.lower()
+
+# ==============================================================================
+# MIGRAZIONE DB: Aggiunge i campi trofei ai giocatori se non esistono
+# ==============================================================================
+CAMPI_TROFEI = {
+    "NCampionatiVinti": 0,
+    "listaCampionatiVinti": "",
+    "NGironiFFVinti": 0,
+    "listaGironiFFVinti": "",
+    "NFFElimDirettaVinte": 0,
+    "listaFFElimDirettaVinte": ""
+}
+
+def migra_campi_trofei():
+    """Aggiunge i campi trofei ai documenti che non li hanno ancora.
+    Usa update_many con $exists:false, quindi è una sola query per campo.
+    Viene eseguita una sola volta per sessione."""
+    if st.session_state.get('_migrazione_trofei_eseguita'):
+        return
+    try:
+        for campo, default in CAMPI_TROFEI.items():
+            result = collection_players.update_many(
+                {campo: {"$exists": False}},
+                {"$set": {campo: default}}
+            )
+            if result.modified_count > 0:
+                st.toast(f"Migrazione: campo '{campo}' aggiunto a {result.modified_count} giocatori")
+        st.session_state['_migrazione_trofei_eseguita'] = True
+    except Exception as e:
+        st.warning(f"Avviso migrazione trofei: {e}")
+
+# Esegui la migrazione all'avvio (SOLO PER SUPERBA)
+if IS_SUPERBA:
+    migra_campi_trofei()
+
 # Inizializza lo stato della sessione
 if 'edit_index' not in st.session_state:
     st.session_state.edit_index = None
@@ -127,9 +164,19 @@ def carica_dati_da_mongo():
     if data:
         df = pd.DataFrame(data)
         df = df.drop(columns=["_id"], errors="ignore")
+        # Assicura che le colonne trofei esistano nel DataFrame
+        for campo, default in CAMPI_TROFEI.items():
+            if campo not in df.columns:
+                df[campo] = default
+        # Converti colonne numeriche trofei
+        for col_num in ["NCampionatiVinti", "NGironiFFVinti", "NFFElimDirettaVinte"]:
+            df[col_num] = pd.to_numeric(df[col_num], errors='coerce').fillna(0).astype(int)
+        # Converti colonne lista trofei in stringhe
+        for col_str in ["listaCampionatiVinti", "listaGironiFFVinti", "listaFFElimDirettaVinte"]:
+            df[col_str] = df[col_str].fillna("").astype(str)
         if "Giocatore" in df.columns:
             return df.sort_values(by="Giocatore").reset_index(drop=True)
-    return pd.DataFrame(columns=["Giocatore", "Squadra", "Potenziale"])
+    return pd.DataFrame(columns=["Giocatore", "Squadra", "Potenziale"] + list(CAMPI_TROFEI.keys()))
 
 def salva_dati_su_mongo(df):
     # Assicurati che le colonne obbligatorie siano presenti
@@ -137,6 +184,11 @@ def salva_dati_su_mongo(df):
     for col in colonne_obbligatorie:
         if col not in df.columns:
             df[col] = None if col != "SetPwd" else 0
+    
+    # Assicura che i campi trofei siano presenti
+    for campo, default in CAMPI_TROFEI.items():
+        if campo not in df.columns:
+            df[campo] = default
             
     # Prendi i dati esistenti per il confronto
     dati_esistenti = {d["Giocatore"]: d for d in collection_players.find({})}
@@ -160,6 +212,11 @@ def salva_dati_su_mongo(df):
                 if col not in record or record[col] is None:
                     record[col] = record_esistente.get(col, "")
             
+            # Preserva i campi trofei dal DB se non presenti nel record
+            for campo, default in CAMPI_TROFEI.items():
+                if campo not in record or record[campo] is None:
+                    record[campo] = record_esistente.get(campo, default)
+            
             # Aggiorna solo i campi modificati
             operazioni.append(UpdateOne(
                 {"Giocatore": giocatore},
@@ -171,6 +228,10 @@ def salva_dati_su_mongo(df):
             for col in ["Squadra", "Potenziale", "Ruolo", "Password"]:
                 if col not in record or record[col] is None:
                     record[col] = ""
+            # Default trofei per nuovi giocatori
+            for campo, default in CAMPI_TROFEI.items():
+                if campo not in record or record[campo] is None:
+                    record[campo] = default
             operazioni.append(InsertOne(record))
     
     # Esegui le operazioni in batch
@@ -328,7 +389,7 @@ def _safe(text):
     return s
 
 
-def genera_pdf_club(df_giocatori, df_tornei_ita, df_tornei_svizzeri):
+def genera_pdf_club(df_giocatori, df_tornei_ita, df_tornei_svizzeri, is_piercrew=True):
     """Genera un PDF con la composizione completa del club in stile Gazzetta."""
     pdf = GazzettaClubPDF(orientation='P', unit='mm', format='A4')
     pdf.set_auto_page_break(auto=True, margin=18)
@@ -403,8 +464,7 @@ def genera_pdf_club(df_giocatori, df_tornei_ita, df_tornei_svizzeri):
 
     # ======= DISTRIBUZIONE POTENZIALE =======
     if not df_giocatori.empty and 'Potenziale' in df_giocatori.columns:
-        if pdf.get_y() > 230:
-            pdf.add_page()
+        pdf.add_page()
         pdf.set_font("Arial", 'B', 14)
         pdf.set_fill_color(230, 235, 245)
         pdf.set_text_color(26, 54, 93)
@@ -428,6 +488,92 @@ def genera_pdf_club(df_giocatori, df_tornei_ita, df_tornei_svizzeri):
             pdf.set_font("Arial", '', 9)
             pdf.cell(30, 7, f"  {count} giocator{'e' if count == 1 else 'i'}", border=0, align='L')
             pdf.ln()
+        pdf.ln(5)
+
+    # ======= SEZIONE PALMARES (SOLO SUPERBA) =======
+    if is_piercrew and not df_giocatori.empty:
+        pdf.add_page()
+        pdf.set_font("Arial", 'B', 18)
+        pdf.set_fill_color(230, 235, 245)
+        pdf.set_text_color(26, 54, 93)
+        pdf.cell(0, 12, " PALMARES GIOCATORI ", border=1, ln=True, fill=True, align='C')
+        pdf.ln(3)
+        
+        # Header tabella palmares
+        pdf.set_font("Arial", 'B', 8)
+        pdf.set_fill_color(26, 54, 93)
+        pdf.set_text_color(255, 255, 255)
+        h_palm = ["Giocatore", "Camp.", "Campionati Vinti", "Gir.FF", "Gironi FF Vinti", "Elim.", "Eliminaz. Dirette Vinte"]
+        w_palm = [32, 10, 52, 10, 42, 10, 50]
+        for i, h in enumerate(h_palm):
+            pdf.cell(w_palm[i], 7, h, border=1, align='C', fill=True)
+        pdf.ln()
+        
+        # Ordina per totale trofei
+        df_palm = df_giocatori.copy()
+        for c in ["NCampionatiVinti", "NGironiFFVinti", "NFFElimDirettaVinte"]:
+            if c in df_palm.columns:
+                df_palm[c] = pd.to_numeric(df_palm[c], errors='coerce').fillna(0).astype(int)
+            else:
+                df_palm[c] = 0
+        for c in ["listaCampionatiVinti", "listaGironiFFVinti", "listaFFElimDirettaVinte"]:
+            if c in df_palm.columns:
+                df_palm[c] = df_palm[c].fillna("").astype(str)
+            else:
+                df_palm[c] = ""
+        
+        df_palm["_tot"] = df_palm["NCampionatiVinti"] + df_palm["NGironiFFVinti"] + df_palm["NFFElimDirettaVinte"]
+        df_palm = df_palm.sort_values("_tot", ascending=False).reset_index(drop=True)
+        
+        pdf.set_font("Arial", '', 8)
+        pdf.set_text_color(0, 0, 0)
+        
+        for idx, (_, r) in enumerate(df_palm.iterrows()):
+            fill = (idx % 2 == 0)
+            pdf.set_fill_color(245, 248, 250) if fill else pdf.set_fill_color(255, 255, 255)
+            
+            nome = _safe(r.get("Giocatore", "-"))[:18]
+            n_camp = str(int(r.get("NCampionatiVinti", 0)))
+            l_camp = _safe(r.get("listaCampionatiVinti", ""))[:30]
+            n_gir = str(int(r.get("NGironiFFVinti", 0)))
+            l_gir = _safe(r.get("listaGironiFFVinti", ""))[:24]
+            n_elim = str(int(r.get("NFFElimDirettaVinte", 0)))
+            l_elim = _safe(r.get("listaFFElimDirettaVinte", ""))[:28]
+            
+            pdf.set_font("Arial", 'B', 8)
+            pdf.cell(w_palm[0], 6, " " + nome, border='LR', align='L', fill=fill)
+            pdf.set_font("Arial", '', 8)
+            
+            # Colora numeri > 0 in oro
+            if int(r.get("NCampionatiVinti", 0)) > 0:
+                pdf.set_text_color(212, 175, 55)
+                pdf.set_font("Arial", 'B', 8)
+            pdf.cell(w_palm[1], 6, n_camp, border='LR', align='C', fill=fill)
+            pdf.set_text_color(0, 0, 0)
+            pdf.set_font("Arial", '', 7)
+            pdf.cell(w_palm[2], 6, " " + l_camp, border='LR', align='L', fill=fill)
+            
+            pdf.set_font("Arial", '', 8)
+            if int(r.get("NGironiFFVinti", 0)) > 0:
+                pdf.set_text_color(42, 157, 143)
+                pdf.set_font("Arial", 'B', 8)
+            pdf.cell(w_palm[3], 6, n_gir, border='LR', align='C', fill=fill)
+            pdf.set_text_color(0, 0, 0)
+            pdf.set_font("Arial", '', 7)
+            pdf.cell(w_palm[4], 6, " " + l_gir, border='LR', align='L', fill=fill)
+            
+            pdf.set_font("Arial", '', 8)
+            if int(r.get("NFFElimDirettaVinte", 0)) > 0:
+                pdf.set_text_color(200, 80, 80)
+                pdf.set_font("Arial", 'B', 8)
+            pdf.cell(w_palm[5], 6, n_elim, border='LR', align='C', fill=fill)
+            pdf.set_text_color(0, 0, 0)
+            pdf.set_font("Arial", '', 7)
+            pdf.cell(w_palm[6], 6, " " + l_elim, border='LR', align='L', fill=fill)
+            
+            pdf.ln()
+        
+        pdf.cell(sum(w_palm), 0, '', border='T', ln=True)
         pdf.ln(5)
 
     # ======= SEZIONE TORNEI =======
@@ -890,31 +1036,19 @@ if st.session_state.edit_index is None and st.session_state.confirm_delete["type
         """)
         
     if not df.empty:
-        # Create a copy of the dataframe with the columns we want to show
+        # --- Tabella principale giocatori (editabile) ---
         display_columns = ["Giocatore", "Squadra", "Potenziale", "Ruolo"]
         display_df = df[display_columns].copy()
         
-        # Format the role for display
-        role_display_map = {
-            "R": "Reader",
-            "W": "Writer",
-            "A": "Admin"
-        }
-        
-        # Create a display version of the role column for non-admins
-        # First ensure the column exists and fill any NaN values with 'R' (Reader)
+        role_display_map = {"R": "Reader", "W": "Writer", "A": "Admin"}
         if "Ruolo" not in display_df.columns:
             display_df["Ruolo"] = "R"
         display_df["Ruolo"] = display_df["Ruolo"].fillna("R")
-        
-        # Create a copy of the role column for display
         display_df["Ruolo_Display"] = display_df["Ruolo"].map(lambda x: role_display_map.get(str(x).strip(), "Reader"))
         
-        # Make the dataframe editable - show different columns based on admin status
         if is_admin:
-            # For admins, show the editable role column
             edited_df = st.data_editor(
-                display_df[display_columns],  # Show original columns
+                display_df[display_columns],
                 disabled=["id"],
                 num_rows="dynamic",
                 width="stretch",
@@ -932,11 +1066,10 @@ if st.session_state.edit_index is None and st.session_state.confirm_delete["type
                 }
             )
         else:
-            # For non-admins, show the display version of the role
             display_columns_non_admin = ["Giocatore", "Squadra", "Potenziale", "Ruolo_Display"]
             edited_df = st.data_editor(
                 display_df[display_columns_non_admin],
-                disabled=display_columns_non_admin,  # Make all columns read-only
+                disabled=display_columns_non_admin,
                 width="stretch",
                 column_config={
                     "Giocatore": "Giocatore",
@@ -945,6 +1078,89 @@ if st.session_state.edit_index is None and st.session_state.confirm_delete["type
                     "Ruolo_Display": st.column_config.TextColumn("Ruolo")
                 }
             )
+        
+        # --- Palmares Compatto (SOLO PER SUPERBA) ---
+        if IS_SUPERBA:
+            st.markdown("---")
+            st.subheader("🏆 Palmares Giocatori")
+            
+            # Assicura colonne trofei
+            for col in ["NCampionatiVinti", "NGironiFFVinti", "NFFElimDirettaVinte"]:
+                if col not in df.columns:
+                    df[col] = 0
+            for col in ["listaCampionatiVinti", "listaGironiFFVinti", "listaFFElimDirettaVinte"]:
+                if col not in df.columns:
+                    df[col] = ""
+            
+            # Tabella compatta: solo numeri
+            df_compact = df[["Giocatore"]].copy()
+            df_compact["🏆 Tot"] = (
+                df["NCampionatiVinti"].fillna(0).astype(int) + 
+                df["NGironiFFVinti"].fillna(0).astype(int) + 
+                df["NFFElimDirettaVinte"].fillna(0).astype(int)
+            )
+            df_compact["🥇 Camp."] = df["NCampionatiVinti"].fillna(0).astype(int)
+            df_compact["🏅 Gir.FF"] = df["NGironiFFVinti"].fillna(0).astype(int)
+            df_compact["⚡ Elim."] = df["NFFElimDirettaVinte"].fillna(0).astype(int)
+            
+            df_compact = df_compact.sort_values("🏆 Tot", ascending=False).reset_index(drop=True)
+            
+            st.dataframe(
+                df_compact,
+                width="stretch",
+                hide_index=True,
+                height=min(len(df_compact) * 35 + 38, 400),
+                column_config={
+                    "Giocatore": st.column_config.TextColumn("Giocatore", width="medium"),
+                    "🏆 Tot": st.column_config.NumberColumn("🏆 Tot", format="%d", width="small"),
+                    "🥇 Camp.": st.column_config.NumberColumn("🥇 Camp.", format="%d", width="small"),
+                    "🏅 Gir.FF": st.column_config.NumberColumn("🏅 Gir.FF", format="%d", width="small"),
+                    "⚡ Elim.": st.column_config.NumberColumn("⚡ Elim.", format="%d", width="small"),
+                }
+            )
+            
+            # Selettore per vedere i dettagli dei trofei
+            tutti_giocatori = df_compact["Giocatore"].tolist()
+            
+            sel_giocatore = st.selectbox(
+                "🔍 Dettaglio trofei giocatore:",
+                options=[""] + tutti_giocatori,
+                index=0,
+                key="palmares_detail_select"
+            )
+            
+            if sel_giocatore:
+                riga = df[df["Giocatore"] == sel_giocatore].iloc[0]
+                
+                n_camp = int(riga.get("NCampionatiVinti", 0))
+                l_camp = str(riga.get("listaCampionatiVinti", "")).strip()
+                n_gir = int(riga.get("NGironiFFVinti", 0))
+                l_gir = str(riga.get("listaGironiFFVinti", "")).strip()
+                n_elim = int(riga.get("NFFElimDirettaVinte", 0))
+                l_elim = str(riga.get("listaFFElimDirettaVinte", "")).strip()
+                
+                col_t1, col_t2, col_t3 = st.columns(3)
+                
+                with col_t1:
+                    if n_camp > 0:
+                        nomi = ", ".join([n.strip() for n in l_camp.split(",") if n.strip()])
+                        st.success(f"🥇 **{n_camp} Campionati vinti**\n\n{nomi}")
+                    else:
+                        st.info("🥇 **0 Campionati vinti**")
+                
+                with col_t2:
+                    if n_gir > 0:
+                        nomi = ", ".join([n.strip() for n in l_gir.split(",") if n.strip()])
+                        st.success(f"🏅 **{n_gir} Gironi FF vinti**\n\n{nomi}")
+                    else:
+                        st.info("🏅 **0 Gironi FF vinti**")
+                
+                with col_t3:
+                    if n_elim > 0:
+                        nomi = ", ".join([n.strip() for n in l_elim.split(",") if n.strip()])
+                        st.success(f"⚡ **{n_elim} Elim. Diretta vinte**\n\n{nomi}")
+                    else:
+                        st.info("⚡ **0 Elim. Diretta vinte**")
         
         # Add save button - only for non-guest users
         
@@ -978,10 +1194,15 @@ if st.session_state.edit_index is None and st.session_state.confirm_delete["type
                                         ]
                                     })
                             
-                            # Aggiorna il dataframe in session state
-                            st.session_state.df_giocatori = edited_df
                             # Salva nel database
                             salva_dati_su_mongo(edited_df)
+                            
+                            # Ricarica subito per ripristinare i campi nascosti (trofei, pwd, ecc.) nel session state
+                            st.session_state.df_giocatori = carica_dati_da_mongo()
+                            
+                            st.success("✅ Modifiche salvate con successo!")
+                            st.session_state.show_password_dialog = False
+                            st.rerun()
                             
                             # Log delle modifiche
                             username = st.session_state.get('user', {}).get('username', 'sconosciuto')
@@ -1040,7 +1261,8 @@ if st.session_state.edit_index is None and st.session_state.confirm_delete["type
         pdf_bytes = genera_pdf_club(
             st.session_state.df_giocatori,
             st.session_state.df_tornei_italiana,
-            st.session_state.df_tornei_svizzeri
+            st.session_state.df_tornei_svizzeri,
+            is_piercrew=IS_SUPERBA
         )
         st.session_state['pdf_club_pronto'] = pdf_bytes
 
