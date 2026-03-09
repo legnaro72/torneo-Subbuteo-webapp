@@ -1,0 +1,511 @@
+2026-03-09T10:54:31.399339 - [LOG_ACTION_ERROR] Errore durante il logging: Invalid document: cannot encode object: Ellipsis, of type: <class 'ellipsis'>
+Traceback (most recent call last):
+  File "D:\torneo-Subbuteo-webapp\logging_utils.py", line 81, in log_action
+    result = collection.insert_one(log_entry)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 891, in insert_one
+    self._insert_one(
+    ~~~~~~~~~~~~~~~~^
+        document,
+        ^^^^^^^^^
+    ...<5 lines>...
+        comment=comment,
+        ^^^^^^^^^^^^^^^^
+    ),
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 831, in _insert_one
+    self._database.client._retryable_write(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        acknowledged, _insert_command, session, operation=_Op.INSERT
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2083, in _retryable_write
+    return self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 1968, in _retry_with_session
+    return self._retry_internal(
+           ~~~~~~~~~~~~~~~~~~~~^
+        func=func,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        operation_id=operation_id,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\_csot.py", line 125, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2014, in _retry_internal
+    ).run()
+      ~~~^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2763, in run
+    return self._read() if self._is_read else self._write()
+                                              ~~~~~~~~~~~^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2895, in _write
+    return self._func(self._session, conn, self._retryable)  # type: ignore
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 819, in _insert_command
+    result = conn.command(
+        self._database.name,
+    ...<5 lines>...
+        retryable_write=retryable_write,
+    )
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\helpers.py", line 47, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\pool.py", line 426, in command
+    self._raise_connection_failure(error)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\pool.py", line 398, in command
+    return command(
+        self,
+    ...<20 lines>...
+        write_concern=write_concern,
+    )
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\network.py", line 148, in command
+    request_id, msg, size, max_doc_size = message._op_msg(
+                                          ~~~~~~~~~~~~~~~^
+        flags, spec, dbname, read_preference, codec_options, ctx=compression_ctx
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\message.py", line 419, in _op_msg
+    return _op_msg_uncompressed(flags, command, identifier, docs, opts)
+bson.errors.InvalidDocument: Invalid document: cannot encode object: Ellipsis, of type: <class 'ellipsis'>
+
+2026-03-09T10:55:11.560599 - [LOG_ACTION_ERROR] Errore durante il logging: Invalid document: cannot encode object: Ellipsis, of type: <class 'ellipsis'>
+Traceback (most recent call last):
+  File "D:\torneo-Subbuteo-webapp\logging_utils.py", line 81, in log_action
+    result = collection.insert_one(log_entry)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 891, in insert_one
+    self._insert_one(
+    ~~~~~~~~~~~~~~~~^
+        document,
+        ^^^^^^^^^
+    ...<5 lines>...
+        comment=comment,
+        ^^^^^^^^^^^^^^^^
+    ),
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 831, in _insert_one
+    self._database.client._retryable_write(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        acknowledged, _insert_command, session, operation=_Op.INSERT
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2083, in _retryable_write
+    return self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 1968, in _retry_with_session
+    return self._retry_internal(
+           ~~~~~~~~~~~~~~~~~~~~^
+        func=func,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        operation_id=operation_id,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\_csot.py", line 125, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2014, in _retry_internal
+    ).run()
+      ~~~^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2763, in run
+    return self._read() if self._is_read else self._write()
+                                              ~~~~~~~~~~~^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2895, in _write
+    return self._func(self._session, conn, self._retryable)  # type: ignore
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 819, in _insert_command
+    result = conn.command(
+        self._database.name,
+    ...<5 lines>...
+        retryable_write=retryable_write,
+    )
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\helpers.py", line 47, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\pool.py", line 426, in command
+    self._raise_connection_failure(error)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\pool.py", line 398, in command
+    return command(
+        self,
+    ...<20 lines>...
+        write_concern=write_concern,
+    )
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\network.py", line 148, in command
+    request_id, msg, size, max_doc_size = message._op_msg(
+                                          ~~~~~~~~~~~~~~~^
+        flags, spec, dbname, read_preference, codec_options, ctx=compression_ctx
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\message.py", line 419, in _op_msg
+    return _op_msg_uncompressed(flags, command, identifier, docs, opts)
+bson.errors.InvalidDocument: Invalid document: cannot encode object: Ellipsis, of type: <class 'ellipsis'>
+
+2026-03-09T10:55:35.239356 - [LOG_ACTION_ERROR] Errore durante il logging: Invalid document: cannot encode object: Ellipsis, of type: <class 'ellipsis'>
+Traceback (most recent call last):
+  File "D:\torneo-Subbuteo-webapp\logging_utils.py", line 81, in log_action
+    result = collection.insert_one(log_entry)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 891, in insert_one
+    self._insert_one(
+    ~~~~~~~~~~~~~~~~^
+        document,
+        ^^^^^^^^^
+    ...<5 lines>...
+        comment=comment,
+        ^^^^^^^^^^^^^^^^
+    ),
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 831, in _insert_one
+    self._database.client._retryable_write(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        acknowledged, _insert_command, session, operation=_Op.INSERT
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2083, in _retryable_write
+    return self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 1968, in _retry_with_session
+    return self._retry_internal(
+           ~~~~~~~~~~~~~~~~~~~~^
+        func=func,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        operation_id=operation_id,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\_csot.py", line 125, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2014, in _retry_internal
+    ).run()
+      ~~~^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2763, in run
+    return self._read() if self._is_read else self._write()
+                                              ~~~~~~~~~~~^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2895, in _write
+    return self._func(self._session, conn, self._retryable)  # type: ignore
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 819, in _insert_command
+    result = conn.command(
+        self._database.name,
+    ...<5 lines>...
+        retryable_write=retryable_write,
+    )
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\helpers.py", line 47, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\pool.py", line 426, in command
+    self._raise_connection_failure(error)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\pool.py", line 398, in command
+    return command(
+        self,
+    ...<20 lines>...
+        write_concern=write_concern,
+    )
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\network.py", line 148, in command
+    request_id, msg, size, max_doc_size = message._op_msg(
+                                          ~~~~~~~~~~~~~~~^
+        flags, spec, dbname, read_preference, codec_options, ctx=compression_ctx
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\message.py", line 419, in _op_msg
+    return _op_msg_uncompressed(flags, command, identifier, docs, opts)
+bson.errors.InvalidDocument: Invalid document: cannot encode object: Ellipsis, of type: <class 'ellipsis'>
+
+2026-03-09T10:55:59.678904 - [LOG_ACTION_ERROR] Errore durante il logging: Invalid document: cannot encode object: Ellipsis, of type: <class 'ellipsis'>
+Traceback (most recent call last):
+  File "D:\torneo-Subbuteo-webapp\logging_utils.py", line 81, in log_action
+    result = collection.insert_one(log_entry)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 891, in insert_one
+    self._insert_one(
+    ~~~~~~~~~~~~~~~~^
+        document,
+        ^^^^^^^^^
+    ...<5 lines>...
+        comment=comment,
+        ^^^^^^^^^^^^^^^^
+    ),
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 831, in _insert_one
+    self._database.client._retryable_write(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        acknowledged, _insert_command, session, operation=_Op.INSERT
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2083, in _retryable_write
+    return self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 1968, in _retry_with_session
+    return self._retry_internal(
+           ~~~~~~~~~~~~~~~~~~~~^
+        func=func,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        operation_id=operation_id,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\_csot.py", line 125, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2014, in _retry_internal
+    ).run()
+      ~~~^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2763, in run
+    return self._read() if self._is_read else self._write()
+                                              ~~~~~~~~~~~^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2895, in _write
+    return self._func(self._session, conn, self._retryable)  # type: ignore
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 819, in _insert_command
+    result = conn.command(
+        self._database.name,
+    ...<5 lines>...
+        retryable_write=retryable_write,
+    )
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\helpers.py", line 47, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\pool.py", line 426, in command
+    self._raise_connection_failure(error)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\pool.py", line 398, in command
+    return command(
+        self,
+    ...<20 lines>...
+        write_concern=write_concern,
+    )
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\network.py", line 148, in command
+    request_id, msg, size, max_doc_size = message._op_msg(
+                                          ~~~~~~~~~~~~~~~^
+        flags, spec, dbname, read_preference, codec_options, ctx=compression_ctx
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\message.py", line 419, in _op_msg
+    return _op_msg_uncompressed(flags, command, identifier, docs, opts)
+bson.errors.InvalidDocument: Invalid document: cannot encode object: Ellipsis, of type: <class 'ellipsis'>
+
+2026-03-09T10:56:17.182658 - [LOG_ACTION_ERROR] Errore durante il logging: Invalid document: cannot encode object: Ellipsis, of type: <class 'ellipsis'>
+Traceback (most recent call last):
+  File "D:\torneo-Subbuteo-webapp\logging_utils.py", line 81, in log_action
+    result = collection.insert_one(log_entry)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 891, in insert_one
+    self._insert_one(
+    ~~~~~~~~~~~~~~~~^
+        document,
+        ^^^^^^^^^
+    ...<5 lines>...
+        comment=comment,
+        ^^^^^^^^^^^^^^^^
+    ),
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 831, in _insert_one
+    self._database.client._retryable_write(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        acknowledged, _insert_command, session, operation=_Op.INSERT
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2083, in _retryable_write
+    return self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 1968, in _retry_with_session
+    return self._retry_internal(
+           ~~~~~~~~~~~~~~~~~~~~^
+        func=func,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        operation_id=operation_id,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\_csot.py", line 125, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2014, in _retry_internal
+    ).run()
+      ~~~^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2763, in run
+    return self._read() if self._is_read else self._write()
+                                              ~~~~~~~~~~~^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2895, in _write
+    return self._func(self._session, conn, self._retryable)  # type: ignore
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 819, in _insert_command
+    result = conn.command(
+        self._database.name,
+    ...<5 lines>...
+        retryable_write=retryable_write,
+    )
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\helpers.py", line 47, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\pool.py", line 426, in command
+    self._raise_connection_failure(error)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\pool.py", line 398, in command
+    return command(
+        self,
+    ...<20 lines>...
+        write_concern=write_concern,
+    )
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\network.py", line 148, in command
+    request_id, msg, size, max_doc_size = message._op_msg(
+                                          ~~~~~~~~~~~~~~~^
+        flags, spec, dbname, read_preference, codec_options, ctx=compression_ctx
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\message.py", line 419, in _op_msg
+    return _op_msg_uncompressed(flags, command, identifier, docs, opts)
+bson.errors.InvalidDocument: Invalid document: cannot encode object: Ellipsis, of type: <class 'ellipsis'>
+
+2026-03-09T11:32:23.569627 - [LOG_ACTION_ERROR] Errore durante il logging: Invalid document: cannot encode object: Ellipsis, of type: <class 'ellipsis'>
+Traceback (most recent call last):
+  File "D:\torneo-Subbuteo-webapp\logging_utils.py", line 81, in log_action
+    result = collection.insert_one(log_entry)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 891, in insert_one
+    self._insert_one(
+    ~~~~~~~~~~~~~~~~^
+        document,
+        ^^^^^^^^^
+    ...<5 lines>...
+        comment=comment,
+        ^^^^^^^^^^^^^^^^
+    ),
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 831, in _insert_one
+    self._database.client._retryable_write(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        acknowledged, _insert_command, session, operation=_Op.INSERT
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2083, in _retryable_write
+    return self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 1968, in _retry_with_session
+    return self._retry_internal(
+           ~~~~~~~~~~~~~~~~~~~~^
+        func=func,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        operation_id=operation_id,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\_csot.py", line 125, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2014, in _retry_internal
+    ).run()
+      ~~~^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2763, in run
+    return self._read() if self._is_read else self._write()
+                                              ~~~~~~~~~~~^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2895, in _write
+    return self._func(self._session, conn, self._retryable)  # type: ignore
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 819, in _insert_command
+    result = conn.command(
+        self._database.name,
+    ...<5 lines>...
+        retryable_write=retryable_write,
+    )
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\helpers.py", line 47, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\pool.py", line 426, in command
+    self._raise_connection_failure(error)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\pool.py", line 398, in command
+    return command(
+        self,
+    ...<20 lines>...
+        write_concern=write_concern,
+    )
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\network.py", line 148, in command
+    request_id, msg, size, max_doc_size = message._op_msg(
+                                          ~~~~~~~~~~~~~~~^
+        flags, spec, dbname, read_preference, codec_options, ctx=compression_ctx
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\message.py", line 419, in _op_msg
+    return _op_msg_uncompressed(flags, command, identifier, docs, opts)
+bson.errors.InvalidDocument: Invalid document: cannot encode object: Ellipsis, of type: <class 'ellipsis'>
+
+2026-03-09T11:32:41.439178 - [LOG_ACTION_ERROR] Errore durante il logging: Invalid document: cannot encode object: Ellipsis, of type: <class 'ellipsis'>
+Traceback (most recent call last):
+  File "D:\torneo-Subbuteo-webapp\logging_utils.py", line 81, in log_action
+    result = collection.insert_one(log_entry)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 891, in insert_one
+    self._insert_one(
+    ~~~~~~~~~~~~~~~~^
+        document,
+        ^^^^^^^^^
+    ...<5 lines>...
+        comment=comment,
+        ^^^^^^^^^^^^^^^^
+    ),
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 831, in _insert_one
+    self._database.client._retryable_write(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        acknowledged, _insert_command, session, operation=_Op.INSERT
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2083, in _retryable_write
+    return self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 1968, in _retry_with_session
+    return self._retry_internal(
+           ~~~~~~~~~~~~~~~~~~~~^
+        func=func,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        operation_id=operation_id,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\_csot.py", line 125, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2014, in _retry_internal
+    ).run()
+      ~~~^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2763, in run
+    return self._read() if self._is_read else self._write()
+                                              ~~~~~~~~~~~^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\mongo_client.py", line 2895, in _write
+    return self._func(self._session, conn, self._retryable)  # type: ignore
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\collection.py", line 819, in _insert_command
+    result = conn.command(
+        self._database.name,
+    ...<5 lines>...
+        retryable_write=retryable_write,
+    )
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\helpers.py", line 47, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\pool.py", line 426, in command
+    self._raise_connection_failure(error)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\pool.py", line 398, in command
+    return command(
+        self,
+    ...<20 lines>...
+        write_concern=write_concern,
+    )
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\synchronous\network.py", line 148, in command
+    request_id, msg, size, max_doc_size = message._op_msg(
+                                          ~~~~~~~~~~~~~~~^
+        flags, spec, dbname, read_preference, codec_options, ctx=compression_ctx
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\leonardo\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\message.py", line 419, in _op_msg
+    return _op_msg_uncompressed(flags, command, identifier, docs, opts)
+bson.errors.InvalidDocument: Invalid document: cannot encode object: Ellipsis, of type: <class 'ellipsis'>
+
