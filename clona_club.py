@@ -32,7 +32,7 @@ def sync():
     generated_count = 0
     
     for club_name, config in CLUBS.items():
-        print(f"\n--- Elaborazione Club: {club_name} ---")
+        print(f"--- Elaborazione Club: {club_name} ---")
         for filename in FILES_TO_SYNC:
             if not os.path.exists(filename):
                 print(f"[!] Attenzione: File sorgente '{filename}' non trovato. Salto.")
