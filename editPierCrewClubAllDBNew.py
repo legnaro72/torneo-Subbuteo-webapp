@@ -13,6 +13,10 @@ import pandas as pd
 from pymongo import MongoClient, UpdateOne, InsertOne
 from pymongo.server_api import ServerApi
 import certifi
+from fpdf import FPDF
+from datetime import datetime
+import os
+import io
 
 # Import custom utilities
 import auth_utils as auth
@@ -254,6 +258,276 @@ HUB_URL = "https://farm-tornei-subbuteo-piercrew-all-db.streamlit.app/"
 # Sidebar — usa moduli condivisi
 setup_common_sidebar(show_user_info=False, show_hub_link=True, hub_url=HUB_URL)
 setup_audio_sidebar()
+
+# ==============================================================================
+# PDF EXPORT — La Gazzetta della PierCrew (Composizione Club)
+# ==============================================================================
+
+class GazzettaClubPDF(FPDF):
+    """PDF con stile 'La Gazzetta della PierCrew' per la composizione del club."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def header(self):
+        # Sfondo Header (Blu Navy)
+        self.set_fill_color(26, 54, 93)
+        self.rect(0, 0, 210, 32, 'F')
+        # Linea dorata di accento
+        self.set_fill_color(212, 175, 55)
+        self.rect(0, 32, 210, 1.5, 'F')
+        # Logo PierCrew
+        logo_path = "logo_piercrew.jpg"
+        start_x = 10
+        if os.path.exists(logo_path):
+            self.image(logo_path, 12, 5, 22)
+            start_x = 40
+        # Titolo
+        self.set_xy(start_x, 8)
+        self.set_font("Arial", 'B', 24)
+        self.set_text_color(255, 255, 255)
+        self.cell(0, 10, "IL GAZZETTINO DEL PIER CREW", border=0, ln=1, align='L')
+        # Sottotitolo
+        self.set_x(start_x)
+        self.set_font("Arial", 'I', 11)
+        self.set_text_color(220, 225, 235)
+        data_stampa = datetime.now().strftime("%d/%m/%Y alle %H:%M")
+        self.cell(0, 6, f"Composizione Club PierCrew | Aggiornato il {data_stampa}", border=0, ln=1, align='L')
+        self.ln(12)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_fill_color(26, 54, 93)
+        self.rect(0, 287, 210, 10, 'F')
+        self.set_font('Arial', 'B', 8)
+        self.set_text_color(255, 255, 255)
+        self.cell(0, 10, f'Pagina {self.page_no()} - La Gazzetta della PierCrew - Gestionale Club Subbuteo', 0, 0, 'C')
+
+
+def _safe(text):
+    """Sanitizza testo per FPDF (Latin-1 safe)."""
+    if text is None:
+        return "-"
+    s = str(text).strip()
+    if s.lower() in ['none', 'nan', '<na>', '']:
+        return "-"
+    # Sostituzioni caratteri problematici
+    replacements = {
+        '\u2019': "'", '\u2018': "'",  # smart quotes
+        '\u201c': '"', '\u201d': '"',  # smart double quotes
+        '\u2013': '-', '\u2014': '-',  # en/em dash
+        '\u2026': '...',               # ellipsis
+        '\u20ac': 'EUR',               # euro
+    }
+    for old, new in replacements.items():
+        s = s.replace(old, new)
+    # Forza encoding Latin-1 con fallback
+    try:
+        s.encode('latin-1')
+    except UnicodeEncodeError:
+        s = s.encode('latin-1', errors='replace').decode('latin-1')
+    return s
+
+
+def genera_pdf_club(df_giocatori, df_tornei_ita, df_tornei_svizzeri):
+    """Genera un PDF con la composizione completa del club in stile Gazzetta."""
+    pdf = GazzettaClubPDF(orientation='P', unit='mm', format='A4')
+    pdf.set_auto_page_break(auto=True, margin=18)
+    pdf.add_page()
+
+    # ======= SEZIONE ROSA GIOCATORI =======
+    pdf.set_font("Arial", 'B', 18)
+    pdf.set_fill_color(230, 235, 245)
+    pdf.set_text_color(26, 54, 93)
+    pdf.cell(0, 12, " ROSA GIOCATORI ", border=1, ln=True, fill=True, align='C')
+    pdf.ln(3)
+
+    num_giocatori = len(df_giocatori)
+    pot_medio = df_giocatori['Potenziale'].mean() if not df_giocatori.empty and 'Potenziale' in df_giocatori.columns else 0
+
+    pdf.set_font("Arial", 'I', 10)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 6, f"Totale tesserati: {num_giocatori} | Potenziale medio: {pot_medio:.1f}/10", ln=True, align='C')
+    pdf.ln(3)
+
+    if not df_giocatori.empty:
+        # Header tabella
+        pdf.set_font("Arial", 'B', 11)
+        pdf.set_fill_color(26, 54, 93)
+        pdf.set_text_color(255, 255, 255)
+        headers = ["#", "Giocatore", "Squadra", "Pot."]
+        widths = [12, 68, 78, 18]
+        for i, h in enumerate(headers):
+            pdf.cell(widths[i], 8, h, border=1, align='C', fill=True)
+        pdf.ln()
+
+        # Body tabella (ordinato per potenziale decrescente)
+        pdf.set_font("Arial", '', 10)
+        pdf.set_text_color(0, 0, 0)
+        df_sorted = df_giocatori.sort_values(by=['Potenziale', 'Giocatore'], ascending=[False, True]).reset_index(drop=True)
+
+        for idx, (_, r) in enumerate(df_sorted.iterrows()):
+            fill = (idx % 2 == 0)
+            pdf.set_fill_color(245, 248, 250) if fill else pdf.set_fill_color(255, 255, 255)
+            giocatore = _safe(r.get('Giocatore', '-'))[:32]
+            squadra = _safe(r.get('Squadra', '-'))[:38]
+            pot_val = int(r.get('Potenziale', 0)) if pd.notna(r.get('Potenziale')) else 0
+
+            pdf.cell(widths[0], 7, str(idx + 1), border='LR', align='C', fill=fill)
+            pdf.set_font("Arial", 'B', 10)
+            pdf.cell(widths[1], 7, " " + giocatore, border='LR', align='L', fill=fill)
+            pdf.set_font("Arial", '', 10)
+            pdf.cell(widths[2], 7, " " + squadra, border='LR', align='L', fill=fill)
+
+            # Colore potenziale
+            if pot_val >= 8:
+                pdf.set_text_color(212, 175, 55)
+            elif pot_val >= 6:
+                pdf.set_text_color(42, 157, 143)
+            elif pot_val >= 4:
+                pdf.set_text_color(100, 100, 100)
+            else:
+                pdf.set_text_color(200, 80, 80)
+            pdf.set_font("Arial", 'B', 11)
+            pdf.cell(widths[3], 7, str(pot_val), border='LR', align='C', fill=fill)
+            pdf.set_font("Arial", '', 10)
+            pdf.set_text_color(0, 0, 0)
+            pdf.ln()
+
+        pdf.cell(sum(widths), 0, '', border='T', ln=True)
+    else:
+        pdf.set_font("Arial", 'I', 11)
+        pdf.set_text_color(150, 150, 150)
+        pdf.cell(0, 10, "Nessun giocatore registrato.", ln=True, align='C')
+
+    pdf.ln(8)
+
+    # ======= DISTRIBUZIONE POTENZIALE =======
+    if not df_giocatori.empty and 'Potenziale' in df_giocatori.columns:
+        if pdf.get_y() > 230:
+            pdf.add_page()
+        pdf.set_font("Arial", 'B', 14)
+        pdf.set_fill_color(230, 235, 245)
+        pdf.set_text_color(26, 54, 93)
+        pdf.cell(0, 10, " DISTRIBUZIONE POTENZIALE ", border=1, ln=True, fill=True, align='C')
+        pdf.ln(3)
+        pdf.set_text_color(0, 0, 0)
+        pot_counts = df_giocatori['Potenziale'].value_counts().sort_index(ascending=False)
+        for pot, count in pot_counts.items():
+            bar_width = min(count * 12, 140)
+            if int(pot) >= 8:
+                pdf.set_fill_color(212, 175, 55)
+            elif int(pot) >= 6:
+                pdf.set_fill_color(42, 157, 143)
+            elif int(pot) >= 4:
+                pdf.set_fill_color(150, 160, 175)
+            else:
+                pdf.set_fill_color(200, 80, 80)
+            pdf.set_font("Arial", 'B', 10)
+            pdf.cell(20, 7, f"  {int(pot)}/10", border=0, align='L')
+            pdf.cell(bar_width, 7, '', border=0, fill=True)
+            pdf.set_font("Arial", '', 9)
+            pdf.cell(30, 7, f"  {count} giocator{'e' if count == 1 else 'i'}", border=0, align='L')
+            pdf.ln()
+        pdf.ln(5)
+
+    # ======= SEZIONE TORNEI =======
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 18)
+    pdf.set_fill_color(230, 235, 245)
+    pdf.set_text_color(26, 54, 93)
+    pdf.cell(0, 12, " ARCHIVIO TORNEI ", border=1, ln=True, fill=True, align='C')
+    pdf.ln(5)
+
+    # Tornei All'Italiana
+    pdf.set_font("Arial", 'B', 14)
+    pdf.set_fill_color(26, 54, 93)
+    pdf.set_text_color(255, 255, 255)
+    num_ita = len(df_tornei_ita) if not df_tornei_ita.empty else 0
+    pdf.cell(0, 9, f"  TORNEI ALL'ITALIANA ({num_ita})", border=1, ln=True, fill=True, align='L')
+    pdf.ln(2)
+    if not df_tornei_ita.empty:
+        pdf.set_font("Arial", '', 10)
+        pdf.set_text_color(0, 0, 0)
+        for idx, (_, r) in enumerate(df_tornei_ita.iterrows()):
+            fill = (idx % 2 == 0)
+            pdf.set_fill_color(245, 248, 250) if fill else pdf.set_fill_color(255, 255, 255)
+            nome = _safe(r.get('Torneo', '-'))[:85]
+            if 'campionato' in nome.lower():
+                pdf.set_font("Arial", 'B', 10)
+                pdf.set_text_color(212, 175, 55)
+            else:
+                pdf.set_font("Arial", '', 10)
+                pdf.set_text_color(0, 0, 0)
+            pdf.cell(12, 7, str(idx + 1), border='LR', align='C', fill=fill)
+            pdf.cell(164, 7, "  " + nome, border='LR', align='L', fill=fill)
+            pdf.ln()
+            pdf.set_text_color(0, 0, 0)
+        pdf.cell(176, 0, '', border='T', ln=True)
+    else:
+        pdf.set_font("Arial", 'I', 10)
+        pdf.set_text_color(150, 150, 150)
+        pdf.cell(0, 8, "Nessun torneo all'italiana registrato.", ln=True, align='C')
+    pdf.ln(8)
+
+    # Tornei Svizzeri
+    if pdf.get_y() > 230:
+        pdf.add_page()
+    pdf.set_font("Arial", 'B', 14)
+    pdf.set_fill_color(26, 54, 93)
+    pdf.set_text_color(255, 255, 255)
+    num_svizz = len(df_tornei_svizzeri) if not df_tornei_svizzeri.empty else 0
+    pdf.cell(0, 9, f"  TORNEI SVIZZERI ({num_svizz})", border=1, ln=True, fill=True, align='L')
+    pdf.ln(2)
+    if not df_tornei_svizzeri.empty:
+        pdf.set_font("Arial", '', 10)
+        pdf.set_text_color(0, 0, 0)
+        for idx, (_, r) in enumerate(df_tornei_svizzeri.iterrows()):
+            fill = (idx % 2 == 0)
+            pdf.set_fill_color(245, 248, 250) if fill else pdf.set_fill_color(255, 255, 255)
+            nome = _safe(r.get('Torneo', '-'))[:85]
+            if 'campionato' in nome.lower():
+                pdf.set_font("Arial", 'B', 10)
+                pdf.set_text_color(212, 175, 55)
+            else:
+                pdf.set_font("Arial", '', 10)
+                pdf.set_text_color(0, 0, 0)
+            pdf.cell(12, 7, str(idx + 1), border='LR', align='C', fill=fill)
+            pdf.cell(164, 7, "  " + nome, border='LR', align='L', fill=fill)
+            pdf.ln()
+            pdf.set_text_color(0, 0, 0)
+        pdf.cell(176, 0, '', border='T', ln=True)
+    else:
+        pdf.set_font("Arial", 'I', 10)
+        pdf.set_text_color(150, 150, 150)
+        pdf.cell(0, 8, "Nessun torneo svizzero registrato.", ln=True, align='C')
+    pdf.ln(8)
+
+    # ======= RIEPILOGO FINALE =======
+    if pdf.get_y() > 240:
+        pdf.add_page()
+    pdf.set_font("Arial", 'B', 14)
+    pdf.set_fill_color(212, 175, 55)
+    pdf.set_text_color(26, 54, 93)
+    pdf.cell(0, 10, " RIEPILOGO CLUB ", border=1, ln=True, fill=True, align='C')
+    pdf.ln(3)
+    pdf.set_text_color(0, 0, 0)
+    stats = [
+        ("Giocatori tesserati", str(num_giocatori)),
+        ("Potenziale medio", f"{pot_medio:.1f}/10"),
+        ("Tornei All'Italiana", str(num_ita)),
+        ("Tornei Svizzeri", str(num_svizz)),
+        ("Totale Tornei", str(num_ita + num_svizz)),
+    ]
+    for label, value in stats:
+        pdf.set_font("Arial", '', 11)
+        pdf.cell(100, 7, "  " + label, border='LTB', align='L')
+        pdf.set_font("Arial", 'B', 11)
+        pdf.cell(76, 7, value + "  ", border='RTB', align='R')
+        pdf.ln()
+
+    # Output: old fpdf restituisce stringa con dest='S'
+    return pdf.output(dest='S').encode('latin-1')
+
 
 st.markdown("<div class='button-title'>⚽ Gestione Club e Tornei PierCrew 🏆</div>", unsafe_allow_html=True)
 
@@ -757,6 +1031,29 @@ if st.session_state.edit_index is None and st.session_state.confirm_delete["type
         file_name="giocatori_piercrew_modificato.csv",
         mime="text/csv",
     )
+
+    # --- Esportazione PDF Gazzetta ---
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("📰 La Gazzetta della PierCrew")
+    
+    if st.sidebar.button("📄 Prepara PDF Composizione Club", key="prepare_pdf_club", width="stretch"):
+        pdf_bytes = genera_pdf_club(
+            st.session_state.df_giocatori,
+            st.session_state.df_tornei_italiana,
+            st.session_state.df_tornei_svizzeri
+        )
+        st.session_state['pdf_club_pronto'] = pdf_bytes
+
+    if 'pdf_club_pronto' in st.session_state and st.session_state['pdf_club_pronto'] is not None:
+        st.sidebar.download_button(
+            label="📥 Scarica PDF Club PierCrew",
+            data=st.session_state['pdf_club_pronto'],
+            file_name=f"Gazzetta_Club_PierCrew_{datetime.now().strftime('%d%m%Y')}.pdf",
+            mime="application/pdf",
+            width="stretch"
+        )
+        st.sidebar.success("✅ PDF pronto!")
+
     st.markdown("</div>", unsafe_allow_html=True) # Chiudi contenitore solo se siamo in questa vista
 
     # ---
