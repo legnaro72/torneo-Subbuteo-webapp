@@ -451,32 +451,47 @@ class GazzettaPDF(FPDF):
             
         # 📰 Titolo "Gazzettino" Ufficiale
         self.set_xy(start_x, 8)
-        self.set_font("Arial", 'B', 24)
+        self.set_font("helvetica", 'B', 24)
         self.set_text_color(255, 255, 255)
-        self.cell(0, 10, "IL GAZZETTINO DEL TIGULLIO", border=0, ln=1, align='L')
+        self.cell(0, 10, "IL GAZZETTINO DEL TIGULLIO", border=0, align='L', new_x="LMARGIN", new_y="NEXT")
         
         # 🏆 Sottotitolo (Nome del torneo - SVIZZERO)
         self.set_x(start_x)
-        self.set_font("Arial", 'I', 11)
+        self.set_font("helvetica", 'I', 11)
         self.set_text_color(220, 225, 235)
         data_stampa = datetime.now().strftime("%d/%m/%Y alle %H:%M")
-        self.cell(0, 6, f"Referto Ufficiale: {self.nome_torneo} (Svizzero) | Aggiornato il {data_stampa}", border=0, ln=1, align='L')
+        self.cell(0, 6, f"Referto Ufficiale: {self.nome_torneo} (Svizzero) | Aggiornato il {data_stampa}", border=0, align='L', new_x="LMARGIN", new_y="NEXT")
         
         self.ln(12)
 
     def footer(self):
-        self.set_y(-15)
+        self.set_y(-10)
         self.set_fill_color(26, 54, 93)  
         self.rect(0, 287, 210, 10, 'F')
-        self.set_font('Arial', 'B', 8)
+        self.set_font('helvetica', 'B', 8)
         self.set_text_color(255, 255, 255)
-        self.cell(0, 10, f'Pagina {self.page_no()} - Generato automaticamente dal Gestionale Tornei Subbuteo', 0, 0, 'C')
+        self.set_y(-8)
+        self.cell(0, 6, f'Pagina {self.page_no()} - Generato automaticamente dal Gestionale Tornei Subbuteo', align='C', new_x="LMARGIN", new_y="NEXT")
 
 def esporta_pdf(df_torneo, nome_torneo):
     try:
         pdf = GazzettaPDF(nome_torneo, orientation='P', unit='mm', format='A4')
         pdf.set_auto_page_break(auto=True, margin=18)
         pdf.add_page()
+        
+        # --- NUOVO: BANNER VINCITORI ---
+        import streamlit as st
+        if st.session_state.get('torneo_finito', False):
+            classifica_df_top = aggiorna_classifica(df_torneo)
+            if not classifica_df_top.empty:
+                vincitore = classifica_df_top.iloc[0]['Squadra']
+                pdf.set_fill_color(255, 215, 0)
+                pdf.set_text_color(0, 0, 0) 
+                pdf.set_font('helvetica', 'B', 16)
+                testo_banner = f"*** CAMPIONI DEL TORNEO: {vincitore} ***"
+                pdf.ln(3)
+                pdf.cell(0, 15, testo_banner, border=1, fill=True, align='C', new_x="LMARGIN", new_y="NEXT")
+                pdf.ln(5)
         
         # ======= 📊 SEZIONE CLASSIFICA =======
         classifica_df = aggiorna_classifica(df_torneo)
@@ -1245,6 +1260,74 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
+# --- PULSANTE "CELEBRA VINCITORE" AL TOP ---
+if st.session_state.get('torneo_finito', False):
+    df_class_top = aggiorna_classifica(st.session_state.get('df_torneo', pd.DataFrame()))
+    if not df_class_top.empty:
+        vincitore_top = df_class_top.iloc[0]['Squadra']
+        
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.markdown('<div class="celebra-btn-container"></div>', unsafe_allow_html=True)
+            st.markdown("""
+            <style>
+            div.element-container:has(.celebra-btn-container) + div.element-container div.stButton > button {
+                height: 80px;
+                border-radius: 40px;
+                background: linear-gradient(90deg, #FFD700, #FFA500) !important;
+                color: black !important;
+                border: 4px solid #FF8C00 !important;
+                box-shadow: 0 8px 15px rgba(0,0,0,0.3) !important;
+                transition: all 0.3s ease 0s;
+            }
+            div.element-container:has(.celebra-btn-container) + div.element-container div.stButton > button:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 12px 20px rgba(0,0,0,0.4) !important;
+            }
+            div.element-container:has(.celebra-btn-container) + div.element-container div.stButton > button p {
+                font-size: 24px !important;
+                font-weight: 800 !important;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+            if st.button("🏆 Celebra Vincitore 🎉", use_container_width=True, key="btn_celebra_vincitore_svizz_top"):
+                st.session_state['_celebra_vincitore_svizz'] = True
+                st.rerun()
+
+        if st.session_state.get('_celebra_vincitore_svizz', False):
+            st.session_state['_celebra_vincitore_svizz'] = False
+            st.markdown(
+                f"""
+                <div style='background:linear-gradient(90deg, gold, orange); 
+                             padding:20px; 
+                             border-radius:12px; 
+                             text-align:center; 
+                             color:black; 
+                             font-size:28px; 
+                             font-weight:bold;
+                             margin-top:10px;
+                             margin-bottom:20px;'>
+                    🏆 Il vincitore del torneo {st.session_state.nome_torneo} è {vincitore_top}! 🎉
+                 </div>
+                 """, unsafe_allow_html=True)
+            st.balloons()
+            try:
+                import requests
+                audio_url = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3"
+                response = requests.get(audio_url, timeout=10) 
+                response.raise_for_status() 
+                autoplay_audio(response.content)
+            except Exception:
+                pass
+
+            placeholder_s = st.empty()
+            for _ in range(3):
+                import time
+                with placeholder_s.container():
+                    st.balloons()
+                    time.sleep(1)
+
 # -------------------------
 # Se torneo non è iniziato e non è stato ancora selezionato un setup
 # -------------------------
@@ -1836,6 +1919,47 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
                             if st.session_state.turno_attivo >= st.session_state.max_turni:
                                 st.info(f"✅ Torneo terminato: raggiunto il limite di {st.session_state.max_turni} round.")
                                 st.session_state.torneo_finito = True
+                                
+                                # --- PALMARES SUPERBA SVIZZERO ---
+                                try:
+                                    from palmares_utils import register_win
+                                    from pymongo import MongoClient
+                                    import certifi
+                                    import os
+                                    
+                                    # Usa la collection corretta
+                                    client_tmp = MongoClient(st.secrets["MONGO_URI"], tlsCAFile=certifi.where())
+                                    db_pl = client_tmp["giocatori_subbuteo"]
+                                    players_col_pl = db_pl["tigullio_players"]
+                                    
+                                    classifica_finale_sw = aggiorna_classifica(st.session_state.df_torneo)
+                                    if not classifica_finale_sw.empty:
+                                        vincitore_str = classifica_finale_sw.iloc[0]['Squadra']
+                                        
+                                        # Ricerca del giocatore associato a questa squadra (nel dataframe o parse stringa)
+                                        # Nel torneo svizzero squadra è anche spesso il nome del giocatore ma con format Giocatore o Squadra
+                                        # parse_team_player non è globalmente disponibile qui come nel torneo italiana, 
+                                        # ma cerchiamo di estrarre dal df_squadre
+                                        giocatore_vincitore = vincitore_str
+                                        if 'df_squadre' in st.session_state and not st.session_state.df_squadre.empty:
+                                            # Trova il giocatore associato alla squadra vincente
+                                            match_df = st.session_state.df_squadre[st.session_state.df_squadre['Squadra'] == vincitore_str]
+                                            if not match_df.empty:
+                                                giocatore_vincitore = match_df.iloc[0]['Giocatore']
+                                        elif "-" in vincitore_str:
+                                            parts = vincitore_str.split("-", 1)
+                                            giocatore_vincitore = parts[1].strip() if len(parts)>1 else vincitore_str
+
+                                        register_win(
+                                            db_players_col=players_col_pl,
+                                            winner_name=giocatore_vincitore,
+                                            tournament_name=st.session_state.nome_torneo,
+                                            tournament_type="svizzero"
+                                        )
+                                except Exception as e:
+                                    print(f"[PALMARES SVIZZERO] Errore salvataggio palmares: {e}")
+                                # --- FINE PALMARES ---
+                                
                                 salva_torneo_su_db(
                                     action_type="fine_torneo_automatico",
                                     details={"motivo": "raggiunto_limite_turni", "turni_giocati": st.session_state.max_turni}
@@ -1887,6 +2011,36 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
                     if st.button("🏁 Chiudi Torneo e Incorona il Vincitore", type="primary", use_container_width=True):
                         # Salva lo stato del torneo come terminato
                         st.session_state.torneo_finito = True
+                        
+                        # --- PALMARES SUPERBA SVIZZERO (Fine accoppiamenti) ---
+                        try:
+                            from palmares_utils import register_win
+                            from pymongo import MongoClient
+                            import certifi
+                            client_tmp = MongoClient(st.secrets["MONGO_URI"], tlsCAFile=certifi.where())
+                            db_pl = client_tmp["giocatori_subbuteo"]
+                            players_col_pl = db_pl["tigullio_players"]
+                            
+                            # Vincitore già determinato sopra (vincitore = classifica_attuale.iloc[0]['Squadra'])
+                            giocatore_vincitore = vincitore
+                            if 'df_squadre' in st.session_state and not st.session_state.df_squadre.empty:
+                                match_df = st.session_state.df_squadre[st.session_state.df_squadre['Squadra'] == vincitore]
+                                if not match_df.empty:
+                                    giocatore_vincitore = match_df.iloc[0]['Giocatore']
+                            elif "-" in vincitore:
+                                parts = vincitore.split("-", 1)
+                                giocatore_vincitore = parts[1].strip() if len(parts)>1 else vincitore
+
+                            register_win(
+                                db_players_col=players_col_pl,
+                                winner_name=giocatore_vincitore,
+                                tournament_name=st.session_state.nome_torneo,
+                                tournament_type="svizzero"
+                            )
+                        except Exception as e:
+                            print(f"[PALMARES SVIZZERO] Errore salvataggio palmares: {e}")
+                        # --- FINE PALMARES ---
+
                         salva_torneo_su_db(
                             action_type="fine_torneo_automatico",
                             details={"motivo": "impossibile_generare_nuovi_accoppiamenti"}
@@ -1897,6 +2051,38 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
                     st.success("🏆 Torneo terminato con successo!")
                     if st.button("🏁 Chiudi Torneo", type="primary", use_container_width=True):
                         st.session_state.torneo_finito = True
+                        
+                        # --- PALMARES SUPERBA SVIZZERO (Meno di 2 squadre) ---
+                        try:
+                            from palmares_utils import register_win
+                            from pymongo import MongoClient
+                            import certifi
+                            client_tmp = MongoClient(st.secrets["MONGO_URI"], tlsCAFile=certifi.where())
+                            db_pl = client_tmp["giocatori_subbuteo"]
+                            players_col_pl = db_pl["tigullio_players"]
+                            
+                            classifica_finale_sw = aggiorna_classifica(st.session_state.df_torneo)
+                            if not classifica_finale_sw.empty:
+                                vincitore_str = classifica_finale_sw.iloc[0]['Squadra']
+                                giocatore_vincitore = vincitore_str
+                                if 'df_squadre' in st.session_state and not st.session_state.df_squadre.empty:
+                                    match_df = st.session_state.df_squadre[st.session_state.df_squadre['Squadra'] == vincitore_str]
+                                    if not match_df.empty:
+                                        giocatore_vincitore = match_df.iloc[0]['Giocatore']
+                                elif "-" in vincitore_str:
+                                    parts = vincitore_str.split("-", 1)
+                                    giocatore_vincitore = parts[1].strip() if len(parts)>1 else vincitore_str
+
+                                register_win(
+                                    db_players_col=players_col_pl,
+                                    winner_name=giocatore_vincitore,
+                                    tournament_name=st.session_state.nome_torneo,
+                                    tournament_type="svizzero"
+                                )
+                        except Exception as e:
+                            print(f"[PALMARES SVIZZERO] Errore salvataggio palmares: {e}")
+                        # --- FINE PALMARES ---
+
                         salva_torneo_su_db(
                             action_type="fine_torneo_automatico",
                             details={"motivo": "meno_di_due_squadre_rimaste"}
@@ -1914,48 +2100,7 @@ if st.session_state.torneo_finito:
     df_class = aggiorna_classifica(st.session_state.df_torneo)
     if not df_class.empty:
         st.dataframe(df_class, hide_index=True, width="stretch")
-        vincitore = df_class.iloc[0]['Squadra']
-
-        st.markdown(
-            f"""
-            <div style='background:linear-gradient(90deg, gold, orange); 
-                         padding:20px; 
-                         border-radius:12px; 
-                         text-align:center; 
-                         color:black; 
-                         font-size:28px; 
-                         font-weight:bold;
-                         margin-top:20px;'>
-                🏆 Il vincitore del torneo {st.session_state.nome_torneo} è {vincitore}! 🎉
-             </div>
-             """, unsafe_allow_html=True)
-        st.balloons()
-        # we are the champions
-        # Codice corretto per scaricare l'audio dall'URL
-        audio_url = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3"
-        #audio_url = "./wearethechamp.mp3"
-        try:
-            response = requests.get(audio_url, timeout=10) # Imposta un timeout
-            response.raise_for_status() # Lancia un'eccezione per risposte HTTP errate
-            autoplay_audio(response.content)
-        except requests.exceptions.RequestException as e:
-            st.error(f"Errore durante lo scaricamento dell'audio: {e}")
-
-        # Crea un contenitore vuoto per i messaggi
-        placeholder = st.empty()
-
-        # Lancia i palloncini in un ciclo per 3 secondi
-        with placeholder.container():
-            st.balloons()
-            time.sleep(1) # Aspetta 1 secondo
         
-        with placeholder.container():
-            st.balloons()
-            time.sleep(1) # Aspetta 1 secondo
-        
-        with placeholder.container():
-            st.balloons()
-            time.sleep(1) # Aspetta 1 secondo
 # Footer leggero
 st.markdown("---")
 st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
