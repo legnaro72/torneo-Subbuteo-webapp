@@ -98,7 +98,7 @@ DEFAULT_STATE = {
     'giocatori_ritirati': [],
     'usa_multiselect_giocatori': True,  # Default True = Multiselect Giocatori
     'usa_nomi_come_squadre': False,
-    'bg_audio_disabled': False,
+    'bg_audio_disabled': True,
     'tipo_vista_selezionata': 'compact',
     'modalita_scelta_sidebar': 'squadre'
 }
@@ -1385,7 +1385,6 @@ def main():
                     """, unsafe_allow_html=True)
                 st.balloons()
                 try:
-                    import requests
                     audio_url = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3"
                     response = requests.get(audio_url, timeout=10)
                     response.raise_for_status()
@@ -1394,7 +1393,6 @@ def main():
                     pass
                 placeholder_c = st.empty()
                 for _ in range(3):
-                    import time
                     with placeholder_c.container():
                         st.balloons()
                         time.sleep(1)
