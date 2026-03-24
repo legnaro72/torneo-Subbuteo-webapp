@@ -43,7 +43,7 @@ from streamlit_modal import Modal
 import streamlit.components.v1 as components
 import plotly.express as px
 import plotly.graph_objects as go
-from streamlit_extras.switch_page_button import switch_page
+# from streamlit_extras.switch_page_button import switch_page
 import pytz
 from streamlit_modal import Modal
 import seaborn as sns
@@ -98,7 +98,7 @@ DEFAULT_STATE = {
     'giocatori_ritirati': [],
     'usa_multiselect_giocatori': True,  # Default True = Multiselect Giocatori
     'usa_nomi_come_squadre': False,
-    'bg_audio_disabled': False,
+    'bg_audio_disabled': True,
     'tipo_vista_selezionata': 'compact',
     'modalita_scelta_sidebar': 'squadre'
 }
@@ -1369,6 +1369,36 @@ def main():
             
             if st.session_state.get('_celebra_vincitore', False):
                 st.session_state['_celebra_vincitore'] = False
+                
+                # --- PALMARES SUPERBA (AGGIORNAMENTO AL CLICK CELEBRAZIONE) ---
+                try:
+                    from palmares_utils import register_win
+                    from pymongo import MongoClient
+                    import certifi
+                    client_pl = MongoClient(st.secrets["MONGO_URI"], tlsCAFile=certifi.where())
+                    db_pl = client_pl["giocatori_subbuteo"]
+                    players_col = db_pl["piercrew_players"]
+                    
+                    if not df_torneo_check.empty and not classifica_celebra.empty:
+                        num_gironi_palmares = len(df_torneo_check['Girone'].unique()) if 'Girone' in df_torneo_check.columns else 1
+                        for girone_name in df_torneo_check['Girone'].unique():
+                            gir_classifica = classifica_celebra[classifica_celebra['Girone'] == girone_name]
+                            if not gir_classifica.empty:
+                                vincitore_str = gir_classifica.iloc[0]['Squadra']
+                                squadra_est, giocatore_est = parse_team_player(vincitore_str)
+                                nome_giocatore = giocatore_est if giocatore_est else vincitore_str
+                                
+                                register_win(
+                                    db_players_col=players_col, 
+                                    winner_name=nome_giocatore, 
+                                    tournament_name=st.session_state.get('nome_torneo', 'Torneo Sconosciuto'), 
+                                    tournament_type="italiana", 
+                                    num_gironi=num_gironi_palmares
+                                )
+                except Exception as e:
+                    print(f"[PALMARES CELEBRAZIONE] Errore salvataggio palmares manuale: {e}")
+                # --- FINE PALMARES ---
+                
                 st.markdown(
                     f"""
                     <div style='background:linear-gradient(90deg, gold, orange);
@@ -1385,7 +1415,6 @@ def main():
                     """, unsafe_allow_html=True)
                 st.balloons()
                 try:
-                    import requests
                     audio_url = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3"
                     response = requests.get(audio_url, timeout=10)
                     response.raise_for_status()
@@ -1394,7 +1423,6 @@ def main():
                     pass
                 placeholder_c = st.empty()
                 for _ in range(3):
-                    import time
                     with placeholder_c.container():
                         st.balloons()
                         time.sleep(1)

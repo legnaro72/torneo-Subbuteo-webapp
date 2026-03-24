@@ -204,13 +204,8 @@ def salva_dati_su_mongo(df):
         if col not in df.columns:
             df[col] = None if col != "SetPwd" else 0
     
-    # Assicura che i campi trofei siano presenti
-    for campo, default in CAMPI_TROFEI.items():
-        if campo not in df.columns:
-            if isinstance(default, list):
-                df[campo] = [[] for _ in range(len(df))]
-            else:
-                df[campo] = default
+    # I campi trofei non vengono più forzati nel dataframe in questa fase
+    # per evitare che sovrascrivano i dati già esistenti nel record_esistente.
             
     # Prendi i dati esistenti per il confronto
     dati_esistenti = {d["Giocatore"]: d for d in collection_players.find({})}
@@ -1033,6 +1028,11 @@ if st.session_state.edit_index is None and st.session_state.confirm_delete["type
     st.header("👥 Gestione Giocatori")
     st.subheader("Lista giocatori")
     
+    # Ordiniamo di default solo per ordine alfabetico. Convertiamo Potenziale in int per abilitare il sort on-demand in tabella.
+    if "Potenziale" in st.session_state.df_giocatori.columns and "Giocatore" in st.session_state.df_giocatori.columns:
+        st.session_state.df_giocatori["Potenziale"] = pd.to_numeric(st.session_state.df_giocatori["Potenziale"], errors="coerce").fillna(0).astype(int)
+        st.session_state.df_giocatori = st.session_state.df_giocatori.sort_values(by=["Giocatore"], ascending=[True]).reset_index(drop=True)
+
     # Create a copy of the dataframe for editing
     df = st.session_state.df_giocatori.copy()
     
@@ -1191,16 +1191,23 @@ if st.session_state.edit_index is None and st.session_state.confirm_delete["type
                             # Trova le differenze
                             changes = []
                             for idx in range(len(edited_df)):
-                                old_row = st.session_state.df_giocatori.iloc[idx]
-                                new_row = edited_df.iloc[idx]
-                                if not old_row.equals(new_row):
+                                if idx < len(st.session_state.df_giocatori):
+                                    old_row = st.session_state.df_giocatori.iloc[idx]
+                                    new_row = edited_df.iloc[idx]
+                                    if not old_row.equals(new_row):
+                                        changes.append({
+                                            'giocatore': new_row['Giocatore'],
+                                            'campi_modificati': [
+                                                col for col in edited_df.columns 
+                                                if col in st.session_state.df_giocatori.columns 
+                                                and old_row[col] != new_row[col]
+                                            ]
+                                        })
+                                else:
+                                    new_row = edited_df.iloc[idx]
                                     changes.append({
-                                        'giocatore': new_row['Giocatore'],
-                                        'campi_modificati': [
-                                            col for col in edited_df.columns 
-                                            if col in st.session_state.df_giocatori.columns 
-                                            and old_row[col] != new_row[col]
-                                        ]
+                                        'giocatore': new_row.get('Giocatore', 'Nuovo'),
+                                        'campi_modificati': ['nuovo_inserimento']
                                     })
                             
                             # Salva nel database
