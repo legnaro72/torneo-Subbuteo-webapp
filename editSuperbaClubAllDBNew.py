@@ -1191,16 +1191,23 @@ if st.session_state.edit_index is None and st.session_state.confirm_delete["type
                             # Trova le differenze
                             changes = []
                             for idx in range(len(edited_df)):
-                                old_row = st.session_state.df_giocatori.iloc[idx]
-                                new_row = edited_df.iloc[idx]
-                                if not old_row.equals(new_row):
+                                if idx < len(st.session_state.df_giocatori):
+                                    old_row = st.session_state.df_giocatori.iloc[idx]
+                                    new_row = edited_df.iloc[idx]
+                                    if not old_row.equals(new_row):
+                                        changes.append({
+                                            'giocatore': new_row['Giocatore'],
+                                            'campi_modificati': [
+                                                col for col in edited_df.columns 
+                                                if col in st.session_state.df_giocatori.columns 
+                                                and old_row[col] != new_row[col]
+                                            ]
+                                        })
+                                else:
+                                    new_row = edited_df.iloc[idx]
                                     changes.append({
-                                        'giocatore': new_row['Giocatore'],
-                                        'campi_modificati': [
-                                            col for col in edited_df.columns 
-                                            if col in st.session_state.df_giocatori.columns 
-                                            and old_row[col] != new_row[col]
-                                        ]
+                                        'giocatore': new_row.get('Giocatore', 'Nuovo'),
+                                        'campi_modificati': ['nuovo_inserimento']
                                     })
                             
                             # Salva nel database
