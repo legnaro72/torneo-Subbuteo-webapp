@@ -1028,6 +1028,11 @@ if st.session_state.edit_index is None and st.session_state.confirm_delete["type
     st.header("👥 Gestione Giocatori")
     st.subheader("Lista giocatori")
     
+    # Ordiniamo di default solo per ordine alfabetico. Convertiamo Potenziale in int per abilitare il sort on-demand in tabella.
+    if "Potenziale" in st.session_state.df_giocatori.columns and "Giocatore" in st.session_state.df_giocatori.columns:
+        st.session_state.df_giocatori["Potenziale"] = pd.to_numeric(st.session_state.df_giocatori["Potenziale"], errors="coerce").fillna(0).astype(int)
+        st.session_state.df_giocatori = st.session_state.df_giocatori.sort_values(by=["Giocatore"], ascending=[True]).reset_index(drop=True)
+
     # Create a copy of the dataframe for editing
     df = st.session_state.df_giocatori.copy()
     
