@@ -204,13 +204,8 @@ def salva_dati_su_mongo(df):
         if col not in df.columns:
             df[col] = None if col != "SetPwd" else 0
     
-    # Assicura che i campi trofei siano presenti
-    for campo, default in CAMPI_TROFEI.items():
-        if campo not in df.columns:
-            if isinstance(default, list):
-                df[campo] = [[] for _ in range(len(df))]
-            else:
-                df[campo] = default
+    # I campi trofei non vengono più forzati nel dataframe in questa fase
+    # per evitare che sovrascrivano i dati già esistenti nel record_esistente.
             
     # Prendi i dati esistenti per il confronto
     dati_esistenti = {d["Giocatore"]: d for d in collection_players.find({})}

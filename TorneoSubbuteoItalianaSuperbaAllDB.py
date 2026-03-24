@@ -1369,6 +1369,36 @@ def main():
             
             if st.session_state.get('_celebra_vincitore', False):
                 st.session_state['_celebra_vincitore'] = False
+                
+                # --- PALMARES SUPERBA (AGGIORNAMENTO AL CLICK CELEBRAZIONE) ---
+                try:
+                    from palmares_utils import register_win
+                    from pymongo import MongoClient
+                    import certifi
+                    client_pl = MongoClient(st.secrets["MONGO_URI"], tlsCAFile=certifi.where())
+                    db_pl = client_pl["giocatori_subbuteo"]
+                    players_col = db_pl["superba_players"]
+                    
+                    if not df_torneo_check.empty and not classifica_celebra.empty:
+                        num_gironi_palmares = len(df_torneo_check['Girone'].unique()) if 'Girone' in df_torneo_check.columns else 1
+                        for girone_name in df_torneo_check['Girone'].unique():
+                            gir_classifica = classifica_celebra[classifica_celebra['Girone'] == girone_name]
+                            if not gir_classifica.empty:
+                                vincitore_str = gir_classifica.iloc[0]['Squadra']
+                                squadra_est, giocatore_est = parse_team_player(vincitore_str)
+                                nome_giocatore = giocatore_est if giocatore_est else vincitore_str
+                                
+                                register_win(
+                                    db_players_col=players_col, 
+                                    winner_name=nome_giocatore, 
+                                    tournament_name=st.session_state.get('nome_torneo', 'Torneo Sconosciuto'), 
+                                    tournament_type="italiana", 
+                                    num_gironi=num_gironi_palmares
+                                )
+                except Exception as e:
+                    print(f"[PALMARES CELEBRAZIONE] Errore salvataggio palmares manuale: {e}")
+                # --- FINE PALMARES ---
+                
                 st.markdown(
                     f"""
                     <div style='background:linear-gradient(90deg, gold, orange);
