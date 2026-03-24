@@ -43,7 +43,7 @@ from streamlit_modal import Modal
 import streamlit.components.v1 as components
 import plotly.express as px
 import plotly.graph_objects as go
-from streamlit_extras.switch_page_button import switch_page
+# from streamlit_extras.switch_page_button import switch_page
 import pytz
 from streamlit_modal import Modal
 import seaborn as sns
