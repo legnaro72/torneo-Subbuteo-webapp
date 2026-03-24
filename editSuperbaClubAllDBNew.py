@@ -1,4 +1,4 @@
-﻿import streamlit as st
+import streamlit as st
 
 # Configurazione pagina (DEVE essere il primo comando Streamlit)
 # Configurazione pagina spostata all'inizio
@@ -181,7 +181,10 @@ def carica_dati_da_mongo():
         # Assicura che le colonne trofei esistano nel DataFrame
         for campo, default in CAMPI_TROFEI.items():
             if campo not in df.columns:
-                df[campo] = default
+                if isinstance(default, list):
+                    df[campo] = [[] for _ in range(len(df))]
+                else:
+                    df[campo] = default
         # Converti colonne numeriche trofei
         for col_num in ["NCampionatiVinti", "NGironiFFVinti", "NFFElimDirettaVinte"]:
             df[col_num] = pd.to_numeric(df[col_num], errors='coerce').fillna(0).astype(int)
@@ -204,7 +207,10 @@ def salva_dati_su_mongo(df):
     # Assicura che i campi trofei siano presenti
     for campo, default in CAMPI_TROFEI.items():
         if campo not in df.columns:
-            df[campo] = default
+            if isinstance(default, list):
+                df[campo] = [[] for _ in range(len(df))]
+            else:
+                df[campo] = default
             
     # Prendi i dati esistenti per il confronto
     dati_esistenti = {d["Giocatore"]: d for d in collection_players.find({})}
