@@ -71,7 +71,7 @@ from common.ui_components import (
 # ISTRUZIONE DEFINITIVA: AVVIO AUDIO DI SOTTOFONDO PERSISTENTE
 # ==============================================================================
 # Definisci la tua URL raw per l'audio di sfondo
-BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/Gianna%20Nannini%20%26%20Edoardo%20Bennato%20-%20UNESTATE%20ITALIANA%20(Videoclip%20Italia%2090).mp3"
+BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/TraLeDita.mp3"
 HUB_URL = "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/"
 
 # -------------------------
