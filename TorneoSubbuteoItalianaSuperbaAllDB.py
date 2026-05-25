@@ -130,7 +130,12 @@ def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, k
 
 
 def force_landscape_for_compact():
-    """Ask mobile/PWA browsers to use landscape while Compact view is active."""
+    """Ask mobile/PWA browsers to use landscape while Compact view is active.
+
+    Mobile browsers generally allow orientation lock only after a user gesture
+    and often only while fullscreen. The overlay below gives that gesture and
+    blocks portrait use when the browser refuses a hard lock.
+    """
     components.html(
         """
         <script>
@@ -140,33 +145,67 @@ def force_landscape_for_compact():
           const isCompactMobile = parentWindow.matchMedia("(max-width: 900px)").matches;
           if (!isCompactMobile) return;
 
-          let warning = parentDoc.getElementById("compact-landscape-warning");
-          if (!warning) {
-            warning = parentDoc.createElement("div");
-            warning.id = "compact-landscape-warning";
-            warning.textContent = "Per una visualizzazione ottimale ruotare il telefono in orizzontale.";
-            warning.style.cssText = [
+          let overlay = parentDoc.getElementById("compact-landscape-overlay");
+          if (!overlay) {
+            overlay = parentDoc.createElement("div");
+            overlay.id = "compact-landscape-overlay";
+            overlay.innerHTML = `
+              <div style="max-width:420px;padding:22px;border-radius:14px;background:#ffffff;color:#111827;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.35)">
+                <div style="font-size:28px;font-weight:900;margin-bottom:8px">Ruota il telefono</div>
+                <div style="font-size:15px;line-height:1.35;margin-bottom:16px">
+                  La vista Compact del calendario è ottimizzata per la modalità orizzontale.
+                </div>
+                <button id="compact-landscape-button" style="border:0;border-radius:8px;background:#1d3557;color:white;font-weight:800;padding:12px 16px;font-size:16px;width:100%">
+                  Attiva landscape
+                </button>
+                <div id="compact-landscape-status" style="font-size:12px;color:#4b5563;margin-top:10px">
+                  Se il browser non autorizza il blocco, ruota manualmente il dispositivo.
+                </div>
+              </div>
+            `;
+            overlay.style.cssText = [
               "display:none",
               "position:fixed",
-              "left:10px",
-              "right:10px",
-              "bottom:10px",
+              "inset:0",
               "z-index:999999",
-              "padding:10px 12px",
-              "border-radius:8px",
-              "background:#1d3557",
-              "color:white",
-              "font-weight:700",
-              "text-align:center",
-              "box-shadow:0 8px 24px rgba(0,0,0,.25)"
+              "align-items:center",
+              "justify-content:center",
+              "padding:18px",
+              "background:rgba(10,17,40,.92)",
+              "backdrop-filter:blur(2px)"
             ].join(";");
-            parentDoc.body.appendChild(warning);
+            parentDoc.body.appendChild(overlay);
+
+            const button = parentDoc.getElementById("compact-landscape-button");
+            const status = parentDoc.getElementById("compact-landscape-status");
+            button.addEventListener("click", async function() {
+              try {
+                const root = parentDoc.documentElement;
+                if (!parentDoc.fullscreenElement && root.requestFullscreen) {
+                  await root.requestFullscreen();
+                }
+              } catch (e) {
+                status.textContent = "Fullscreen non disponibile: ruota manualmente il telefono.";
+              }
+
+              try {
+                if (parentWindow.screen && parentWindow.screen.orientation && parentWindow.screen.orientation.lock) {
+                  await parentWindow.screen.orientation.lock("landscape");
+                  status.textContent = "Modalità landscape attivata.";
+                } else {
+                  status.textContent = "Il browser non supporta il blocco orientamento: ruota manualmente.";
+                }
+              } catch (e) {
+                status.textContent = "Il browser non autorizza il blocco: ruota manualmente il telefono.";
+              }
+              syncWarning();
+            });
           }
 
           function syncWarning() {
-            warning.style.display =
+            overlay.style.display =
               parentWindow.matchMedia("(max-width: 900px) and (orientation: portrait)").matches
-                ? "block"
+                ? "flex"
                 : "none";
           }
           syncWarning();
