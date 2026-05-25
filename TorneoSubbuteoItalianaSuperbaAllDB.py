@@ -152,6 +152,27 @@ components.html(
       }}
       manifest.href = {manifest_href!r};
 
+      if ({(torneo_manifest == "CampionatoSuperba_26_27")!r}) {{
+        parentDoc.title = "Campionato Superba";
+      }}
+
+      const iconHref = "/app/static/logo_superba.jpg";
+      let favicon = parentDoc.querySelector('link[rel="icon"]');
+      if (!favicon) {{
+        favicon = parentDoc.createElement("link");
+        favicon.rel = "icon";
+        parentDoc.head.appendChild(favicon);
+      }}
+      favicon.href = iconHref;
+
+      let appleIcon = parentDoc.querySelector('link[rel="apple-touch-icon"]');
+      if (!appleIcon) {{
+        appleIcon = parentDoc.createElement("link");
+        appleIcon.rel = "apple-touch-icon";
+        parentDoc.head.appendChild(appleIcon);
+      }}
+      appleIcon.href = iconHref;
+
       let theme = parentDoc.querySelector('meta[name="theme-color"]');
       if (!theme) {{
         theme = parentDoc.createElement("meta");

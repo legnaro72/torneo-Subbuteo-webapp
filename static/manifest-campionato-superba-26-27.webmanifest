@@ -1,7 +1,7 @@
 {
   "id": "/?torneo=CampionatoSuperba_26_27",
-  "name": "Campionato Superba 26/27",
-  "short_name": "Superba 26/27",
+  "name": "Campionato Superba",
+  "short_name": "Campionato",
   "description": "Accesso diretto al Campionato Superba 26/27",
   "start_url": "/?torneo=CampionatoSuperba_26_27",
   "scope": "/",
