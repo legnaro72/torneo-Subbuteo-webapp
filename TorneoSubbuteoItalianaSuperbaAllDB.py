@@ -130,53 +130,47 @@ def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, k
 
 # Configurazione della pagina
 # Configurazione pagina spostata all'inizio
-pwa.inject_pwa_assets()
+try:
+    torneo_manifest = st.query_params.get("torneo")
+except Exception:
+    torneo_manifest = None
+
+manifest_href = "/app/static/manifest.webmanifest"
+if torneo_manifest == "CampionatoSuperba_26_27":
+    manifest_href = "/app/static/manifest-campionato-superba-26-27.webmanifest"
+
 components.html(
-    """
+    f"""
     <script>
-    try {
-      const parentWindow = window.parent;
-      const parentDoc = parentWindow.document;
-      const currentUrl = new URL(parentWindow.location.href);
-      const torneo = currentUrl.searchParams.get("torneo");
+    try {{
+      const parentDoc = window.parent.document;
+      let manifest = parentDoc.querySelector('link[rel="manifest"]');
+      if (!manifest) {{
+        manifest = parentDoc.createElement("link");
+        manifest.rel = "manifest";
+        parentDoc.head.appendChild(manifest);
+      }}
+      manifest.href = {manifest_href!r};
 
-      if (torneo) {
-        const manifest = {
-          name: "Superba - " + torneo,
-          short_name: torneo.length > 12 ? torneo.slice(0, 12) : torneo,
-          description: "Accesso diretto al torneo " + torneo,
-          start_url: currentUrl.pathname + currentUrl.search,
-          scope: currentUrl.pathname || "/",
-          display: "standalone",
-          background_color: "#f8fafc",
-          theme_color: "#1d3557",
-          icons: [
-            {
-              src: "/app/static/logo_superba.jpg",
-              sizes: "192x192",
-              type: "image/jpeg",
-              purpose: "any maskable"
-            },
-            {
-              src: "/app/static/logo_superba.jpg",
-              sizes: "512x512",
-              type: "image/jpeg",
-              purpose: "any maskable"
-            }
-          ]
-        };
+      let theme = parentDoc.querySelector('meta[name="theme-color"]');
+      if (!theme) {{
+        theme = parentDoc.createElement("meta");
+        theme.name = "theme-color";
+        parentDoc.head.appendChild(theme);
+      }}
+      theme.content = "#1d3557";
 
-        const blob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
-        const manifestUrl = URL.createObjectURL(blob);
-        let link = parentDoc.querySelector('link[rel="manifest"]');
-        if (!link) {
-          link = parentDoc.createElement("link");
-          link.rel = "manifest";
-          parentDoc.head.appendChild(link);
-        }
-        link.href = manifestUrl;
-      }
-    } catch (e) {}
+      if ("serviceWorker" in window.parent.navigator) {{
+        fetch("/app/static/service-worker.js", {{ cache: "no-store" }})
+          .then(function(response) {{
+            const type = response.headers.get("content-type") || "";
+            if (response.ok && type.indexOf("javascript") !== -1) {{
+              return window.parent.navigator.serviceWorker.register("/app/static/service-worker.js");
+            }}
+          }})
+          .catch(function() {{}});
+      }}
+    }} catch (e) {{}}
     </script>
     """,
     height=0,
