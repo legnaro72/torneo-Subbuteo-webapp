@@ -102,7 +102,14 @@ DEFAULT_STATE = {
     'usa_nomi_come_squadre': False,
     'bg_audio_disabled': True,
     'tipo_vista_selezionata': 'compact',
-    'modalita_scelta_sidebar': 'squadre'
+    'modalita_scelta_sidebar': 'squadre',
+    'modalita_visualizzazione_sidebar': 'Solo squadre',
+    'modalita_visualizzazione_main_widget': 'Solo squadre',
+    'tipo_vista_sidebar_widget': 'Compact',
+    'tipo_vista_main_widget': 'Compact',
+    'modalita_navigazione_sidebar': True,
+    'modalita_navigazione_main_widget': True,
+    'filtro_principale_selettore_main': 'Nessuno'
 }
 
 for key, value in DEFAULT_STATE.items():
@@ -507,7 +514,7 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
     </style>
     
     <div class="portrait-warning">
-        📱🔄 Ruota il telefono in <b>ORIZZONTALE</b> per la vista premium!
+            Per una visualizzazione ottimale ruotare il telefono in orizzontale.
     </div>
     
     <script>
@@ -580,7 +587,9 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
     if df_giornata.empty:
         return
 
-    st.markdown(f"### ⚡ {girone_sel} - Giornata {giornata_sel} (Compatta)")
+    numero_gironi = df['Girone'].nunique() if 'Girone' in df.columns else 1
+    if numero_gironi > 1:
+        st.markdown(f"### {girone_sel} - Giornata {giornata_sel} (Compatta)")
     
     # ═══ JAVASCRIPT: forza orientamento landscape su mobile ═══
     # ═══ CSS: nasconde +/- e compatta gli input ═══
@@ -644,7 +653,7 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
         </style>
         
         <div class="portrait-warning">
-            📱🔄 Ruota il telefono in <b>ORIZZONTALE</b> per la vista compatta!
+            Per una visualizzazione ottimale ruotare il telefono in orizzontale.
         </div>
         
         <script>
@@ -1575,70 +1584,26 @@ def main():
 
 
         st.markdown("---")
-        st.markdown("### 🔍 Ricerca e Filtri (Calendario Multi-Girone)")
-        
-        # ✅ SELETTORE VISTA + NAVIGAZIONE BOTTONI + FORMATO NOMI
-        col_v1, col_v2, col_v3, col_v4 = st.columns([0.15, 0.35, 0.25, 0.25], vertical_alignment="center")
-        with col_v1:
-            st.markdown("**Visualizzazione:**")
-        with col_v2:
-            current_view_main = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
-            st.radio(
-                "Stile Vista:",
-                ("Compact", "Premium", "Standard"),
-                index=("Compact", "Premium", "Standard").index(current_view_main),
-                horizontal=True,
-                label_visibility="collapsed",
-                key="tipo_vista_main_widget",
-                on_change=sync_tipo_vista,
-                args=("tipo_vista_main_widget",),
-                help="Scegli lo stile di visualizzazione del calendario"
-            )
-        
-        with col_v3:
-            current_names_main = "Solo squadre"
-            inv_mappa = {"completa": "Completa", "squadre": "Solo squadre", "giocatori": "Solo giocatori"}
-            if 'modalita_scelta_sidebar' in st.session_state:
-                current_names_main = inv_mappa.get(st.session_state['modalita_scelta_sidebar'], "Solo squadre")
-                
-            st.radio(
-                "Formato Nomi:",
-                ("Completa", "Solo squadre", "Solo giocatori"),
-                index=("Completa", "Solo squadre", "Solo giocatori").index(current_names_main),
-                horizontal=True,
-                label_visibility="collapsed",
-                key="modalita_visualizzazione_main_widget",
-                on_change=sync_modalita_visualizzazione,
-                args=("modalita_visualizzazione_main_widget",),
-                help="Scegli se vedere squadre, giocatori o entrambi"
-            )
+        st.markdown("### Ricerca e filtri")
 
-        with col_v4:
-            current_nav_main = st.session_state.get('usa_bottoni_sidebar', True)
-            st.checkbox(
-                "🎛️ Naviga a bottoni", 
-                value=current_nav_main,
-                key="modalita_navigazione_main_widget",
-                on_change=sync_usa_bottoni,
-                args=("modalita_navigazione_main_widget",)
-            )
+        current_nav_main = st.session_state.get('usa_bottoni_sidebar', True)
+        st.checkbox(
+            "Naviga a bottoni",
+            value=current_nav_main,
+            key="modalita_navigazione_main_widget",
+            on_change=sync_usa_bottoni,
+            args=("modalita_navigazione_main_widget",)
+        )
 
         df = st.session_state['df_torneo'].copy()
         df_filtrato = pd.DataFrame()
 
-        # Usa pulsanti orizzontali in cima per il menu principale dei filtri
-        col_filt1, col_filt2 = st.columns([0.15, 0.85], vertical_alignment="center")
-        with col_filt1:
-            st.markdown("**Visualizza:**")
-        with col_filt2:
-            filtro_principale = st.radio(
-                "Visualizza:",
-                ('Nessuno', 'Stato partite', 'Giocatore', 'Girone'),
-                horizontal=True,
-                label_visibility="collapsed",
-                key='filtro_principale_selettore_main'
-            )
-
+        filtro_principale = st.radio(
+            "Filtro visualizzazione stato partite",
+            ('Nessuno', 'Stato partite', 'Giocatore', 'Girone'),
+            horizontal=True,
+            key='filtro_principale_selettore_main'
+        )
         if filtro_principale == 'Nessuno':
             # Non mostrare nessun dataframe qui, la navigazione del calendario si occuperà di questo
             pass
@@ -2019,16 +1984,19 @@ def main():
                 st.session_state['giornata_sel_initialized'] = True
                 st.session_state['nuovo_girone_selezionato'] = False
 
-            # Selettore del Girone
-            nuovo_girone = st.selectbox("📁 Seleziona Girone", gironi, index=gironi.index(st.session_state['girone_sel']))
-            if nuovo_girone != st.session_state['girone_sel']:
-                st.session_state['girone_sel'] = nuovo_girone
-                st.session_state['nuovo_girone_selezionato'] = True
-                st.rerun()
+            # Selettore del girone: nascosto quando il torneo ha un solo girone.
+            if len(gironi) > 1:
+                nuovo_girone = st.selectbox("Seleziona Girone", gironi, index=gironi.index(st.session_state['girone_sel']))
+                if nuovo_girone != st.session_state['girone_sel']:
+                    st.session_state['girone_sel'] = nuovo_girone
+                    st.session_state['nuovo_girone_selezionato'] = True
+                    st.rerun()
+            elif len(gironi) == 1:
+                st.session_state['girone_sel'] = gironi[0]
 
             # Utilizza le impostazioni dalla sidebar
             modalita_scelta = st.session_state.get('modalita_scelta_sidebar', 'squadre')
-            modalita_bottoni = st.session_state.get('usa_bottoni_sidebar', False)
+            modalita_bottoni = st.session_state.get('usa_bottoni_sidebar', True)
 
             # Logica di visualizzazione basata sulla checkbox
             if modalita_bottoni:
