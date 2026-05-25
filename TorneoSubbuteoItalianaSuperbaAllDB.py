@@ -258,6 +258,11 @@ components.html(
     height=0,
     width=0,
 )
+try:
+    if st.query_params.get("pwa_debug") == "1":
+        pwa.show_pwa_diagnostics()
+except Exception:
+    pass
 
 # ==============================================================================
 # ISTRUZIONE DEFINITIVA: AVVIO AUDIO DI SOTTOFONDO PERSISTENTE

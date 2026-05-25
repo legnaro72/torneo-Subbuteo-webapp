@@ -13,6 +13,11 @@ from shared.auth import login as auth
 
 pwa.inject_pwa_assets()
 auth.require_auth(club="Superba")
+try:
+    if st.query_params.get("pwa_debug") == "1":
+        pwa.show_pwa_diagnostics()
+except Exception:
+    pass
 
 # --- CSS centralizzato ---
 from common.styles import inject_hub_styles
