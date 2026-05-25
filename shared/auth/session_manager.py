@@ -25,15 +25,17 @@ def set_cookie(token: str, expires_at: datetime):
     token_js = html.escape(token, quote=True)
     cookie_js = (
         f"{COOKIE_NAME}={token_js}; expires={expires}; path=/; "
-        "SameSite=Lax; Secure"
+        "SameSite=Lax"
     )
     components.html(
         f"""
         <script>
+        const secureAttr = window.parent.location.protocol === "https:" ? "; Secure" : "";
+        const cookieValue = {cookie_js!r} + secureAttr;
         try {{
-          window.parent.document.cookie = {cookie_js!r};
+          window.parent.document.cookie = cookieValue;
         }} catch (e) {{
-          document.cookie = {cookie_js!r};
+          document.cookie = cookieValue;
         }}
         </script>
         """,
@@ -43,17 +45,21 @@ def set_cookie(token: str, expires_at: datetime):
 
 
 def clear_cookie(reload_page: bool = False):
-    cookie_js = f"{COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax; Secure"
+    cookie_js = f"{COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax"
     reload_js = "window.parent.location.reload();" if reload_page else ""
     fallback_reload_js = "window.location.reload();" if reload_page else ""
     components.html(
         f"""
         <script>
+        const cookieValue = {cookie_js!r};
+        const secureCookieValue = cookieValue + "; Secure";
         try {{
-          window.parent.document.cookie = {cookie_js!r};
+          window.parent.document.cookie = cookieValue;
+          window.parent.document.cookie = secureCookieValue;
           {reload_js}
         }} catch (e) {{
-          document.cookie = {cookie_js!r};
+          document.cookie = cookieValue;
+          document.cookie = secureCookieValue;
           {fallback_reload_js}
         }}
         </script>
