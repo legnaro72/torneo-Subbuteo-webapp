@@ -242,16 +242,6 @@ components.html(
       }}
       theme.content = "#1d3557";
 
-      if ("serviceWorker" in window.parent.navigator) {{
-        fetch("/app/static/service-worker.js", {{ cache: "no-store" }})
-          .then(function(response) {{
-            const type = response.headers.get("content-type") || "";
-            if (response.ok && type.indexOf("javascript") !== -1) {{
-              return window.parent.navigator.serviceWorker.register("/app/static/service-worker.js");
-            }}
-          }})
-          .catch(function() {{}});
-      }}
     }} catch (e) {{}}
     </script>
     """,

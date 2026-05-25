@@ -24,16 +24,6 @@ def inject_pwa_assets():
           parentDoc.head.appendChild(theme);
         }
         theme.content = "#1d3557";
-        if ("serviceWorker" in window.parent.navigator) {
-          fetch("/app/static/service-worker.js", { cache: "no-store" })
-            .then(function(response) {
-              const type = response.headers.get("content-type") || "";
-              if (response.ok && type.indexOf("javascript") !== -1) {
-                return window.parent.navigator.serviceWorker.register("/app/static/service-worker.js");
-              }
-            })
-            .catch(function() {});
-        }
         </script>
         """,
         height=0,
@@ -45,7 +35,7 @@ def show_pwa_diagnostics():
     """Small browser-side diagnostics panel for PWA installability checks."""
     components.html(
         """
-        <div id="pwa-diagnostics" style="font-family: system-ui, sans-serif; font-size: 13px; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+        <div id="pwa-diagnostics" style="font-family: system-ui, sans-serif; font-size: 13px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; color: #111;">
           Verifica PWA in corso...
         </div>
         <script>
@@ -54,6 +44,7 @@ def show_pwa_diagnostics():
           const parentDoc = window.parent.document;
           const manifestLink = parentDoc.querySelector('link[rel="manifest"]');
           const lines = [];
+          lines.push("URL pagina: " + window.parent.location.href);
           lines.push("Manifest link: " + (manifestLink ? manifestLink.href : "NON TROVATO"));
           if (manifestLink) {
             try {
