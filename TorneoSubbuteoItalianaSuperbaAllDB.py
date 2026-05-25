@@ -131,6 +131,57 @@ def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, k
 # Configurazione della pagina
 # Configurazione pagina spostata all'inizio
 pwa.inject_pwa_assets()
+components.html(
+    """
+    <script>
+    try {
+      const parentWindow = window.parent;
+      const parentDoc = parentWindow.document;
+      const currentUrl = new URL(parentWindow.location.href);
+      const torneo = currentUrl.searchParams.get("torneo");
+
+      if (torneo) {
+        const manifest = {
+          name: "Superba - " + torneo,
+          short_name: torneo.length > 12 ? torneo.slice(0, 12) : torneo,
+          description: "Accesso diretto al torneo " + torneo,
+          start_url: currentUrl.pathname + currentUrl.search,
+          scope: currentUrl.pathname || "/",
+          display: "standalone",
+          background_color: "#f8fafc",
+          theme_color: "#1d3557",
+          icons: [
+            {
+              src: "/app/static/logo_superba.jpg",
+              sizes: "192x192",
+              type: "image/jpeg",
+              purpose: "any maskable"
+            },
+            {
+              src: "/app/static/logo_superba.jpg",
+              sizes: "512x512",
+              type: "image/jpeg",
+              purpose: "any maskable"
+            }
+          ]
+        };
+
+        const blob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
+        const manifestUrl = URL.createObjectURL(blob);
+        let link = parentDoc.querySelector('link[rel="manifest"]');
+        if (!link) {
+          link = parentDoc.createElement("link");
+          link.rel = "manifest";
+          parentDoc.head.appendChild(link);
+        }
+        link.href = manifestUrl;
+      }
+    } catch (e) {}
+    </script>
+    """,
+    height=0,
+    width=0,
+)
 
 # ==============================================================================
 # ISTRUZIONE DEFINITIVA: AVVIO AUDIO DI SOTTOFONDO PERSISTENTE
