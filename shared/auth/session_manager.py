@@ -13,14 +13,6 @@ COOKIE_NAME = "subbuteo_superba_auth"
 LOCAL_TOKEN_QUERY_PARAM = "auth_local_token"
 
 
-def is_local_request():
-    try:
-        host = (getattr(st.context, "headers", {}) or {}).get("host", "")
-    except Exception:
-        host = ""
-    return host.startswith("localhost") or host.startswith("127.0.0.1")
-
-
 def get_cookie(name: str = COOKIE_NAME):
     try:
         cookies = getattr(st.context, "cookies", {}) or {}
@@ -39,19 +31,14 @@ def set_cookie(token: str, expires_at: datetime):
     components.html(
         f"""
         <script>
-        const isLocalHost = ["localhost", "127.0.0.1"].includes(window.parent.location.hostname);
         const secureAttr = window.parent.location.protocol === "https:" ? "; Secure" : "";
         const cookieValue = {cookie_js!r} + secureAttr;
         try {{
           window.parent.document.cookie = cookieValue;
-          if (isLocalHost) {{
-            window.parent.localStorage.setItem({COOKIE_NAME!r}, {token!r});
-          }}
+          window.parent.localStorage.setItem({COOKIE_NAME!r}, {token!r});
         }} catch (e) {{
           document.cookie = cookieValue;
-          if (isLocalHost) {{
-            localStorage.setItem({COOKIE_NAME!r}, {token!r});
-          }}
+          localStorage.setItem({COOKIE_NAME!r}, {token!r});
         }}
         </script>
         """,
@@ -140,7 +127,7 @@ def restore_session_from_cookie():
 
 
 def restore_session_from_local_query():
-    if st.session_state.get("authenticated") or not is_local_request():
+    if st.session_state.get("authenticated"):
         return True if st.session_state.get("authenticated") else False
     if st.session_state.get("auth_local_restore_disabled"):
         return False
@@ -192,8 +179,6 @@ def restore_session_from_local_query():
 
 
 def inject_local_storage_bridge():
-    if not is_local_request():
-        return
     components.html(
         f"""
         <script>

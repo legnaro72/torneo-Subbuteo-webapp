@@ -65,6 +65,69 @@ from common.ui_components import (
     enable_session_keepalive
 )
 
+
+def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, key_prefix: str = ""):
+    """Navigazione locale Italiana: mostra GIO n tra i bottoni."""
+    st.markdown("""
+        <style>
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 2px !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:first-child,
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:last-child {
+            width: auto !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:nth-child(2) {
+            width: 72px !important;
+            flex: 0 0 72px !important;
+            min-width: 72px !important;
+            max-width: 72px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) button {
+            width: 100% !important;
+            min-width: 0 !important;
+            padding: 0.2rem 0 !important;
+            margin: 0 !important;
+        }
+        .nav-btn-marker {
+            text-align: center;
+            font-weight: 900;
+            font-size: 1rem;
+            line-height: 1.5rem;
+            width: 100%;
+            white-space: nowrap;
+        }
+        p { margin-bottom: 0px; }
+        </style>
+    """, unsafe_allow_html=True)
+
+    current = st.session_state.get(value_key, min_val)
+    display_label = f"GIO {current}"
+    col1, col2, col3 = st.columns([5, 1, 5])
+    with col1:
+        if st.button("◀", key=f"{key_prefix}nav_prev_{value_key}", use_container_width=True):
+            if current > min_val:
+                st.session_state[value_key] = current - 1
+                st.rerun()
+    with col2:
+        st.markdown(f"<div class='nav-btn-marker'>{display_label}</div>", unsafe_allow_html=True)
+    with col3:
+        if st.button("▶", key=f"{key_prefix}nav_next_{value_key}", use_container_width=True):
+            if current < max_val:
+                st.session_state[value_key] = current + 1
+                st.rerun()
+
 # Configurazione della pagina
 # Configurazione pagina spostata all'inizio
 pwa.inject_pwa_assets()
@@ -1584,362 +1647,362 @@ def main():
 
 
         st.markdown("---")
-        st.markdown("### Ricerca e filtri")
+        with st.expander("Ricerca e filtri", expanded=False):
 
-        current_nav_main = st.session_state.get('usa_bottoni_sidebar', True)
-        st.checkbox(
-            "Naviga a bottoni",
-            value=current_nav_main,
-            key="modalita_navigazione_main_widget",
-            on_change=sync_usa_bottoni,
-            args=("modalita_navigazione_main_widget",)
-        )
-
-        df = st.session_state['df_torneo'].copy()
-        df_filtrato = pd.DataFrame()
-
-        filtro_principale = st.radio(
-            "Filtro visualizzazione stato partite",
-            ('Nessuno', 'Stato partite', 'Giocatore', 'Girone'),
-            horizontal=True,
-            key='filtro_principale_selettore_main'
-        )
-        if filtro_principale == 'Nessuno':
-            # Non mostrare nessun dataframe qui, la navigazione del calendario si occuperà di questo
-            pass
-
-        elif filtro_principale == 'Stato partite':
-            stato = st.radio(
-                "Scegli lo stato:",
-                ('Giocate', 'Da Giocare'),
-                horizontal=True,
-                key='stato_selettore_main'
+            current_nav_main = st.session_state.get('usa_bottoni_sidebar', True)
+            st.checkbox(
+                "Naviga a bottoni",
+                value=current_nav_main,
+                key="modalita_navigazione_main_widget",
+                on_change=sync_usa_bottoni,
+                args=("modalita_navigazione_main_widget",)
             )
-            st.subheader(f"🗓️ Partite {stato.lower()}")
-            
-            if stato == 'Giocate':
-                df_filtrato = df[df['Valida'] == True]
-            else: # 'Da Giocare'
-                df_filtrato = df[df['Valida'] == False]
-            
-            #if not df_filtrato.empty:
-            # --- visuale tabella per "Stato partite" ---
-            if not df_filtrato.empty:
-                col1, col2, col3 = st.columns([1, 6, 1])
-                with col2:
-                    st.image("mobile.png")
 
-                # copia con indice originale, poi useremo idx_map per aggiornare il df principale
-                df_show = df_filtrato.reset_index().copy()
-                idx_map = df_show['index'].tolist()    # mappa indici originali
+            df = st.session_state['df_torneo'].copy()
+            df_filtrato = pd.DataFrame()
 
-                # prima colonna checkbox (vuota come intestazione)
-                df_show.insert(0, 'Sel', False)
+            filtro_principale = st.radio(
+                "Filtro visualizzazione stato partite",
+                ('Nessuno', 'Stato partite', 'Giocatore', 'Girone'),
+                horizontal=True,
+                key='filtro_principale_selettore_main'
+            )
+            if filtro_principale == 'Nessuno':
+                # Non mostrare nessun dataframe qui, la navigazione del calendario si occuperà di questo
+                pass
 
-                # pulizie richieste
-                df_show['Girone'] = df_show['Girone'].astype(str).str.replace("Girone ", "", regex=False)
-                
-                # Gestione visualizzazione nomi in base alla selezione dell'utente
-                modalita_visualizzazione = st.session_state.get('modalita_visualizzazione_sidebar', 'Solo squadre')
-                
-                if modalita_visualizzazione == 'Solo squadre':
-                    # Prende la parte prima del trattino
-                    df_show['Casa'] = df_show['Casa'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) and "-" in str(x) else x)
-                    df_show['Ospite'] = df_show['Ospite'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) and "-" in str(x) else x)
-                elif modalita_visualizzazione == 'Solo giocatori':
-                    # Prende la parte dopo il trattino, se esiste
-                    df_show['Casa'] = df_show['Casa'].apply(
-                        lambda x: str(x).split("-")[1].strip() if pd.notna(x) and "-" in str(x) and len(str(x).split("-")) > 1 else x
-                    )
-                    df_show['Ospite'] = df_show['Ospite'].apply(
-                        lambda x: str(x).split("-")[1].strip() if pd.notna(x) and "-" in str(x) and len(str(x).split("-")) > 1 else x
-                    )
-                # Se è 'Completa' non facciamo nulla, manteniamo il testo così com'è
-
-                # numero di gironi totali (usiamo il df principale)
-                num_gironi = df['Girone'].nunique() if 'Girone' in df.columns else 1
-
-                # colonne che vogliamo aggiornare poi
-                editable_cols = ['GolCasa', 'GolOspite', 'Valida']
-
-                # scegli quali colonne mostrare (se num_gironi==1 omettiamo 'Girone')
-                display_cols = ['Sel']
-                if num_gironi > 1:
-                    display_cols.append('Girone')
-                display_cols += ['Giornata','Casa','Ospite','GolCasa','GolOspite','Valida']
-
-                # column_config (senza usare hidden)
-                column_config = {
-                    "Sel": st.column_config.CheckboxColumn("", width=15),
-                    "index": st.column_config.Column("ID", width=15),  # non mostrata, usiamo idx_map
-                    "Giornata": st.column_config.NumberColumn("🗓️", min_value=0, step=1, width=15),
-                    "Casa": st.column_config.TextColumn("🏠", width=50),
-                    "Ospite": st.column_config.TextColumn("🛫", width=50),
-                    "GolCasa": st.column_config.NumberColumn("⚽️", min_value=0, max_value=20, width=15),
-                    "GolOspite": st.column_config.NumberColumn("⚽️", min_value=0, max_value=20, width=15),
-                    "Valida": st.column_config.CheckboxColumn("✅", width=15),
-                }
-                if num_gironi > 1:
-                    column_config["Girone"] = st.column_config.TextColumn("🏟️", width=15)
-
-                df_edit = st.data_editor(
-                    df_show[display_cols],
-                    width="stretch",
-                    num_rows="dynamic",
-                    column_config=column_config
+            elif filtro_principale == 'Stato partite':
+                stato = st.radio(
+                    "Scegli lo stato:",
+                    ('Giocate', 'Da Giocare'),
+                    horizontal=True,
+                    key='stato_selettore_main'
                 )
+                st.subheader(f"🗓️ Partite {stato.lower()}")
+                
+                if stato == 'Giocate':
+                    df_filtrato = df[df['Valida'] == True]
+                else: # 'Da Giocare'
+                    df_filtrato = df[df['Valida'] == False]
+                
+                #if not df_filtrato.empty:
+                # --- visuale tabella per "Stato partite" ---
+                if not df_filtrato.empty:
+                    col1, col2, col3 = st.columns([1, 6, 1])
+                    with col2:
+                        st.image("mobile.png")
 
-                if st.button("💾 Salva modifiche tabella"):
-                    # aggiorna df_torneo usando idx_map (posizione -> indice originale)
-                    for i in range(len(df_edit)):
-                        row = df_edit.iloc[i]
-                        orig_idx = idx_map[i]
-                        for col in editable_cols:
-                            st.session_state['df_torneo'].at[orig_idx, col] = row[col]
-                    if st.session_state.get('tournament_id'):
-                        aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
-                    st.success("Modifiche salvate!")
+                    # copia con indice originale, poi useremo idx_map per aggiornare il df principale
+                    df_show = df_filtrato.reset_index().copy()
+                    idx_map = df_show['index'].tolist()    # mappa indici originali
+
+                    # prima colonna checkbox (vuota come intestazione)
+                    df_show.insert(0, 'Sel', False)
+
+                    # pulizie richieste
+                    df_show['Girone'] = df_show['Girone'].astype(str).str.replace("Girone ", "", regex=False)
+                    
+                    # Gestione visualizzazione nomi in base alla selezione dell'utente
+                    modalita_visualizzazione = st.session_state.get('modalita_visualizzazione_sidebar', 'Solo squadre')
+                    
+                    if modalita_visualizzazione == 'Solo squadre':
+                        # Prende la parte prima del trattino
+                        df_show['Casa'] = df_show['Casa'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) and "-" in str(x) else x)
+                        df_show['Ospite'] = df_show['Ospite'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) and "-" in str(x) else x)
+                    elif modalita_visualizzazione == 'Solo giocatori':
+                        # Prende la parte dopo il trattino, se esiste
+                        df_show['Casa'] = df_show['Casa'].apply(
+                            lambda x: str(x).split("-")[1].strip() if pd.notna(x) and "-" in str(x) and len(str(x).split("-")) > 1 else x
+                        )
+                        df_show['Ospite'] = df_show['Ospite'].apply(
+                            lambda x: str(x).split("-")[1].strip() if pd.notna(x) and "-" in str(x) and len(str(x).split("-")) > 1 else x
+                        )
+                    # Se è 'Completa' non facciamo nulla, manteniamo il testo così com'è
+
+                    # numero di gironi totali (usiamo il df principale)
+                    num_gironi = df['Girone'].nunique() if 'Girone' in df.columns else 1
+
+                    # colonne che vogliamo aggiornare poi
+                    editable_cols = ['GolCasa', 'GolOspite', 'Valida']
+
+                    # scegli quali colonne mostrare (se num_gironi==1 omettiamo 'Girone')
+                    display_cols = ['Sel']
+                    if num_gironi > 1:
+                        display_cols.append('Girone')
+                    display_cols += ['Giornata','Casa','Ospite','GolCasa','GolOspite','Valida']
+
+                    # column_config (senza usare hidden)
+                    column_config = {
+                        "Sel": st.column_config.CheckboxColumn("", width=15),
+                        "index": st.column_config.Column("ID", width=15),  # non mostrata, usiamo idx_map
+                        "Giornata": st.column_config.NumberColumn("🗓️", min_value=0, step=1, width=15),
+                        "Casa": st.column_config.TextColumn("🏠", width=50),
+                        "Ospite": st.column_config.TextColumn("🛫", width=50),
+                        "GolCasa": st.column_config.NumberColumn("⚽️", min_value=0, max_value=20, width=15),
+                        "GolOspite": st.column_config.NumberColumn("⚽️", min_value=0, max_value=20, width=15),
+                        "Valida": st.column_config.CheckboxColumn("✅", width=15),
+                    }
+                    if num_gironi > 1:
+                        column_config["Girone"] = st.column_config.TextColumn("🏟️", width=15)
+
+                    df_edit = st.data_editor(
+                        df_show[display_cols],
+                        width="stretch",
+                        num_rows="dynamic",
+                        column_config=column_config
+                    )
+
+                    if st.button("💾 Salva modifiche tabella"):
+                        # aggiorna df_torneo usando idx_map (posizione -> indice originale)
+                        for i in range(len(df_edit)):
+                            row = df_edit.iloc[i]
+                            orig_idx = idx_map[i]
+                            for col in editable_cols:
+                                st.session_state['df_torneo'].at[orig_idx, col] = row[col]
+                        if st.session_state.get('tournament_id'):
+                            aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
+                        st.success("Modifiche salvate!")
+                else:
+                    st.info(f"🎉 Nessuna partita {stato.lower()} trovata.")
+
+                    
+            elif filtro_principale == 'Giocatore':
+                col_f1, col_f2, col_f3 = st.columns([1, 1, 1], vertical_alignment="bottom")
+                giocatori = sorted(list(set(df['Casa'].unique().tolist() + df['Ospite'].unique().tolist())))
+                with col_f1:
+                    giocatore_scelto = st.selectbox("🧑‍💼 Filtra per giocatore:", [''] + giocatori, key='filtro_giocatore_sel_main')
+                if giocatore_scelto:
+                    with col_f2:
+                        stato_gioc = st.radio(
+                            "Stato partita:",
+                            ('Tutte', 'Giocate', 'Da Giocare'),
+                            horizontal=True,
+                            key='stato_giocatore_radio_main'
+                        )
+                    with col_f3:
+                        # Filtro andata/ritorno
+                        tipo_gioc = st.radio(
+                            "Tipo:",
+                            ('Entrambe', 'Andata', 'Ritorno'),
+                            horizontal=True,
+                            key='tipo_giocatore_radio_main'
+                        )
+                    st.subheader(f"🗓️ Partite per {giocatore_scelto}")
+
+                    df_filtrato = df[(df['Casa'] == giocatore_scelto) | (df['Ospite'] == giocatore_scelto)]
+
+                    # Applica filtro stato
+                    if stato_gioc == 'Giocate':
+                        df_filtrato = df_filtrato[df_filtrato['Valida'] == True]
+                    elif stato_gioc == 'Da Giocare':
+                        df_filtrato = df_filtrato[df_filtrato['Valida'] == False]
+
+                    # Applica filtro andata/ritorno
+                    if tipo_gioc != 'Entrambe':
+                        max_giornata = df_filtrato['Giornata'].max() if not df_filtrato.empty else 0
+                        if max_giornata > 0:
+                            n_giornate = max_giornata // 2 if tipo_gioc == 'Andata' else max_giornata - (max_giornata // 2)
+                            if tipo_gioc == 'Andata':
+                                df_filtrato = df_filtrato[df_filtrato['Giornata'] <= n_giornate]
+                            else:  # 'Ritorno'
+                                df_filtrato = df_filtrato[df_filtrato['Giornata'] > max_giornata // 2]
+
+                    #if not df_filtrato.empty:
+                    # --- visuale tabella per "Giocatore" ---
+                    if not df_filtrato.empty:
+                        col1, col2, col3 = st.columns([1, 6, 1])
+                        with col2:
+                            st.image("mobile.png")
+
+                        df_show = df_filtrato.reset_index().copy()
+                        idx_map = df_show['index'].tolist()
+                        df_show.insert(0, 'Sel', False)
+
+                        df_show['Girone'] = df_show['Girone'].astype(str).str.replace("Girone ", "", regex=False)
+                        
+                        # Gestione visualizzazione nomi in base alla selezione dell'utente
+                        modalita_visualizzazione = st.session_state.get('modalita_visualizzazione_sidebar', 'Solo squadre')
+                        
+                        if modalita_visualizzazione == 'Solo squadre':
+                            df_show['Casa'] = df_show['Casa'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) and "-" in str(x) else x)
+                            df_show['Ospite'] = df_show['Ospite'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) and "-" in str(x) else x)
+                        elif modalita_visualizzazione == 'Solo giocatori':
+                            df_show['Casa'] = df_show['Casa'].apply(
+                                lambda x: str(x).split("-")[1].strip() if pd.notna(x) and "-" in str(x) and len(str(x).split("-")) > 1 else x
+                            )
+                            df_show['Ospite'] = df_show['Ospite'].apply(
+                                lambda x: str(x).split("-")[1].strip() if pd.notna(x) and "-" in str(x) and len(str(x).split("-")) > 1 else x
+                            )
+
+                        num_gironi = df['Girone'].nunique() if 'Girone' in df.columns else 1
+
+                        editable_cols = ['GolCasa', 'GolOspite', 'Valida']
+
+                        display_cols = ['Sel']
+                        if num_gironi > 1:
+                            display_cols.append('Girone')
+                        display_cols += ['Giornata','Casa','Ospite','GolCasa','GolOspite','Valida']
+
+                        column_config = {
+                            "Sel": st.column_config.CheckboxColumn("", width=15),
+                            "index": st.column_config.Column("ID", width=15),  # non mostrata, usiamo idx_map
+                            "Giornata": st.column_config.NumberColumn("🗓️", min_value=0, step=1, width=15),
+                            "Casa": st.column_config.TextColumn("🏠", width=50),
+                            "Ospite": st.column_config.TextColumn("🛫", width=50),
+                            "GolCasa": st.column_config.NumberColumn("⚽️", min_value=0, max_value=20, width=15),
+                            "GolOspite": st.column_config.NumberColumn("⚽️", min_value=0, max_value=20, width=15),
+                            "Valida": st.column_config.CheckboxColumn("✅", width=15),
+                        }
+                        if num_gironi > 1:
+                            column_config["Girone"] = st.column_config.TextColumn("🏟️", width=15)
+
+                        df_edit = st.data_editor(
+                            df_show[display_cols],
+                            width="stretch",
+                            num_rows="dynamic",
+                            column_config=column_config
+                        )
+
+                        if st.button("💾 Salva modifiche tabella (Giocatore)"):
+                            for i in range(len(df_edit)):
+                                row = df_edit.iloc[i]
+                                orig_idx = idx_map[i]
+                                for col in editable_cols:
+                                    st.session_state['df_torneo'].at[orig_idx, col] = row[col]
+                            if st.session_state.get('tournament_id'):
+                                aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
+                            st.success("Modifiche salvate!")
+                    else:
+                        st.info("🎉 Nessuna partita trovata per questo giocatore.")
+
+                    
+            elif filtro_principale == 'Girone':
+                col_g1, col_g2, col_g3 = st.columns([1, 1, 1], vertical_alignment="bottom")
+                gironi_disponibili = sorted(df['Girone'].unique().tolist())
+                with col_g1:
+                    girone_scelto = st.selectbox("🧩 Filtra per Girone:", gironi_disponibili, key='filtro_girone_sel_main')
+                if girone_scelto:
+                    with col_g2:
+                        stato_gir = st.radio(
+                            "Stato partita:",
+                            ('Tutte', 'Giocate', 'Da Giocare'),
+                            horizontal=True,
+                            key='stato_girone_radio_main'
+                        )
+                    with col_g3:
+                        tipo_gir = st.radio(
+                            "Tipo:",
+                            ('Entrambe', 'Andata', 'Ritorno'),
+                            horizontal=True,
+                            key='tipo_girone_radio_main'
+                        )
+                    st.subheader(f"🗓️ Partite {girone_scelto}")
+
+                    df_filtrato = df[df['Girone'] == girone_scelto]
+
+                    # Applica filtro stato
+                    if stato_gir == 'Giocate':
+                        df_filtrato = df_filtrato[df_filtrato['Valida'] == True]
+                    elif stato_gir == 'Da Giocare':
+                        df_filtrato = df_filtrato[df_filtrato['Valida'] == False]
+
+                    # Applica filtro andata/ritorno
+                    if tipo_gir != 'Entrambe':
+                        max_giornata = df_filtrato['Giornata'].max() if not df_filtrato.empty else 0
+                        if max_giornata > 0:
+                            n_giornate = max_giornata // 2 if tipo_gir == 'Andata' else max_giornata - (max_giornata // 2)
+                            if tipo_gir == 'Andata':
+                                df_filtrato = df_filtrato[df_filtrato['Giornata'] <= n_giornate]
+                            else:  # 'Ritorno'
+                                df_filtrato = df_filtrato[df_filtrato['Giornata'] > max_giornata // 2]
+
+                    #if not df_filtrato.empty:
+                    # --- visuale tabella per "Girone" ---
+                    if not df_filtrato.empty:
+                        col1, col2, col3 = st.columns([1, 6, 1])
+                        with col2:
+                            st.image("mobile.png")
+
+                        df_show = df_filtrato.reset_index().copy()
+                        idx_map = df_show['index'].tolist()
+                        df_show.insert(0, 'Sel', False)
+
+                        df_show['Girone'] = df_show['Girone'].astype(str).str.replace("Girone ", "", regex=False)
+                        
+                        # Gestione visualizzazione nomi in base alla selezione dell'utente
+                        modalita_visualizzazione = st.session_state.get('modalita_visualizzazione_sidebar', 'Solo squadre')
+                        
+                        if modalita_visualizzazione == 'Solo squadre':
+                            df_show['Casa'] = df_show['Casa'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) and "-" in str(x) else x)
+                            df_show['Ospite'] = df_show['Ospite'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) and "-" in str(x) else x)
+                        elif modalita_visualizzazione == 'Solo giocatori':
+                            df_show['Casa'] = df_show['Casa'].apply(
+                                lambda x: str(x).split("-")[1].strip() if pd.notna(x) and "-" in str(x) and len(str(x).split("-")) > 1 else x
+                            )
+                            df_show['Ospite'] = df_show['Ospite'].apply(
+                                lambda x: str(x).split("-")[1].strip() if pd.notna(x) and "-" in str(x) and len(str(x).split("-")) > 1 else x
+                            )
+
+                        num_gironi = df['Girone'].nunique() if 'Girone' in df.columns else 1
+
+                        editable_cols = ['GolCasa', 'GolOspite', 'Valida']
+
+                        display_cols = ['Sel']
+                        if num_gironi > 1:
+                            display_cols.append('Girone')
+                        display_cols += ['Giornata','Casa','Ospite','GolCasa','GolOspite','Valida']
+
+                        column_config = {
+                            "Sel": st.column_config.CheckboxColumn("", width=15),
+                            "index": st.column_config.Column("ID", width=15),  # non mostrata, usiamo idx_map
+                            "Giornata": st.column_config.NumberColumn("🗓️", min_value=0, step=1, width=15),
+                            "Casa": st.column_config.TextColumn("🏠", width=50),
+                            "Ospite": st.column_config.TextColumn("🛫", width=50),
+                            "GolCasa": st.column_config.NumberColumn("⚽️", min_value=0, max_value=20, width=15),
+                            "GolOspite": st.column_config.NumberColumn("⚽️", min_value=0, max_value=20, width=15),
+                            "Valida": st.column_config.CheckboxColumn("✅", width=15),
+                        }
+                        if num_gironi > 1:
+                            column_config["Girone"] = st.column_config.TextColumn("🏟️", width=15)
+
+                        df_edit = st.data_editor(
+                            df_show[display_cols],
+                            width="stretch",
+                            num_rows="dynamic",
+                            column_config=column_config
+                        )
+
+                        if st.button("💾 Salva modifiche tabella (Girone)"):
+                            for i in range(len(df_edit)):
+                                row = df_edit.iloc[i]
+                                orig_idx = idx_map[i]
+                                for col in editable_cols:
+                                    st.session_state['df_torneo'].at[orig_idx, col] = row[col]
+                            if st.session_state.get('tournament_id'):
+                                aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
+                            st.success("Modifiche salvate!")
+                    else:
+                        st.info("🎉 Nessuna partita trovata per questo girone.")
+
+                    
+            st.sidebar.markdown("---")
+            
+            # ✅ 5. 📤 Esportazione (in fondo)
+            st.sidebar.subheader("📤 Esportazione")
+            if classifica is not None and not classifica.empty:
+                if st.sidebar.button("📄 Prepara PDF", width="stretch"):
+                    pdf_bytes = esporta_pdf(df, classifica, st.session_state['nome_torneo'])
+                    st.session_state['pdf_pronto'] = pdf_bytes
+                if st.session_state.get('pdf_pronto'):
+                    st.sidebar.download_button(
+                        label="📥 Scarica PDF torneo",
+                        data=st.session_state['pdf_pronto'],
+                        file_name=f"torneo_{st.session_state['nome_torneo']}.pdf",
+                        mime="application/pdf",
+                        width="stretch"
+                    )
             else:
-                st.info(f"🎉 Nessuna partita {stato.lower()} trovata.")
-
-                
-        elif filtro_principale == 'Giocatore':
-            col_f1, col_f2, col_f3 = st.columns([1, 1, 1], vertical_alignment="bottom")
-            giocatori = sorted(list(set(df['Casa'].unique().tolist() + df['Ospite'].unique().tolist())))
-            with col_f1:
-                giocatore_scelto = st.selectbox("🧑‍💼 Filtra per giocatore:", [''] + giocatori, key='filtro_giocatore_sel_main')
-            if giocatore_scelto:
-                with col_f2:
-                    stato_gioc = st.radio(
-                        "Stato partita:",
-                        ('Tutte', 'Giocate', 'Da Giocare'),
-                        horizontal=True,
-                        key='stato_giocatore_radio_main'
-                    )
-                with col_f3:
-                    # Filtro andata/ritorno
-                    tipo_gioc = st.radio(
-                        "Tipo:",
-                        ('Entrambe', 'Andata', 'Ritorno'),
-                        horizontal=True,
-                        key='tipo_giocatore_radio_main'
-                    )
-                st.subheader(f"🗓️ Partite per {giocatore_scelto}")
-
-                df_filtrato = df[(df['Casa'] == giocatore_scelto) | (df['Ospite'] == giocatore_scelto)]
-
-                # Applica filtro stato
-                if stato_gioc == 'Giocate':
-                    df_filtrato = df_filtrato[df_filtrato['Valida'] == True]
-                elif stato_gioc == 'Da Giocare':
-                    df_filtrato = df_filtrato[df_filtrato['Valida'] == False]
-
-                # Applica filtro andata/ritorno
-                if tipo_gioc != 'Entrambe':
-                    max_giornata = df_filtrato['Giornata'].max() if not df_filtrato.empty else 0
-                    if max_giornata > 0:
-                        n_giornate = max_giornata // 2 if tipo_gioc == 'Andata' else max_giornata - (max_giornata // 2)
-                        if tipo_gioc == 'Andata':
-                            df_filtrato = df_filtrato[df_filtrato['Giornata'] <= n_giornate]
-                        else:  # 'Ritorno'
-                            df_filtrato = df_filtrato[df_filtrato['Giornata'] > max_giornata // 2]
-
-                #if not df_filtrato.empty:
-                # --- visuale tabella per "Giocatore" ---
-                if not df_filtrato.empty:
-                    col1, col2, col3 = st.columns([1, 6, 1])
-                    with col2:
-                        st.image("mobile.png")
-
-                    df_show = df_filtrato.reset_index().copy()
-                    idx_map = df_show['index'].tolist()
-                    df_show.insert(0, 'Sel', False)
-
-                    df_show['Girone'] = df_show['Girone'].astype(str).str.replace("Girone ", "", regex=False)
-                    
-                    # Gestione visualizzazione nomi in base alla selezione dell'utente
-                    modalita_visualizzazione = st.session_state.get('modalita_visualizzazione_sidebar', 'Solo squadre')
-                    
-                    if modalita_visualizzazione == 'Solo squadre':
-                        df_show['Casa'] = df_show['Casa'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) and "-" in str(x) else x)
-                        df_show['Ospite'] = df_show['Ospite'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) and "-" in str(x) else x)
-                    elif modalita_visualizzazione == 'Solo giocatori':
-                        df_show['Casa'] = df_show['Casa'].apply(
-                            lambda x: str(x).split("-")[1].strip() if pd.notna(x) and "-" in str(x) and len(str(x).split("-")) > 1 else x
-                        )
-                        df_show['Ospite'] = df_show['Ospite'].apply(
-                            lambda x: str(x).split("-")[1].strip() if pd.notna(x) and "-" in str(x) and len(str(x).split("-")) > 1 else x
-                        )
-
-                    num_gironi = df['Girone'].nunique() if 'Girone' in df.columns else 1
-
-                    editable_cols = ['GolCasa', 'GolOspite', 'Valida']
-
-                    display_cols = ['Sel']
-                    if num_gironi > 1:
-                        display_cols.append('Girone')
-                    display_cols += ['Giornata','Casa','Ospite','GolCasa','GolOspite','Valida']
-
-                    column_config = {
-                        "Sel": st.column_config.CheckboxColumn("", width=15),
-                        "index": st.column_config.Column("ID", width=15),  # non mostrata, usiamo idx_map
-                        "Giornata": st.column_config.NumberColumn("🗓️", min_value=0, step=1, width=15),
-                        "Casa": st.column_config.TextColumn("🏠", width=50),
-                        "Ospite": st.column_config.TextColumn("🛫", width=50),
-                        "GolCasa": st.column_config.NumberColumn("⚽️", min_value=0, max_value=20, width=15),
-                        "GolOspite": st.column_config.NumberColumn("⚽️", min_value=0, max_value=20, width=15),
-                        "Valida": st.column_config.CheckboxColumn("✅", width=15),
-                    }
-                    if num_gironi > 1:
-                        column_config["Girone"] = st.column_config.TextColumn("🏟️", width=15)
-
-                    df_edit = st.data_editor(
-                        df_show[display_cols],
-                        width="stretch",
-                        num_rows="dynamic",
-                        column_config=column_config
-                    )
-
-                    if st.button("💾 Salva modifiche tabella (Giocatore)"):
-                        for i in range(len(df_edit)):
-                            row = df_edit.iloc[i]
-                            orig_idx = idx_map[i]
-                            for col in editable_cols:
-                                st.session_state['df_torneo'].at[orig_idx, col] = row[col]
-                        if st.session_state.get('tournament_id'):
-                            aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
-                        st.success("Modifiche salvate!")
-                else:
-                    st.info("🎉 Nessuna partita trovata per questo giocatore.")
-
-                
-        elif filtro_principale == 'Girone':
-            col_g1, col_g2, col_g3 = st.columns([1, 1, 1], vertical_alignment="bottom")
-            gironi_disponibili = sorted(df['Girone'].unique().tolist())
-            with col_g1:
-                girone_scelto = st.selectbox("🧩 Filtra per Girone:", gironi_disponibili, key='filtro_girone_sel_main')
-            if girone_scelto:
-                with col_g2:
-                    stato_gir = st.radio(
-                        "Stato partita:",
-                        ('Tutte', 'Giocate', 'Da Giocare'),
-                        horizontal=True,
-                        key='stato_girone_radio_main'
-                    )
-                with col_g3:
-                    tipo_gir = st.radio(
-                        "Tipo:",
-                        ('Entrambe', 'Andata', 'Ritorno'),
-                        horizontal=True,
-                        key='tipo_girone_radio_main'
-                    )
-                st.subheader(f"🗓️ Partite {girone_scelto}")
-
-                df_filtrato = df[df['Girone'] == girone_scelto]
-
-                # Applica filtro stato
-                if stato_gir == 'Giocate':
-                    df_filtrato = df_filtrato[df_filtrato['Valida'] == True]
-                elif stato_gir == 'Da Giocare':
-                    df_filtrato = df_filtrato[df_filtrato['Valida'] == False]
-
-                # Applica filtro andata/ritorno
-                if tipo_gir != 'Entrambe':
-                    max_giornata = df_filtrato['Giornata'].max() if not df_filtrato.empty else 0
-                    if max_giornata > 0:
-                        n_giornate = max_giornata // 2 if tipo_gir == 'Andata' else max_giornata - (max_giornata // 2)
-                        if tipo_gir == 'Andata':
-                            df_filtrato = df_filtrato[df_filtrato['Giornata'] <= n_giornate]
-                        else:  # 'Ritorno'
-                            df_filtrato = df_filtrato[df_filtrato['Giornata'] > max_giornata // 2]
-
-                #if not df_filtrato.empty:
-                # --- visuale tabella per "Girone" ---
-                if not df_filtrato.empty:
-                    col1, col2, col3 = st.columns([1, 6, 1])
-                    with col2:
-                        st.image("mobile.png")
-
-                    df_show = df_filtrato.reset_index().copy()
-                    idx_map = df_show['index'].tolist()
-                    df_show.insert(0, 'Sel', False)
-
-                    df_show['Girone'] = df_show['Girone'].astype(str).str.replace("Girone ", "", regex=False)
-                    
-                    # Gestione visualizzazione nomi in base alla selezione dell'utente
-                    modalita_visualizzazione = st.session_state.get('modalita_visualizzazione_sidebar', 'Solo squadre')
-                    
-                    if modalita_visualizzazione == 'Solo squadre':
-                        df_show['Casa'] = df_show['Casa'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) and "-" in str(x) else x)
-                        df_show['Ospite'] = df_show['Ospite'].apply(lambda x: str(x).split("-")[0].strip() if pd.notna(x) and "-" in str(x) else x)
-                    elif modalita_visualizzazione == 'Solo giocatori':
-                        df_show['Casa'] = df_show['Casa'].apply(
-                            lambda x: str(x).split("-")[1].strip() if pd.notna(x) and "-" in str(x) and len(str(x).split("-")) > 1 else x
-                        )
-                        df_show['Ospite'] = df_show['Ospite'].apply(
-                            lambda x: str(x).split("-")[1].strip() if pd.notna(x) and "-" in str(x) and len(str(x).split("-")) > 1 else x
-                        )
-
-                    num_gironi = df['Girone'].nunique() if 'Girone' in df.columns else 1
-
-                    editable_cols = ['GolCasa', 'GolOspite', 'Valida']
-
-                    display_cols = ['Sel']
-                    if num_gironi > 1:
-                        display_cols.append('Girone')
-                    display_cols += ['Giornata','Casa','Ospite','GolCasa','GolOspite','Valida']
-
-                    column_config = {
-                        "Sel": st.column_config.CheckboxColumn("", width=15),
-                        "index": st.column_config.Column("ID", width=15),  # non mostrata, usiamo idx_map
-                        "Giornata": st.column_config.NumberColumn("🗓️", min_value=0, step=1, width=15),
-                        "Casa": st.column_config.TextColumn("🏠", width=50),
-                        "Ospite": st.column_config.TextColumn("🛫", width=50),
-                        "GolCasa": st.column_config.NumberColumn("⚽️", min_value=0, max_value=20, width=15),
-                        "GolOspite": st.column_config.NumberColumn("⚽️", min_value=0, max_value=20, width=15),
-                        "Valida": st.column_config.CheckboxColumn("✅", width=15),
-                    }
-                    if num_gironi > 1:
-                        column_config["Girone"] = st.column_config.TextColumn("🏟️", width=15)
-
-                    df_edit = st.data_editor(
-                        df_show[display_cols],
-                        width="stretch",
-                        num_rows="dynamic",
-                        column_config=column_config
-                    )
-
-                    if st.button("💾 Salva modifiche tabella (Girone)"):
-                        for i in range(len(df_edit)):
-                            row = df_edit.iloc[i]
-                            orig_idx = idx_map[i]
-                            for col in editable_cols:
-                                st.session_state['df_torneo'].at[orig_idx, col] = row[col]
-                        if st.session_state.get('tournament_id'):
-                            aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
-                        st.success("Modifiche salvate!")
-                else:
-                    st.info("🎉 Nessuna partita trovata per questo girone.")
-
-                
-        st.sidebar.markdown("---")
-        
-        # ✅ 5. 📤 Esportazione (in fondo)
-        st.sidebar.subheader("📤 Esportazione")
-        if classifica is not None and not classifica.empty:
-            if st.sidebar.button("📄 Prepara PDF", width="stretch"):
-                pdf_bytes = esporta_pdf(df, classifica, st.session_state['nome_torneo'])
-                st.session_state['pdf_pronto'] = pdf_bytes
-            if st.session_state.get('pdf_pronto'):
-                st.sidebar.download_button(
-                    label="📥 Scarica PDF torneo",
-                    data=st.session_state['pdf_pronto'],
-                    file_name=f"torneo_{st.session_state['nome_torneo']}.pdf",
-                    mime="application/pdf",
-                    width="stretch"
-                )
-        else:
-            st.sidebar.info("ℹ️ Nessuna partita valida. Compila e valida i risultati per generare la classifica.")
+                st.sidebar.info("ℹ️ Nessuna partita valida. Compila e valida i risultati per generare la classifica.")
 
         # Calendario (nessun filtro)
         st.markdown("---")

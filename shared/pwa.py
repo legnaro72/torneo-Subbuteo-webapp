@@ -21,7 +21,14 @@ def inject_pwa_assets():
         }
         theme.content = "#1d3557";
         if ("serviceWorker" in window.parent.navigator) {
-          window.parent.navigator.serviceWorker.register("/app/static/service-worker.js").catch(function() {});
+          fetch("/app/static/service-worker.js", { cache: "no-store" })
+            .then(function(response) {
+              const type = response.headers.get("content-type") || "";
+              if (response.ok && type.indexOf("javascript") !== -1) {
+                return window.parent.navigator.serviceWorker.register("/app/static/service-worker.js");
+              }
+            })
+            .catch(function() {});
         }
         </script>
         """,
