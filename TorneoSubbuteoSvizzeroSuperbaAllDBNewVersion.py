@@ -25,8 +25,9 @@ import urllib.parse
 import os
 
 # Import auth utilities
-import auth_utils as auth
-from auth_utils import verify_write_access
+from shared import pwa
+from shared.auth import login as auth
+from shared.auth import verify_write_access
 
 # Importa moduli comuni per stili, audio e componenti UI
 from common.styles import inject_all_styles
@@ -39,10 +40,9 @@ from common.ui_components import (
     setup_player_selection_mode, enable_session_keepalive
 )
 
+pwa.inject_pwa_assets()
 
-if not st.session_state.get('authenticated', False):
-    auth.show_auth_screen(club="Superba")
-    st.stop()
+auth.require_auth(club="Superba")
 
 # Attiva il sistema di keep-alive per mantenere la sessione durante le partite
 enable_session_keepalive()
@@ -1644,6 +1644,7 @@ if st.session_state.setup_mode == "nuovo":
 # -------------------------
 # User info
 setup_common_sidebar(show_user_info=True, show_hub_link=True, hub_url=HUB_URL)
+auth.logout_button("Logout")
 
 # Audio di sottofondo
 setup_audio_sidebar()

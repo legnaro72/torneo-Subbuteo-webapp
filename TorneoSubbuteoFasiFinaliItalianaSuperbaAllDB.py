@@ -35,7 +35,8 @@ import certifi
 import math
 
 # Import auth utilities
-import auth_utils as auth
+from shared import pwa
+from shared.auth import login as auth
 
 # Importa moduli comuni per stili, audio e componenti UI
 from common.styles import inject_all_styles
@@ -59,6 +60,7 @@ warnings.filterwarnings(
 # ✨ Configurazione e stile di pagina (con nuove emoji e colori)
 # ==============================================================================
 # Configurazione pagina spostata all'inizio
+pwa.inject_pwa_assets()
 
 
 def reset_app_state():
@@ -1454,9 +1456,7 @@ def main():
     elif not user_role:
         st.session_state['user']['role'] = 'ospite'  # Default a ospite se manca il ruolo
         
-    if not st.session_state.get('authenticated', False):
-        auth.show_auth_screen(club="Superba")
-        return
+    auth.require_auth(club="Superba")
         
     # Attiva il keep-alive per evitare il timeout della sessione
     enable_session_keepalive()
@@ -1573,6 +1573,7 @@ def main():
     # ✅ Configurazione Sidebar (Modulo Comune)
     # L'audio e le info utente sono ora gestiti internamente ai componenti comuni
     setup_common_sidebar(show_user_info=True, hub_url=HUB_URL)
+    auth.logout_button("Logout")
     setup_audio_sidebar()
     
     if not st.session_state['ui_show_pre']:

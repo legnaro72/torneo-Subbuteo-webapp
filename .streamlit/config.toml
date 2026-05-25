@@ -3,6 +3,7 @@ gatherUsageStats = false
 
 [server]
 # Timeout di sessione gestito ora a livello di server/heartbeat in js
+enableStaticServing = true
 
 
 [theme]
