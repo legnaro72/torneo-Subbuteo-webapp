@@ -8,12 +8,34 @@ from pymongo.errors import PyMongoError
 from .token_manager import consume_handoff_token, create_persistent_session, rotate_token, revoke_token
 from .users import find_user_by_id, user_payload
 
+try:
+    import extra_streamlit_components as stx
+except Exception:
+    stx = None
+
 
 COOKIE_NAME = "subbuteo_superba_auth"
 LOCAL_TOKEN_QUERY_PARAM = "auth_local_token"
 
 
+def get_cookie_manager():
+    if stx is None:
+        return None
+    try:
+        return stx.CookieManager(key="subbuteo_superba_cookie_manager")
+    except Exception:
+        return None
+
+
 def get_cookie(name: str = COOKIE_NAME):
+    manager = get_cookie_manager()
+    if manager is not None:
+        try:
+            value = manager.get(name)
+            if value:
+                return value
+        except Exception:
+            pass
     try:
         cookies = getattr(st.context, "cookies", {}) or {}
         return cookies.get(name)
@@ -22,6 +44,13 @@ def get_cookie(name: str = COOKIE_NAME):
 
 
 def set_cookie(token: str, expires_at: datetime):
+    manager = get_cookie_manager()
+    if manager is not None:
+        try:
+            manager.set(COOKIE_NAME, token, expires_at=expires_at, key="set_subbuteo_superba_auth")
+        except Exception as exc:
+            print(f"CookieManager set fallito, uso fallback JS: {exc}")
+
     expires = expires_at.strftime("%a, %d %b %Y %H:%M:%S GMT")
     token_js = html.escape(token, quote=True)
     cookie_js = (
@@ -48,6 +77,13 @@ def set_cookie(token: str, expires_at: datetime):
 
 
 def clear_cookie(reload_page: bool = False):
+    manager = get_cookie_manager()
+    if manager is not None:
+        try:
+            manager.delete(COOKIE_NAME, key="delete_subbuteo_superba_auth")
+        except Exception as exc:
+            print(f"CookieManager delete fallito, uso fallback JS: {exc}")
+
     cookie_js = f"{COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax"
     reload_js = "window.parent.location.reload();" if reload_page else ""
     fallback_reload_js = "window.location.reload();" if reload_page else ""
