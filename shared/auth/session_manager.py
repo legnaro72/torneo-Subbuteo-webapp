@@ -10,6 +10,15 @@ from .users import find_user_by_id, user_payload
 
 
 COOKIE_NAME = "subbuteo_superba_auth"
+LOCAL_TOKEN_QUERY_PARAM = "auth_local_token"
+
+
+def is_local_request():
+    try:
+        host = (getattr(st.context, "headers", {}) or {}).get("host", "")
+    except Exception:
+        host = ""
+    return host.startswith("localhost") or host.startswith("127.0.0.1")
 
 
 def get_cookie(name: str = COOKIE_NAME):
@@ -30,12 +39,19 @@ def set_cookie(token: str, expires_at: datetime):
     components.html(
         f"""
         <script>
+        const isLocalHost = ["localhost", "127.0.0.1"].includes(window.parent.location.hostname);
         const secureAttr = window.parent.location.protocol === "https:" ? "; Secure" : "";
         const cookieValue = {cookie_js!r} + secureAttr;
         try {{
           window.parent.document.cookie = cookieValue;
+          if (isLocalHost) {{
+            window.parent.localStorage.setItem({COOKIE_NAME!r}, {token!r});
+          }}
         }} catch (e) {{
           document.cookie = cookieValue;
+          if (isLocalHost) {{
+            localStorage.setItem({COOKIE_NAME!r}, {token!r});
+          }}
         }}
         </script>
         """,
@@ -56,10 +72,12 @@ def clear_cookie(reload_page: bool = False):
         try {{
           window.parent.document.cookie = cookieValue;
           window.parent.document.cookie = secureCookieValue;
+          window.parent.localStorage.removeItem({COOKIE_NAME!r});
           {reload_js}
         }} catch (e) {{
           document.cookie = cookieValue;
           document.cookie = secureCookieValue;
+          localStorage.removeItem({COOKIE_NAME!r});
           {fallback_reload_js}
         }}
         </script>
@@ -119,6 +137,80 @@ def restore_session_from_cookie():
     st.session_state.player = player
     set_cookie(new_token, session["expires_at"])
     return True
+
+
+def restore_session_from_local_query():
+    if st.session_state.get("authenticated") or not is_local_request():
+        return True if st.session_state.get("authenticated") else False
+    if st.session_state.get("auth_local_restore_disabled"):
+        return False
+    try:
+        token = st.query_params.get(LOCAL_TOKEN_QUERY_PARAM)
+    except Exception:
+        token = None
+    if not token:
+        return False
+
+    try:
+        session, new_token = rotate_token(token)
+    except (PyMongoError, TimeoutError) as exc:
+        st.session_state.auth_local_restore_disabled = True
+        st.session_state.auth_restore_error = "Connessione a MongoDB non disponibile: impossibile verificare la sessione locale salvata."
+        if not st.session_state.get("auth_restore_error_logged"):
+            print(f"Errore ripristino localStorage persistente: {exc}")
+            st.session_state.auth_restore_error_logged = True
+        return False
+    if not session:
+        st.session_state.auth_local_restore_disabled = True
+        clear_cookie(reload_page=False)
+        return False
+
+    try:
+        player = find_user_by_id(session.get("user_id"), session.get("collection", "superba_players"))
+    except (PyMongoError, TimeoutError) as exc:
+        st.session_state.auth_local_restore_disabled = True
+        st.session_state.auth_restore_error = "Connessione a MongoDB non disponibile: impossibile caricare l'utente locale salvato."
+        if not st.session_state.get("auth_restore_error_logged"):
+            print(f"Errore caricamento utente da localStorage persistente: {exc}")
+            st.session_state.auth_restore_error_logged = True
+        return False
+    if not player:
+        st.session_state.auth_local_restore_disabled = True
+        clear_cookie(reload_page=False)
+        return False
+
+    st.session_state.authenticated = True
+    st.session_state.read_only = player.get("Ruolo") in ["R", "G"]
+    st.session_state.user = user_payload(player)
+    st.session_state.player = player
+    set_cookie(new_token, session["expires_at"])
+    try:
+        del st.query_params[LOCAL_TOKEN_QUERY_PARAM]
+    except Exception:
+        pass
+    return True
+
+
+def inject_local_storage_bridge():
+    if not is_local_request():
+        return
+    components.html(
+        f"""
+        <script>
+        try {{
+          const parentWindow = window.parent;
+          const token = parentWindow.localStorage.getItem({COOKIE_NAME!r});
+          const url = new URL(parentWindow.location.href);
+          if (token && !url.searchParams.has({LOCAL_TOKEN_QUERY_PARAM!r})) {{
+            url.searchParams.set({LOCAL_TOKEN_QUERY_PARAM!r}, token);
+            parentWindow.location.replace(url.toString());
+          }}
+        }} catch (e) {{}}
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
 
 
 def restore_session_from_handoff():

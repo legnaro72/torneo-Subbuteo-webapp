@@ -2,7 +2,14 @@ import streamlit as st
 
 from urllib.parse import urlencode, urlsplit, urlunsplit, parse_qsl
 
-from .session_manager import restore_session_from_cookie, restore_session_from_handoff, set_cookie, sign_out
+from .session_manager import (
+    inject_local_storage_bridge,
+    restore_session_from_cookie,
+    restore_session_from_handoff,
+    restore_session_from_local_query,
+    set_cookie,
+    sign_out,
+)
 from .token_manager import create_handoff_token, create_persistent_session
 from .users import (
     find_user,
@@ -36,13 +43,14 @@ def _complete_login(user: dict, remember: bool, device_name: str = ""):
 
 def show_auth_screen(club: str = "Superba"):
     _init_state(club)
-    if restore_session_from_handoff() or restore_session_from_cookie():
+    if restore_session_from_handoff() or restore_session_from_local_query() or restore_session_from_cookie():
         return True
     if st.session_state.authenticated:
         return True
 
     st.markdown("## Accesso Super Suite Subbuteo")
     st.caption("Login unico per launcher, campionato, fasi finali, svizzero e gestione club.")
+    inject_local_storage_bridge()
     if st.session_state.get("auth_restore_error"):
         st.warning(st.session_state.auth_restore_error)
         if st.button("Ignora sessione salvata su questo browser"):
@@ -146,7 +154,7 @@ def show_auth_screen(club: str = "Superba"):
 
 
 def require_auth(club: str = "Superba"):
-    if restore_session_from_handoff() or restore_session_from_cookie():
+    if restore_session_from_handoff() or restore_session_from_local_query() or restore_session_from_cookie():
         return True
     if not st.session_state.get("authenticated", False):
         show_auth_screen(club=club)
