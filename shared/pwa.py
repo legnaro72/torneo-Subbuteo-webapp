@@ -85,5 +85,5 @@ def show_pwa_diagnostics():
         </script>
         """,
         height=220,
-        width=0,
+        width=700,
     )
