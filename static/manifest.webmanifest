@@ -20,5 +20,20 @@
       "type": "image/jpeg",
       "purpose": "any maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Campionato Superba 26/27",
+      "short_name": "Campionato",
+      "description": "Apri direttamente il Campionato Superba 26/27",
+      "url": "/?torneo=CampionatoSuperba_26_27",
+      "icons": [
+        {
+          "src": "/app/static/logo_superba.jpg",
+          "sizes": "192x192",
+          "type": "image/jpeg"
+        }
+      ]
+    }
   ]
 }

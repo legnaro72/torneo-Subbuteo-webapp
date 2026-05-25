@@ -128,6 +128,67 @@ def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, k
                 st.session_state[value_key] = current + 1
                 st.rerun()
 
+
+def force_landscape_for_compact():
+    """Ask mobile/PWA browsers to use landscape while Compact view is active."""
+    components.html(
+        """
+        <script>
+        (function() {
+          const parentWindow = window.parent;
+          const parentDoc = parentWindow.document;
+          const isCompactMobile = parentWindow.matchMedia("(max-width: 900px)").matches;
+          if (!isCompactMobile) return;
+
+          let warning = parentDoc.getElementById("compact-landscape-warning");
+          if (!warning) {
+            warning = parentDoc.createElement("div");
+            warning.id = "compact-landscape-warning";
+            warning.textContent = "Per una visualizzazione ottimale ruotare il telefono in orizzontale.";
+            warning.style.cssText = [
+              "display:none",
+              "position:fixed",
+              "left:10px",
+              "right:10px",
+              "bottom:10px",
+              "z-index:999999",
+              "padding:10px 12px",
+              "border-radius:8px",
+              "background:#1d3557",
+              "color:white",
+              "font-weight:700",
+              "text-align:center",
+              "box-shadow:0 8px 24px rgba(0,0,0,.25)"
+            ].join(";");
+            parentDoc.body.appendChild(warning);
+          }
+
+          function syncWarning() {
+            warning.style.display =
+              parentWindow.matchMedia("(max-width: 900px) and (orientation: portrait)").matches
+                ? "block"
+                : "none";
+          }
+          syncWarning();
+          parentWindow.addEventListener("orientationchange", syncWarning);
+          parentWindow.addEventListener("resize", syncWarning);
+
+          try {
+            if (parentWindow.screen && parentWindow.screen.orientation && parentWindow.screen.orientation.lock) {
+              parentWindow.screen.orientation.lock("landscape").catch(function() {
+                syncWarning();
+              });
+            }
+          } catch (e) {
+            syncWarning();
+          }
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
 # Configurazione della pagina
 # Configurazione pagina spostata all'inizio
 try:
@@ -712,6 +773,7 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
 
 def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzazione):
     """Visualizzazione ultra-compatta — SquadraA [0] - [0] SquadraB [✓] con landscape forzato su mobile."""
+    force_landscape_for_compact()
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         return
@@ -1435,8 +1497,6 @@ def main():
                     if torneo_data and 'calendario' in torneo_data:
                         st.session_state['calendario_generato'] = True
                         st.toast(f"✅ Torneo '{st.session_state['nome_torneo']}' caricato automaticamente")
-                        # pulisci i query params per evitare loop di reload
-                        st.query_params.clear()
                         st.rerun()
 
                     else:
@@ -1447,6 +1507,8 @@ def main():
 
     # Titolo con stile personalizzato
     if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
+        if st.session_state.get('tipo_vista_selezionata', 'compact') == 'compact':
+            force_landscape_for_compact()
         st.markdown(f"""
         <div style='text-align:center; padding:20px; border-radius:10px; background: linear-gradient(90deg, #457b9d, #1d3557); box-shadow: 0 4px 14px #00000022;'>
             <h1 style='color:white; margin:0; font-weight:700;'>🇮🇹⚽ {st.session_state['nome_torneo']} 🏆🇮🇹</h1>
@@ -2075,7 +2137,7 @@ def main():
         if filtro_principale == 'Nessuno':
             col_head1, col_head2 = st.columns([3, 1], vertical_alignment="bottom")
             with col_head1:
-                st.subheader("🗺️ Navigazione Calendario")
+                st.subheader("Calendario")
             with col_head2:
                 # UX SUITE: Pulsante Classifica rapido nella pagina principale
                 if st.button("📊 Vedi Classifica", key="btn_classifica_main_quick", type="primary", width="stretch"):
@@ -2208,7 +2270,12 @@ def main():
                         tornei_disponibili = carica_tornei_da_db(tournaments_collection)
                         if tornei_disponibili:
                             tornei_map = {t['nome_torneo']: str(t['_id']) for t in tornei_disponibili}
-                            nome_sel = st.selectbox("📦 Seleziona torneo esistente", list(tornei_map.keys()))
+                            torneo_preferito = "CampionatoSuperba_26_27"
+                            tornei_ordinati = sorted(tornei_map.keys())
+                            if torneo_preferito in tornei_ordinati:
+                                tornei_ordinati.remove(torneo_preferito)
+                                tornei_ordinati.insert(0, torneo_preferito)
+                            nome_sel = st.selectbox("Seleziona torneo esistente", tornei_ordinati)
                             if st.button("Carica torneo (MongoDB) 📂", key="btn_carica", width="stretch"):
                                 st.session_state['tournament_id'] = tornei_map[nome_sel]
                                 st.session_state['nome_torneo'] = nome_sel
