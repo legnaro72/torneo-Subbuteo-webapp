@@ -9,6 +9,19 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+st.markdown("""
+    <script>
+    try {
+      const parentDoc = window.parent.document;
+      const sidebar = parentDoc.querySelector('section[data-testid="stSidebar"]');
+      const collapseButton = parentDoc.querySelector('button[kind="header"]');
+      if (sidebar && collapseButton && sidebar.getAttribute("aria-expanded") !== "false") {
+        setTimeout(function() { collapseButton.click(); }, 250);
+      }
+    } catch (e) {}
+    </script>
+""", unsafe_allow_html=True)
+
 # Solo DOPO si possono importare le altre dipendenze
 import pandas as pd
 from datetime import datetime
@@ -1832,29 +1845,28 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
         st.markdown("---")
         tipo_vista_corrente = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
         
-        col_v1, col_v2 = st.columns([0.5, 0.5])
-        with col_v1:
-            st.radio(
-                "Vista Calendario:",
-                ("Compact", "Premium", "Standard"),
-                index=("Compact", "Premium", "Standard").index(tipo_vista_corrente),
-                key="tipo_vista_main_widget",
-                horizontal=True,
-                label_visibility="collapsed",
-                on_change=sync_tipo_vista,
-                args=("tipo_vista_main_widget",)
-            )
-        with col_v2:
-            st.radio(
-                "Formato Incontri:",
-                options=["Squadre", "Giocatori", "Completa"],
-                index=["Squadre", "Giocatori", "Completa"].index(st.session_state.modalita_visualizzazione),
-                key="radio_main",
-                horizontal=True,
-                label_visibility="collapsed",
-                on_change=sync_modalita_visualizzazione,
-                args=("radio_main",)
-            )
+        with st.expander("Visualizzazione incontri", expanded=False):
+            col_v1, col_v2 = st.columns([0.5, 0.5])
+            with col_v1:
+                st.radio(
+                    "Vista Calendario:",
+                    ("Compact", "Premium", "Standard"),
+                    index=("Compact", "Premium", "Standard").index(tipo_vista_corrente),
+                    key="tipo_vista_main_widget",
+                    horizontal=True,
+                    on_change=sync_tipo_vista,
+                    args=("tipo_vista_main_widget",)
+                )
+            with col_v2:
+                st.radio(
+                    "Formato Incontri:",
+                    options=["Squadre", "Giocatori", "Completa"],
+                    index=["Squadre", "Giocatori", "Completa"].index(st.session_state.modalita_visualizzazione),
+                    key="radio_main",
+                    horizontal=True,
+                    on_change=sync_modalita_visualizzazione,
+                    args=("radio_main",)
+                )
 
         # Passa il nuovo parametro alla funzione
         visualizza_incontri_attivi(df_turno_corrente, st.session_state.turno_attivo, st.session_state.modalita_visualizzazione)
