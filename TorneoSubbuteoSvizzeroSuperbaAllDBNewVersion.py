@@ -1346,7 +1346,7 @@ if st.session_state.get('torneo_finito', False):
 # -------------------------
 if not st.session_state.torneo_iniziato and st.session_state.setup_mode is None:
     st.markdown("### Scegli azione 📝")
-    c1, c2 = st.columns([1,1])
+    c1, c2, c3 = st.columns([1,1,1])
     with c1:
         with st.container(border=True):
             st.markdown(
@@ -1410,8 +1410,18 @@ if not st.session_state.torneo_iniziato and st.session_state.setup_mode is None:
                 st.session_state.gioc_info = {} # Reset del dizionario per la nuova grafica
                 st.rerun()
 
+    with c3:
+        with st.container(border=True):
+            st.markdown(
+                """<div style='text-align:center'>
+                    <h2>🏠 Torna all'hub tornei</h2>
+                    <p style='margin:0.2rem 0 1rem 0'>Rientra alla scelta delle modalità</p>
+                    </div>""",
+                unsafe_allow_html=True,
+            )
+            st.link_button("Torna all'hub tornei 🏠", HUB_URL, width="stretch")
+
     st.markdown("---")
-    st.link_button("🏠 Torna all'hub", HUB_URL, width="stretch")
 
 if "mostra_incontri_disputati" not in st.session_state:
     st.session_state["mostra_incontri_disputati"] = False

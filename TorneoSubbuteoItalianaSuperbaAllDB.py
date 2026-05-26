@@ -2187,7 +2187,7 @@ def main():
     else:
         if st.session_state.get('azione_scelta') is None:
             st.markdown("### Scegli azione 📝")
-            c1, c2 = st.columns([1,1])
+            c1, c2, c3 = st.columns([1,1,1])
             
             with c1:
                 # mostra la colonna "Carica torneo" solo se l'utente non ha ancora scelto o ha scelto 'carica'
@@ -2246,6 +2246,17 @@ def main():
                             st.session_state['mostra_form_creazione'] = True
                             st.session_state['azione_scelta'] = 'crea'
                             st.rerun()
+
+            with c3:
+                with st.container(border=True):
+                    st.markdown(
+                        """<div style='text-align:center'>
+                        <h2>🏠 Torna all'hub tornei</h2>
+                        <p style='margin:0.2rem 0 1rem 0'>Rientra alla scelta delle modalità</p>
+                        </div>""",
+                        unsafe_allow_html=True,
+                    )
+                    st.link_button("Torna all'hub tornei 🏠", HUB_URL, width="stretch")
             
             st.markdown("---")
 

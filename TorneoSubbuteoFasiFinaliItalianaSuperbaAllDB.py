@@ -1674,7 +1674,7 @@ def main():
         # Se non è stata ancora fatta una selezione, mostra le due opzioni
         if st.session_state['opzione_selezione'] is None:
             st.markdown("### Scegli azione 📝")
-            c1, c2 = st.columns([1,1])
+            c1, c2, c3 = st.columns([1,1,1])
             
             with c1:
                 with st.container(border=True):
@@ -1736,9 +1736,19 @@ def main():
                             st.rerun()
                         else:
                             st.error("⛔ Accesso in sola lettura. Non è possibile creare una nuova fase finale.")
+
+            with c3:
+                with st.container(border=True):
+                    st.markdown(
+                        """<div style='text-align:center'>
+                        <h2>🏠 Torna all'hub tornei</h2>
+                        <p style='margin:0.2rem 0 1rem 0'>Rientra alla scelta delle modalità</p>
+                        </div>""",
+                        unsafe_allow_html=True,
+                    )
+                    st.link_button("Torna all'hub tornei 🏠", HUB_URL, width="stretch")
             
             st.markdown("---")
-            st.link_button("🏠 Torna all'hub", HUB_URL, width="stretch")
             return
         
         # Se è stata fatta una selezione, mostra il form appropriato
