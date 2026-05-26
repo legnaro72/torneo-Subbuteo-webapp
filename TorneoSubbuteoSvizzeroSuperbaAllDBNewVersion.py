@@ -138,11 +138,59 @@ BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbu
 # CSS personalizzato
 # -------------------------
 st.markdown("""
+<style>
+    .stLinkButton {
+        width: 100% !important;
+        margin: 0 !important;
+    }
+    .stLinkButton a {
+        width: 100% !important;
+        background-size: 200% auto !important;
+        background-image: linear-gradient(to right, var(--color-primary-mid) 0%, var(--color-primary-light) 50%, var(--color-primary-mid) 100%) !important;
+        color: white !important;
+        padding: 0.6em 1.5em !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        border-radius: 12px !important;
+        text-align: center !important;
+        text-decoration: none !important;
+        display: block !important;
+        font-size: 0.9em !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.5px !important;
+        text-transform: uppercase !important;
+        margin: 0 !important;
+        cursor: pointer !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+    }
+    .stLinkButton a:hover {
+        background-position: right center !important;
+        transform: translateY(-2px) scale(1.02) !important;
+        box-shadow: 0 8px 25px rgba(0,159,253,0.4) !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # Inietta tutti gli stili dal modulo condiviso
 inject_all_styles()
+st.markdown("""
+<style>
+    .appview-container .main .block-container,
+    section.main > div.block-container,
+    div[data-testid="stAppViewContainer"] .main .block-container,
+    div[data-testid="stMainBlockContainer"] {
+        padding-top: 0.35rem !important;
+    }
+    div[data-testid="stVerticalBlock"] > div:first-child {
+        margin-top: 0 !important;
+    }
+    div[data-testid="stMarkdownContainer"] h1,
+    div[data-testid="stMarkdownContainer"] h2,
+    div[data-testid="stMarkdownContainer"] h3 {
+        margin-top: 0 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # -------------------------
 # Connessione a MongoDB Atlas
