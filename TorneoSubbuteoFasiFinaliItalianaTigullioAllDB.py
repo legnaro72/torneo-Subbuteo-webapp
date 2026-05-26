@@ -35,7 +35,8 @@ import certifi
 import math
 
 # Import auth utilities
-import auth_utils as auth
+from shared import pwa
+from shared.auth import login as auth
 
 # Importa moduli comuni per stili, audio e componenti UI
 from common.styles import inject_all_styles
@@ -59,6 +60,7 @@ warnings.filterwarnings(
 # ✨ Configurazione e stile di pagina (con nuove emoji e colori)
 # ==============================================================================
 # Configurazione pagina spostata all'inizio
+pwa.inject_pwa_assets()
 
 
 def reset_app_state():
@@ -1454,9 +1456,7 @@ def main():
     elif not user_role:
         st.session_state['user']['role'] = 'ospite'  # Default a ospite se manca il ruolo
         
-    if not st.session_state.get('authenticated', False):
-        auth.show_auth_screen(club="Tigullio")
-        return
+    auth.require_auth(club="Tigullio")
         
     # Attiva il keep-alive per evitare il timeout della sessione
     enable_session_keepalive()
@@ -1573,6 +1573,7 @@ def main():
     # ✅ Configurazione Sidebar (Modulo Comune)
     # L'audio e le info utente sono ora gestiti internamente ai componenti comuni
     setup_common_sidebar(show_user_info=True, hub_url=HUB_URL)
+    auth.logout_button("Logout")
     setup_audio_sidebar()
     
     if not st.session_state['ui_show_pre']:
@@ -2232,25 +2233,36 @@ def main():
                     
                     # 🚀 RENDER VISUAL BRACKET
                     visualizzazione_preferita = st.session_state.get("modalita_visualizzazione_ko", "squadre")
-                    
-                    # Selector sync in main page
-                    st.radio(
-                        "Formato tabellone:",
-                        options=["squadre", "completa", "giocatori"],
-                        index=["squadre", "completa", "giocatori"].index(visualizzazione_preferita),
-                        format_func=lambda x: {
-                            "squadre": "Solo squadre",
-                            "completa": "Squadra + Giocatore",
-                            "giocatori": "Solo giocatori"
-                        }[x],
-                        key="radio_main_ko",
-                        horizontal=True,
-                        label_visibility="collapsed",
-                        on_change=sync_modalita_visualizzazione_ko,
-                        args=("radio_main_ko",)
-                    )
-                    
-                    render_visual_bracket(st.session_state['rounds_ko'], visualizzazione_preferita)
+                    with st.expander("Visualizzazioni Incontri", expanded=False):
+                        st.radio(
+                            "Formato tabellone:",
+                            options=["squadre", "completa", "giocatori"],
+                            index=["squadre", "completa", "giocatori"].index(visualizzazione_preferita),
+                            format_func=lambda x: {
+                                "squadre": "Solo squadre",
+                                "completa": "Squadra + Giocatore",
+                                "giocatori": "Solo giocatori"
+                            }[x],
+                            key="radio_main_ko",
+                            horizontal=True,
+                            on_change=sync_modalita_visualizzazione_ko,
+                            args=("radio_main_ko",)
+                        )
+
+                        tipo_vista_corrente = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
+                        st.radio(
+                            "Vista incontri:",
+                            ("Compact", "Premium", "Standard"),
+                            index=("Compact", "Premium", "Standard").index(tipo_vista_corrente),
+                            key="tipo_vista_main_widget",
+                            horizontal=True,
+                            on_change=sync_tipo_vista,
+                            args=("tipo_vista_main_widget",)
+                        )
+
+                    visualizzazione_preferita = st.session_state.get("modalita_visualizzazione_ko", "squadre")
+                    with st.expander("Tabellone", expanded=False):
+                        render_visual_bracket(st.session_state['rounds_ko'], visualizzazione_preferita)
                     st.divider()
                     
                     #inizio
@@ -2360,18 +2372,6 @@ def main():
                         # --- SOLO round attivo ---
                         if st.session_state['rounds_ko']:
                             st.markdown("---")
-                            tipo_vista_corrente = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
-                            st.radio(
-                                "Seleziona la vista del calendario:",
-                                ("Compact", "Premium", "Standard"),
-                                index=("Compact", "Premium", "Standard").index(tipo_vista_corrente),
-                                key="tipo_vista_main_widget",
-                                horizontal=True,
-                                label_visibility="collapsed",
-                                on_change=sync_tipo_vista,
-                                args=("tipo_vista_main_widget",)
-                            )
-
                             current_round_df = st.session_state['rounds_ko'][-1]
                             render_round(current_round_df, len(st.session_state['rounds_ko']) - 1, st.session_state.get("modalita_visualizzazione_ko", "squadre"))
                             

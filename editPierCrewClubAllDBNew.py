@@ -19,7 +19,8 @@ import os
 import io
 
 # Import custom utilities
-import auth_utils as auth
+from shared import pwa
+from shared.auth import login as auth
 import logging_utils as log
 
 # Importa moduli comuni per stili, audio e componenti UI
@@ -41,6 +42,7 @@ MONGO_URI_TOURNEMENTS_CH = "mongodb+srv://massimilianoferrando:Legnaro21!$@clust
 # Definisci la tua URL raw per l'audio di sfondo
 BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/Gli%20Amici%20(Remastered%202007).mp3"
 
+pwa.inject_pwa_assets()
 
 @st.cache_resource
 def init_mongo_connections():
@@ -61,9 +63,7 @@ def init_mongo_connections():
         return None, None, None
 
 # Mostra la schermata di autenticazione se non si è già autenticati
-if not st.session_state.get('authenticated', False):
-    auth.show_auth_screen(club="PierCrew")
-    st.stop()
+auth.require_auth(club="PierCrew")
     
 # Attiva il keep-alive per evitare il timeout della sessione
 enable_session_keepalive()
@@ -305,9 +305,7 @@ def salva_tornei_svizzeri(df):
 
 
 # Mostra la schermata di autenticazione se non si è già autenticati
-if not st.session_state.get('authenticated', False):
-    auth.show_auth_screen(club="PierCrew")
-    st.stop()
+auth.require_auth(club="PierCrew")
 
 # Configurazione pagina già impostata all'inizio
 
@@ -337,6 +335,7 @@ if st.session_state.get("authenticated"):
     user = st.session_state.get("user", {})
     st.sidebar.markdown(f"**👤 Utente:** {user.get('username', '??')}")
     st.sidebar.markdown(f"**🔑 Ruolo:** {user.get('role', '??')}")
+    auth.logout_button("Logout")
 
 HUB_URL = "https://farm-tornei-subbuteo-piercrew-all-db.streamlit.app/"
 

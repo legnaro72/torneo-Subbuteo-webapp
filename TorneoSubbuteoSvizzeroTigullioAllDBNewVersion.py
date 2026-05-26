@@ -9,6 +9,19 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+st.markdown("""
+    <script>
+    try {
+      const parentDoc = window.parent.document;
+      const sidebar = parentDoc.querySelector('section[data-testid="stSidebar"]');
+      const collapseButton = parentDoc.querySelector('button[kind="header"]');
+      if (sidebar && collapseButton && sidebar.getAttribute("aria-expanded") !== "false") {
+        setTimeout(function() { collapseButton.click(); }, 250);
+      }
+    } catch (e) {}
+    </script>
+""", unsafe_allow_html=True)
+
 # Solo DOPO si possono importare le altre dipendenze
 import pandas as pd
 from datetime import datetime
@@ -25,8 +38,9 @@ import urllib.parse
 import os
 
 # Import auth utilities
-import auth_utils as auth
-from auth_utils import verify_write_access
+from shared import pwa
+from shared.auth import login as auth
+from shared.auth import verify_write_access
 
 # Importa moduli comuni per stili, audio e componenti UI
 from common.styles import inject_all_styles
@@ -39,10 +53,9 @@ from common.ui_components import (
     setup_player_selection_mode, enable_session_keepalive
 )
 
+pwa.inject_pwa_assets()
 
-if not st.session_state.get('authenticated', False):
-    auth.show_auth_screen(club="Tigullio")
-    st.stop()
+auth.require_auth(club="Tigullio")
 
 # Attiva il sistema di keep-alive per mantenere la sessione durante le partite
 enable_session_keepalive()
@@ -1644,6 +1657,7 @@ if st.session_state.setup_mode == "nuovo":
 # -------------------------
 # User info
 setup_common_sidebar(show_user_info=True, show_hub_link=True, hub_url=HUB_URL)
+auth.logout_button("Logout")
 
 # Audio di sottofondo
 setup_audio_sidebar()
@@ -1831,29 +1845,28 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
         st.markdown("---")
         tipo_vista_corrente = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
         
-        col_v1, col_v2 = st.columns([0.5, 0.5])
-        with col_v1:
-            st.radio(
-                "Vista Calendario:",
-                ("Compact", "Premium", "Standard"),
-                index=("Compact", "Premium", "Standard").index(tipo_vista_corrente),
-                key="tipo_vista_main_widget",
-                horizontal=True,
-                label_visibility="collapsed",
-                on_change=sync_tipo_vista,
-                args=("tipo_vista_main_widget",)
-            )
-        with col_v2:
-            st.radio(
-                "Formato Incontri:",
-                options=["Squadre", "Giocatori", "Completa"],
-                index=["Squadre", "Giocatori", "Completa"].index(st.session_state.modalita_visualizzazione),
-                key="radio_main",
-                horizontal=True,
-                label_visibility="collapsed",
-                on_change=sync_modalita_visualizzazione,
-                args=("radio_main",)
-            )
+        with st.expander("Visualizzazione incontri", expanded=False):
+            col_v1, col_v2 = st.columns([0.5, 0.5])
+            with col_v1:
+                st.radio(
+                    "Vista Calendario:",
+                    ("Compact", "Premium", "Standard"),
+                    index=("Compact", "Premium", "Standard").index(tipo_vista_corrente),
+                    key="tipo_vista_main_widget",
+                    horizontal=True,
+                    on_change=sync_tipo_vista,
+                    args=("tipo_vista_main_widget",)
+                )
+            with col_v2:
+                st.radio(
+                    "Formato Incontri:",
+                    options=["Squadre", "Giocatori", "Completa"],
+                    index=["Squadre", "Giocatori", "Completa"].index(st.session_state.modalita_visualizzazione),
+                    key="radio_main",
+                    horizontal=True,
+                    on_change=sync_modalita_visualizzazione,
+                    args=("radio_main",)
+                )
 
         # Passa il nuovo parametro alla funzione
         visualizza_incontri_attivi(df_turno_corrente, st.session_state.turno_attivo, st.session_state.modalita_visualizzazione)

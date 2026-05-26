@@ -8,9 +8,30 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+from shared import pwa
+from shared.auth import login as auth
+
+pwa.inject_pwa_assets()
+auth.require_auth(club="PierCrew")
+try:
+    if st.query_params.get("pwa_debug") == "1":
+        pwa.show_pwa_diagnostics()
+except Exception:
+    pass
+
 # --- CSS centralizzato ---
 from common.styles import inject_hub_styles
 inject_hub_styles()
+
+if st.session_state.get("authenticated"):
+    user = st.session_state.get("user", {})
+    st.sidebar.markdown(f"**Connesso come:** {user.get('username', '??')}")
+    auth.logout_button("Logout")
+
+URL_CAMPIONATO = auth.make_authenticated_url("https://torneo-subbuteo-piercrew-ita-all-db.streamlit.app/")
+URL_FASI_FINALI = auth.make_authenticated_url("https://torneo-subbuteo-FF-piercrew-ita-all-db.streamlit.app/")
+URL_SVIZZERO = auth.make_authenticated_url("https://torneo-subbuteo-piercrew-new-version-svizzero-alldb.streamlit.app/")
+URL_CLUB = auth.make_authenticated_url("https://edit-piercrew-club-all-db-new.streamlit.app/")
 
 # --- HERO SECTION ---
 st.markdown("""
@@ -31,7 +52,7 @@ st.markdown("""
 col1, space, col2 = st.columns([1, 0.05, 1])
 
 with col1:
-    st.markdown('''
+    st.markdown(f'''
         <div class="card" style="height: 100%;">
             <div style="font-size: 3rem; margin-bottom: 15px;">🏁</div>
             <div class="card-title">Campionato / Preliminari</div>
@@ -39,14 +60,14 @@ with col1:
                 Gestisci la fase a girone unico, campionati o le <b>qualificazioni</b> per i tornei maggiori. Classifiche automatiche e generazione giornate.
             </div>
             <br>
-            <a class="card-link" href="https://torneo-subbuteo-piercrew-ita-all-db.streamlit.app/" target="_blank">
+            <a class="card-link" href="{URL_CAMPIONATO}" target="_blank">
                 <span style="margin-right:8px;">▶</span> Avvia Modalità
             </a>
         </div>
     ''', unsafe_allow_html=True)
 
 with col2:
-    st.markdown('''
+    st.markdown(f'''
         <div class="card" style="height: 100%;">
             <div style="font-size: 3rem; margin-bottom: 15px;">🏆</div>
             <div class="card-title">Fase Finale Eliminatoria</div>
@@ -54,7 +75,7 @@ with col2:
                 Ideale per le fasi calienti del torneo. Gestisce i <b>Gironi</b> o l'<b>Eliminazione Diretta</b> (Quarti, Semifinali, Finali) con tabelloni automatici.
             </div>
             <br>
-            <a class="card-link" href="https://torneo-subbuteo-FF-piercrew-ita-all-db.streamlit.app/" target="_blank">
+            <a class="card-link" href="{URL_FASI_FINALI}" target="_blank">
                 <span style="margin-right:8px;">▶</span> Avvia Modalità
             </a>
         </div>
@@ -67,7 +88,7 @@ st.write("")
 col3, space2, col4 = st.columns([1, 0.05, 1])
 
 with col3:
-    st.markdown('''
+    st.markdown(f'''
         <div class="card" style="height: 100%;">
             <div style="font-size: 3rem; margin-bottom: 15px;">🇨🇭</div>
             <div class="card-title">Torneo Svizzero x Club</div>
@@ -76,7 +97,7 @@ with col3:
             </div>
             <br>
             <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
-                <a class="card-link" href="https://torneo-subbuteo-piercrew-new-version-svizzero-alldb.streamlit.app/" target="_blank">
+                <a class="card-link" href="{URL_SVIZZERO}" target="_blank">
                     <span style="margin-right:8px;">▶</span> Avvia Modalità
                 </a>
             </div>
@@ -84,7 +105,7 @@ with col3:
     ''', unsafe_allow_html=True)
 
 with col4:
-    st.markdown('''
+    st.markdown(f'''
         <div class="card" style="height: 100%; border: 1px solid rgba(230,57,70,0.3);">
             <div style="font-size: 3rem; margin-bottom: 15px;">⚙️</div>
             <div class="card-title">Pannello Gestione Club</div>
@@ -92,7 +113,7 @@ with col4:
                 Il database centrale. Inserisci giocatori, modifica le loro schede, o <b>cancella tornei</b> dal database del cloud in totale sicurezza.
             </div>
             <br>
-            <a class="card-link card-link-red" href="https://edit-piercrew-club-all-db-new.streamlit.app/" target="_blank" style="width: 80%;">
+            <a class="card-link card-link-red" href="{URL_CLUB}" target="_blank" style="width: 80%;">
                 <span style="margin-right:8px;">🔓</span> Gestisci Database
             </a>
         </div>
