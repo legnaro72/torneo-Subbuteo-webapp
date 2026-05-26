@@ -1661,7 +1661,7 @@ def main():
         
         # Se non c'è una connessione al database, mostra un messaggio di errore
         if tournaments_collection is None:
-            st.error("❌ Impossibile connettersi al database. Verifica la connessione e riprova.")
+            st.error("❌ Impossibile connettersi al servizio di salvataggio. Verifica la connessione e riprova.")
             st.markdown("---")
             if st.button("🔄 Ricarica la pagina", key="reload_page"):
                 st.rerun()
@@ -1681,19 +1681,41 @@ def main():
                     st.markdown(
                         """<div style='text-align:center'>
                         <h2>📂 Carica fase finale esistente</h2>
-                        <p style='margin:0.2rem 0 1rem 0'>Riprendi una fase finale salvata (MongoDB)</p>
+                        <p style='margin:0.2rem 0 1rem 0'>Riprendi una fase finale salvata</p>
                         </div>""",
                         unsafe_allow_html=True,
                     )
-                    if st.button("Carica fase finale esistente 📂", key="btn_carica_fase", width="stretch"):
+                    tornei_trovati = carica_tornei_da_db(
+                        tournaments_collection,
+                        prefix=["fasefinaleAGironi", "fasefinaleEliminazionediretta", "finito_Eliminazionediretta"]
+                    )
+                    if tornei_trovati:
+                        tornei_opzioni = {t['nome_torneo']: str(t['_id']) for t in tornei_trovati}
+                        scelta_torneo = st.selectbox(
+                            "Seleziona fase finale salvata",
+                            options=list(tornei_opzioni.keys()),
+                            index=None,
+                            placeholder="Scegli una fase finale...",
+                            key="select_fase_finale_iniziale"
+                        )
+                    else:
+                        tornei_opzioni = {}
+                        scelta_torneo = None
+                        st.info("ℹ️ Nessuna fase finale salvata disponibile.")
+                    if st.button("Apri fase finale 📂", key="btn_carica_fase", width="stretch", disabled=not bool(tornei_opzioni)):
+                        if not scelta_torneo:
+                            st.warning("Seleziona una fase finale salvata prima di continuare.")
+                            st.stop()
                         st.session_state['opzione_selezione'] = "Continuare una fase finale esistente"
+                        st.session_state['fase_finale_da_aprire_id'] = tornei_opzioni[scelta_torneo]
+                        st.session_state['fase_finale_da_aprire_nome'] = scelta_torneo
                         st.rerun()
 
             with c2:
                 with st.container(border=True):
                     st.markdown(
                         """<div style='text-align:center'>
-                        <h2>✨ Crea nuova fase finale</h2>
+                        <h2>✨ Nuova fase finale</h2>
                         <p style='margin:0.2rem 0 1rem 0'>Genera fase finale da torneo preliminare completato</p>
                         </div>""",
                         unsafe_allow_html=True,
@@ -1702,7 +1724,7 @@ def main():
                     has_write_access = st.session_state.get("user", {}).get("role") not in ["ospite", "lettura"]
                     
                     if st.button(
-                        "Crea nuova fase finale ✨", 
+                        "Nuova fase finale ✨", 
                         key="btn_nuova_fase", 
                         width="stretch",
                         disabled=not has_write_access,
@@ -1716,6 +1738,7 @@ def main():
                             st.error("⛔ Accesso in sola lettura. Non è possibile creare una nuova fase finale.")
             
             st.markdown("---")
+            st.link_button("🏠 Torna all'hub", HUB_URL, width="stretch")
             return
         
         # Se è stata fatta una selezione, mostra il form appropriato
@@ -1735,7 +1758,7 @@ def main():
                 tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix=["completato_"])
                 st.subheader("Seleziona un torneo preliminare completato")
                 if not tornei_trovati:
-                    st.warning("⚠️ Nessun torneo 'COMPLETATO' trovato nel database.")
+                    st.warning("⚠️ Nessun torneo preliminare completato disponibile.")
                     st.markdown("---")
                     st.markdown("### Crea un nuovo torneo")
                     st.markdown("Per creare una nuova fase finale, è necessario prima completare un torneo preliminare.")
@@ -1804,10 +1827,13 @@ def main():
 
             #elif opzione_selezione == "Continuare una fase finale esistente":
         elif opzione_selezione == "Continuare una fase finale esistente":
-            tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix=["fasefinaleEliminazionediretta", "finito_Eliminazionediretta"])
+            tornei_trovati = carica_tornei_da_db(
+                tournaments_collection,
+                prefix=["fasefinaleAGironi", "fasefinaleEliminazionediretta", "finito_Eliminazionediretta"]
+            )
             st.subheader("Seleziona una fase finale esistente")
             if not tornei_trovati:
-                st.warning("⚠️ Nessuna fase finale esistente trovata nel database.")
+                st.warning("⚠️ Nessuna fase finale salvata disponibile.")
                 st.markdown("---")
                 st.markdown("### Crea una nuova fase finale")
                 st.markdown("Per creare una nuova fase finale, seleziona l'opzione 'Crea nuova fase finale' dal menu principale.")
@@ -1817,16 +1843,19 @@ def main():
                 return
             else:
                     tornei_opzioni = {t['nome_torneo']: str(t['_id']) for t in tornei_trovati}
+                    fase_da_aprire_nome = st.session_state.pop('fase_finale_da_aprire_nome', None)
+                    fase_da_aprire_id = st.session_state.pop('fase_finale_da_aprire_id', None)
                     scelta_torneo = st.selectbox(
                         "Seleziona la fase finale da continuare:",
                         options=list(tornei_opzioni.keys()),
+                        index=list(tornei_opzioni.keys()).index(fase_da_aprire_nome) if fase_da_aprire_nome in tornei_opzioni else 0,
                         key="select_torneo_esistente"
                     )
                     if scelta_torneo:
                         st.session_state['tournament_name'] = scelta_torneo
-                        tournament_id = tornei_opzioni[scelta_torneo]
+                        tournament_id = fase_da_aprire_id or tornei_opzioni[scelta_torneo]
                         st.session_state['tournament_id'] = tournament_id
-                        if st.button("Continua con questo torneo"):
+                        if fase_da_aprire_id or st.button("Apri fase finale"):
                             torneo_data = carica_torneo_da_db(tournaments_collection, tournament_id)
                             
                             if torneo_data:
@@ -1917,8 +1946,11 @@ def main():
                                     st.rerun()
                                 
                                 else:
-                                    st.error("❌ La fase finale a gironi non è gestita da questa web app.")
-                                    st.info(f"Utilizza l'altra web app per la gestione del torneo '{st.session_state['tournament_name']}'.")
+                                    st.session_state['df_finale_gironi'] = df_torneo_completo
+                                    st.session_state['giornate_mode'] = 'gironi'
+                                    st.session_state['fase_modalita'] = "Gironi"
+                                    st.session_state['ui_show_pre'] = False
+                                    st.rerun()
 
                             else:
                                 st.error("❌ Errore nel caricamento del torneo. Riprova.")
@@ -2173,7 +2205,7 @@ def main():
                         tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
                         
                         if tournaments_collection is None:
-                            st.error("❌ Impossibile stabilire una connessione al database. Verifica la connessione e riprova.")
+                            st.error("❌ Impossibile stabilire una connessione al servizio di salvataggio. Verifica la connessione e riprova.")
                             st.stop()
                     
                         try:

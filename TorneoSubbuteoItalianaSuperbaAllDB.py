@@ -268,10 +268,10 @@ def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
         col = db.get_collection(collection_name)
         _ = col.find_one({})
         if show_ok:
-            st.info(f"Connessione a {db_name}.{collection_name} ok.")
+            st.info("Connessione al servizio di salvataggio attiva.")
         return col
     except Exception as e:
-        st.error(f"❌ Errore di connessione a {db_name}.{collection_name}: {e}")
+        st.error(f"❌ Errore di connessione al servizio di salvataggio: {e}")
         return None
 
 # -------------------------
@@ -889,7 +889,7 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
         ok = aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
         if not ok:
             print("[ERROR] Errore durante l'aggiornamento del torneo su MongoDB")
-            st.error("❌ Errore durante il salvataggio su MongoDB.")
+            st.error("❌ Errore durante il salvataggio del torneo.")
             return False
             
         # ------------------------------------------------------------------
@@ -1054,11 +1054,11 @@ def gestisci_abbandoni(df_torneo, giocatori_da_ritirare, tournaments_collection)
 
                 except Exception as e:
                     print(f"[LOGGING] errore in gestisci_abbandoni: {e}")
-                st.toast(f"✅ Aggiornati {matches_to_update} incontri. Modifiche salvate su MongoDB!")
+                st.toast(f"✅ Aggiornati {matches_to_update} incontri. Modifiche salvate!")
             else:
-                st.error("❌ Errore durante il salvataggio su MongoDB.")
+                st.error("❌ Errore durante il salvataggio del torneo.")
         except Exception as e:
-            st.error(f"❌ Errore durante il salvataggio su MongoDB: {e}")
+            st.error(f"❌ Errore durante il salvataggio del torneo: {e}")
     else:
         st.error("❌ ID del torneo non trovato. Impossibile salvare.")
     return df
@@ -1568,7 +1568,7 @@ def main():
     df_master = carica_giocatori_da_db(players_collection)
 
     if players_collection is None and tournaments_collection is None:
-        st.error("❌ Impossibile avviare l'applicazione. La connessione a MongoDB non è disponibile.")
+        st.error("❌ Impossibile avviare l'applicazione. Il servizio di salvataggio non è disponibile.")
         return
 
     # --- FUNZIONI DI SINCRONIZZAZIONE GLOBALI ---
@@ -1637,6 +1637,7 @@ def main():
             )
             
             st.markdown("---")
+            st.link_button("🏠 Torna all'hub", HUB_URL, width="stretch")
             
             # Radio button per tipo di vista (Sincronizzato con la pagina principale)
             current_view = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
@@ -2195,7 +2196,7 @@ def main():
                         st.markdown(
                             """<div style='text-align:center'>
                             <h2>📂 Carica torneo esistente</h2>
-                            <p style='margin:0.2rem 0 1rem 0'>Riprendi un torneo salvato (MongoDB)</p>
+                            <p style='margin:0.2rem 0 1rem 0'>Riprendi un torneo salvato</p>
                             </div>""",
                             unsafe_allow_html=True,
                         )
@@ -2207,8 +2208,16 @@ def main():
                             if torneo_preferito in tornei_ordinati:
                                 tornei_ordinati.remove(torneo_preferito)
                                 tornei_ordinati.insert(0, torneo_preferito)
-                            nome_sel = st.selectbox("Seleziona torneo esistente", tornei_ordinati)
-                            if st.button("Carica torneo (MongoDB) 📂", key="btn_carica", width="stretch"):
+                            nome_sel = st.selectbox(
+                                "Seleziona torneo salvato",
+                                tornei_ordinati,
+                                index=None,
+                                placeholder="Scegli un torneo..."
+                            )
+                            if st.button("Apri torneo 📂", key="btn_carica", width="stretch"):
+                                if not nome_sel:
+                                    st.warning("Seleziona un torneo salvato prima di continuare.")
+                                    st.stop()
                                 st.session_state['tournament_id'] = tornei_map[nome_sel]
                                 st.session_state['nome_torneo'] = nome_sel
                                 torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
@@ -2219,7 +2228,7 @@ def main():
                                 else:
                                     st.error("❌ Errore durante il caricamento del torneo. Riprova.")
                         else:
-                            st.info("ℹ️ Nessun torneo salvato trovato su MongoDB.")
+                            st.info("ℹ️ Nessun torneo salvato disponibile.")
 
             with c2:
                 # mostra la colonna "Nuovo torneo" solo se l'utente non ha ancora scelto o ha scelto 'crea'
@@ -2227,13 +2236,13 @@ def main():
                     with st.container(border=True):
                         st.markdown(
                             """<div style='text-align:center'>
-                            <h2>✨ Crea nuovo torneo</h2>
+                            <h2>✨ Nuovo campionato / torneo a gironi</h2>
                             <p style='margin:0.2rem 0 1rem 0'>Genera primo turno scegliendo giocatori del Club Superba</p>
                             </div>""",
                             unsafe_allow_html=True,
                         )
                         
-                        if st.button("Nuovo torneo ✨", key="btn_nuovo", width="stretch"):
+                        if st.button("Nuovo campionato / torneo a gironi ✨", key="btn_nuovo", width="stretch"):
                             st.session_state['mostra_form_creazione'] = True
                             st.session_state['azione_scelta'] = 'crea'
                             st.rerun()
@@ -2292,7 +2301,7 @@ def main():
                     if usa_multiselect:
                         # Modalità MULTISELECT
                         amici_selezionati = st.multiselect(
-                            "Seleziona giocatori dal database", 
+                            "Seleziona giocatori salvati", 
                             sorted(amici),   # già ordinati alfabeticamente
                             default=st.session_state.get("amici_selezionati", []), 
                             key="amici_multiselect"
@@ -2685,10 +2694,10 @@ def main():
                                 'df_dtypes': df_torneo.dtypes.to_dict(),
                                 'messaggio': "Torneo salvato correttamente."
                             }
-                            st.toast("✅ Calendario generato e salvato su MongoDB")
+                            st.toast("✅ Calendario generato e salvato")
                             st.rerun()
                         else:
-                            st.error("❌ Errore durante il salvataggio del torneo. Controlla la connessione al database.")
+                            st.error("❌ Errore durante il salvataggio del torneo. Controlla la connessione e riprova.")
                     except Exception as e:
                         st.error(f"❌ Errore critico durante il salvataggio: {e}")
                         st.rerun()

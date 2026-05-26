@@ -184,13 +184,13 @@ else:
             tournaments_collection = db_tournaments.get_collection("SuperbaSvizzero")
             
     except Exception as e:
-        st.sidebar.error(f"❌ Errore di connessione a MongoDB: {e}")
+        st.sidebar.error(f"❌ Errore di connessione al servizio di salvataggio: {e}")
         st.sidebar.warning("""
         **Risoluzione problemi:**
         1. Verifica la tua connessione Internet
         2. Controlla il file .streamlit/secrets.toml
-        3. Assicurati che l'IP sia nella whitelist di MongoDB Atlas
-        4. Controlla che il tuo account MongoDB Atlas sia attivo
+        3. Verifica che l'accesso alla rete sia consentito
+        4. Controlla che il servizio di salvataggio sia attivo
         
         L'applicazione funzionerà in modalità offline con funzionalità limitate.
         """)
@@ -214,7 +214,7 @@ def salva_torneo_su_db(action_type="salvataggio", details=None):
         return False
         
     if tournaments_collection is None:
-        st.error("❌ Connessione a MongoDB non attiva, impossibile salvare.")
+        st.error("❌ Servizio di salvataggio non disponibile, impossibile salvare.")
         return False
     
     # Ottieni il nome utente corrente o 'sconosciuto' se non disponibile
@@ -358,7 +358,7 @@ def carica_nomi_tornei_da_db():
 def carica_torneo_da_db(nome_torneo):
     """Carica un singolo torneo dal DB e lo ripristina nello stato della sessione."""
     if tournaments_collection is None:
-        st.error("❌ Connessione a MongoDB non disponibile.")
+        st.error("❌ Servizio di salvataggio non disponibile.")
         return False
         
     try:
@@ -429,12 +429,12 @@ def carica_giocatori_da_db():
                 df = df.drop(columns=['_id'])
             
             if 'Giocatore' not in df.columns:
-                st.error("❌ Errore: la colonna 'Giocatore' non è presente nel database dei giocatori.")
+                st.error("❌ Errore: la colonna 'Giocatore' non è presente nell'elenco giocatori.")
                 return pd.DataFrame()
             
             return df
         except Exception as e:
-            st.error(f"❌ Errore durante la lettura dalla collection dei giocatori: {e}")
+            st.error(f"❌ Errore durante la lettura dell'elenco giocatori: {e}")
             return pd.DataFrame()
     return pd.DataFrame()
 
@@ -1351,27 +1351,49 @@ if not st.session_state.torneo_iniziato and st.session_state.setup_mode is None:
         with st.container(border=True):
             st.markdown(
                 """<div style='text-align:center'>
-                    <h2>📂 Carica torneo</h2>
-                    <p style='margin:0.2rem 0 1rem 0'>Visualizza o riprendi un torneo esistente</p>
+                    <h2>📂 Carica torneo svizzero esistente</h2>
+                    <p style='margin:0.2rem 0 1rem 0'>Visualizza o riprendi un torneo svizzero salvato</p>
                     </div>""",
                 unsafe_allow_html=True,
             )
-            if st.button("Carica torneo 📂", key="btn_carica", width="stretch"):
-                st.session_state.setup_mode = "carica_db"
-                st.session_state.torneo_finito = False
-                st.rerun()
+            with st.spinner("Caricamento elenco tornei..."):
+                tornei_disponibili = carica_nomi_tornei_da_db()
+
+            if tornei_disponibili:
+                torneo_scelto = st.selectbox(
+                    "Seleziona torneo svizzero salvato",
+                    options=tornei_disponibili,
+                    index=None,
+                    placeholder="Scegli un torneo svizzero...",
+                    key="select_torneo_svizzero_iniziale"
+                )
+            else:
+                torneo_scelto = None
+                st.info("ℹ️ Nessun torneo svizzero salvato disponibile.")
+
+            if st.button("Apri torneo svizzero 📂", key="btn_carica", width="stretch", disabled=not bool(tornei_disponibili)):
+                if not torneo_scelto:
+                    st.warning("Seleziona un torneo svizzero salvato prima di continuare.")
+                    st.stop()
+                with st.spinner(f"Caricamento del torneo {torneo_scelto}..."):
+                    if carica_torneo_da_db(torneo_scelto):
+                        st.session_state.torneo_iniziato = True
+                        st.session_state.setup_mode = None
+                        st.toast(f"✅ Torneo '{torneo_scelto}' caricato con successo!")
+                        st.session_state.torneo_finito = False
+                        st.rerun()
     with c2:
         with st.container(border=True):
             st.markdown(
                 """<div style='text-align:center'>
-                    <h2>✨ Crea nuovo torneo</h2>
+                    <h2>✨ Nuovo torneo svizzero</h2>
                     <p style='margin:0.2rem 0 1rem 0'>Genera primo turno scegliendo giocatori del Club Superba</p>
                     </div>""",
                 unsafe_allow_html=True,
             )
             # Convert NumPy boolean to Python boolean for the disabled state
             is_disabled_new = bool(not verify_write_access())
-            if st.button("Nuovo torneo ✨", key="btn_nuovo", width="stretch", disabled=is_disabled_new):
+            if st.button("Nuovo torneo svizzero ✨", key="btn_nuovo", width="stretch", disabled=is_disabled_new):
                 if verify_write_access():
                     st.session_state.setup_mode = "nuovo"
                     st.session_state.nuovo_torneo_step = 0
@@ -1389,6 +1411,7 @@ if not st.session_state.torneo_iniziato and st.session_state.setup_mode is None:
                 st.rerun()
 
     st.markdown("---")
+    st.link_button("🏠 Torna all'hub", HUB_URL, width="stretch")
 
 if "mostra_incontri_disputati" not in st.session_state:
     st.session_state["mostra_incontri_disputati"] = False
@@ -1401,25 +1424,25 @@ if st.session_state.setup_mode == "carica_db":
     if not verify_write_access():
         st.warning("🔒 Modalità di sola lettura: non è possibile modificare i tornei")
     
-    st.markdown("#### 📥 Carica torneo da MongoDB")
+    st.markdown("#### 📥 Carica torneo svizzero esistente")
     with st.spinner("Caricamento elenco tornei..."):
         tornei_disponibili = carica_nomi_tornei_da_db()
     
     if not tornei_disponibili:
-        st.warning("Nessun torneo trovato nel database.")
+        st.warning("Nessun torneo svizzero salvato disponibile.")
         if st.button("Torna indietro"):
             st.session_state.setup_mode = None
             st.rerun()
     else:
         torneo_scelto = st.selectbox(
-            "Seleziona il torneo da caricare",
+            "Seleziona torneo svizzero salvato",
             options=tornei_disponibili,
             index=None,
             placeholder="Scegli un torneo..."
         )
         
         if torneo_scelto:
-            if st.button("Carica torneo"):
+            if st.button("Apri torneo svizzero"):
                 with st.spinner(f"Caricamento del torneo {torneo_scelto}..."):
                     if carica_torneo_da_db(torneo_scelto):
                         st.session_state.torneo_iniziato = True
