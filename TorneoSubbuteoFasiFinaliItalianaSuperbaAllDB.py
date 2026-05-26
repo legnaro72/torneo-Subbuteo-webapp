@@ -1745,12 +1745,7 @@ def main():
                     # Check if user has write access for creating new phase
                     has_write_access = st.session_state.get("user", {}).get("role") not in ["ospite", "lettura"]
                     
-                    if st.button(
-                        "Nuova fase finale ✨", 
-                        key="btn_nuova_fase", 
-                        width="stretch",
-                        help="Non disponibile in modalità ospite/lettura" if not has_write_access else "Crea una nuova fase finale da un torneo preliminare",
-                    ):
+                    if st.button("Nuova fase finale ✨", key="btn_nuovo", width="stretch"):
                         if has_write_access:
                             st.session_state['opzione_selezione'] = "Creare una nuova fase finale"
                             st.rerun()
