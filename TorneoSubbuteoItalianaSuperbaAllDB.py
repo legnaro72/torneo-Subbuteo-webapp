@@ -129,105 +129,6 @@ def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, k
                 st.rerun()
 
 
-def force_landscape_for_compact():
-    """Ask mobile/PWA browsers to use landscape while Compact view is active.
-
-    Mobile browsers generally allow orientation lock only after a user gesture
-    and often only while fullscreen. The overlay below gives that gesture and
-    blocks portrait use when the browser refuses a hard lock.
-    """
-    components.html(
-        """
-        <script>
-        (function() {
-          const parentWindow = window.parent;
-          const parentDoc = parentWindow.document;
-          const isCompactMobile = parentWindow.matchMedia("(max-width: 900px)").matches;
-          if (!isCompactMobile) return;
-
-          let overlay = parentDoc.getElementById("compact-landscape-overlay");
-          if (!overlay) {
-            overlay = parentDoc.createElement("div");
-            overlay.id = "compact-landscape-overlay";
-            overlay.innerHTML = `
-              <div style="max-width:420px;padding:22px;border-radius:14px;background:#ffffff;color:#111827;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.35)">
-                <div style="font-size:28px;font-weight:900;margin-bottom:8px">Ruota il telefono</div>
-                <div style="font-size:15px;line-height:1.35;margin-bottom:16px">
-                  La vista Compact del calendario è ottimizzata per la modalità orizzontale.
-                </div>
-                <button id="compact-landscape-button" style="border:0;border-radius:8px;background:#1d3557;color:white;font-weight:800;padding:12px 16px;font-size:16px;width:100%">
-                  Attiva landscape
-                </button>
-                <div id="compact-landscape-status" style="font-size:12px;color:#4b5563;margin-top:10px">
-                  Se il browser non autorizza il blocco, ruota manualmente il dispositivo.
-                </div>
-              </div>
-            `;
-            overlay.style.cssText = [
-              "display:none",
-              "position:fixed",
-              "inset:0",
-              "z-index:999999",
-              "align-items:center",
-              "justify-content:center",
-              "padding:18px",
-              "background:rgba(10,17,40,.92)",
-              "backdrop-filter:blur(2px)"
-            ].join(";");
-            parentDoc.body.appendChild(overlay);
-
-            const button = parentDoc.getElementById("compact-landscape-button");
-            const status = parentDoc.getElementById("compact-landscape-status");
-            button.addEventListener("click", async function() {
-              try {
-                const root = parentDoc.documentElement;
-                if (!parentDoc.fullscreenElement && root.requestFullscreen) {
-                  await root.requestFullscreen();
-                }
-              } catch (e) {
-                status.textContent = "Fullscreen non disponibile: ruota manualmente il telefono.";
-              }
-
-              try {
-                if (parentWindow.screen && parentWindow.screen.orientation && parentWindow.screen.orientation.lock) {
-                  await parentWindow.screen.orientation.lock("landscape");
-                  status.textContent = "Modalità landscape attivata.";
-                } else {
-                  status.textContent = "Il browser non supporta il blocco orientamento: ruota manualmente.";
-                }
-              } catch (e) {
-                status.textContent = "Il browser non autorizza il blocco: ruota manualmente il telefono.";
-              }
-              syncWarning();
-            });
-          }
-
-          function syncWarning() {
-            overlay.style.display =
-              parentWindow.matchMedia("(max-width: 900px) and (orientation: portrait)").matches
-                ? "flex"
-                : "none";
-          }
-          syncWarning();
-          parentWindow.addEventListener("orientationchange", syncWarning);
-          parentWindow.addEventListener("resize", syncWarning);
-
-          try {
-            if (parentWindow.screen && parentWindow.screen.orientation && parentWindow.screen.orientation.lock) {
-              parentWindow.screen.orientation.lock("landscape").catch(function() {
-                syncWarning();
-              });
-            }
-          } catch (e) {
-            syncWarning();
-          }
-        })();
-        </script>
-        """,
-        height=0,
-        width=0,
-    )
-
 # Configurazione della pagina
 # Configurazione pagina spostata all'inizio
 try:
@@ -807,7 +708,6 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
 
 def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzazione):
     """Visualizzazione ultra-compatta — SquadraA [0] - [0] SquadraB [✓] con landscape forzato su mobile."""
-    force_landscape_for_compact()
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         return
@@ -1541,8 +1441,6 @@ def main():
 
     # Titolo con stile personalizzato
     if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
-        if st.session_state.get('tipo_vista_selezionata', 'compact') == 'compact':
-            force_landscape_for_compact()
         st.markdown(f"""
         <div style='text-align:center; padding:20px; border-radius:10px; background: linear-gradient(90deg, #457b9d, #1d3557); box-shadow: 0 4px 14px #00000022;'>
             <h1 style='color:white; margin:0; font-weight:700;'>🇮🇹⚽ {st.session_state['nome_torneo']} 🏆🇮🇹</h1>
