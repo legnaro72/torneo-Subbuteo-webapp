@@ -1441,7 +1441,12 @@ if not st.session_state.torneo_iniziato and st.session_state.setup_mode is None:
             )
             # Convert NumPy boolean to Python boolean for the disabled state
             is_disabled_new = bool(not verify_write_access())
-            if st.button("Nuovo torneo svizzero ✨", key="btn_nuovo", width="stretch", disabled=is_disabled_new):
+            if st.button(
+                "Nuovo torneo svizzero ✨",
+                key="btn_nuovo",
+                width="stretch",
+                help="Non disponibile in modalità ospite/lettura" if is_disabled_new else "Crea un nuovo torneo svizzero"
+            ):
                 if verify_write_access():
                     st.session_state.setup_mode = "nuovo"
                     st.session_state.nuovo_torneo_step = 0

@@ -1749,9 +1749,7 @@ def main():
                         "Nuova fase finale ✨", 
                         key="btn_nuova_fase", 
                         width="stretch",
-                        disabled=not has_write_access,
                         help="Non disponibile in modalità ospite/lettura" if not has_write_access else "Crea una nuova fase finale da un torneo preliminare",
-                        on_click=lambda: st.error("⛔ Accesso negato. Solo gli utenti con permessi di scrittura possono creare nuove fasi finali.") if not has_write_access else None
                     ):
                         if has_write_access:
                             st.session_state['opzione_selezione'] = "Creare una nuova fase finale"
