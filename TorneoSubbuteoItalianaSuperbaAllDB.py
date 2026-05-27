@@ -249,8 +249,8 @@ DEFAULT_STATE = {
     'modalita_scelta_sidebar': 'squadre',
     'modalita_visualizzazione_sidebar': 'Solo squadre',
     'modalita_visualizzazione_main_widget': 'Solo squadre',
-    'tipo_vista_sidebar_widget': 'PC',
-    'tipo_vista_main_widget': 'PC',
+    'tipo_vista_sidebar_widget': 'Compact',
+    'tipo_vista_main_widget': 'Compact',
     'modalita_navigazione_sidebar': True,
     'modalita_navigazione_main_widget': True,
     'filtro_principale_selettore_main': 'Nessuno',
@@ -1512,8 +1512,8 @@ def main():
     if device_param in ('pc', 'smartphone'):
         if not st.session_state.get('dispositivo_rilevato', False):
             st.session_state['tipo_vista_selezionata'] = device_param
-            st.session_state['tipo_vista_sidebar_widget'] = 'Smartphone' if device_param == 'smartphone' else 'PC'
-            st.session_state['tipo_vista_main_widget'] = 'Smartphone' if device_param == 'smartphone' else 'PC'
+            st.session_state['tipo_vista_sidebar_widget'] = 'Smartphone' if device_param == 'smartphone' else 'Compact'
+            st.session_state['tipo_vista_main_widget'] = 'Smartphone' if device_param == 'smartphone' else 'Compact'
             st.session_state['dispositivo_rilevato'] = True
     elif not st.session_state.get('dispositivo_rilevato', False):
         components.html("""
@@ -1781,7 +1781,9 @@ def main():
         # --- FUNZIONI DI SINCRONIZZAZIONE ---
         def sync_tipo_vista(source_key):
             val = st.session_state[source_key]
-            st.session_state['tipo_vista_selezionata'] = val.lower()
+            # 'Compact' viene mappato internamente a 'pc' per non confliggere con la vista smartphone/compact
+            mappa_interna = {'compact': 'pc'}
+            st.session_state['tipo_vista_selezionata'] = mappa_interna.get(val.lower(), val.lower())
             st.session_state['tipo_vista_sidebar_widget'] = val
             st.session_state['tipo_vista_main_widget'] = val
 
@@ -1831,17 +1833,17 @@ def main():
             
             # Radio button per tipo di vista (Sincronizzato con la pagina principale)
             view_labels = {
-                'pc': 'PC',
+                'pc': 'Compact',
                 'compact': 'Smartphone',
                 'smartphone': 'Smartphone',
                 'premium': 'Premium',
                 'standard': 'Standard'
             }
-            current_view = view_labels.get(st.session_state.get('tipo_vista_selezionata', 'pc'), 'PC')
+            current_view = view_labels.get(st.session_state.get('tipo_vista_selezionata', 'pc'), 'Compact')
             st.radio(
                 "Tipo di vista:",
-                ("PC", "Smartphone", "Premium", "Standard"),
-                index=("PC", "Smartphone", "Premium", "Standard").index(current_view),
+                ("Compact", "Smartphone", "Premium", "Standard"),
+                index=("Compact", "Smartphone", "Premium", "Standard").index(current_view),
                 key="tipo_vista_sidebar_widget",
                 on_change=sync_tipo_vista,
                 args=("tipo_vista_sidebar_widget",)
@@ -2367,6 +2369,7 @@ def main():
                     mostra_avviso_landscape()
                     mostra_calendario_compact(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
                 elif vista_scelta == 'pc':
+                    mostra_avviso_landscape()
                     mostra_calendario_pc(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
                 elif vista_scelta == 'premium':
                     mostra_calendario_premium(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
