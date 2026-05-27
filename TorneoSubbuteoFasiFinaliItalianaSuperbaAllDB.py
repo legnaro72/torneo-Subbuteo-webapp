@@ -82,6 +82,7 @@ def reset_app_state():
 # Definisci la tua URL raw per l'audio di sfondo
 BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/⚽️%20UEFA%20Champions%20League%20🏆%20[TESTO%20originale%20+%20traduzione%20HQ]%20-%20NEW%20VERSION.mp3"
 HUB_URL = "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/"
+HOME_URL = "https://torneo-subbuteo-FF-superba-ita-all-db.streamlit.app/"
 
 # ==============================================================================
 
@@ -1662,8 +1663,8 @@ def main():
                     time.sleep(1)
     # ✅ Configurazione Sidebar (Modulo Comune)
     # L'audio e le info utente sono ora gestiti internamente ai componenti comuni
-    setup_common_sidebar(show_user_info=True, hub_url=HUB_URL)
     auth.logout_button("Logout")
+    setup_common_sidebar(show_user_info=True, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL))
     setup_audio_sidebar()
     
     if not st.session_state['ui_show_pre']:

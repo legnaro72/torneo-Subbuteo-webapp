@@ -49,7 +49,7 @@ def render_section_header(title: str):
 # Default Hub URL (will be used if no custom hub_url is provided)
 DEFAULT_HUB_URL = "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/"
 
-def setup_common_sidebar(show_user_info: bool = True, show_hub_link: bool = True, hub_url: str = DEFAULT_HUB_URL):
+def setup_common_sidebar(show_user_info: bool = True, show_hub_link: bool = True, hub_url: str = DEFAULT_HUB_URL, home_url: str | None = None):
     """
     Configura la sidebar con elementi comuni a tutte le app.
     
@@ -57,6 +57,7 @@ def setup_common_sidebar(show_user_info: bool = True, show_hub_link: bool = True
         show_user_info: Se True, mostra le info dell'utente autenticato.
         show_hub_link: Se True, mostra il link all'Hub.
         hub_url: URL dell'Hub di destinazione.
+        home_url: URL della home della app corrente. Se valorizzato, mostra un secondo link.
     """
     # Info utente
     if show_user_info and st.session_state.get("authenticated"):
@@ -72,6 +73,12 @@ def setup_common_sidebar(show_user_info: bool = True, show_hub_link: bool = True
             hub_url,
             use_container_width=True
         )
+        if home_url:
+            st.sidebar.link_button(
+                "Vai alla Home",
+                home_url,
+                use_container_width=True
+            )
 
 
 

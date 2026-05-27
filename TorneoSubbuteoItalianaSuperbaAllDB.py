@@ -219,6 +219,7 @@ except Exception:
 # Definisci la tua URL raw per l'audio di sfondo
 BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/TraLeDita.mp3"
 HUB_URL = "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/"
+HOME_URL = "https://torneo-subbuteo-superba-ita-all-db.streamlit.app/"
 
 # -------------------------
 # GESTIONE DELLO STATO E FUNZIONI INIZIALI
@@ -1770,7 +1771,7 @@ def main():
             st.session_state['usa_multiselect_giocatori_main_widget'] = val
 
     # ✅ 1. 🕹 Gestione Rapida + 👤 Mod Selezione Partecipanti
-    setup_common_sidebar(show_user_info=False, hub_url=HUB_URL)  # user info già mostrata sopra
+    setup_common_sidebar(show_user_info=False, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL))  # user info già mostrata sopra
     setup_audio_sidebar()
     setup_player_selection_mode(on_change=sync_multiselect, args=("sidebar_usa_multiselect_giocatori",))
     
@@ -1832,8 +1833,6 @@ def main():
                 horizontal=False
             )
             
-            st.markdown("---")
-            st.link_button("🏠 Torna all'hub", HUB_URL, width="stretch")
             
             # Radio button per tipo di vista (Sincronizzato con la pagina principale)
             view_labels = {
@@ -2998,3 +2997,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
