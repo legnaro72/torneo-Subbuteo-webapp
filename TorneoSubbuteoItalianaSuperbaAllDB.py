@@ -132,7 +132,7 @@ def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, k
     """, unsafe_allow_html=True)
 
     current = st.session_state.get(value_key, min_val)
-    display_label = f"GIO {current}"
+    display_label = f"GIORNATA {current}"
     col_prev, col_label, col_next = st.columns([1, 0.9, 1], gap="small")
     with col_prev:
         if st.button("◀", key=f"{key_prefix}nav_prev_{value_key}", width="stretch"):
@@ -270,7 +270,7 @@ def reset_app_state():
     st.session_state['df_torneo'] = pd.DataFrame()
 
 def mostra_avviso_landscape():
-    """Avvisa su mobile portrait e permette all'utente di tentare il lock landscape."""
+    """Mostra messaggio informativo per ruotare il telefono in orizzontale (solo smartphone)."""
     st.markdown("""
         <style>
         .portrait-warning {
@@ -285,12 +285,6 @@ def mostra_avviso_landscape():
             margin: 8px 0 10px;
             animation: pulse 2s infinite;
         }
-        .landscape-choice-note {
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 0.82rem;
-            margin: -2px 0 8px;
-        }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
         @media screen and (max-width: 640px) and (orientation: portrait) {
             .portrait-warning { display: block !important; }
@@ -301,40 +295,6 @@ def mostra_avviso_landscape():
         </div>
     """, unsafe_allow_html=True)
 
-    if not st.session_state.get('scelta_landscape_effettuata', False):
-        st.markdown(
-            "<div class='landscape-choice-note'>Puoi provare a bloccare l'orientamento, se il browser lo consente.</div>",
-            unsafe_allow_html=True
-        )
-        col_force, col_skip = st.columns(2)
-        with col_force:
-            if st.button("🔄 Prova landscape", key="btn_forza_landscape", width="stretch"):
-                st.session_state['prova_forza_landscape'] = True
-                st.session_state['scelta_landscape_effettuata'] = True
-                st.rerun()
-        with col_skip:
-            if st.button("Continua così", key="btn_no_landscape", width="stretch"):
-                st.session_state['prova_forza_landscape'] = False
-                st.session_state['scelta_landscape_effettuata'] = True
-                st.rerun()
-
-    if st.session_state.get('prova_forza_landscape', False):
-        components.html("""
-            <script>
-            (async function() {
-                try {
-                    const doc = window.parent.document;
-                    const el = doc.documentElement;
-                    if (el.requestFullscreen && !doc.fullscreenElement) {
-                        await el.requestFullscreen();
-                    }
-                    if (screen.orientation && screen.orientation.lock) {
-                        await screen.orientation.lock('landscape');
-                    }
-                } catch(e) {}
-            })();
-            </script>
-        """, height=0, width=0)
 
 # -------------------------
 # FUNZIONI CONNESSIONE MONGO (SENZA SUCCESS VERDI)
@@ -612,7 +572,7 @@ def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, k
                 st.rerun()
     with col_label:
         st.markdown(
-            f"<div style='text-align:center;font-weight:900;padding-top:0.45rem;white-space:nowrap;'>GIO {current}</div>",
+            f"<div style='text-align:center;font-weight:900;padding-top:0.45rem;white-space:nowrap;'>GIORNATA {current}</div>",
             unsafe_allow_html=True
         )
     with col_next:
@@ -900,12 +860,9 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
     st.markdown("""
         <style>
         .phone-match-card {
-            border-bottom: 1px solid rgba(255,255,255,0.06);
-            padding: 14px 0 18px;
-            margin-bottom: 10px;
-        }
-        .phone-match-card {
             border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding: 16px 0;
+            margin-bottom: 8px;
         }
         div[data-testid="stNumberInput"] button {
             display: none !important;
@@ -920,52 +877,35 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
         }
         .stNumberInput,
         div[data-testid="stNumberInput"] {
-            display: grid !important;
-            grid-template-columns: minmax(0, 1fr) 64px !important;
-            align-items: center !important;
-            column-gap: 10px !important;
-            width: min(220px, 100%) !important;
-            max-width: 220px !important;
-            margin: 0 auto 8px auto !important;
+            width: 160px !important;
+            margin: 0 auto 12px auto !important;
+            text-align: center !important;
         }
         div[data-testid="stNumberInput"] label {
-            grid-column: 1 !important;
-            min-width: 0 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            justify-self: end !important;
-            text-align: right !important;
+            display: block !important;
+            text-align: center !important;
+            width: 100% !important;
             font-weight: 800 !important;
-            font-size: 0.92rem !important;
-            line-height: 1.15 !important;
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-        }
-        .stNumberInput > div,
-        div[data-testid="stNumberInput"] > div {
-            grid-column: 2 !important;
-            width: 64px !important;
-            max-width: 64px !important;
-            min-width: 64px !important;
+            font-size: 0.95rem !important;
+            margin-bottom: 4px !important;
         }
         div[data-testid="stNumberInput"] div[data-baseweb="input"] {
-            width: 64px !important;
-            max-width: 64px !important;
-            min-width: 64px !important;
+            width: 80px !important;
+            margin: 0 auto !important;
             padding: 0 !important;
         }
         div[data-testid="stNumberInput"] input {
-            width: 64px !important;
+            width: 80px !important;
             padding: 2px 1px !important;
             text-align: center !important;
             font-weight: bold !important;
-            font-size: 1rem !important;
+            font-size: 1.1rem !important;
             min-height: 34px !important;
         }
-        div[data-testid="stCheckbox"] {
+        .phone-match-card div[data-testid="stCheckbox"] {
             width: fit-content !important;
-            margin: 4px auto 8px auto !important;
+            margin: 8px 0 0 0 !important;
+            text-align: left !important;
         }
         @media screen and (max-width: 480px) {
             .appview-container .main .block-container {
@@ -996,10 +936,14 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
                         value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
                         disabled=row['Valida'])
         st.session_state[key_golcasa] = st.session_state[f"comp_{key_golcasa}"]
+        
+        st.markdown("<div style='text-align:center; font-weight:bold; font-size:1.2rem; margin: 4px 0;'>-</div>", unsafe_allow_html=True)
+        
         st.number_input(label_o, 0, 20, key=f"comp_{key_golospite}",
                         value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
                         disabled=row['Valida'])
         st.session_state[key_golospite] = st.session_state[f"comp_{key_golospite}"]
+        
         st.checkbox("✓ Validata", key=f"comp_{key_valida}", value=bool(row['Valida']),
                     disabled=st.session_state.get('read_only', False))
         st.session_state[key_valida] = st.session_state[f"comp_{key_valida}"]
@@ -1007,177 +951,7 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
 
     return
 
-    numero_gironi = df['Girone'].nunique() if 'Girone' in df.columns else 1
-    if numero_gironi > 1:
-        st.markdown(f"### {girone_sel} - Giornata {giornata_sel} (Compatta)")
-    
-    # ═══ JAVASCRIPT: forza orientamento landscape su mobile ═══
-    # ═══ CSS: nasconde +/- e compatta gli input ═══
-    # ═══ CSS: mostra avviso se il telefono è in portrait ═══
-    st.markdown("""
-        <style>
-        .mobile-match-card {
-            border-bottom: 1px solid rgba(255,255,255,0.06);
-            padding: 7px 0 9px 0;
-            margin-bottom: 5px;
-        }
-        div[data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            align-items: center !important;
-            justify-content: center !important;
-            gap: 1px !important;
-            max-width: 100% !important;
-            margin: 0 auto !important;
-            overflow: visible !important;
-        }
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
-            min-width: 0 !important;
-            padding: 0 !important;
-            margin: 0 !important;
-        }
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1),
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(4) {
-            flex: 1 1 70px !important;
-            width: 70px !important;
-        }
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2),
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) {
-            flex: 0 0 33px !important;
-            width: 33px !important;
-        }
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(5) {
-            flex: 0 0 28px !important;
-            width: 28px !important;
-            padding-left: 5px !important;
-        }
-        .mobile-match-label {
-            font-weight: 800;
-            font-size: 0.7rem;
-            line-height: 32px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            text-align: left;
-        }
-        .mobile-match-label.away {
-            text-align: right;
-        }
-        .mobile-score-row-marker {
-            display: none;
-        }
-        /* ===== NASCONDI STEPPER +/- ===== */
-        div[data-testid="stNumberInput"] button {
-            display: none !important;
-        }
-        div[data-testid="stNumberInput"] input::-webkit-outer-spin-button,
-        div[data-testid="stNumberInput"] input::-webkit-inner-spin-button {
-            -webkit-appearance: none !important;
-            margin: 0 !important;
-        }
-        div[data-testid="stNumberInput"] input[type="number"] {
-            -moz-appearance: textfield !important;
-        }
 
-        /* ===== INPUT NUMERICI MICRO ===== */
-        div[data-testid="stNumberInput"] {
-            max-width: 33px !important;
-        }
-        div[data-testid="stNumberInput"] div[data-baseweb="input"] {
-            padding: 0 !important;
-        }
-        div[data-testid="stNumberInput"] input {
-            padding: 2px 1px !important;
-            text-align: center !important;
-            font-weight: bold !important;
-            font-size: 0.82rem !important;
-            min-height: 27px !important;
-        }
-
-        /* ===== CHECKBOX COMPATTA ===== */
-        div[data-testid="stCheckbox"] {
-            margin-top: 0 !important;
-        }
-        div[data-testid="stHorizontalBlock"] div[data-testid="stCheckbox"] {
-            min-width: 20px !important;
-            width: 20px !important;
-        }
-
-        @media screen and (max-width: 480px) {
-            .appview-container .main .block-container {
-                padding-left: 0.25rem !important;
-                padding-right: 0.25rem !important;
-            }
-            div[data-testid="stHorizontalBlock"] {
-                max-width: 100% !important;
-                gap: 1px !important;
-            }
-            div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1),
-            div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(4) {
-                flex-basis: 62px !important;
-                width: 62px !important;
-            }
-            div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2),
-            div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) {
-                flex-basis: 30px !important;
-                width: 30px !important;
-            }
-            .mobile-match-label {
-                font-size: 0.64rem;
-            }
-            div[data-testid="stNumberInput"] {
-                max-width: 30px !important;
-            }
-            div[data-testid="stNumberInput"] input {
-                font-size: 0.76rem !important;
-                min-height: 26px !important;
-            }
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-    for idx, row in df_giornata.iterrows():
-        casa, gio_c = parse_team_player(row['Casa'])
-        osp, gio_o = parse_team_player(row['Ospite'])
-        
-        if modalita_visualizzazione == 'giocatori':
-            label_c, label_o = gio_c, gio_o
-        elif modalita_visualizzazione == 'squadre':
-            label_c, label_o = casa, osp
-        else:
-            label_c, label_o = f"{casa} ({gio_c})", f"{osp} ({gio_o})"
-
-        # Chiavi sincronizzate con la vista standard/premium
-        key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
-        key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
-        key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
-
-        st.markdown("<div class='mobile-match-card'>", unsafe_allow_html=True)
-
-        casa_col, gol_casa_col, gol_ospite_col, osp_col, valida_col = st.columns([0.82, 0.24, 0.24, 0.82, 0.24], gap="small")
-        with casa_col:
-            st.markdown(f"<span class='mobile-score-row-marker'></span><div class='mobile-match-label'>{label_c}</div>", unsafe_allow_html=True)
-        with gol_casa_col:
-            st.number_input("GC", 0, 20, key=f"comp_{key_golcasa}",
-                            value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
-                            label_visibility="collapsed", disabled=row['Valida'])
-            st.session_state[key_golcasa] = st.session_state[f"comp_{key_golcasa}"]
-        with gol_ospite_col:
-            st.number_input("GO", 0, 20, key=f"comp_{key_golospite}",
-                            value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
-                            label_visibility="collapsed", disabled=row['Valida'])
-            st.session_state[key_golospite] = st.session_state[f"comp_{key_golospite}"]
-        with osp_col:
-            st.markdown(f"<div class='mobile-match-label away'>{label_o}</div>", unsafe_allow_html=True)
-        with valida_col:
-            st.checkbox("✓", key=f"comp_{key_valida}", value=bool(row['Valida']),
-                        label_visibility="collapsed",
-                        disabled=st.session_state.get('read_only', False))
-            st.session_state[key_valida] = st.session_state[f"comp_{key_valida}"]
-        st.markdown("</div>", unsafe_allow_html=True)
-
-                
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     try:
         print(f"[DEBUG] Inizio salvataggio risultati per girone: {girone_sel}, giornata: {giornata_sel}")
@@ -1720,8 +1494,40 @@ def main():
     # Attiva il sistema di keep-alive per mantenere la sessione durante le partite
     enable_session_keepalive()
 
-    # Avviso iniziale per mobile: la vista migliore e' in landscape.
-    mostra_avviso_landscape()
+    # Rilevamento automatico del dispositivo (PC vs Smartphone)
+    device_param = None
+    try:
+        if hasattr(st, 'query_params'):
+            device_param = st.query_params.get("device")
+    except Exception:
+        pass
+    if device_param not in ('pc', 'smartphone'):
+        try:
+            params = st.experimental_get_query_params()
+            if "device" in params and params["device"]:
+                device_param = params["device"][0]
+        except Exception:
+            pass
+
+    if device_param in ('pc', 'smartphone'):
+        if not st.session_state.get('dispositivo_rilevato', False):
+            st.session_state['tipo_vista_selezionata'] = device_param
+            st.session_state['tipo_vista_sidebar_widget'] = 'Smartphone' if device_param == 'smartphone' else 'PC'
+            st.session_state['tipo_vista_main_widget'] = 'Smartphone' if device_param == 'smartphone' else 'PC'
+            st.session_state['dispositivo_rilevato'] = True
+    elif not st.session_state.get('dispositivo_rilevato', False):
+        components.html("""
+            <script>
+            try {
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (window.parent && window.parent.innerWidth < 800);
+                const targetView = isMobile ? 'smartphone' : 'pc';
+                const params = new URLSearchParams(window.parent.location.search);
+                params.set('device', targetView);
+                window.parent.location.search = params.toString();
+            } catch(e) {}
+            </script>
+        """, height=0, width=0)
+
 
     # Debug: mostra utente autenticato e ruolo
     if st.session_state.get("authenticated"):
@@ -1775,7 +1581,10 @@ def main():
     # --- Auto-load from URL param (es. ?torneo=nome_torneo) ---
     # usa experimental_get_query_params per compatibilità
     # usa st.query_params (nuova API stabile)
-    q = st.query_params
+    try:
+        q = dict(st.query_params)
+    except Exception:
+        q = {}
     if 'torneo' in q and q['torneo']:
         # con la nuova API è già una stringa, non più una lista
         raw_param = q['torneo']
@@ -2555,6 +2364,7 @@ def main():
                 vista_scelta = st.session_state.get('tipo_vista_selezionata', 'pc')
                 
                 if vista_scelta in ('smartphone', 'compact'):
+                    mostra_avviso_landscape()
                     mostra_calendario_compact(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
                 elif vista_scelta == 'pc':
                     mostra_calendario_pc(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
