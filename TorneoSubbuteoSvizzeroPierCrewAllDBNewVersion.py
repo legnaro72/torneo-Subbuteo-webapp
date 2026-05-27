@@ -138,11 +138,59 @@ BACKGROUND_AUDIO_URL = "https://raw.githubusercontent.com/legnaro72/torneo-Subbu
 # CSS personalizzato
 # -------------------------
 st.markdown("""
+<style>
+    .stLinkButton {
+        width: 100% !important;
+        margin: 0 !important;
+    }
+    .stLinkButton a {
+        width: 100% !important;
+        background-size: 200% auto !important;
+        background-image: linear-gradient(to right, var(--color-primary-mid) 0%, var(--color-primary-light) 50%, var(--color-primary-mid) 100%) !important;
+        color: white !important;
+        padding: 0.6em 1.5em !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        border-radius: 12px !important;
+        text-align: center !important;
+        text-decoration: none !important;
+        display: block !important;
+        font-size: 0.9em !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.5px !important;
+        text-transform: uppercase !important;
+        margin: 0 !important;
+        cursor: pointer !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+    }
+    .stLinkButton a:hover {
+        background-position: right center !important;
+        transform: translateY(-2px) scale(1.02) !important;
+        box-shadow: 0 8px 25px rgba(0,159,253,0.4) !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # Inietta tutti gli stili dal modulo condiviso
 inject_all_styles()
+st.markdown("""
+<style>
+    .appview-container .main .block-container,
+    section.main > div.block-container,
+    div[data-testid="stAppViewContainer"] .main .block-container,
+    div[data-testid="stMainBlockContainer"] {
+        padding-top: 0.35rem !important;
+    }
+    div[data-testid="stVerticalBlock"] > div:first-child {
+        margin-top: 0 !important;
+    }
+    div[data-testid="stMarkdownContainer"] h1,
+    div[data-testid="stMarkdownContainer"] h2,
+    div[data-testid="stMarkdownContainer"] h3 {
+        margin-top: 0 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # -------------------------
 # Connessione a MongoDB Atlas
@@ -184,13 +232,13 @@ else:
             tournaments_collection = db_tournaments.get_collection("PierCrewSvizzero")
             
     except Exception as e:
-        st.sidebar.error(f"❌ Errore di connessione a MongoDB: {e}")
+        st.sidebar.error(f"❌ Errore di connessione al servizio di salvataggio: {e}")
         st.sidebar.warning("""
         **Risoluzione problemi:**
         1. Verifica la tua connessione Internet
         2. Controlla il file .streamlit/secrets.toml
-        3. Assicurati che l'IP sia nella whitelist di MongoDB Atlas
-        4. Controlla che il tuo account MongoDB Atlas sia attivo
+        3. Verifica che l'accesso alla rete sia consentito
+        4. Controlla che il servizio di salvataggio sia attivo
         
         L'applicazione funzionerà in modalità offline con funzionalità limitate.
         """)
@@ -214,7 +262,7 @@ def salva_torneo_su_db(action_type="salvataggio", details=None):
         return False
         
     if tournaments_collection is None:
-        st.error("❌ Connessione a MongoDB non attiva, impossibile salvare.")
+        st.error("❌ Servizio di salvataggio non disponibile, impossibile salvare.")
         return False
     
     # Ottieni il nome utente corrente o 'sconosciuto' se non disponibile
@@ -358,7 +406,7 @@ def carica_nomi_tornei_da_db():
 def carica_torneo_da_db(nome_torneo):
     """Carica un singolo torneo dal DB e lo ripristina nello stato della sessione."""
     if tournaments_collection is None:
-        st.error("❌ Connessione a MongoDB non disponibile.")
+        st.error("❌ Servizio di salvataggio non disponibile.")
         return False
         
     try:
@@ -429,12 +477,12 @@ def carica_giocatori_da_db():
                 df = df.drop(columns=['_id'])
             
             if 'Giocatore' not in df.columns:
-                st.error("❌ Errore: la colonna 'Giocatore' non è presente nel database dei giocatori.")
+                st.error("❌ Errore: la colonna 'Giocatore' non è presente nell'elenco giocatori.")
                 return pd.DataFrame()
             
             return df
         except Exception as e:
-            st.error(f"❌ Errore durante la lettura dalla collection dei giocatori: {e}")
+            st.error(f"❌ Errore durante la lettura dell'elenco giocatori: {e}")
             return pd.DataFrame()
     return pd.DataFrame()
 
@@ -1077,7 +1125,77 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
     """Visualizza gli incontri del turno attivo e permette di inserire e validare i risultati."""
     tipo_vista = st.session_state.get('tipo_vista_selezionata', 'compact').lower()
     
-    if tipo_vista in ['compact', 'premium']:
+    if tipo_vista == 'compact':
+        st.markdown("""
+        <style>
+        .pc-match-label {
+            font-weight: 800;
+            font-size: 0.9rem;
+            line-height: 36px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .pc-match-label.home {
+            text-align: right;
+            padding-right: 10px;
+        }
+        .pc-match-label.away {
+            text-align: left;
+            padding-left: 10px;
+        }
+        .pc-match-separator {
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            margin: 8px 0 12px;
+        }
+        div[data-testid="stNumberInput"] button {
+            display: none !important;
+        }
+        div[data-testid="stNumberInput"] input {
+            text-align: center !important;
+            font-weight: bold !important;
+        }
+        @media screen and (max-width: 640px) {
+            .pc-match-label,
+            .pc-match-label.home,
+            .pc-match-label.away {
+                text-align: center !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                font-size: 0.92rem !important;
+                line-height: 1.2 !important;
+                margin: 6px auto 5px !important;
+                max-width: 220px !important;
+            }
+            div[data-testid="stNumberInput"] {
+                width: 64px !important;
+                max-width: 64px !important;
+                margin: 0 auto 8px auto !important;
+            }
+            div[data-testid="stNumberInput"] > div,
+            div[data-testid="stNumberInput"] div[data-baseweb="input"] {
+                width: 64px !important;
+                max-width: 64px !important;
+                padding: 0 !important;
+            }
+            div[data-testid="stNumberInput"] input {
+                width: 64px !important;
+                min-height: 34px !important;
+                font-size: 1rem !important;
+                text-align: center !important;
+            }
+            div[data-testid="stCheckbox"] {
+                width: fit-content !important;
+                margin: 4px auto 8px auto !important;
+            }
+            .pc-match-separator {
+                margin: 14px 0 18px !important;
+            }
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+    elif tipo_vista == 'premium':
         st.markdown("""
         <style>
         div[data-testid="stNumberInput"] button { display: none !important; }
@@ -1111,19 +1229,17 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
         try { if (screen.orientation && screen.orientation.lock) { screen.orientation.lock('landscape').catch(()=>{}); } } catch(e) {}
         </script>
         """, unsafe_allow_html=True)
-        
-        if tipo_vista == 'premium':
-            st.markdown("""
-            <style>
-            .match-header-premium {
-                background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
-                color: white; text-align: center; padding: 4px; font-size: 0.75rem;
-                font-weight: 800; border-radius: 8px 8px 0 0; text-transform: uppercase;
-                letter-spacing: 1px; margin-top: -16px; margin-left: -16px; margin-right: -16px; margin-bottom: 15px;
-            }
-            .team-name-premium { font-weight: 700; font-size: 1.1rem; padding-top: 5px; }
-            </style>
-            """, unsafe_allow_html=True)
+        st.markdown("""
+        <style>
+        .match-header-premium {
+            background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
+            color: white; text-align: center; padding: 4px; font-size: 0.75rem;
+            font-weight: 800; border-radius: 8px 8px 0 0; text-transform: uppercase;
+            letter-spacing: 1px; margin-top: -16px; margin-left: -16px; margin-right: -16px; margin-bottom: 15px;
+        }
+        .team-name-premium { font-weight: 700; font-size: 1.1rem; padding-top: 5px; }
+        </style>
+        """, unsafe_allow_html=True)
 
     for i, riga in df_turno_corrente.iterrows():
         casa = riga['Casa']
@@ -1172,19 +1288,34 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
         
         # --- UI Rendering in base al tipo di vista ---
         if tipo_vista == 'compact':
-            c1, c2, c3, c4, c5, c6 = st.columns([3, 0.8, 0.3, 0.8, 3, 0.7])
-            with c1:
-                st.markdown(f"<div style='text-align:right; font-weight:700; font-size:0.78rem; padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{label_c}</div>", unsafe_allow_html=True)
-            with c2:
-                st.session_state.risultati_temp[key_gc] = st.number_input("GC", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_gc], key=key_gc, label_visibility="collapsed", disabled=is_disabled)
-            with c3:
-                st.markdown("<div style='text-align:center; font-weight:bold; font-size:0.8rem; padding-top:6px;'>-</div>", unsafe_allow_html=True)
-            with c4:
-                st.session_state.risultati_temp[key_go] = st.number_input("GO", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_go], key=key_go, label_visibility="collapsed", disabled=is_disabled)
-            with c5:
-                st.markdown(f"<div style='text-align:left; font-weight:700; font-size:0.78rem; padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{label_o}</div>", unsafe_allow_html=True)
-            with c6:
-                validata_checkbox = st.checkbox("✓", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key, label_visibility="collapsed")
+            casa_col, gol_casa_col, gol_ospite_col, osp_col, valida_col = st.columns([2.2, 0.36, 0.36, 2.2, 0.42], gap="small")
+            with casa_col:
+                st.markdown(f"<div class='pc-match-label home'>{label_c}</div>", unsafe_allow_html=True)
+            with gol_casa_col:
+                st.session_state.risultati_temp[key_gc] = st.number_input(
+                    "GC",
+                    min_value=0,
+                    max_value=20,
+                    value=st.session_state.risultati_temp[key_gc],
+                    key=key_gc,
+                    label_visibility="collapsed",
+                    disabled=is_disabled,
+                )
+            with gol_ospite_col:
+                st.session_state.risultati_temp[key_go] = st.number_input(
+                    "GO",
+                    min_value=0,
+                    max_value=20,
+                    value=st.session_state.risultati_temp[key_go],
+                    key=key_go,
+                    label_visibility="collapsed",
+                    disabled=is_disabled,
+                )
+            with osp_col:
+                st.markdown(f"<div class='pc-match-label away'>{label_o}</div>", unsafe_allow_html=True)
+            with valida_col:
+                validata_checkbox = st.checkbox("Validata", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key, label_visibility="collapsed")
+            st.markdown("<div class='pc-match-separator'></div>", unsafe_allow_html=True)
                 
         elif tipo_vista == 'premium':
             with st.container(border=True):
@@ -1208,9 +1339,9 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
                 st.markdown(f"<p style='text-align:center; font-weight:bold;'>🏠{label_c} 🆚 {label_o}🛫</p>", unsafe_allow_html=True)
                 c_score1, c_score2 = st.columns(2)
                 with c_score1:
-                    st.session_state.risultati_temp[key_gc] = st.number_input(f"Gol {casa}", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_gc], key=key_gc, disabled=is_disabled)
+                    st.session_state.risultati_temp[key_gc] = st.number_input("GC", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_gc], key=key_gc, disabled=is_disabled, label_visibility="collapsed")
                 with c_score2:
-                    st.session_state.risultati_temp[key_go] = st.number_input(f"Gol {ospite}", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_go], key=key_go, disabled=is_disabled)
+                    st.session_state.risultati_temp[key_go] = st.number_input("GO", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_go], key=key_go, disabled=is_disabled, label_visibility="collapsed")
                 st.markdown("---")
                 validata_checkbox = st.checkbox("✅ Valida Risultato", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key)
 
@@ -1346,32 +1477,54 @@ if st.session_state.get('torneo_finito', False):
 # -------------------------
 if not st.session_state.torneo_iniziato and st.session_state.setup_mode is None:
     st.markdown("### Scegli azione 📝")
-    c1, c2 = st.columns([1,1])
+    c1, c2, c3 = st.columns([1,1,1])
     with c1:
         with st.container(border=True):
             st.markdown(
                 """<div style='text-align:center'>
-                    <h2>📂 Carica torneo</h2>
-                    <p style='margin:0.2rem 0 1rem 0'>Visualizza o riprendi un torneo esistente</p>
+                    <h2>📂 Carica torneo svizzero esistente</h2>
+                    <p style='margin:0.2rem 0 1rem 0'>Visualizza o riprendi un torneo svizzero salvato</p>
                     </div>""",
                 unsafe_allow_html=True,
             )
-            if st.button("Carica torneo 📂", key="btn_carica", width="stretch"):
-                st.session_state.setup_mode = "carica_db"
-                st.session_state.torneo_finito = False
-                st.rerun()
+            with st.spinner("Caricamento elenco tornei..."):
+                tornei_disponibili = carica_nomi_tornei_da_db()
+
+            if tornei_disponibili:
+                torneo_scelto = st.selectbox(
+                    "Seleziona torneo svizzero salvato",
+                    options=tornei_disponibili,
+                    index=None,
+                    placeholder="Scegli un torneo svizzero...",
+                    key="select_torneo_svizzero_iniziale"
+                )
+            else:
+                torneo_scelto = None
+                st.info("ℹ️ Nessun torneo svizzero salvato disponibile.")
+
+            if st.button("Apri torneo svizzero 📂", key="btn_carica", width="stretch", disabled=not bool(tornei_disponibili)):
+                if not torneo_scelto:
+                    st.warning("Seleziona un torneo svizzero salvato prima di continuare.")
+                    st.stop()
+                with st.spinner(f"Caricamento del torneo {torneo_scelto}..."):
+                    if carica_torneo_da_db(torneo_scelto):
+                        st.session_state.torneo_iniziato = True
+                        st.session_state.setup_mode = None
+                        st.toast(f"✅ Torneo '{torneo_scelto}' caricato con successo!")
+                        st.session_state.torneo_finito = False
+                        st.rerun()
     with c2:
         with st.container(border=True):
             st.markdown(
                 """<div style='text-align:center'>
-                    <h2>✨ Crea nuovo torneo</h2>
+                    <h2>✨ Nuovo torneo svizzero</h2>
                     <p style='margin:0.2rem 0 1rem 0'>Genera primo turno scegliendo giocatori del Club PierCrew</p>
                     </div>""",
                 unsafe_allow_html=True,
             )
             # Convert NumPy boolean to Python boolean for the disabled state
             is_disabled_new = bool(not verify_write_access())
-            if st.button("Nuovo torneo ✨", key="btn_nuovo", width="stretch", disabled=is_disabled_new):
+            if st.button("Nuovo torneo svizzero ✨", key="btn_nuovo", width="stretch"):
                 if verify_write_access():
                     st.session_state.setup_mode = "nuovo"
                     st.session_state.nuovo_torneo_step = 0
@@ -1388,6 +1541,17 @@ if not st.session_state.torneo_iniziato and st.session_state.setup_mode is None:
                 st.session_state.gioc_info = {} # Reset del dizionario per la nuova grafica
                 st.rerun()
 
+    with c3:
+        with st.container(border=True):
+            st.markdown(
+                """<div style='text-align:center'>
+                    <h2>🏠 Torna all'hub tornei</h2>
+                    <p style='margin:0.2rem 0 1rem 0'>Rientra alla scelta delle modalità</p>
+                    </div>""",
+                unsafe_allow_html=True,
+            )
+            st.link_button("Torna all'hub tornei 🏠", HUB_URL, width="stretch")
+
     st.markdown("---")
 
 if "mostra_incontri_disputati" not in st.session_state:
@@ -1401,25 +1565,25 @@ if st.session_state.setup_mode == "carica_db":
     if not verify_write_access():
         st.warning("🔒 Modalità di sola lettura: non è possibile modificare i tornei")
     
-    st.markdown("#### 📥 Carica torneo da MongoDB")
+    st.markdown("#### 📥 Carica torneo svizzero esistente")
     with st.spinner("Caricamento elenco tornei..."):
         tornei_disponibili = carica_nomi_tornei_da_db()
     
     if not tornei_disponibili:
-        st.warning("Nessun torneo trovato nel database.")
+        st.warning("Nessun torneo svizzero salvato disponibile.")
         if st.button("Torna indietro"):
             st.session_state.setup_mode = None
             st.rerun()
     else:
         torneo_scelto = st.selectbox(
-            "Seleziona il torneo da caricare",
+            "Seleziona torneo svizzero salvato",
             options=tornei_disponibili,
             index=None,
             placeholder="Scegli un torneo..."
         )
         
         if torneo_scelto:
-            if st.button("Carica torneo"):
+            if st.button("Apri torneo svizzero"):
                 with st.spinner(f"Caricamento del torneo {torneo_scelto}..."):
                     if carica_torneo_da_db(torneo_scelto):
                         st.session_state.torneo_iniziato = True
@@ -2117,3 +2281,5 @@ if st.session_state.torneo_finito:
 # Footer leggero
 st.markdown("---")
 st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
+
+

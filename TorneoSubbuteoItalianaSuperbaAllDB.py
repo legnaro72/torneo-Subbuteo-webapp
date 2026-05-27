@@ -620,7 +620,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizza
                     key=key_golcasa,
                     value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
                     disabled=row['Valida'],
-                    #label_visibility="hidden"
+                    label_visibility="collapsed"
                 )
           
             with c_score2:
@@ -632,7 +632,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizza
                     key=key_golospite,
                     value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
                     disabled=row['Valida'],
-                    #label_visibility="hidden"
+                    label_visibility="collapsed"
                 )
             
             st.divider()
@@ -1511,9 +1511,9 @@ def main():
 
     if device_param in ('pc', 'smartphone'):
         if not st.session_state.get('dispositivo_rilevato', False):
-            st.session_state['tipo_vista_selezionata'] = device_param
-            st.session_state['tipo_vista_sidebar_widget'] = 'Smartphone' if device_param == 'smartphone' else 'Compact'
-            st.session_state['tipo_vista_main_widget'] = 'Smartphone' if device_param == 'smartphone' else 'Compact'
+            st.session_state['tipo_vista_selezionata'] = 'pc'
+            st.session_state['tipo_vista_sidebar_widget'] = 'Compact'
+            st.session_state['tipo_vista_main_widget'] = 'Compact'
             st.session_state['dispositivo_rilevato'] = True
     elif not st.session_state.get('dispositivo_rilevato', False):
         components.html("""
@@ -1781,8 +1781,12 @@ def main():
         # --- FUNZIONI DI SINCRONIZZAZIONE ---
         def sync_tipo_vista(source_key):
             val = st.session_state[source_key]
-            # 'Compact' viene mappato internamente a 'pc' per non confliggere con la vista smartphone/compact
-            mappa_interna = {'compact': 'pc'}
+            # Mappa sia 'compact' sia 'smartphone' a 'pc'
+            mappa_interna = {
+                'compact': 'pc',
+                'smartphone': 'pc',
+                'pc': 'pc'
+            }
             st.session_state['tipo_vista_selezionata'] = mappa_interna.get(val.lower(), val.lower())
             st.session_state['tipo_vista_sidebar_widget'] = val
             st.session_state['tipo_vista_main_widget'] = val
@@ -1834,16 +1838,16 @@ def main():
             # Radio button per tipo di vista (Sincronizzato con la pagina principale)
             view_labels = {
                 'pc': 'Compact',
-                'compact': 'Smartphone',
-                'smartphone': 'Smartphone',
+                'compact': 'Compact',
+                'smartphone': 'Compact',
                 'premium': 'Premium',
                 'standard': 'Standard'
             }
-            current_view = view_labels.get(st.session_state.get('tipo_vista_selezionata', 'pc'), 'Compact')
+            current_view = view_labels.get(st.session_state.get('tipo_vista_selezionata', 'pc').lower(), 'Compact')
             st.radio(
                 "Tipo di vista:",
-                ("Compact", "Smartphone", "Premium", "Standard"),
-                index=("Compact", "Smartphone", "Premium", "Standard").index(current_view),
+                ("Compact", "Premium", "Standard"),
+                index=("Compact", "Premium", "Standard").index(current_view),
                 key="tipo_vista_sidebar_widget",
                 on_change=sync_tipo_vista,
                 args=("tipo_vista_sidebar_widget",)

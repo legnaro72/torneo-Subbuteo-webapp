@@ -1125,7 +1125,77 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
     """Visualizza gli incontri del turno attivo e permette di inserire e validare i risultati."""
     tipo_vista = st.session_state.get('tipo_vista_selezionata', 'compact').lower()
     
-    if tipo_vista in ['compact', 'premium']:
+    if tipo_vista == 'compact':
+        st.markdown("""
+        <style>
+        .pc-match-label {
+            font-weight: 800;
+            font-size: 0.9rem;
+            line-height: 36px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .pc-match-label.home {
+            text-align: right;
+            padding-right: 10px;
+        }
+        .pc-match-label.away {
+            text-align: left;
+            padding-left: 10px;
+        }
+        .pc-match-separator {
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            margin: 8px 0 12px;
+        }
+        div[data-testid="stNumberInput"] button {
+            display: none !important;
+        }
+        div[data-testid="stNumberInput"] input {
+            text-align: center !important;
+            font-weight: bold !important;
+        }
+        @media screen and (max-width: 640px) {
+            .pc-match-label,
+            .pc-match-label.home,
+            .pc-match-label.away {
+                text-align: center !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                font-size: 0.92rem !important;
+                line-height: 1.2 !important;
+                margin: 6px auto 5px !important;
+                max-width: 220px !important;
+            }
+            div[data-testid="stNumberInput"] {
+                width: 64px !important;
+                max-width: 64px !important;
+                margin: 0 auto 8px auto !important;
+            }
+            div[data-testid="stNumberInput"] > div,
+            div[data-testid="stNumberInput"] div[data-baseweb="input"] {
+                width: 64px !important;
+                max-width: 64px !important;
+                padding: 0 !important;
+            }
+            div[data-testid="stNumberInput"] input {
+                width: 64px !important;
+                min-height: 34px !important;
+                font-size: 1rem !important;
+                text-align: center !important;
+            }
+            div[data-testid="stCheckbox"] {
+                width: fit-content !important;
+                margin: 4px auto 8px auto !important;
+            }
+            .pc-match-separator {
+                margin: 14px 0 18px !important;
+            }
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+    elif tipo_vista == 'premium':
         st.markdown("""
         <style>
         div[data-testid="stNumberInput"] button { display: none !important; }
@@ -1159,19 +1229,17 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
         try { if (screen.orientation && screen.orientation.lock) { screen.orientation.lock('landscape').catch(()=>{}); } } catch(e) {}
         </script>
         """, unsafe_allow_html=True)
-        
-        if tipo_vista == 'premium':
-            st.markdown("""
-            <style>
-            .match-header-premium {
-                background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
-                color: white; text-align: center; padding: 4px; font-size: 0.75rem;
-                font-weight: 800; border-radius: 8px 8px 0 0; text-transform: uppercase;
-                letter-spacing: 1px; margin-top: -16px; margin-left: -16px; margin-right: -16px; margin-bottom: 15px;
-            }
-            .team-name-premium { font-weight: 700; font-size: 1.1rem; padding-top: 5px; }
-            </style>
-            """, unsafe_allow_html=True)
+        st.markdown("""
+        <style>
+        .match-header-premium {
+            background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
+            color: white; text-align: center; padding: 4px; font-size: 0.75rem;
+            font-weight: 800; border-radius: 8px 8px 0 0; text-transform: uppercase;
+            letter-spacing: 1px; margin-top: -16px; margin-left: -16px; margin-right: -16px; margin-bottom: 15px;
+        }
+        .team-name-premium { font-weight: 700; font-size: 1.1rem; padding-top: 5px; }
+        </style>
+        """, unsafe_allow_html=True)
 
     for i, riga in df_turno_corrente.iterrows():
         casa = riga['Casa']
@@ -1220,19 +1288,34 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
         
         # --- UI Rendering in base al tipo di vista ---
         if tipo_vista == 'compact':
-            c1, c2, c3, c4, c5, c6 = st.columns([3, 0.8, 0.3, 0.8, 3, 0.7])
-            with c1:
-                st.markdown(f"<div style='text-align:right; font-weight:700; font-size:0.78rem; padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{label_c}</div>", unsafe_allow_html=True)
-            with c2:
-                st.session_state.risultati_temp[key_gc] = st.number_input("GC", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_gc], key=key_gc, label_visibility="collapsed", disabled=is_disabled)
-            with c3:
-                st.markdown("<div style='text-align:center; font-weight:bold; font-size:0.8rem; padding-top:6px;'>-</div>", unsafe_allow_html=True)
-            with c4:
-                st.session_state.risultati_temp[key_go] = st.number_input("GO", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_go], key=key_go, label_visibility="collapsed", disabled=is_disabled)
-            with c5:
-                st.markdown(f"<div style='text-align:left; font-weight:700; font-size:0.78rem; padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{label_o}</div>", unsafe_allow_html=True)
-            with c6:
-                validata_checkbox = st.checkbox("✓", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key, label_visibility="collapsed")
+            casa_col, gol_casa_col, gol_ospite_col, osp_col, valida_col = st.columns([2.2, 0.36, 0.36, 2.2, 0.42], gap="small")
+            with casa_col:
+                st.markdown(f"<div class='pc-match-label home'>{label_c}</div>", unsafe_allow_html=True)
+            with gol_casa_col:
+                st.session_state.risultati_temp[key_gc] = st.number_input(
+                    "GC",
+                    min_value=0,
+                    max_value=20,
+                    value=st.session_state.risultati_temp[key_gc],
+                    key=key_gc,
+                    label_visibility="collapsed",
+                    disabled=is_disabled,
+                )
+            with gol_ospite_col:
+                st.session_state.risultati_temp[key_go] = st.number_input(
+                    "GO",
+                    min_value=0,
+                    max_value=20,
+                    value=st.session_state.risultati_temp[key_go],
+                    key=key_go,
+                    label_visibility="collapsed",
+                    disabled=is_disabled,
+                )
+            with osp_col:
+                st.markdown(f"<div class='pc-match-label away'>{label_o}</div>", unsafe_allow_html=True)
+            with valida_col:
+                validata_checkbox = st.checkbox("Validata", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key, label_visibility="collapsed")
+            st.markdown("<div class='pc-match-separator'></div>", unsafe_allow_html=True)
                 
         elif tipo_vista == 'premium':
             with st.container(border=True):
@@ -1256,9 +1339,9 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
                 st.markdown(f"<p style='text-align:center; font-weight:bold;'>🏠{label_c} 🆚 {label_o}🛫</p>", unsafe_allow_html=True)
                 c_score1, c_score2 = st.columns(2)
                 with c_score1:
-                    st.session_state.risultati_temp[key_gc] = st.number_input(f"Gol {casa}", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_gc], key=key_gc, disabled=is_disabled)
+                    st.session_state.risultati_temp[key_gc] = st.number_input("GC", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_gc], key=key_gc, disabled=is_disabled, label_visibility="collapsed")
                 with c_score2:
-                    st.session_state.risultati_temp[key_go] = st.number_input(f"Gol {ospite}", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_go], key=key_go, disabled=is_disabled)
+                    st.session_state.risultati_temp[key_go] = st.number_input("GO", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_go], key=key_go, disabled=is_disabled, label_visibility="collapsed")
                 st.markdown("---")
                 validata_checkbox = st.checkbox("✅ Valida Risultato", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key)
 
@@ -2198,3 +2281,5 @@ if st.session_state.torneo_finito:
 # Footer leggero
 st.markdown("---")
 st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
+
+

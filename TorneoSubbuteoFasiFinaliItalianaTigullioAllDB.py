@@ -93,34 +93,56 @@ st.markdown("""
 <style>
     .stLinkButton {
         width: 100% !important;
-        margin: 10px 0;
+        margin: 0 !important;
     }
     .stLinkButton a {
-        width: 100%;
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important;
+        width: 100% !important;
+        background-size: 200% auto !important;
+        background-image: linear-gradient(to right, var(--color-primary-mid) 0%, var(--color-primary-light) 50%, var(--color-primary-mid) 100%) !important;
         color: white !important;
-        padding: 10px 20px !important;
-        border: none !important;
-        border-radius: 8px !important;
+        padding: 0.6em 1.5em !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        border-radius: 12px !important;
         text-align: center !important;
         text-decoration: none !important;
-        display: inline-block !important;
-        font-size: 16px !important;
-        margin: 4px 2px !important;
+        display: block !important;
+        font-size: 0.9em !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.5px !important;
+        text-transform: uppercase !important;
+        margin: 0 !important;
         cursor: pointer !important;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
     }
     .stLinkButton a:hover {
-        background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%) !important;
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        background-position: right center !important;
+        transform: translateY(-2px) scale(1.02) !important;
+        box-shadow: 0 8px 25px rgba(0,159,253,0.4) !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # Inietta tutti gli stili dal modulo condiviso
 inject_all_styles()
+st.markdown("""
+<style>
+    .appview-container .main .block-container,
+    section.main > div.block-container,
+    div[data-testid="stAppViewContainer"] .main .block-container,
+    div[data-testid="stMainBlockContainer"] {
+        padding-top: 0.35rem !important;
+    }
+    div[data-testid="stVerticalBlock"] > div:first-child {
+        margin-top: 0 !important;
+    }
+    div[data-testid="stMarkdownContainer"] h1,
+    div[data-testid="stMarkdownContainer"] h2,
+    div[data-testid="stMarkdownContainer"] h3 {
+        margin-top: 0 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # ==============================================================================
 # 🛠️ UTILITY FUNZIONI
@@ -165,6 +187,7 @@ def tournament_is_complete(df: pd.DataFrame) -> tuple[bool, str]:
 
 def classifica_complessiva(df: pd.DataFrame) -> pd.DataFrame:
     """Calcola la classifica complessiva (tutte le partite validate), 2 punti vittoria / 1 pareggio."""
+    columns = ['Pos', 'Squadra', 'Punti', 'G', 'V', 'P', 'S', 'GF', 'GS', 'DR']
     partite = df[to_bool_series(df['Valida'])].copy()
     partite['GolCasa'] = pd.to_numeric(partite['GolCasa'], errors='coerce').fillna(0).astype(int)
     partite['GolOspite'] = pd.to_numeric(partite['GolOspite'], errors='coerce').fillna(0).astype(int)
@@ -218,7 +241,7 @@ def classifica_complessiva(df: pd.DataFrame) -> pd.DataFrame:
         rows.append({'Squadra': s, **d})
     dfc = pd.DataFrame(rows)
     if dfc.empty:
-        return dfc
+        return pd.DataFrame(columns=columns)
     dfc = dfc.sort_values(by=['Punti','DR','GF','V','Squadra'], ascending=[False, False, False, False, True]).reset_index(drop=True)
     dfc.index = dfc.index + 1
     dfc.insert(0, 'Pos', dfc.index)
@@ -627,7 +650,77 @@ def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
             return squadra.strip(), giocatore.strip()
         return val, ""
 
-    if tipo_vista in ['compact', 'premium']:
+    if tipo_vista == 'compact':
+        st.markdown("""
+        <style>
+        .pc-match-label {
+            font-weight: 800;
+            font-size: 0.9rem;
+            line-height: 36px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .pc-match-label.home {
+            text-align: right;
+            padding-right: 10px;
+        }
+        .pc-match-label.away {
+            text-align: left;
+            padding-left: 10px;
+        }
+        .pc-match-separator {
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            margin: 8px 0 12px;
+        }
+        div[data-testid="stNumberInput"] button {
+            display: none !important;
+        }
+        div[data-testid="stNumberInput"] input {
+            text-align: center !important;
+            font-weight: bold !important;
+        }
+        @media screen and (max-width: 640px) {
+            .pc-match-label,
+            .pc-match-label.home,
+            .pc-match-label.away {
+                text-align: center !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                font-size: 0.92rem !important;
+                line-height: 1.2 !important;
+                margin: 6px auto 5px !important;
+                max-width: 220px !important;
+            }
+            div[data-testid="stNumberInput"] {
+                width: 64px !important;
+                max-width: 64px !important;
+                margin: 0 auto 8px auto !important;
+            }
+            div[data-testid="stNumberInput"] > div,
+            div[data-testid="stNumberInput"] div[data-baseweb="input"] {
+                width: 64px !important;
+                max-width: 64px !important;
+                padding: 0 !important;
+            }
+            div[data-testid="stNumberInput"] input {
+                width: 64px !important;
+                min-height: 34px !important;
+                font-size: 1rem !important;
+                text-align: center !important;
+            }
+            div[data-testid="stCheckbox"] {
+                width: fit-content !important;
+                margin: 4px auto 8px auto !important;
+            }
+            .pc-match-separator {
+                margin: 14px 0 18px !important;
+            }
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+    elif tipo_vista == 'premium':
         st.markdown("""
         <style>
         div[data-testid="stNumberInput"] button { display: none !important; }
@@ -661,19 +754,17 @@ def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
         try { if (screen.orientation && screen.orientation.lock) { screen.orientation.lock('landscape').catch(()=>{}); } } catch(e) {}
         </script>
         """, unsafe_allow_html=True)
-        
-        if tipo_vista == 'premium':
-            st.markdown("""
-            <style>
-            .match-header-premium {
-                background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
-                color: white; text-align: center; padding: 4px; font-size: 0.75rem;
-                font-weight: 800; border-radius: 8px 8px 0 0; text-transform: uppercase;
-                letter-spacing: 1px; margin-top: -16px; margin-left: -16px; margin-right: -16px; margin-bottom: 15px;
-            }
-            .team-name-premium { font-weight: 700; font-size: 1.1rem; padding-top: 5px; }
-            </style>
-            """, unsafe_allow_html=True)
+        st.markdown("""
+        <style>
+        .match-header-premium {
+            background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
+            color: white; text-align: center; padding: 4px; font-size: 0.75rem;
+            font-weight: 800; border-radius: 8px 8px 0 0; text-transform: uppercase;
+            letter-spacing: 1px; margin-top: -16px; margin-left: -16px; margin-right: -16px; margin-bottom: 15px;
+        }
+        .team-name-premium { font-weight: 700; font-size: 1.1rem; padding-top: 5px; }
+        </style>
+        """, unsafe_allow_html=True)
 
     for idx, match in df_temp.iterrows():
         key_gol_a = f"ko_gola_{round_idx}_{idx}"
@@ -703,20 +794,19 @@ def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
         is_disabled = st.session_state[key_valida] or not has_write_access
 
         if tipo_vista == 'compact':
-            c1, c2, c3, c4, c5, c6 = st.columns([3, 0.8, 0.3, 0.8, 3, 0.7])
-            with c1:
-                st.markdown(f"<div style='text-align:right; font-weight:700; font-size:0.78rem; padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{label_a}</div>", unsafe_allow_html=True)
-            with c2:
+            casa_col, gol_casa_col, gol_ospite_col, osp_col, valida_col = st.columns([2.2, 0.36, 0.36, 2.2, 0.42], gap="small")
+            with casa_col:
+                st.markdown(f"<div class='pc-match-label home'>{label_a}</div>", unsafe_allow_html=True)
+            with gol_casa_col:
                 st.number_input("Gol Casa", min_value=0, max_value=20, key=key_gol_a, disabled=is_disabled, label_visibility="collapsed")
-            with c3:
-                st.markdown("<div style='text-align:center; font-weight:bold; font-size:0.8rem; padding-top:6px;'>-</div>", unsafe_allow_html=True)
-            with c4:
+            with gol_ospite_col:
                 st.number_input("Gol Ospite", min_value=0, max_value=20, key=key_gol_b, disabled=is_disabled, label_visibility="collapsed")
-            with c5:
-                st.markdown(f"<div style='text-align:left; font-weight:700; font-size:0.78rem; padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{label_b}</div>", unsafe_allow_html=True)
-            with c6:
+            with osp_col:
+                st.markdown(f"<div class='pc-match-label away'>{label_b}</div>", unsafe_allow_html=True)
+            with valida_col:
                 if has_write_access:
-                    st.checkbox("✓", key=key_valida, disabled=not has_write_access, label_visibility="collapsed")
+                    st.checkbox("Validata", key=key_valida, disabled=not has_write_access, label_visibility="collapsed")
+            st.markdown("<div class='pc-match-separator'></div>", unsafe_allow_html=True)
                     
         elif tipo_vista == 'premium':
             with st.container(border=True):
@@ -744,9 +834,9 @@ def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
                 
                 c_score1, c_score2 = st.columns(2)
                 with c_score1:
-                    st.number_input("Gol Casa", min_value=0, max_value=20, key=key_gol_a, disabled=is_disabled, label_visibility="hidden")
+                    st.number_input("GC", min_value=0, max_value=20, key=key_gol_a, disabled=is_disabled, label_visibility="collapsed")
                 with c_score2:
-                    st.number_input("Gol Ospite", min_value=0, max_value=20, key=key_gol_b, disabled=is_disabled, label_visibility="hidden")
+                    st.number_input("GO", min_value=0, max_value=20, key=key_gol_b, disabled=is_disabled, label_visibility="collapsed")
                 
                 st.markdown("---")
                 if has_write_access:
@@ -1587,7 +1677,16 @@ def main():
         # --- FUNZIONI DI SINCRONIZZAZIONE ---
         def sync_tipo_vista(source_key):
             val = st.session_state[source_key]
-            st.session_state['tipo_vista_selezionata'] = val.lower()
+            # Mappa sia 'compact', 'smartphone', sia 'pc' a 'compact'
+            mappa_interna = {
+                'compact': 'compact',
+                'smartphone': 'compact',
+                'pc': 'compact',
+                'premium': 'premium',
+                'standard': 'standard'
+            }
+            val_lower = val.lower()
+            st.session_state['tipo_vista_selezionata'] = mappa_interna.get(val_lower, val_lower)
             st.session_state['tipo_vista_sidebar_widget'] = val
             st.session_state['tipo_vista_main_widget'] = val
             
@@ -1617,7 +1716,14 @@ def main():
                 args=("radio_sidebar_ko",)
             )
             st.markdown("---")
-            current_view = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
+            view_labels = {
+                'pc': 'Compact',
+                'compact': 'Compact',
+                'smartphone': 'Compact',
+                'premium': 'Premium',
+                'standard': 'Standard'
+            }
+            current_view = view_labels.get(st.session_state.get('tipo_vista_selezionata', 'compact').lower(), 'Compact')
             st.radio(
                 "Tipo di vista:",
                 ("Compact", "Premium", "Standard"),
@@ -1661,7 +1767,7 @@ def main():
         
         # Se non c'è una connessione al database, mostra un messaggio di errore
         if tournaments_collection is None:
-            st.error("❌ Impossibile connettersi al database. Verifica la connessione e riprova.")
+            st.error("❌ Impossibile connettersi al servizio di salvataggio. Verifica la connessione e riprova.")
             st.markdown("---")
             if st.button("🔄 Ricarica la pagina", key="reload_page"):
                 st.rerun()
@@ -1674,26 +1780,48 @@ def main():
         # Se non è stata ancora fatta una selezione, mostra le due opzioni
         if st.session_state['opzione_selezione'] is None:
             st.markdown("### Scegli azione 📝")
-            c1, c2 = st.columns([1,1])
+            c1, c2, c3 = st.columns([1,1,1])
             
             with c1:
                 with st.container(border=True):
                     st.markdown(
                         """<div style='text-align:center'>
                         <h2>📂 Carica fase finale esistente</h2>
-                        <p style='margin:0.2rem 0 1rem 0'>Riprendi una fase finale salvata (MongoDB)</p>
+                        <p style='margin:0.2rem 0 1rem 0'>Riprendi una fase finale salvata</p>
                         </div>""",
                         unsafe_allow_html=True,
                     )
-                    if st.button("Carica fase finale esistente 📂", key="btn_carica_fase", width="stretch"):
+                    tornei_trovati = carica_tornei_da_db(
+                        tournaments_collection,
+                        prefix=["fasefinaleAGironi", "fasefinaleEliminazionediretta", "finito_Eliminazionediretta"]
+                    )
+                    if tornei_trovati:
+                        tornei_opzioni = {t['nome_torneo']: str(t['_id']) for t in tornei_trovati}
+                        scelta_torneo = st.selectbox(
+                            "Seleziona fase finale salvata",
+                            options=list(tornei_opzioni.keys()),
+                            index=None,
+                            placeholder="Scegli una fase finale...",
+                            key="select_fase_finale_iniziale"
+                        )
+                    else:
+                        tornei_opzioni = {}
+                        scelta_torneo = None
+                        st.info("ℹ️ Nessuna fase finale salvata disponibile.")
+                    if st.button("Apri fase finale 📂", key="btn_carica_fase", width="stretch", disabled=not bool(tornei_opzioni)):
+                        if not scelta_torneo:
+                            st.warning("Seleziona una fase finale salvata prima di continuare.")
+                            st.stop()
                         st.session_state['opzione_selezione'] = "Continuare una fase finale esistente"
+                        st.session_state['fase_finale_da_aprire_id'] = tornei_opzioni[scelta_torneo]
+                        st.session_state['fase_finale_da_aprire_nome'] = scelta_torneo
                         st.rerun()
 
             with c2:
                 with st.container(border=True):
                     st.markdown(
                         """<div style='text-align:center'>
-                        <h2>✨ Crea nuova fase finale</h2>
+                        <h2>✨ Nuova fase finale</h2>
                         <p style='margin:0.2rem 0 1rem 0'>Genera fase finale da torneo preliminare completato</p>
                         </div>""",
                         unsafe_allow_html=True,
@@ -1701,19 +1829,23 @@ def main():
                     # Check if user has write access for creating new phase
                     has_write_access = st.session_state.get("user", {}).get("role") not in ["ospite", "lettura"]
                     
-                    if st.button(
-                        "Crea nuova fase finale ✨", 
-                        key="btn_nuova_fase", 
-                        width="stretch",
-                        disabled=not has_write_access,
-                        help="Non disponibile in modalità ospite/lettura" if not has_write_access else "Crea una nuova fase finale da un torneo preliminare",
-                        on_click=lambda: st.error("⛔ Accesso negato. Solo gli utenti con permessi di scrittura possono creare nuove fasi finali.") if not has_write_access else None
-                    ):
+                    if st.button("Nuova fase finale ✨", key="btn_nuovo", width="stretch"):
                         if has_write_access:
                             st.session_state['opzione_selezione'] = "Creare una nuova fase finale"
                             st.rerun()
                         else:
                             st.error("⛔ Accesso in sola lettura. Non è possibile creare una nuova fase finale.")
+
+            with c3:
+                with st.container(border=True):
+                    st.markdown(
+                        """<div style='text-align:center'>
+                        <h2>🏠 Torna all'hub tornei</h2>
+                        <p style='margin:0.2rem 0 1rem 0'>Rientra alla scelta delle modalità</p>
+                        </div>""",
+                        unsafe_allow_html=True,
+                    )
+                    st.link_button("Torna all'hub tornei 🏠", HUB_URL, width="stretch")
             
             st.markdown("---")
             return
@@ -1735,7 +1867,7 @@ def main():
                 tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix=["completato_"])
                 st.subheader("Seleziona un torneo preliminare completato")
                 if not tornei_trovati:
-                    st.warning("⚠️ Nessun torneo 'COMPLETATO' trovato nel database.")
+                    st.warning("⚠️ Nessun torneo preliminare completato disponibile.")
                     st.markdown("---")
                     st.markdown("### Crea un nuovo torneo")
                     st.markdown("Per creare una nuova fase finale, è necessario prima completare un torneo preliminare.")
@@ -1804,10 +1936,13 @@ def main():
 
             #elif opzione_selezione == "Continuare una fase finale esistente":
         elif opzione_selezione == "Continuare una fase finale esistente":
-            tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix=["fasefinaleEliminazionediretta", "finito_Eliminazionediretta"])
+            tornei_trovati = carica_tornei_da_db(
+                tournaments_collection,
+                prefix=["fasefinaleAGironi", "fasefinaleEliminazionediretta", "finito_Eliminazionediretta"]
+            )
             st.subheader("Seleziona una fase finale esistente")
             if not tornei_trovati:
-                st.warning("⚠️ Nessuna fase finale esistente trovata nel database.")
+                st.warning("⚠️ Nessuna fase finale salvata disponibile.")
                 st.markdown("---")
                 st.markdown("### Crea una nuova fase finale")
                 st.markdown("Per creare una nuova fase finale, seleziona l'opzione 'Crea nuova fase finale' dal menu principale.")
@@ -1817,16 +1952,19 @@ def main():
                 return
             else:
                     tornei_opzioni = {t['nome_torneo']: str(t['_id']) for t in tornei_trovati}
+                    fase_da_aprire_nome = st.session_state.pop('fase_finale_da_aprire_nome', None)
+                    fase_da_aprire_id = st.session_state.pop('fase_finale_da_aprire_id', None)
                     scelta_torneo = st.selectbox(
                         "Seleziona la fase finale da continuare:",
                         options=list(tornei_opzioni.keys()),
+                        index=list(tornei_opzioni.keys()).index(fase_da_aprire_nome) if fase_da_aprire_nome in tornei_opzioni else 0,
                         key="select_torneo_esistente"
                     )
                     if scelta_torneo:
                         st.session_state['tournament_name'] = scelta_torneo
-                        tournament_id = tornei_opzioni[scelta_torneo]
+                        tournament_id = fase_da_aprire_id or tornei_opzioni[scelta_torneo]
                         st.session_state['tournament_id'] = tournament_id
-                        if st.button("Continua con questo torneo"):
+                        if fase_da_aprire_id or st.button("Apri fase finale"):
                             torneo_data = carica_torneo_da_db(tournaments_collection, tournament_id)
                             
                             if torneo_data:
@@ -1917,8 +2055,11 @@ def main():
                                     st.rerun()
                                 
                                 else:
-                                    st.error("❌ La fase finale a gironi non è gestita da questa web app.")
-                                    st.info(f"Utilizza l'altra web app per la gestione del torneo '{st.session_state['tournament_name']}'.")
+                                    st.session_state['df_finale_gironi'] = df_torneo_completo
+                                    st.session_state['giornate_mode'] = 'gironi'
+                                    st.session_state['fase_modalita'] = "Gironi"
+                                    st.session_state['ui_show_pre'] = False
+                                    st.rerun()
 
                             else:
                                 st.error("❌ Errore nel caricamento del torneo. Riprova.")
@@ -1941,6 +2082,10 @@ def main():
                 st.markdown("<h3 style='text-align: center;'>Classifica Fase Preliminare</h3>", unsafe_allow_html=True)
                 st.dataframe(df_classifica, width="stretch")
                 st.divider()
+
+                if df_classifica.empty or 'Squadra' not in df_classifica.columns:
+                    st.warning("Nessuna classifica preliminare disponibile: valida almeno una partita della fase precedente prima di creare le fasi finali.")
+                    st.stop()
 
                 st.header("🎲 Scegli la fase finale")
                 
@@ -2173,7 +2318,7 @@ def main():
                         tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
                         
                         if tournaments_collection is None:
-                            st.error("❌ Impossibile stabilire una connessione al database. Verifica la connessione e riprova.")
+                            st.error("❌ Impossibile stabilire una connessione al servizio di salvataggio. Verifica la connessione e riprova.")
                             st.stop()
                     
                         try:
@@ -2249,7 +2394,14 @@ def main():
                             args=("radio_main_ko",)
                         )
 
-                        tipo_vista_corrente = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
+                        view_labels = {
+                            'pc': 'Compact',
+                            'compact': 'Compact',
+                            'smartphone': 'Compact',
+                            'premium': 'Premium',
+                            'standard': 'Standard'
+                        }
+                        tipo_vista_corrente = view_labels.get(st.session_state.get('tipo_vista_selezionata', 'compact').lower(), 'Compact')
                         st.radio(
                             "Vista incontri:",
                             ("Compact", "Premium", "Standard"),
@@ -2418,3 +2570,6 @@ def main():
     
 if __name__ == "__main__":
     main()
+
+
+

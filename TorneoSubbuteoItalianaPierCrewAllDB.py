@@ -67,7 +67,7 @@ from common.ui_components import (
 
 
 def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, key_prefix: str = ""):
-    """Navigazione locale Italiana: mostra GIO n tra i bottoni."""
+    """Navigazione locale Italiana: mostra < GIO n > compatto su una riga."""
     st.markdown("""
         <style>
         div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) {
@@ -76,54 +76,73 @@ def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, k
             flex-wrap: nowrap !important;
             align-items: center !important;
             justify-content: center !important;
-            gap: 2px !important;
+            gap: 8px !important;
+            max-width: min(100%, 260px) !important;
+            margin: 0 auto !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"] {
+            flex: 0 0 auto !important;
+            width: auto !important;
+            min-width: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
         }
         div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:first-child,
         div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:last-child {
-            width: auto !important;
-            flex: 1 1 auto !important;
-            min-width: 0 !important;
-            padding: 0 !important;
-            margin: 0 !important;
+            width: 72px !important;
         }
         div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:nth-child(2) {
             width: 72px !important;
-            flex: 0 0 72px !important;
-            min-width: 72px !important;
-            max-width: 72px !important;
-            padding: 0 !important;
-            margin: 0 !important;
         }
         div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) button {
-            width: 100% !important;
-            min-width: 0 !important;
-            padding: 0.2rem 0 !important;
-            margin: 0 !important;
+            height: 32px !important;
+            min-height: 32px !important;
+            padding: 0 !important;
+            border-radius: 6px !important;
+            font-size: 0.78rem !important;
         }
         .nav-btn-marker {
             text-align: center;
             font-weight: 900;
-            font-size: 1rem;
-            line-height: 1.5rem;
+            font-size: 0.9rem;
+            line-height: 32px;
+            height: 32px;
             width: 100%;
             white-space: nowrap;
+        }
+        @media screen and (max-width: 480px) {
+            div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) {
+                max-width: 100% !important;
+                gap: 10px !important;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:first-child,
+            div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:last-child {
+                width: 96px !important;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:nth-child(2) {
+                width: 88px !important;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) button {
+                font-size: 0.82rem !important;
+                min-width: 0 !important;
+            }
         }
         p { margin-bottom: 0px; }
         </style>
     """, unsafe_allow_html=True)
 
     current = st.session_state.get(value_key, min_val)
-    display_label = f"GIO {current}"
-    col1, col2, col3 = st.columns([5, 1, 5])
-    with col1:
-        if st.button("◀", key=f"{key_prefix}nav_prev_{value_key}", use_container_width=True):
+    display_label = f"GIORNATA {current}"
+    col_prev, col_label, col_next = st.columns([1, 0.9, 1], gap="small")
+    with col_prev:
+        if st.button("◀", key=f"{key_prefix}nav_prev_{value_key}", width="stretch"):
             if current > min_val:
                 st.session_state[value_key] = current - 1
                 st.rerun()
-    with col2:
+    with col_label:
         st.markdown(f"<div class='nav-btn-marker'>{display_label}</div>", unsafe_allow_html=True)
-    with col3:
-        if st.button("▶", key=f"{key_prefix}nav_next_{value_key}", use_container_width=True):
+    with col_next:
+        if st.button("▶", key=f"{key_prefix}nav_next_{value_key}", width="stretch"):
             if current < max_val:
                 st.session_state[value_key] = current + 1
                 st.rerun()
@@ -226,7 +245,7 @@ DEFAULT_STATE = {
     'usa_multiselect_giocatori': True,  # Default True = Multiselect Giocatori
     'usa_nomi_come_squadre': False,
     'bg_audio_disabled': True,
-    'tipo_vista_selezionata': 'compact',
+    'tipo_vista_selezionata': 'pc',
     'modalita_scelta_sidebar': 'squadre',
     'modalita_visualizzazione_sidebar': 'Solo squadre',
     'modalita_visualizzazione_main_widget': 'Solo squadre',
@@ -234,7 +253,9 @@ DEFAULT_STATE = {
     'tipo_vista_main_widget': 'Compact',
     'modalita_navigazione_sidebar': True,
     'modalita_navigazione_main_widget': True,
-    'filtro_principale_selettore_main': 'Nessuno'
+    'filtro_principale_selettore_main': 'Nessuno',
+    'prova_forza_landscape': False,
+    'scelta_landscape_effettuata': False
 }
 
 for key, value in DEFAULT_STATE.items():
@@ -247,6 +268,33 @@ def reset_app_state():
             st.session_state.pop(key)
     st.session_state.update(DEFAULT_STATE)
     st.session_state['df_torneo'] = pd.DataFrame()
+
+def mostra_avviso_landscape():
+    """Mostra messaggio informativo per ruotare il telefono in orizzontale (solo smartphone)."""
+    st.markdown("""
+        <style>
+        .portrait-warning {
+            display: none;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: white;
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin: 8px 0 10px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        @media screen and (max-width: 640px) and (orientation: portrait) {
+            .portrait-warning { display: block !important; }
+        }
+        </style>
+        <div class="portrait-warning">
+            📱🔄 Ruota il telefono in <b>ORIZZONTALE</b> per la vista ottimizzata!
+        </div>
+    """, unsafe_allow_html=True)
+
 
 # -------------------------
 # FUNZIONI CONNESSIONE MONGO (SENZA SUCCESS VERDI)
@@ -268,10 +316,10 @@ def init_mongo_connection(uri, db_name, collection_name, show_ok: bool = False):
         col = db.get_collection(collection_name)
         _ = col.find_one({})
         if show_ok:
-            st.info(f"Connessione a {db_name}.{collection_name} ok.")
+            st.info("Connessione al servizio di salvataggio attiva.")
         return col
     except Exception as e:
-        st.error(f"❌ Errore di connessione a {db_name}.{collection_name}: {e}")
+        st.error(f"❌ Errore di connessione al servizio di salvataggio: {e}")
         return None
 
 # -------------------------
@@ -324,7 +372,7 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
             st.session_state['usa_bottoni_sidebar'] = True
             st.session_state['modalita_navigazione_sidebar'] = True
             st.session_state['modalita_navigazione_main_widget'] = True
-            st.session_state['tipo_vista_selezionata'] = 'compact'
+            st.session_state['tipo_vista_selezionata'] = 'pc'
             st.session_state['usa_multiselect_giocatori'] = True
         return torneo_data
     except Exception as e:
@@ -512,6 +560,27 @@ def parse_team_player(val):
         return squadra.strip(), giocatore.strip()
     return val, ""
 
+def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, key_prefix: str = ""):
+    """Navigazione giornata stabile su mobile: nessun bottone tagliato."""
+    current = st.session_state.get(value_key, min_val)
+
+    col_prev, col_label, col_next = st.columns([1, 1, 1], gap="small")
+    with col_prev:
+        if st.button("◀", key=f"{key_prefix}nav_prev_{value_key}", width="stretch"):
+            if current > min_val:
+                st.session_state[value_key] = current - 1
+                st.rerun()
+    with col_label:
+        st.markdown(
+            f"<div style='text-align:center;font-weight:900;padding-top:0.45rem;white-space:nowrap;'>GIORNATA {current}</div>",
+            unsafe_allow_html=True
+        )
+    with col_next:
+        if st.button("▶", key=f"{key_prefix}nav_next_{value_key}", width="stretch"):
+            if current < max_val:
+                st.session_state[value_key] = current + 1
+                st.rerun()
+
 def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizzazione):
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
@@ -551,7 +620,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizza
                     key=key_golcasa,
                     value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
                     disabled=row['Valida'],
-                    #label_visibility="hidden"
+                    label_visibility="collapsed"
                 )
           
             with c_score2:
@@ -563,7 +632,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizza
                     key=key_golospite,
                     value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
                     disabled=row['Valida'],
-                    #label_visibility="hidden"
+                    label_visibility="collapsed"
                 )
             
             st.divider()
@@ -613,47 +682,7 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
         font-size: 1.1rem;
         padding-top: 5px;
     }
-
-    /* ===== AVVISO PORTRAIT — visibile solo su telefoni in verticale ===== */
-    .portrait-warning {
-        display: none;
-        background: linear-gradient(135deg, #ff6b35, #f7931e);
-        color: white;
-        text-align: center;
-        padding: 12px;
-        border-radius: 8px;
-        font-weight: 700;
-        font-size: 0.9rem;
-        margin-bottom: 10px;
-        animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
-    }
-    @media screen and (max-width: 640px) and (orientation: portrait) {
-        .portrait-warning {
-            display: block !important;
-        }
-    }
     </style>
-    
-    <div class="portrait-warning">
-            Per una visualizzazione ottimale ruotare il telefono in orizzontale.
-    </div>
-    
-    <script>
-    // Tenta di bloccare l'orientamento in landscape (funziona solo se in fullscreen/PWA)
-    try {
-        if (screen.orientation && screen.orientation.lock) {
-            screen.orientation.lock('landscape').catch(function(e) {
-                console.log('Landscape lock non disponibile:', e.message);
-            });
-        }
-    } catch(e) {
-        console.log('Screen Orientation API non supportata');
-    }
-    </script>
     """, unsafe_allow_html=True)
 
     for idx, row in df_giornata.iterrows():
@@ -706,22 +735,135 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
             if st.session_state.get(key_valida):
                 st.success(f"✅ Risultato confermato: {st.session_state[key_golcasa]} - {st.session_state[key_golospite]}")
 
+def mostra_calendario_pc(df, girone_sel, giornata_sel, modalita_visualizzazione):
+    """Visualizzazione risultati dedicata a desktop/tablet larghi."""
+    df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
+    if df_giornata.empty:
+        return
+
+    st.markdown("""
+        <style>
+        .pc-match-label {
+            font-weight: 800;
+            font-size: 0.9rem;
+            line-height: 36px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .pc-match-label.home {
+            text-align: right;
+            padding-right: 10px;
+        }
+        .pc-match-label.away {
+            text-align: left;
+            padding-left: 10px;
+        }
+        .pc-match-separator {
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            margin: 8px 0 12px;
+        }
+        div[data-testid="stNumberInput"] button {
+            display: none !important;
+        }
+        div[data-testid="stNumberInput"] input {
+            text-align: center !important;
+            font-weight: bold !important;
+        }
+        @media screen and (max-width: 640px) {
+            .pc-match-label,
+            .pc-match-label.home,
+            .pc-match-label.away {
+                text-align: center !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                font-size: 0.92rem !important;
+                line-height: 1.2 !important;
+                margin: 6px auto 5px !important;
+                max-width: 220px !important;
+            }
+            div[data-testid="stNumberInput"] {
+                width: 64px !important;
+                max-width: 64px !important;
+                margin: 0 auto 8px auto !important;
+            }
+            div[data-testid="stNumberInput"] > div,
+            div[data-testid="stNumberInput"] div[data-baseweb="input"] {
+                width: 64px !important;
+                max-width: 64px !important;
+                padding: 0 !important;
+            }
+            div[data-testid="stNumberInput"] input {
+                width: 64px !important;
+                min-height: 34px !important;
+                font-size: 1rem !important;
+                text-align: center !important;
+            }
+            div[data-testid="stCheckbox"] {
+                width: fit-content !important;
+                margin: 4px auto 8px auto !important;
+            }
+            .pc-match-separator {
+                margin: 14px 0 18px !important;
+            }
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    for idx, row in df_giornata.iterrows():
+        casa, gio_c = parse_team_player(row['Casa'])
+        osp, gio_o = parse_team_player(row['Ospite'])
+
+        if modalita_visualizzazione == 'giocatori':
+            label_c, label_o = gio_c, gio_o
+        elif modalita_visualizzazione == 'squadre':
+            label_c, label_o = casa, osp
+        else:
+            label_c, label_o = f"{casa} ({gio_c})", f"{osp} ({gio_o})"
+
+        key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+        key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+        key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+
+        casa_col, gol_casa_col, gol_ospite_col, osp_col, valida_col = st.columns([2.2, 0.36, 0.36, 2.2, 0.42], gap="small")
+        with casa_col:
+            st.markdown(f"<div class='pc-match-label home'>{label_c}</div>", unsafe_allow_html=True)
+        with gol_casa_col:
+            st.number_input("GC", 0, 20, key=f"pc_{key_golcasa}",
+                            value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
+                            label_visibility="collapsed", disabled=row['Valida'])
+            st.session_state[key_golcasa] = st.session_state[f"pc_{key_golcasa}"]
+        with gol_ospite_col:
+            st.number_input("GO", 0, 20, key=f"pc_{key_golospite}",
+                            value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
+                            label_visibility="collapsed", disabled=row['Valida'])
+            st.session_state[key_golospite] = st.session_state[f"pc_{key_golospite}"]
+        with osp_col:
+            st.markdown(f"<div class='pc-match-label away'>{label_o}</div>", unsafe_allow_html=True)
+        with valida_col:
+            st.checkbox("✓", key=f"pc_{key_valida}", value=bool(row['Valida']),
+                        label_visibility="collapsed",
+                        disabled=st.session_state.get('read_only', False))
+            st.session_state[key_valida] = st.session_state[f"pc_{key_valida}"]
+        st.markdown("<div class='pc-match-separator'></div>", unsafe_allow_html=True)
+
 def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzazione):
-    """Visualizzazione ultra-compatta — SquadraA [0] - [0] SquadraB [✓] con landscape forzato su mobile."""
+    """Visualizzazione compatta pensata per smartphone in portrait."""
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         return
 
     numero_gironi = df['Girone'].nunique() if 'Girone' in df.columns else 1
     if numero_gironi > 1:
-        st.markdown(f"### {girone_sel} - Giornata {giornata_sel} (Compatta)")
-    
-    # ═══ JAVASCRIPT: forza orientamento landscape su mobile ═══
-    # ═══ CSS: nasconde +/- e compatta gli input ═══
-    # ═══ CSS: mostra avviso se il telefono è in portrait ═══
+        st.markdown(f"### {girone_sel} - Giornata {giornata_sel} (Smartphone)")
+
     st.markdown("""
         <style>
-        /* ===== NASCONDI STEPPER +/- ===== */
+        .phone-match-card {
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding: 16px 0;
+            margin-bottom: 8px;
+        }
         div[data-testid="stNumberInput"] button {
             display: none !important;
         }
@@ -733,73 +875,51 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
         div[data-testid="stNumberInput"] input[type="number"] {
             -moz-appearance: textfield !important;
         }
-
-        /* ===== INPUT NUMERICI MICRO ===== */
+        .stNumberInput,
         div[data-testid="stNumberInput"] {
-            max-width: 48px !important;
+            width: 160px !important;
+            margin: 0 auto 12px auto !important;
+            text-align: center !important;
+        }
+        div[data-testid="stNumberInput"] label {
+            display: block !important;
+            text-align: center !important;
+            width: 100% !important;
+            font-weight: 800 !important;
+            font-size: 0.95rem !important;
+            margin-bottom: 4px !important;
         }
         div[data-testid="stNumberInput"] div[data-baseweb="input"] {
+            width: 80px !important;
+            margin: 0 auto !important;
             padding: 0 !important;
         }
         div[data-testid="stNumberInput"] input {
-            padding: 3px 1px !important;
+            width: 80px !important;
+            padding: 2px 1px !important;
             text-align: center !important;
             font-weight: bold !important;
-            font-size: 0.95rem !important;
+            font-size: 1.1rem !important;
+            min-height: 34px !important;
         }
-
-        /* ===== CHECKBOX COMPATTA ===== */
-        div[data-testid="stCheckbox"] {
-            margin-top: 0 !important;
+        .phone-match-card div[data-testid="stCheckbox"] {
+            width: fit-content !important;
+            margin: 8px 0 0 0 !important;
+            text-align: left !important;
         }
-
-        /* ===== AVVISO PORTRAIT — visibile solo su telefoni in verticale ===== */
-        .portrait-warning {
-            display: none;
-            background: linear-gradient(135deg, #ff6b35, #f7931e);
-            color: white;
-            text-align: center;
-            padding: 12px;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 0.9rem;
-            margin-bottom: 10px;
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-        @media screen and (max-width: 640px) and (orientation: portrait) {
-            .portrait-warning {
-                display: block !important;
+        @media screen and (max-width: 480px) {
+            .appview-container .main .block-container {
+                padding-left: 0.65rem !important;
+                padding-right: 0.65rem !important;
             }
         }
         </style>
-        
-        <div class="portrait-warning">
-            Per una visualizzazione ottimale ruotare il telefono in orizzontale.
-        </div>
-        
-        <script>
-        // Tenta di bloccare l'orientamento in landscape (funziona solo se in fullscreen/PWA)
-        try {
-            if (screen.orientation && screen.orientation.lock) {
-                screen.orientation.lock('landscape').catch(function(e) {
-                    // Silenzioso: su browser normali non è supportato senza fullscreen
-                    console.log('Landscape lock non disponibile:', e.message);
-                });
-            }
-        } catch(e) {
-            console.log('Screen Orientation API non supportata');
-        }
-        </script>
     """, unsafe_allow_html=True)
 
     for idx, row in df_giornata.iterrows():
         casa, gio_c = parse_team_player(row['Casa'])
         osp, gio_o = parse_team_player(row['Ospite'])
-        
+
         if modalita_visualizzazione == 'giocatori':
             label_c, label_o = gio_c, gio_o
         elif modalita_visualizzazione == 'squadre':
@@ -807,42 +927,31 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
         else:
             label_c, label_o = f"{casa} ({gio_c})", f"{osp} ({gio_o})"
 
-        # Chiavi sincronizzate con la vista standard/premium
         key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
         key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
         key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
 
-        # ═══ TUTTO SU UNA RIGA: SquadraA [0] - [0] SquadraB [✓] ═══
-        c1, c2, c3, c4, c5, c6 = st.columns([3, 0.8, 0.3, 0.8, 3, 0.7])
+        st.markdown("<div class='phone-match-card'>", unsafe_allow_html=True)
+        st.number_input(label_c, 0, 20, key=f"comp_{key_golcasa}",
+                        value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
+                        disabled=row['Valida'])
+        st.session_state[key_golcasa] = st.session_state[f"comp_{key_golcasa}"]
         
-        with c1:
-            st.markdown(f"<div style='text-align:right; font-weight:700; font-size:0.78rem; padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{label_c}</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align:center; font-weight:bold; font-size:1.2rem; margin: 4px 0;'>-</div>", unsafe_allow_html=True)
         
-        with c2:
-            st.number_input("GC", 0, 20, key=f"comp_{key_golcasa}",
-                            value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
-                            label_visibility="collapsed", disabled=row['Valida'])
-            st.session_state[key_golcasa] = st.session_state[f"comp_{key_golcasa}"]
+        st.number_input(label_o, 0, 20, key=f"comp_{key_golospite}",
+                        value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
+                        disabled=row['Valida'])
+        st.session_state[key_golospite] = st.session_state[f"comp_{key_golospite}"]
         
-        with c3:
-            st.markdown("<div style='text-align:center; font-weight:bold; font-size:0.8rem; padding-top:6px;'>-</div>", unsafe_allow_html=True)
-            
-        with c4:
-            st.number_input("GO", 0, 20, key=f"comp_{key_golospite}",
-                            value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
-                            label_visibility="collapsed", disabled=row['Valida'])
-            st.session_state[key_golospite] = st.session_state[f"comp_{key_golospite}"]
+        st.checkbox("✓ Validata", key=f"comp_{key_valida}", value=bool(row['Valida']),
+                    disabled=st.session_state.get('read_only', False))
+        st.session_state[key_valida] = st.session_state[f"comp_{key_valida}"]
+        st.markdown("</div>", unsafe_allow_html=True)
 
-        with c5:
-            st.markdown(f"<div style='text-align:left; font-weight:700; font-size:0.78rem; padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{label_o}</div>", unsafe_allow_html=True)
+    return
 
-        with c6:
-            st.checkbox("✓", key=f"comp_{key_valida}", value=bool(row['Valida']),
-                        label_visibility="collapsed",
-                        disabled=st.session_state.get('read_only', False))
-            st.session_state[key_valida] = st.session_state[f"comp_{key_valida}"]
 
-                
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
     try:
         print(f"[DEBUG] Inizio salvataggio risultati per girone: {girone_sel}, giornata: {giornata_sel}")
@@ -889,7 +998,7 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
         ok = aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
         if not ok:
             print("[ERROR] Errore durante l'aggiornamento del torneo su MongoDB")
-            st.error("❌ Errore durante il salvataggio su MongoDB.")
+            st.error("❌ Errore durante il salvataggio del torneo.")
             return False
             
         # ------------------------------------------------------------------
@@ -1054,11 +1163,11 @@ def gestisci_abbandoni(df_torneo, giocatori_da_ritirare, tournaments_collection)
 
                 except Exception as e:
                     print(f"[LOGGING] errore in gestisci_abbandoni: {e}")
-                st.toast(f"✅ Aggiornati {matches_to_update} incontri. Modifiche salvate su MongoDB!")
+                st.toast(f"✅ Aggiornati {matches_to_update} incontri. Modifiche salvate!")
             else:
-                st.error("❌ Errore durante il salvataggio su MongoDB.")
+                st.error("❌ Errore durante il salvataggio del torneo.")
         except Exception as e:
-            st.error(f"❌ Errore durante il salvataggio su MongoDB: {e}")
+            st.error(f"❌ Errore durante il salvataggio del torneo: {e}")
     else:
         st.error("❌ ID del torneo non trovato. Impossibile salvare.")
     return df
@@ -1313,10 +1422,53 @@ def inject_css():
     st.html("""
         <style>
         .stAppViewBlockContainer {
-            padding-top: 1rem !important;
+            padding-top: 0 !important;
         }
         .stMainBlockContainer {
-            padding-top: 1rem !important;
+            padding-top: 0 !important;
+        }
+        .appview-container .main .block-container,
+        section.main > div.block-container,
+        div[data-testid="stAppViewContainer"] .main .block-container,
+        div[data-testid="stMainBlockContainer"] {
+            padding-top: 0.35rem !important;
+        }
+        div[data-testid="stVerticalBlock"] > div:first-child {
+            margin-top: 0 !important;
+        }
+        div[data-testid="stMarkdownContainer"] h1,
+        div[data-testid="stMarkdownContainer"] h2,
+        div[data-testid="stMarkdownContainer"] h3 {
+            margin-top: 0 !important;
+        }
+        .stLinkButton {
+            width: 100% !important;
+            margin: 0 !important;
+        }
+        .stLinkButton a {
+            width: 100% !important;
+            background-size: 200% auto !important;
+            background-image: linear-gradient(to right, var(--color-primary-mid) 0%, var(--color-primary-light) 50%, var(--color-primary-mid) 100%) !important;
+            color: white !important;
+            padding: 0.6em 1.5em !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
+            border-radius: 12px !important;
+            text-align: center !important;
+            text-decoration: none !important;
+            display: block !important;
+            font-size: 0.9em !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.5px !important;
+            text-transform: uppercase !important;
+            margin: 0 !important;
+            cursor: pointer !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+        }
+        .stLinkButton a:hover {
+            background-position: right center !important;
+            transform: translateY(-2px) scale(1.02) !important;
+            box-shadow: 0 8px 25px rgba(0,159,253,0.4) !important;
         }
         </style>
     """)
@@ -1341,6 +1493,41 @@ def main():
 
     # Attiva il sistema di keep-alive per mantenere la sessione durante le partite
     enable_session_keepalive()
+
+    # Rilevamento automatico del dispositivo (PC vs Smartphone)
+    device_param = None
+    try:
+        if hasattr(st, 'query_params'):
+            device_param = st.query_params.get("device")
+    except Exception:
+        pass
+    if device_param not in ('pc', 'smartphone'):
+        try:
+            params = st.experimental_get_query_params()
+            if "device" in params and params["device"]:
+                device_param = params["device"][0]
+        except Exception:
+            pass
+
+    if device_param in ('pc', 'smartphone'):
+        if not st.session_state.get('dispositivo_rilevato', False):
+            st.session_state['tipo_vista_selezionata'] = 'pc'
+            st.session_state['tipo_vista_sidebar_widget'] = 'Compact'
+            st.session_state['tipo_vista_main_widget'] = 'Compact'
+            st.session_state['dispositivo_rilevato'] = True
+    elif not st.session_state.get('dispositivo_rilevato', False):
+        components.html("""
+            <script>
+            try {
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (window.parent && window.parent.innerWidth < 800);
+                const targetView = isMobile ? 'smartphone' : 'pc';
+                const params = new URLSearchParams(window.parent.location.search);
+                params.set('device', targetView);
+                window.parent.location.search = params.toString();
+            } catch(e) {}
+            </script>
+        """, height=0, width=0)
+
 
     # Debug: mostra utente autenticato e ruolo
     if st.session_state.get("authenticated"):
@@ -1394,7 +1581,10 @@ def main():
     # --- Auto-load from URL param (es. ?torneo=nome_torneo) ---
     # usa experimental_get_query_params per compatibilità
     # usa st.query_params (nuova API stabile)
-    q = st.query_params
+    try:
+        q = dict(st.query_params)
+    except Exception:
+        q = {}
     if 'torneo' in q and q['torneo']:
         # con la nuova API è già una stringa, non più una lista
         raw_param = q['torneo']
@@ -1423,7 +1613,7 @@ def main():
                     st.session_state['nome_torneo'] = torneo_doc.get('nome_torneo', torneo_param)
                     # Forza le impostazioni di default richieste dall'utente al caricamento automatico
                     st.session_state['usa_bottoni_sidebar'] = True
-                    st.session_state['tipo_vista_selezionata'] = 'compact'
+                    st.session_state['tipo_vista_selezionata'] = 'pc'
                     st.session_state['usa_multiselect_giocatori'] = True
                     torneo_data = carica_torneo_da_db(
                         tournaments_collection, st.session_state['tournament_id']
@@ -1568,7 +1758,7 @@ def main():
     df_master = carica_giocatori_da_db(players_collection)
 
     if players_collection is None and tournaments_collection is None:
-        st.error("❌ Impossibile avviare l'applicazione. La connessione a MongoDB non è disponibile.")
+        st.error("❌ Impossibile avviare l'applicazione. Il servizio di salvataggio non è disponibile.")
         return
 
     # --- FUNZIONI DI SINCRONIZZAZIONE GLOBALI ---
@@ -1591,7 +1781,13 @@ def main():
         # --- FUNZIONI DI SINCRONIZZAZIONE ---
         def sync_tipo_vista(source_key):
             val = st.session_state[source_key]
-            st.session_state['tipo_vista_selezionata'] = val.lower()
+            # Mappa sia 'compact' sia 'smartphone' a 'pc'
+            mappa_interna = {
+                'compact': 'pc',
+                'smartphone': 'pc',
+                'pc': 'pc'
+            }
+            st.session_state['tipo_vista_selezionata'] = mappa_interna.get(val.lower(), val.lower())
             st.session_state['tipo_vista_sidebar_widget'] = val
             st.session_state['tipo_vista_main_widget'] = val
 
@@ -1637,9 +1833,17 @@ def main():
             )
             
             st.markdown("---")
+            st.link_button("🏠 Torna all'hub", HUB_URL, width="stretch")
             
             # Radio button per tipo di vista (Sincronizzato con la pagina principale)
-            current_view = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
+            view_labels = {
+                'pc': 'Compact',
+                'compact': 'Compact',
+                'smartphone': 'Compact',
+                'premium': 'Premium',
+                'standard': 'Standard'
+            }
+            current_view = view_labels.get(st.session_state.get('tipo_vista_selezionata', 'pc').lower(), 'Compact')
             st.radio(
                 "Tipo di vista:",
                 ("Compact", "Premium", "Standard"),
@@ -2163,10 +2367,14 @@ def main():
             
             # Richiama la funzione con il parametro di visualizzazione corretto
             if giornate_correnti:
-                vista_scelta = st.session_state.get('tipo_vista_selezionata', 'compact')
+                vista_scelta = st.session_state.get('tipo_vista_selezionata', 'pc')
                 
-                if vista_scelta == 'compact':
+                if vista_scelta in ('smartphone', 'compact'):
+                    mostra_avviso_landscape()
                     mostra_calendario_compact(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
+                elif vista_scelta == 'pc':
+                    mostra_avviso_landscape()
+                    mostra_calendario_pc(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
                 elif vista_scelta == 'premium':
                     mostra_calendario_premium(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
                 else: # standard
@@ -2186,7 +2394,7 @@ def main():
     else:
         if st.session_state.get('azione_scelta') is None:
             st.markdown("### Scegli azione 📝")
-            c1, c2 = st.columns([1,1])
+            c1, c2, c3 = st.columns([1,1,1])
             
             with c1:
                 # mostra la colonna "Carica torneo" solo se l'utente non ha ancora scelto o ha scelto 'carica'
@@ -2195,7 +2403,7 @@ def main():
                         st.markdown(
                             """<div style='text-align:center'>
                             <h2>📂 Carica torneo esistente</h2>
-                            <p style='margin:0.2rem 0 1rem 0'>Riprendi un torneo salvato (MongoDB)</p>
+                            <p style='margin:0.2rem 0 1rem 0'>Riprendi un torneo salvato</p>
                             </div>""",
                             unsafe_allow_html=True,
                         )
@@ -2207,8 +2415,16 @@ def main():
                             if torneo_preferito in tornei_ordinati:
                                 tornei_ordinati.remove(torneo_preferito)
                                 tornei_ordinati.insert(0, torneo_preferito)
-                            nome_sel = st.selectbox("Seleziona torneo esistente", tornei_ordinati)
-                            if st.button("Carica torneo (MongoDB) 📂", key="btn_carica", width="stretch"):
+                            nome_sel = st.selectbox(
+                                "Seleziona torneo salvato",
+                                tornei_ordinati,
+                                index=None,
+                                placeholder="Scegli un torneo..."
+                            )
+                            if st.button("Apri torneo 📂", key="btn_carica", width="stretch"):
+                                if not nome_sel:
+                                    st.warning("Seleziona un torneo salvato prima di continuare.")
+                                    st.stop()
                                 st.session_state['tournament_id'] = tornei_map[nome_sel]
                                 st.session_state['nome_torneo'] = nome_sel
                                 torneo_data = carica_torneo_da_db(tournaments_collection, st.session_state['tournament_id'])
@@ -2219,7 +2435,7 @@ def main():
                                 else:
                                     st.error("❌ Errore durante il caricamento del torneo. Riprova.")
                         else:
-                            st.info("ℹ️ Nessun torneo salvato trovato su MongoDB.")
+                            st.info("ℹ️ Nessun torneo salvato disponibile.")
 
             with c2:
                 # mostra la colonna "Nuovo torneo" solo se l'utente non ha ancora scelto o ha scelto 'crea'
@@ -2227,16 +2443,27 @@ def main():
                     with st.container(border=True):
                         st.markdown(
                             """<div style='text-align:center'>
-                            <h2>✨ Crea nuovo torneo</h2>
+                            <h2>✨ Nuovo campionato / torneo a gironi</h2>
                             <p style='margin:0.2rem 0 1rem 0'>Genera primo turno scegliendo giocatori del Club PierCrew</p>
                             </div>""",
                             unsafe_allow_html=True,
                         )
                         
-                        if st.button("Nuovo torneo ✨", key="btn_nuovo", width="stretch"):
+                        if st.button("Nuovo campionato / torneo a gironi ✨", key="btn_nuovo", width="stretch"):
                             st.session_state['mostra_form_creazione'] = True
                             st.session_state['azione_scelta'] = 'crea'
                             st.rerun()
+
+            with c3:
+                with st.container(border=True):
+                    st.markdown(
+                        """<div style='text-align:center'>
+                        <h2>🏠 Torna all'hub tornei</h2>
+                        <p style='margin:0.2rem 0 1rem 0'>Rientra alla scelta delle modalità</p>
+                        </div>""",
+                        unsafe_allow_html=True,
+                    )
+                    st.link_button("Torna all'hub tornei 🏠", HUB_URL, width="stretch")
             
             st.markdown("---")
 
@@ -2292,7 +2519,7 @@ def main():
                     if usa_multiselect:
                         # Modalità MULTISELECT
                         amici_selezionati = st.multiselect(
-                            "Seleziona giocatori dal database", 
+                            "Seleziona giocatori salvati", 
                             sorted(amici),   # già ordinati alfabeticamente
                             default=st.session_state.get("amici_selezionati", []), 
                             key="amici_multiselect"
@@ -2685,10 +2912,10 @@ def main():
                                 'df_dtypes': df_torneo.dtypes.to_dict(),
                                 'messaggio': "Torneo salvato correttamente."
                             }
-                            st.toast("✅ Calendario generato e salvato su MongoDB")
+                            st.toast("✅ Calendario generato e salvato")
                             st.rerun()
                         else:
-                            st.error("❌ Errore durante il salvataggio del torneo. Controlla la connessione al database.")
+                            st.error("❌ Errore durante il salvataggio del torneo. Controlla la connessione e riprova.")
                     except Exception as e:
                         st.error(f"❌ Errore critico durante il salvataggio: {e}")
                         st.rerun()

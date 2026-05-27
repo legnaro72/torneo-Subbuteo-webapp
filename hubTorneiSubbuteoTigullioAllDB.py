@@ -110,11 +110,11 @@ with col4:
             <div style="font-size: 3rem; margin-bottom: 15px;">⚙️</div>
             <div class="card-title">Pannello Gestione Club</div>
             <div class="card-desc">
-                Il database centrale. Inserisci giocatori, modifica le loro schede, o <b>cancella tornei</b> dal database del cloud in totale sicurezza.
+                Gestisci giocatori, modifica le loro schede e <b>cancella tornei</b> salvati in totale sicurezza.
             </div>
             <br>
             <a class="card-link card-link-red" href="{URL_CLUB}" target="_blank" style="width: 80%;">
-                <span style="margin-right:8px;">🔓</span> Gestisci Database
+                <span style="margin-right:8px;">🔓</span> Gestisci Club
             </a>
         </div>
     ''', unsafe_allow_html=True)
