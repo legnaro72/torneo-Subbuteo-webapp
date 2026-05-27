@@ -67,7 +67,7 @@ from common.ui_components import (
 
 
 def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, key_prefix: str = ""):
-    """Navigazione locale Italiana: mostra GIO n tra i bottoni."""
+    """Navigazione locale Italiana: mostra < GIO n > compatto su una riga."""
     st.markdown("""
         <style>
         div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) {
@@ -76,7 +76,7 @@ def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, k
             flex-wrap: nowrap !important;
             align-items: center !important;
             justify-content: center !important;
-            gap: 2px !important;
+            gap: 4px !important;
         }
         div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:first-child,
         div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:last-child {
@@ -87,24 +87,45 @@ def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, k
             margin: 0 !important;
         }
         div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:nth-child(2) {
-            width: 72px !important;
-            flex: 0 0 72px !important;
-            min-width: 72px !important;
-            max-width: 72px !important;
+            width: 42px !important;
+            flex: 0 0 42px !important;
+            min-width: 42px !important;
+            max-width: 42px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:nth-child(3) {
+            width: 76px !important;
+            flex: 0 0 76px !important;
+            min-width: 76px !important;
+            max-width: 76px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:nth-child(4) {
+            width: 42px !important;
+            flex: 0 0 42px !important;
+            min-width: 42px !important;
+            max-width: 42px !important;
             padding: 0 !important;
             margin: 0 !important;
         }
         div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) button {
             width: 100% !important;
             min-width: 0 !important;
-            padding: 0.2rem 0 !important;
+            min-height: 34px !important;
+            height: 34px !important;
+            padding: 0 !important;
             margin: 0 !important;
+            border-radius: 4px !important;
+            font-size: 0.78rem !important;
         }
         .nav-btn-marker {
             text-align: center;
             font-weight: 900;
-            font-size: 1rem;
-            line-height: 1.5rem;
+            font-size: 0.9rem;
+            line-height: 34px;
+            height: 34px;
             width: 100%;
             white-space: nowrap;
         }
@@ -114,19 +135,23 @@ def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, k
 
     current = st.session_state.get(value_key, min_val)
     display_label = f"GIO {current}"
-    col1, col2, col3 = st.columns([5, 1, 5])
-    with col1:
+    spacer_l, col_prev, col_label, col_next, spacer_r = st.columns([1, 0.35, 0.65, 0.35, 1])
+    with spacer_l:
+        st.empty()
+    with col_prev:
         if st.button("◀", key=f"{key_prefix}nav_prev_{value_key}", use_container_width=True):
             if current > min_val:
                 st.session_state[value_key] = current - 1
                 st.rerun()
-    with col2:
+    with col_label:
         st.markdown(f"<div class='nav-btn-marker'>{display_label}</div>", unsafe_allow_html=True)
-    with col3:
+    with col_next:
         if st.button("▶", key=f"{key_prefix}nav_next_{value_key}", use_container_width=True):
             if current < max_val:
                 st.session_state[value_key] = current + 1
                 st.rerun()
+    with spacer_r:
+        st.empty()
 
 
 # Configurazione della pagina
@@ -613,47 +638,7 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
         font-size: 1.1rem;
         padding-top: 5px;
     }
-
-    /* ===== AVVISO PORTRAIT — visibile solo su telefoni in verticale ===== */
-    .portrait-warning {
-        display: none;
-        background: linear-gradient(135deg, #ff6b35, #f7931e);
-        color: white;
-        text-align: center;
-        padding: 12px;
-        border-radius: 8px;
-        font-weight: 700;
-        font-size: 0.9rem;
-        margin-bottom: 10px;
-        animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
-    }
-    @media screen and (max-width: 640px) and (orientation: portrait) {
-        .portrait-warning {
-            display: block !important;
-        }
-    }
     </style>
-    
-    <div class="portrait-warning">
-            Per una visualizzazione ottimale ruotare il telefono in orizzontale.
-    </div>
-    
-    <script>
-    // Tenta di bloccare l'orientamento in landscape (funziona solo se in fullscreen/PWA)
-    try {
-        if (screen.orientation && screen.orientation.lock) {
-            screen.orientation.lock('landscape').catch(function(e) {
-                console.log('Landscape lock non disponibile:', e.message);
-            });
-        }
-    } catch(e) {
-        console.log('Screen Orientation API non supportata');
-    }
-    </script>
     """, unsafe_allow_html=True)
 
     for idx, row in df_giornata.iterrows():
@@ -707,7 +692,7 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
                 st.success(f"✅ Risultato confermato: {st.session_state[key_golcasa]} - {st.session_state[key_golospite]}")
 
 def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzazione):
-    """Visualizzazione ultra-compatta — SquadraA [0] - [0] SquadraB [✓] con landscape forzato su mobile."""
+    """Visualizzazione compatta pensata per smartphone in portrait."""
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         return
@@ -721,6 +706,19 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
     # ═══ CSS: mostra avviso se il telefono è in portrait ═══
     st.markdown("""
         <style>
+        .mobile-match-card {
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            padding: 8px 0 10px 0;
+            margin-bottom: 6px;
+        }
+        .mobile-match-label {
+            font-weight: 800;
+            font-size: 0.82rem;
+            line-height: 34px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
         /* ===== NASCONDI STEPPER +/- ===== */
         div[data-testid="stNumberInput"] button {
             display: none !important;
@@ -742,58 +740,18 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
             padding: 0 !important;
         }
         div[data-testid="stNumberInput"] input {
-            padding: 3px 1px !important;
+            padding: 2px 1px !important;
             text-align: center !important;
             font-weight: bold !important;
             font-size: 0.95rem !important;
+            min-height: 30px !important;
         }
 
         /* ===== CHECKBOX COMPATTA ===== */
         div[data-testid="stCheckbox"] {
             margin-top: 0 !important;
         }
-
-        /* ===== AVVISO PORTRAIT — visibile solo su telefoni in verticale ===== */
-        .portrait-warning {
-            display: none;
-            background: linear-gradient(135deg, #ff6b35, #f7931e);
-            color: white;
-            text-align: center;
-            padding: 12px;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 0.9rem;
-            margin-bottom: 10px;
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-        @media screen and (max-width: 640px) and (orientation: portrait) {
-            .portrait-warning {
-                display: block !important;
-            }
-        }
         </style>
-        
-        <div class="portrait-warning">
-            Per una visualizzazione ottimale ruotare il telefono in orizzontale.
-        </div>
-        
-        <script>
-        // Tenta di bloccare l'orientamento in landscape (funziona solo se in fullscreen/PWA)
-        try {
-            if (screen.orientation && screen.orientation.lock) {
-                screen.orientation.lock('landscape').catch(function(e) {
-                    // Silenzioso: su browser normali non è supportato senza fullscreen
-                    console.log('Landscape lock non disponibile:', e.message);
-                });
-            }
-        } catch(e) {
-            console.log('Screen Orientation API non supportata');
-        }
-        </script>
     """, unsafe_allow_html=True)
 
     for idx, row in df_giornata.iterrows():
@@ -812,35 +770,39 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
         key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
         key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
 
-        # ═══ TUTTO SU UNA RIGA: SquadraA [0] - [0] SquadraB [✓] ═══
-        c1, c2, c3, c4, c5, c6 = st.columns([3, 0.8, 0.3, 0.8, 3, 0.7])
-        
-        with c1:
-            st.markdown(f"<div style='text-align:right; font-weight:700; font-size:0.78rem; padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{label_c}</div>", unsafe_allow_html=True)
-        
-        with c2:
-            st.number_input("GC", 0, 20, key=f"comp_{key_golcasa}",
-                            value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
-                            label_visibility="collapsed", disabled=row['Valida'])
-            st.session_state[key_golcasa] = st.session_state[f"comp_{key_golcasa}"]
-        
-        with c3:
-            st.markdown("<div style='text-align:center; font-weight:bold; font-size:0.8rem; padding-top:6px;'>-</div>", unsafe_allow_html=True)
-            
-        with c4:
-            st.number_input("GO", 0, 20, key=f"comp_{key_golospite}",
-                            value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
-                            label_visibility="collapsed", disabled=row['Valida'])
-            st.session_state[key_golospite] = st.session_state[f"comp_{key_golospite}"]
+        st.markdown("<div class='mobile-match-card'>", unsafe_allow_html=True)
 
-        with c5:
-            st.markdown(f"<div style='text-align:left; font-weight:700; font-size:0.78rem; padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{label_o}</div>", unsafe_allow_html=True)
+        block_left, block_center, block_right = st.columns([1, 1.25, 1])
+        with block_left:
+            st.empty()
+        with block_center:
+            casa_label_col, casa_score_col = st.columns([1.7, 0.55])
+            with casa_label_col:
+                st.markdown(f"<div class='mobile-match-label'>{label_c}</div>", unsafe_allow_html=True)
+            with casa_score_col:
+                st.number_input("GC", 0, 20, key=f"comp_{key_golcasa}",
+                                value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
+                                label_visibility="collapsed", disabled=row['Valida'])
+                st.session_state[key_golcasa] = st.session_state[f"comp_{key_golcasa}"]
 
-        with c6:
-            st.checkbox("✓", key=f"comp_{key_valida}", value=bool(row['Valida']),
-                        label_visibility="collapsed",
-                        disabled=st.session_state.get('read_only', False))
-            st.session_state[key_valida] = st.session_state[f"comp_{key_valida}"]
+            osp_label_col, osp_score_col = st.columns([1.7, 0.55])
+            with osp_label_col:
+                st.markdown(f"<div class='mobile-match-label'>{label_o}</div>", unsafe_allow_html=True)
+            with osp_score_col:
+                st.number_input("GO", 0, 20, key=f"comp_{key_golospite}",
+                                value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
+                                label_visibility="collapsed", disabled=row['Valida'])
+                st.session_state[key_golospite] = st.session_state[f"comp_{key_golospite}"]
+
+            valid_spacer_l, valid_col, valid_spacer_r = st.columns([1, 0.35, 1])
+            with valid_col:
+                st.checkbox("✓", key=f"comp_{key_valida}", value=bool(row['Valida']),
+                            label_visibility="collapsed",
+                            disabled=st.session_state.get('read_only', False))
+                st.session_state[key_valida] = st.session_state[f"comp_{key_valida}"]
+        with block_right:
+            st.empty()
+        st.markdown("</div>", unsafe_allow_html=True)
 
                 
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
