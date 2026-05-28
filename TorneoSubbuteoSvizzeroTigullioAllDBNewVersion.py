@@ -61,6 +61,7 @@ auth.require_auth(club="Tigullio")
 enable_session_keepalive()
 
 HUB_URL = "https://farm-tornei-subbuteo-tigullio-all-db.streamlit.app/"
+HOME_URL = "https://torneo-subbuteo-tigullio-new-version-svizzero-alldb.streamlit.app/"
 
 # Configurazione della pagina già impostata all'inizio
 
@@ -1820,8 +1821,8 @@ if st.session_state.setup_mode == "nuovo":
 # Sidebar — usa moduli condivisi
 # -------------------------
 # User info
-setup_common_sidebar(show_user_info=True, show_hub_link=True, hub_url=HUB_URL)
 auth.logout_button("Logout")
+setup_common_sidebar(show_user_info=True, show_hub_link=True, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL))
 
 # Audio di sottofondo
 setup_audio_sidebar()
@@ -1833,13 +1834,6 @@ st.session_state.modalita_selezione_giocatori = "Multiselect" if st.session_stat
 
 if st.session_state.torneo_iniziato:
 
-    # ✅ 2. ⚙️ Opzioni Torneo — solo link al Hub
-    st.sidebar.subheader("⚙️ Opzioni Torneo")
-    st.sidebar.link_button(
-        "➡️ Vai a Hub Tornei",
-        HUB_URL,
-        use_container_width=True
-    )
 
     # --- FUNZIONI DI SINCRONIZZAZIONE ---
     def sync_tipo_vista(source_key):
