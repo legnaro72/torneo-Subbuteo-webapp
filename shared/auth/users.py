@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import datetime
 
 import certifi
@@ -15,6 +16,16 @@ AUTH_COLLECTION = "auth_password"
 DB_NAME_PLAYERS = "giocatori_subbuteo"
 PLAYERS_COLLECTIONS = {
     "Superba": "superba_players",
+    "PierCrew": "piercrew_players",
+    "Tigullio": "tigullio_players",
+}
+CLUB_ALIASES = {
+    "superba": "Superba",
+    "piercrew": "PierCrew",
+    "pier crew": "PierCrew",
+    "percrew": "PierCrew",
+    "per crew": "PierCrew",
+    "tigullio": "Tigullio",
 }
 DB_LOGIN = "Log"
 LOG_COLLECTION = "Login"
@@ -56,12 +67,14 @@ def log_event(username: str, esito: str, dettagli: dict | None = None):
 def find_user(username: str, club: str = "Superba"):
     client = get_mongo_client()
     db_players = client[DB_NAME_PLAYERS]
-    collection_name = PLAYERS_COLLECTIONS.get(club)
+    club_key = CLUB_ALIASES.get(str(club or "").strip().lower(), club)
+    collection_name = PLAYERS_COLLECTIONS.get(club_key)
     if not collection_name:
         return None
     try:
+        username_pattern = re.escape(str(username).strip())
         player = db_players[collection_name].find_one(
-            {"Giocatore": {"$regex": f"^{username}$", "$options": "i"}}
+            {"Giocatore": {"$regex": f"^{username_pattern}$", "$options": "i"}}
         )
         if player:
             player["_collection"] = collection_name
