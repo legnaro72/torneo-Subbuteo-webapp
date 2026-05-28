@@ -180,7 +180,7 @@ st.markdown("""
     section.main > div.block-container,
     div[data-testid="stAppViewContainer"] .main .block-container,
     div[data-testid="stMainBlockContainer"] {
-        padding-top: 0.35rem !important;
+        padding-top: 0 !important;
     }
     div[data-testid="stVerticalBlock"] > div:first-child {
         margin-top: 0 !important;

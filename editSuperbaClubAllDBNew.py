@@ -164,10 +164,10 @@ def inject_css():
         
         /* Override locale ultra-aggressivo per rimuovere lo spazio vuoto in alto (solo Superba) */
         .stAppViewBlockContainer {
-            padding-top: 1rem !important;
+            padding-top: 0 !important;
         }
         .stMainBlockContainer {
-            padding-top: 1rem !important;
+            padding-top: 0 !important;
         }
         </style>
     """, unsafe_allow_html=True)

@@ -35,7 +35,7 @@ URL_CLUB = auth.make_authenticated_url("https://edit-superba-club-all-db-new.str
 
 # --- HERO SECTION ---
 st.markdown("""
-<div style="text-align: center; padding: 3rem 1rem 1rem 1rem; animation: fadeInUp 0.8s ease-out;">
+<div style="text-align: center; padding: 0 1rem 1rem 1rem; animation: fadeInUp 0.8s ease-out;">
     <img src="https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/logo_superba.jpg" 
          style="width: 120px; border-radius: 50%; box-shadow: 0 10px 30px rgba(0,0,0,0.3); margin-bottom: 1.5rem;">
     <h1 class="main-title" style="margin-bottom: 0.5rem; font-size: clamp(36px, 6vw, 64px);">⚽ SUPER SUITE SUBBUTEO 🏆</h1>
@@ -80,10 +80,6 @@ with col2:
             </a>
         </div>
     ''', unsafe_allow_html=True)
-
-st.write("") # Spacer spaziatura
-st.write("")
-st.write("")
 
 col3, space2, col4 = st.columns([1, 0.05, 1])
 

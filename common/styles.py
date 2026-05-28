@@ -7,6 +7,67 @@ Sleek Modern UI, Glassmorphism e animazioni premium.
 """
 import streamlit as st
 
+def inject_gap_cleanup_styles():
+    """Rimuove i contenitori invisibili che Streamlit lascia attorno a CSS/JS/componenti."""
+    st.markdown("""
+    <style>
+    .block-container,
+    div.block-container,
+    main .block-container,
+    section[data-testid="stMain"] .block-container,
+    div[data-testid="stAppViewBlockContainer"],
+    div[data-testid="stMainBlockContainer"],
+    .appview-container .main .block-container,
+    section.main > div.block-container,
+    div[data-testid="stAppViewContainer"] .main .block-container {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+    }
+
+    div[data-testid="stVerticalBlock"] > div:first-child {
+        margin-top: 0 !important;
+    }
+
+    div[data-testid="stMarkdownContainer"] h1,
+    div[data-testid="stMarkdownContainer"] h2,
+    div[data-testid="stMarkdownContainer"] h3 {
+        margin-top: 0 !important;
+    }
+
+    div[data-testid="stElementContainer"]:empty,
+    div[data-testid="stElementContainer"][width="0px"][height="0px"],
+    div[data-testid="stElementContainer"].st-key-subbuteo_superba_cookie_manager,
+    div.st-key-subbuteo_superba_cookie_manager,
+    div[data-testid="stElementContainer"]:has(div[data-testid="stMarkdownContainer"] > style:only-child),
+    div.element-container:has(div[data-testid="stMarkdownContainer"] > style:only-child),
+    div[data-testid="stElementContainer"]:has(div[data-testid="stMarkdownContainer"] > script:only-child),
+    div.element-container:has(div[data-testid="stMarkdownContainer"] > script:only-child),
+    div[data-testid="stElementContainer"]:has(div[data-testid="stHtml"] > style:only-child),
+    div.element-container:has(div[data-testid="stHtml"] > style:only-child),
+    div[data-testid="stElementContainer"]:has(div[data-testid="stHtml"] > script:only-child),
+    div.element-container:has(div[data-testid="stHtml"] > script:only-child),
+    div[data-testid="stElementContainer"]:has(iframe[height="0"]),
+    div[data-testid="stElementContainer"]:has(iframe[style*="height: 0px"]),
+    div.element-container:has(iframe[height="0"]),
+    div.element-container:has(iframe[style*="height: 0px"]) {
+        display: none !important;
+        height: 0 !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+
+    iframe[height="0"],
+    iframe[style*="height: 0px"],
+    div.st-key-subbuteo_superba_cookie_manager iframe {
+        display: none !important;
+        height: 0 !important;
+        min-height: 0 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 def inject_all_styles():
     """Inietta TUTTI gli stili strutturali e di design in un'unica chiamata."""
     
@@ -102,7 +163,7 @@ def inject_all_styles():
     CSS_LAYOUT = """
     <style>
     .appview-container .main .block-container {
-        padding-top: 2.5rem !important;
+        padding-top: 0 !important;
         padding-right: 2rem !important;
         padding-left: 2rem !important;
         padding-bottom: 2rem !important;
@@ -519,6 +580,7 @@ def inject_all_styles():
     </script>
     """
     st.markdown(DARK_MODE_JS, unsafe_allow_html=True)
+    inject_gap_cleanup_styles()
 
 
 def inject_hub_styles():
