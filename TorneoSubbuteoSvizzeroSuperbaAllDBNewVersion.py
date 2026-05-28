@@ -1821,8 +1821,8 @@ if st.session_state.setup_mode == "nuovo":
 # Sidebar — usa moduli condivisi
 # -------------------------
 # User info
-setup_common_sidebar(show_user_info=True, show_hub_link=True, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL))
 auth.logout_button("Logout")
+setup_common_sidebar(show_user_info=True, show_hub_link=True, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL))
 
 # Audio di sottofondo
 setup_audio_sidebar()
