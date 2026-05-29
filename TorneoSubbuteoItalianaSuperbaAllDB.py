@@ -943,42 +943,10 @@ def mostra_calendario_pc(df, girone_sel, giornata_sel, modalita_visualizzazione)
                 width: fit-content !important;
                 margin: 4px auto 8px auto !important;
             }
-            div[data-testid="stVerticalBlock"]:has(.pc-validation-checkbox-marker) div[data-testid="stCheckbox"] {
-                padding: 0 !important;
-                border: 0 !important;
-                background: transparent !important;
-                box-shadow: none !important;
-            }
-            div[data-testid="stVerticalBlock"]:has(.pc-validation-checkbox-marker) div[data-testid="stCheckbox"] label {
-                min-height: 26px !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-            }
-            div[data-testid="stVerticalBlock"]:has(.pc-validation-checkbox-marker) div[data-testid="stCheckbox"] [data-baseweb="checkbox"] {
-                transform: scale(1.16) !important;
-                transform-origin: center !important;
-            }
-            div[data-testid="stVerticalBlock"]:has(.pc-validation-checkbox-marker) div[data-testid="stCheckbox"] [data-baseweb="checkbox"] > div {
-                border: 2px solid rgba(29, 53, 87, 0.78) !important;
+            div[data-testid="stElementContainer"]:has(.pc-validation-checkbox-marker) + div[data-testid="stElementContainer"] div[data-testid="stCheckbox"]:has(input:not(:checked)) [data-baseweb="checkbox"],
+            div.element-container:has(.pc-validation-checkbox-marker) + div.element-container div[data-testid="stCheckbox"]:has(input:not(:checked)) [data-baseweb="checkbox"] {
+                border: 2px solid #e63946 !important;
                 border-radius: 4px !important;
-                background: rgba(69, 123, 157, 0.16) !important;
-                box-shadow: 0 0 0 1px rgba(255,255,255,0.35) inset !important;
-            }
-            div[data-testid="stElementContainer"]:has(.pc-validation-checkbox-marker) + div[data-testid="stElementContainer"] div[data-testid="stCheckbox"] [data-baseweb="checkbox"],
-            div.element-container:has(.pc-validation-checkbox-marker) + div.element-container div[data-testid="stCheckbox"] [data-baseweb="checkbox"] {
-                width: 22px !important;
-                height: 22px !important;
-                min-width: 22px !important;
-                border: 2px solid var(--color-primary-dark, #1d3557) !important;
-                border-radius: 5px !important;
-                background: rgba(255, 255, 255, 0.96) !important;
-                box-shadow: 0 0 0 2px rgba(69, 123, 157, 0.24) !important;
-            }
-            div[data-testid="stElementContainer"]:has(.pc-validation-checkbox-marker) + div[data-testid="stElementContainer"] div[data-testid="stCheckbox"] [data-baseweb="checkbox"] > div,
-            div.element-container:has(.pc-validation-checkbox-marker) + div.element-container div[data-testid="stCheckbox"] [data-baseweb="checkbox"] > div {
-                border: 0 !important;
-                background: transparent !important;
             }
             .pc-match-separator {
                 margin: 14px 0 18px !important;
@@ -1085,36 +1053,10 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
             margin: 8px 0 0 0 !important;
             text-align: left !important;
         }
-        div[data-testid="stVerticalBlock"]:has(.compact-validation-checkbox-marker) div[data-testid="stCheckbox"] {
-            padding: 0 !important;
-            border: 0 !important;
-            background: transparent !important;
-            box-shadow: none !important;
-        }
-        div[data-testid="stVerticalBlock"]:has(.compact-validation-checkbox-marker) div[data-testid="stCheckbox"] [data-baseweb="checkbox"] {
-            transform: scale(1.16) !important;
-            transform-origin: center !important;
-        }
-        div[data-testid="stVerticalBlock"]:has(.compact-validation-checkbox-marker) div[data-testid="stCheckbox"] [data-baseweb="checkbox"] > div {
-            border: 2px solid rgba(29, 53, 87, 0.78) !important;
+        div[data-testid="stElementContainer"]:has(.compact-validation-checkbox-marker) + div[data-testid="stElementContainer"] div[data-testid="stCheckbox"]:has(input:not(:checked)) [data-baseweb="checkbox"],
+        div.element-container:has(.compact-validation-checkbox-marker) + div.element-container div[data-testid="stCheckbox"]:has(input:not(:checked)) [data-baseweb="checkbox"] {
+            border: 2px solid #e63946 !important;
             border-radius: 4px !important;
-            background: rgba(69, 123, 157, 0.16) !important;
-            box-shadow: 0 0 0 1px rgba(255,255,255,0.35) inset !important;
-        }
-        div[data-testid="stElementContainer"]:has(.compact-validation-checkbox-marker) + div[data-testid="stElementContainer"] div[data-testid="stCheckbox"] [data-baseweb="checkbox"],
-        div.element-container:has(.compact-validation-checkbox-marker) + div.element-container div[data-testid="stCheckbox"] [data-baseweb="checkbox"] {
-            width: 22px !important;
-            height: 22px !important;
-            min-width: 22px !important;
-            border: 2px solid var(--color-primary-dark, #1d3557) !important;
-            border-radius: 5px !important;
-            background: rgba(255, 255, 255, 0.96) !important;
-            box-shadow: 0 0 0 2px rgba(69, 123, 157, 0.24) !important;
-        }
-        div[data-testid="stElementContainer"]:has(.compact-validation-checkbox-marker) + div[data-testid="stElementContainer"] div[data-testid="stCheckbox"] [data-baseweb="checkbox"] > div,
-        div.element-container:has(.compact-validation-checkbox-marker) + div.element-container div[data-testid="stCheckbox"] [data-baseweb="checkbox"] > div {
-            border: 0 !important;
-            background: transparent !important;
         }
         @media screen and (max-width: 480px) {
             .appview-container .main .block-container {
