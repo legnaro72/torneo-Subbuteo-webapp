@@ -20,7 +20,9 @@ st.markdown("""
             parentDoc.querySelector('[data-testid="stSidebarCollapseButton"]') ||
             parentDoc.querySelector('button[kind="header"]');
 
-          if (sidebar && collapseButton && sidebar.getAttribute("aria-expanded") !== "false") {
+          const expanded = sidebar ? sidebar.getAttribute("aria-expanded") : "false";
+          const width = sidebar ? sidebar.getBoundingClientRect().width : 0;
+          if (sidebar && collapseButton && (expanded === "true" || width > 120)) {
             collapseButton.click();
           }
         } catch (e) {}

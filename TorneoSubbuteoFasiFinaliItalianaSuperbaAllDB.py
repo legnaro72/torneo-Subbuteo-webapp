@@ -19,7 +19,9 @@ st.markdown("""
             parentDoc.querySelector('[data-testid="stSidebarCollapseButton"]') ||
             parentDoc.querySelector('button[kind="header"]');
 
-          if (sidebar && collapseButton && sidebar.getAttribute("aria-expanded") !== "false") {
+          const expanded = sidebar ? sidebar.getAttribute("aria-expanded") : "false";
+          const width = sidebar ? sidebar.getBoundingClientRect().width : 0;
+          if (sidebar && collapseButton && (expanded === "true" || width > 120)) {
             collapseButton.click();
           }
         } catch (e) {}
@@ -1831,7 +1833,7 @@ def main():
                     )
                     tornei_trovati = carica_tornei_da_db(
                         tournaments_collection,
-                        prefix=["fasefinaleAGironi", "fasefinaleEliminazionediretta", "finito_Eliminazionediretta"]
+                        prefix=["fasefinaleEliminazionediretta"]
                     )
                     if tornei_trovati:
                         tornei_opzioni = {}
@@ -1979,7 +1981,7 @@ def main():
         elif opzione_selezione == "Continuare una fase finale esistente":
             tornei_trovati = carica_tornei_da_db(
                 tournaments_collection,
-                prefix=["fasefinaleAGironi", "fasefinaleEliminazionediretta", "finito_Eliminazionediretta"]
+                prefix=["fasefinaleEliminazionediretta"]
             )
             st.subheader("Seleziona una fase finale esistente")
             if not tornei_trovati:

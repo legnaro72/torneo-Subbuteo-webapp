@@ -19,7 +19,9 @@ st.markdown("""
             parentDoc.querySelector('[data-testid="stSidebarCollapseButton"]') ||
             parentDoc.querySelector('button[kind="header"]');
 
-          if (sidebar && collapseButton && sidebar.getAttribute("aria-expanded") !== "false") {
+          const expanded = sidebar ? sidebar.getAttribute("aria-expanded") : "false";
+          const width = sidebar ? sidebar.getBoundingClientRect().width : 0;
+          if (sidebar && collapseButton && (expanded === "true" || width > 120)) {
             collapseButton.click();
           }
         } catch (e) {}
@@ -372,7 +374,7 @@ def carica_tornei_da_db(tournaments_collection):
     if tournaments_collection is None:
         return []
     try:
-        return list(
+        tornei = list(
             tournaments_collection.find(
                 {},
                 {"nome_torneo": 1, "data_modifica": 1, "data_salvataggio": 1}
@@ -382,6 +384,14 @@ def carica_tornei_da_db(tournaments_collection):
                 ("_id", -1)
             ])
         )
+        return [
+            torneo for torneo in tornei
+            if torneo.get("nome_torneo")
+            and (
+                not torneo["nome_torneo"].startswith("fasefinale")
+                or torneo["nome_torneo"].startswith("fasefinaleAGironi")
+            )
+        ]
     except Exception as e:
         st.error(f"❌ Errore caricamento tornei: {e}")
         return []
@@ -604,6 +614,24 @@ def parse_team_player(val):
         squadra, giocatore = val.split("-", 1)
         return squadra.strip(), giocatore.strip()
     return val, ""
+
+def format_vincitori_italiana(df_classifica):
+    """Formatta il banner vincitori senza citare il girone quando il torneo ha un solo girone."""
+    if df_classifica is None or df_classifica.empty or 'Girone' not in df_classifica.columns:
+        return ""
+
+    gironi = list(df_classifica['Girone'].dropna().unique())
+    vincitori = []
+    for girone in gironi:
+        primo = df_classifica[df_classifica['Girone'] == girone].iloc[0]['Squadra']
+        squadra, giocatore = parse_team_player(primo)
+        if len(gironi) == 1:
+            if giocatore:
+                return f"vincitore Player {giocatore} - vincitore Squadra {squadra}"
+            return f"vincitore Squadra {squadra}"
+        vincitori.append(f"🏅 {girone}: {primo}")
+
+    return ", ".join(vincitori)
 
 def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, key_prefix: str = ""):
     """Navigazione giornata stabile su mobile: nessun bottone tagliato."""
@@ -1804,11 +1832,7 @@ def main():
         
         classifica_celebra = aggiorna_classifica(df_torneo_check)
         if not classifica_celebra.empty:
-            vincitori_celebra = []
-            for girone in classifica_celebra['Girone'].unique():
-                primo = classifica_celebra[classifica_celebra['Girone'] == girone].iloc[0]['Squadra']
-                vincitori_celebra.append(f"🏅 {girone}: {primo}")
-            vincitori_str_celebra = ", ".join(vincitori_celebra)
+            vincitori_str_celebra = format_vincitori_italiana(classifica_celebra)
             
             # Spazio per staccare dal titolo
             st.markdown("<br><br>", unsafe_allow_html=True)
@@ -3066,13 +3090,8 @@ def main():
                     
     # Banner vincitori
     if st.session_state.get('torneo_completato', False) and st.session_state.get('classifica_finale') is not None:
-        vincitori = []
         df_classifica = st.session_state['classifica_finale']
-        for girone in df_classifica['Girone'].unique():
-            primo = df_classifica[df_classifica['Girone'] == girone].iloc[0]['Squadra']
-            vincitori.append(f"🏅 {girone}: {primo}")
-            
-        vincitori_stringa = ", ".join(vincitori)
+        vincitori_stringa = format_vincitori_italiana(df_classifica)
 
         # Visualizza il banner personalizzato con i vincitori
         st.markdown(

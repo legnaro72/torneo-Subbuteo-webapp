@@ -9,6 +9,32 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+st.markdown("""
+    <script>
+    (function () {
+      function collapseSidebarIfOpen() {
+        try {
+          const parentDoc = window.parent.document;
+          const sidebar = parentDoc.querySelector('section[data-testid="stSidebar"]');
+          const collapseButton =
+            parentDoc.querySelector('[data-testid="stSidebarCollapseButton"]') ||
+            parentDoc.querySelector('button[kind="header"]');
+
+          const expanded = sidebar ? sidebar.getAttribute("aria-expanded") : "false";
+          const width = sidebar ? sidebar.getBoundingClientRect().width : 0;
+          if (sidebar && collapseButton && (expanded === "true" || width > 120)) {
+            collapseButton.click();
+          }
+        } catch (e) {}
+      }
+
+      [0, 150, 400, 900].forEach(function (delay) {
+        setTimeout(collapseSidebarIfOpen, delay);
+      });
+    })();
+    </script>
+""", unsafe_allow_html=True)
+
 import pandas as pd
 from pymongo import MongoClient, UpdateOne, InsertOne, DeleteOne
 from pymongo.server_api import ServerApi
