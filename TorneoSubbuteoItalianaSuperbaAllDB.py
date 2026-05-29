@@ -943,10 +943,6 @@ def mostra_calendario_pc(df, girone_sel, giornata_sel, modalita_visualizzazione)
                 width: fit-content !important;
                 margin: 4px auto 8px auto !important;
             }
-            div[class*="st-key-pc_valida_"] label[data-baseweb="checkbox"] input[aria-checked="false"] + div {
-                border: 2px solid #e63946 !important;
-                border-radius: 4px !important;
-            }
             .pc-match-separator {
                 margin: 14px 0 18px !important;
             }
@@ -1050,10 +1046,6 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
             width: fit-content !important;
             margin: 8px 0 0 0 !important;
             text-align: left !important;
-        }
-        div[class*="st-key-comp_valida_"] label[data-baseweb="checkbox"] input[aria-checked="false"] + div {
-            border: 2px solid #e63946 !important;
-            border-radius: 4px !important;
         }
         @media screen and (max-width: 480px) {
             .appview-container .main .block-container {
