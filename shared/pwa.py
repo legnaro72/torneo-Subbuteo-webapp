@@ -7,6 +7,16 @@ def inject_pwa_assets():
         """
         <script>
         const parentDoc = window.parent.document;
+        const manifestData = {
+          name: "Super Suite Subbuteo",
+          short_name: "Superba",
+          description: "Suite mobile per tornei Subbuteo Superba",
+          start_url: "/",
+          scope: "/",
+          display: "standalone",
+          background_color: "#f8fafc",
+          theme_color: "#1d3557"
+        };
         window.parent.addEventListener("beforeinstallprompt", function(event) {
           window.parent.__subbuteoBeforeInstallPrompt = true;
           window.parent.__subbuteoInstallPromptEvent = event;
@@ -14,7 +24,9 @@ def inject_pwa_assets():
         if (!parentDoc.querySelector('link[rel="manifest"]')) {
           const manifest = parentDoc.createElement("link");
           manifest.rel = "manifest";
-          manifest.href = "/app/static/manifest.webmanifest";
+          manifest.href = URL.createObjectURL(
+            new Blob([JSON.stringify(manifestData)], {type: "application/manifest+json"})
+          );
           parentDoc.head.appendChild(manifest);
         }
         let theme = parentDoc.querySelector('meta[name="theme-color"]');

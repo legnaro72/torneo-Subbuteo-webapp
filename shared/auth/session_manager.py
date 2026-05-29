@@ -215,23 +215,10 @@ def restore_session_from_local_query():
 
 
 def inject_local_storage_bridge():
-    components.html(
-        f"""
-        <script>
-        try {{
-          const parentWindow = window.parent;
-          const token = parentWindow.localStorage.getItem({COOKIE_NAME!r});
-          const url = new URL(parentWindow.location.href);
-          if (token && !url.searchParams.has({LOCAL_TOKEN_QUERY_PARAM!r})) {{
-            url.searchParams.set({LOCAL_TOKEN_QUERY_PARAM!r}, token);
-            parentWindow.location.replace(url.toString());
-          }}
-        }} catch (e) {{}}
-        </script>
-        """,
-        height=0,
-        width=0,
-    )
+    # Non navigare la pagina padre da components.html: l'iframe Streamlit e'
+    # sandboxato e i browser moderni bloccano parentWindow.location.replace().
+    # Il ripristino sessione resta affidato a cookie e auth_handoff.
+    return
 
 
 def restore_session_from_handoff():

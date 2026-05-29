@@ -161,18 +161,54 @@ if torneo_manifest == "CampionatoSuperba_26_27":
 
 def inject_parent_head_assets(manifest_href: str, is_campionato: bool):
     """Inietta manifest/favicon dopo il banner, evitando container invisibili in testa."""
+    manifest_data = {
+        "name": "Super Suite Subbuteo",
+        "short_name": "Superba",
+        "description": "Suite mobile per tornei Subbuteo Superba",
+        "start_url": "/",
+        "scope": "/",
+        "display": "standalone",
+        "background_color": "#f8fafc",
+        "theme_color": "#1d3557",
+        "icons": [
+            {
+                "src": "/app/static/logo_superba.jpg",
+                "sizes": "192x192",
+                "type": "image/jpeg",
+                "purpose": "any maskable"
+            },
+            {
+                "src": "/app/static/logo_superba.jpg",
+                "sizes": "512x512",
+                "type": "image/jpeg",
+                "purpose": "any maskable"
+            }
+        ],
+    }
+    if is_campionato:
+        manifest_data["shortcuts"] = [
+            {
+                "name": "Campionato Superba 26/27",
+                "short_name": "Campionato",
+                "description": "Apri direttamente il Campionato Superba 26/27",
+                "url": "/?torneo=CampionatoSuperba_26_27",
+            }
+        ]
     components.html(
         f"""
         <script>
         try {{
           const parentDoc = window.parent.document;
+          const manifestData = {json.dumps(manifest_data)};
           let manifest = parentDoc.querySelector('link[rel="manifest"]');
           if (!manifest) {{
             manifest = parentDoc.createElement("link");
             manifest.rel = "manifest";
             parentDoc.head.appendChild(manifest);
           }}
-          manifest.href = {manifest_href!r};
+          manifest.href = URL.createObjectURL(
+            new Blob([JSON.stringify(manifestData)], {{type: "application/manifest+json"}})
+          );
 
           if ({is_campionato!r}) {{
             parentDoc.title = "Campionato Superba";
