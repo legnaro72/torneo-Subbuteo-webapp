@@ -2581,7 +2581,6 @@ def main():
             # ── STEP 1: Dettagli Nuovo Torneo + Selezione Giocatori ──
             # Nasconde questa sezione dopo la conferma dei giocatori
             if not st.session_state.get('giocatori_confermati', False):
-                st.markdown("---")
                 st.header("🆕 Dettagli Nuovo Torneo")
                 nome_default = f"TorneoSubbuteo_{datetime.now().strftime('%d%m%Y')}"
                 nome_torneo = st.text_input("📝 Nome del torneo", value=st.session_state.get("nome_torneo", nome_default), key="nome_torneo_input")
