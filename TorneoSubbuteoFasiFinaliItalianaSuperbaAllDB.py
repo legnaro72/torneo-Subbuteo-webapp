@@ -72,7 +72,7 @@ from common.audio import (
 )
 from common.ui_components import (
     render_tournament_header, setup_common_sidebar,
-    enable_session_keepalive
+    enable_session_keepalive, force_sidebar_collapsed_on_startup
 )
 
 # Silenzia solo il warning di deprecazione relativo a st.experimental_get_query_params
@@ -2617,6 +2617,7 @@ def main():
     
 if __name__ == "__main__":
     main()
+    force_sidebar_collapsed_on_startup()
 
 
 

@@ -88,7 +88,7 @@ from common.audio import (
 from common.ui_components import (
     render_tournament_header, setup_common_sidebar, 
     setup_player_selection_mode, navigation_buttons,
-    enable_session_keepalive
+    enable_session_keepalive, force_sidebar_collapsed_on_startup
 )
 
 
@@ -3161,4 +3161,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+    force_sidebar_collapsed_on_startup()
 

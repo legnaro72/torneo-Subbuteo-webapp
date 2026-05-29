@@ -55,7 +55,7 @@ from common.audio import (
     autoplay_background_audio, toggle_audio_callback,
     start_background_audio, setup_audio_sidebar
 )
-from common.ui_components import setup_common_sidebar, enable_session_keepalive
+from common.ui_components import setup_common_sidebar, enable_session_keepalive, force_sidebar_collapsed_on_startup
 
 # Dati di connessione a MongoDB forniti dall'utente
 MONGO_URI_PLAYERS = "mongodb+srv://massimilianoferrando:Legnaro21!$@cluster0.t3750lc.mongodb.net/?retryWrites=true&w=majority"
@@ -1507,3 +1507,4 @@ elif st.session_state.confirm_delete["type"] is not None:
 # Footer leggero
 st.markdown("---")
 st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
+force_sidebar_collapsed_on_startup()

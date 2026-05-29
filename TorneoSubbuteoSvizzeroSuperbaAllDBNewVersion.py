@@ -63,7 +63,7 @@ from common.audio import (
 )
 from common.ui_components import (
     render_tournament_header, setup_common_sidebar,
-    setup_player_selection_mode, enable_session_keepalive
+    setup_player_selection_mode, enable_session_keepalive, force_sidebar_collapsed_on_startup
 )
 
 pwa.inject_pwa_assets()
@@ -2310,5 +2310,6 @@ if st.session_state.torneo_finito:
 # Footer leggero
 st.markdown("---")
 st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
+force_sidebar_collapsed_on_startup()
 
 
