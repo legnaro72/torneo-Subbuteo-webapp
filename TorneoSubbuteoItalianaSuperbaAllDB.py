@@ -8,6 +8,30 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+st.markdown("""
+    <script>
+    (function () {
+      function collapseSidebarIfOpen() {
+        try {
+          const parentDoc = window.parent.document;
+          const sidebar = parentDoc.querySelector('section[data-testid="stSidebar"]');
+          const collapseButton =
+            parentDoc.querySelector('[data-testid="stSidebarCollapseButton"]') ||
+            parentDoc.querySelector('button[kind="header"]');
+
+          if (sidebar && collapseButton && sidebar.getAttribute("aria-expanded") !== "false") {
+            collapseButton.click();
+          }
+        } catch (e) {}
+      }
+
+      [0, 150, 400, 900].forEach(function (delay) {
+        setTimeout(collapseSidebarIfOpen, delay);
+      });
+    })();
+    </script>
+""", unsafe_allow_html=True)
+
 import pandas as pd
 import numpy as np
 import json
@@ -348,7 +372,16 @@ def carica_tornei_da_db(tournaments_collection):
     if tournaments_collection is None:
         return []
     try:
-        return list(tournaments_collection.find({}, {"nome_torneo": 1}))
+        return list(
+            tournaments_collection.find(
+                {},
+                {"nome_torneo": 1, "data_modifica": 1, "data_salvataggio": 1}
+            ).sort([
+                ("data_modifica", -1),
+                ("data_salvataggio", -1),
+                ("_id", -1)
+            ])
+        )
     except Exception as e:
         st.error(f"❌ Errore caricamento tornei: {e}")
         return []
@@ -387,7 +420,12 @@ def salva_torneo_su_db(tournaments_collection, df_torneo, nome_torneo, tournamen
         return None
     try:
         df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
-        data = {"nome_torneo": nome_torneo, "calendario": df_torneo_pulito.to_dict('records')}
+        now = datetime.now()
+        data = {
+            "nome_torneo": nome_torneo,
+            "calendario": df_torneo_pulito.to_dict('records'),
+            "data_modifica": now
+        }
         
         # Se abbiamo un ID torneo, aggiorniamo il torneo esistente
         if tournament_id:
@@ -402,13 +440,14 @@ def salva_torneo_su_db(tournaments_collection, df_torneo, nome_torneo, tournamen
                     username=user,
                     action='creatorneo',
                     torneo=nome_torneo,
-                    details={'torneo_id': str(result.inserted_id)}
+                    details={'torneo_id': str(tournament_id)}
                 )
             except Exception as e:
                 print(f"[LOGGING] errore in salva_torneo_su_db (update): {e}")
             return tournament_id
         else:
             # Altrimenti creiamo un nuovo torneo
+            data["data_creazione"] = now
             result = tournaments_collection.insert_one(data)
             # logging: creazione torneo
             try:
@@ -433,7 +472,10 @@ def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
         df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
         tournaments_collection.update_one(
             {"_id": ObjectId(tournament_id)},
-            {"$set": {"calendario": df_torneo_pulito.to_dict('records')}}
+            {"$set": {
+                "calendario": df_torneo_pulito.to_dict('records'),
+                "data_modifica": datetime.now()
+            }}
         )
         # logging: aggiornamento torneo
         try:
@@ -2513,17 +2555,16 @@ def main():
                         )
                         tornei_disponibili = carica_tornei_da_db(tournaments_collection)
                         if tornei_disponibili:
-                            tornei_map = {t['nome_torneo']: str(t['_id']) for t in tornei_disponibili}
-                            torneo_preferito = "CampionatoSuperba_26_27"
-                            tornei_ordinati = sorted(tornei_map.keys())
-                            if torneo_preferito in tornei_ordinati:
-                                tornei_ordinati.remove(torneo_preferito)
-                                tornei_ordinati.insert(0, torneo_preferito)
+                            tornei_map = {}
+                            for torneo in tornei_disponibili:
+                                nome_torneo = torneo.get('nome_torneo')
+                                if nome_torneo and nome_torneo not in tornei_map:
+                                    tornei_map[nome_torneo] = str(torneo['_id'])
+                            tornei_ordinati = list(tornei_map.keys())
                             nome_sel = st.selectbox(
                                 "Seleziona torneo salvato",
                                 tornei_ordinati,
-                                index=None,
-                                placeholder="Scegli un torneo..."
+                                index=0
                             )
                             if st.button("Apri torneo 📂", key="btn_carica", width="stretch"):
                                 if not nome_sel:

@@ -11,14 +11,25 @@ st.set_page_config(
 
 st.markdown("""
     <script>
-    try {
-      const parentDoc = window.parent.document;
-      const sidebar = parentDoc.querySelector('section[data-testid="stSidebar"]');
-      const collapseButton = parentDoc.querySelector('button[kind="header"]');
-      if (sidebar && collapseButton && sidebar.getAttribute("aria-expanded") !== "false") {
-        setTimeout(function() { collapseButton.click(); }, 250);
+    (function () {
+      function collapseSidebarIfOpen() {
+        try {
+          const parentDoc = window.parent.document;
+          const sidebar = parentDoc.querySelector('section[data-testid="stSidebar"]');
+          const collapseButton =
+            parentDoc.querySelector('[data-testid="stSidebarCollapseButton"]') ||
+            parentDoc.querySelector('button[kind="header"]');
+
+          if (sidebar && collapseButton && sidebar.getAttribute("aria-expanded") !== "false") {
+            collapseButton.click();
+          }
+        } catch (e) {}
       }
-    } catch (e) {}
+
+      [0, 150, 400, 900].forEach(function (delay) {
+        setTimeout(collapseSidebarIfOpen, delay);
+      });
+    })();
     </script>
 """, unsafe_allow_html=True)
 
@@ -324,9 +335,11 @@ def salva_torneo_su_db(action_type="salvataggio", details=None):
     if 'GolOspite' in df_torneo_to_save.columns:
         df_torneo_to_save['GolOspite'] = df_torneo_to_save['GolOspite'].fillna(0).astype(int)
 
+    data_modifica = datetime.now()
     torneo_data = {
         "nome_torneo": st.session_state.nome_torneo,
-        "data_salvataggio": datetime.now(),
+        "data_salvataggio": data_modifica,
+        "data_modifica": data_modifica,
         "df_torneo": df_torneo_to_save.to_dict('records'),
         "df_squadre": st.session_state.df_squadre.to_dict('records'),
         "turno_attivo": st.session_state.turno_attivo,
@@ -392,14 +405,27 @@ def salva_torneo_su_db(action_type="salvataggio", details=None):
 
 
 
-@st.cache_data(ttl=300)  # Cache per 5 minuti
 def carica_nomi_tornei_da_db():
     """Carica i nomi dei tornei disponibili dal DB."""
     if tournaments_collection is None:
         return []
     try:
-        # Usiamo distinct per ottenere direttamente la lista dei nomi senza duplicati
-        return sorted(tournaments_collection.distinct("nome_torneo"))
+        tornei = tournaments_collection.find(
+            {},
+            {"nome_torneo": 1, "data_modifica": 1, "data_salvataggio": 1}
+        ).sort([
+            ("data_modifica", -1),
+            ("data_salvataggio", -1),
+            ("_id", -1)
+        ])
+        nomi_ordinati = []
+        gia_visti = set()
+        for torneo in tornei:
+            nome = torneo.get("nome_torneo")
+            if nome and nome not in gia_visti:
+                nomi_ordinati.append(nome)
+                gia_visti.add(nome)
+        return nomi_ordinati
     except Exception as e:
         st.error(f"❌ Errore caricamento tornei: {e}")
         return []
@@ -412,7 +438,14 @@ def carica_torneo_da_db(nome_torneo):
         
     try:
         # Cerca il torneo per nome
-        torneo = tournaments_collection.find_one({"nome_torneo": nome_torneo})
+        torneo = tournaments_collection.find_one(
+            {"nome_torneo": nome_torneo},
+            sort=[
+                ("data_modifica", -1),
+                ("data_salvataggio", -1),
+                ("_id", -1)
+            ]
+        )
         if not torneo:
             st.error(f"❌ Nessun torneo trovato con il nome '{nome_torneo}'")
             return False
@@ -1495,8 +1528,7 @@ if not st.session_state.torneo_iniziato and st.session_state.setup_mode is None:
                 torneo_scelto = st.selectbox(
                     "Seleziona torneo svizzero salvato",
                     options=tornei_disponibili,
-                    index=None,
-                    placeholder="Scegli un torneo svizzero...",
+                    index=0,
                     key="select_torneo_svizzero_iniziale"
                 )
             else:
@@ -1579,8 +1611,7 @@ if st.session_state.setup_mode == "carica_db":
         torneo_scelto = st.selectbox(
             "Seleziona torneo svizzero salvato",
             options=tornei_disponibili,
-            index=None,
-            placeholder="Scegli un torneo..."
+            index=0
         )
         
         if torneo_scelto:
