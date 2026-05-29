@@ -283,6 +283,7 @@ def force_sidebar_collapsed_on_startup():
         <script>
         (function () {
           const doc = window.parent.document;
+          const win = window.parent;
 
           function visibleWidth(el) {
             if (!el) return 0;
@@ -292,7 +293,10 @@ def force_sidebar_collapsed_on_startup():
 
           function findCollapseButton() {
             return doc.querySelector('[data-testid="stSidebarCollapseButton"]') ||
+                   doc.querySelector('[data-testid="collapsedControl"]') ||
                    doc.querySelector('button[aria-label*="Close sidebar"]') ||
+                   doc.querySelector('button[aria-label*="close sidebar"]') ||
+                   doc.querySelector('button[aria-label*="Collapse sidebar"]') ||
                    doc.querySelector('button[title*="Close sidebar"]') ||
                    doc.querySelector('button[kind="header"]');
           }
@@ -305,6 +309,21 @@ def force_sidebar_collapsed_on_startup():
               const expanded = sidebar.getAttribute("aria-expanded");
               const isOpen = expanded === "true" || visibleWidth(sidebar) > 120;
               if (!isOpen) return;
+
+              win.dispatchEvent(new KeyboardEvent("keydown", {
+                key: "Escape",
+                code: "Escape",
+                keyCode: 27,
+                which: 27,
+                bubbles: true
+              }));
+              doc.dispatchEvent(new KeyboardEvent("keydown", {
+                key: "Escape",
+                code: "Escape",
+                keyCode: 27,
+                which: 27,
+                bubbles: true
+              }));
 
               const collapseButton = findCollapseButton();
               if (collapseButton) {
@@ -323,7 +342,7 @@ def force_sidebar_collapsed_on_startup():
         })();
         </script>
         """,
-        height=0,
-        width=0,
+        height=1,
+        width=1,
     )
 
