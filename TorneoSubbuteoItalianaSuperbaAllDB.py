@@ -943,6 +943,15 @@ def mostra_calendario_pc(df, girone_sel, giornata_sel, modalita_visualizzazione)
                 width: fit-content !important;
                 margin: 4px auto 8px auto !important;
             }
+            .validation-v-hint {
+                color: #38bdf8;
+                font-size: 0.78rem;
+                font-weight: 900;
+                line-height: 1;
+                text-align: center;
+                margin: 0 auto 2px auto;
+                width: fit-content;
+            }
             .pc-match-separator {
                 margin: 14px 0 18px !important;
             }
@@ -981,6 +990,9 @@ def mostra_calendario_pc(df, girone_sel, giornata_sel, modalita_visualizzazione)
         with osp_col:
             st.markdown(f"<div class='pc-match-label away'>{label_o}</div>", unsafe_allow_html=True)
         with valida_col:
+            pc_valida_key = f"pc_{key_valida}"
+            if not st.session_state.get(pc_valida_key, bool(row['Valida'])):
+                st.markdown("<div class='validation-v-hint'>V</div>", unsafe_allow_html=True)
             st.checkbox("✓", key=f"pc_{key_valida}", value=bool(row['Valida']),
                         label_visibility="collapsed",
                         disabled=st.session_state.get('read_only', False))
@@ -1047,6 +1059,14 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
             margin: 8px 0 0 0 !important;
             text-align: left !important;
         }
+        .validation-v-hint {
+            color: #38bdf8;
+            font-size: 0.8rem;
+            font-weight: 900;
+            line-height: 1;
+            margin: 0 0 3px 1px;
+            width: fit-content;
+        }
         @media screen and (max-width: 480px) {
             .appview-container .main .block-container {
                 padding-left: 0.65rem !important;
@@ -1083,6 +1103,9 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
                         value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
                         disabled=row['Valida'])
         st.session_state[key_golospite] = st.session_state[f"comp_{key_golospite}"]
+        comp_valida_key = f"comp_{key_valida}"
+        if not st.session_state.get(comp_valida_key, bool(row['Valida'])):
+            st.markdown("<div class='validation-v-hint'>V</div>", unsafe_allow_html=True)
         
         st.checkbox("✓ Validata", key=f"comp_{key_valida}", value=bool(row['Valida']),
                     disabled=st.session_state.get('read_only', False))
