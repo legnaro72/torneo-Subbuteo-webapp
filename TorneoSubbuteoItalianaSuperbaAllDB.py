@@ -99,9 +99,11 @@ def render_sidebar_collapse_workaround():
         if (!d) return;
         const selectors = [
           'button[data-testid="stSidebarCollapseButton"]',
-          'button[data-testid="baseButton-headerNoPadding"]',
-          'button[kind="header"]',
-          'section[data-testid="stSidebar"] button'
+          '[data-testid="stSidebarCollapseButton"] button',
+          'button[aria-label="Close sidebar"]',
+          'button[aria-label="Collapse sidebar"]',
+          'button[title="Close sidebar"]',
+          'button[title="Collapse sidebar"]'
         ];
         let nativeButton = null;
         for (const selector of selectors) {
@@ -110,8 +112,8 @@ def render_sidebar_collapse_workaround():
         }
         if (!nativeButton) {
           nativeButton = Array.from(d.querySelectorAll("button")).find(function(b) {
-          const t = (b.getAttribute("aria-label") || b.getAttribute("title") || b.textContent || "").toLowerCase();
-          return t.includes("collapse") || t.includes("close sidebar") || t.includes("chiudi") || t.includes("sidebar");
+            const t = (b.getAttribute("aria-label") || b.getAttribute("title") || "").toLowerCase();
+            return t.includes("sidebar") && (t.includes("close") || t.includes("collapse"));
           });
         }
         if (nativeButton) nativeButton.click();
