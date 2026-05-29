@@ -943,8 +943,7 @@ def mostra_calendario_pc(df, girone_sel, giornata_sel, modalita_visualizzazione)
                 width: fit-content !important;
                 margin: 4px auto 8px auto !important;
             }
-            div[data-testid="stElementContainer"]:has(.pc-validation-checkbox-marker) + div[data-testid="stElementContainer"] div[data-testid="stCheckbox"]:has(input:not(:checked)) [data-baseweb="checkbox"],
-            div.element-container:has(.pc-validation-checkbox-marker) + div.element-container div[data-testid="stCheckbox"]:has(input:not(:checked)) [data-baseweb="checkbox"] {
+            div[class*="st-key-pc_valida_"] label[data-baseweb="checkbox"] input[aria-checked="false"] + div {
                 border: 2px solid #e63946 !important;
                 border-radius: 4px !important;
             }
@@ -986,7 +985,6 @@ def mostra_calendario_pc(df, girone_sel, giornata_sel, modalita_visualizzazione)
         with osp_col:
             st.markdown(f"<div class='pc-match-label away'>{label_o}</div>", unsafe_allow_html=True)
         with valida_col:
-            st.markdown("<span class='pc-validation-checkbox-marker'></span>", unsafe_allow_html=True)
             st.checkbox("✓", key=f"pc_{key_valida}", value=bool(row['Valida']),
                         label_visibility="collapsed",
                         disabled=st.session_state.get('read_only', False))
@@ -1053,8 +1051,7 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
             margin: 8px 0 0 0 !important;
             text-align: left !important;
         }
-        div[data-testid="stElementContainer"]:has(.compact-validation-checkbox-marker) + div[data-testid="stElementContainer"] div[data-testid="stCheckbox"]:has(input:not(:checked)) [data-baseweb="checkbox"],
-        div.element-container:has(.compact-validation-checkbox-marker) + div.element-container div[data-testid="stCheckbox"]:has(input:not(:checked)) [data-baseweb="checkbox"] {
+        div[class*="st-key-comp_valida_"] label[data-baseweb="checkbox"] input[aria-checked="false"] + div {
             border: 2px solid #e63946 !important;
             border-radius: 4px !important;
         }
@@ -1094,7 +1091,6 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
                         value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
                         disabled=row['Valida'])
         st.session_state[key_golospite] = st.session_state[f"comp_{key_golospite}"]
-        st.markdown("<span class='compact-validation-checkbox-marker'></span>", unsafe_allow_html=True)
         
         st.checkbox("✓ Validata", key=f"comp_{key_valida}", value=bool(row['Valida']),
                     disabled=st.session_state.get('read_only', False))
