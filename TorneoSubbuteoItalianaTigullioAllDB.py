@@ -159,54 +159,56 @@ manifest_href = "/app/static/manifest.webmanifest"
 if torneo_manifest == "CampionatoTigullio_26_27":
     manifest_href = "/app/static/manifest-campionato-tigullio-26-27.webmanifest"
 
-components.html(
-    f"""
-    <script>
-    try {{
-      const parentDoc = window.parent.document;
-      let manifest = parentDoc.querySelector('link[rel="manifest"]');
-      if (!manifest) {{
-        manifest = parentDoc.createElement("link");
-        manifest.rel = "manifest";
-        parentDoc.head.appendChild(manifest);
-      }}
-      manifest.href = {manifest_href!r};
+def inject_parent_head_assets(manifest_href: str, is_campionato: bool):
+    """Inietta manifest/favicon dopo il banner, evitando container invisibili in testa."""
+    components.html(
+        f"""
+        <script>
+        try {{
+          const parentDoc = window.parent.document;
+          let manifest = parentDoc.querySelector('link[rel="manifest"]');
+          if (!manifest) {{
+            manifest = parentDoc.createElement("link");
+            manifest.rel = "manifest";
+            parentDoc.head.appendChild(manifest);
+          }}
+          manifest.href = {manifest_href!r};
 
-      if ({(torneo_manifest == "CampionatoTigullio_26_27")!r}) {{
-        parentDoc.title = "Campionato Tigullio";
-      }}
+          if ({is_campionato!r}) {{
+            parentDoc.title = "Campionato Tigullio";
+          }}
 
-      const iconHref = "/app/static/logo_tigullio.jpg";
-      let favicon = parentDoc.querySelector('link[rel="icon"]');
-      if (!favicon) {{
-        favicon = parentDoc.createElement("link");
-        favicon.rel = "icon";
-        parentDoc.head.appendChild(favicon);
-      }}
-      favicon.href = iconHref;
+          const iconHref = "/app/static/logo_tigullio.jpg";
+          let favicon = parentDoc.querySelector('link[rel="icon"]');
+          if (!favicon) {{
+            favicon = parentDoc.createElement("link");
+            favicon.rel = "icon";
+            parentDoc.head.appendChild(favicon);
+          }}
+          favicon.href = iconHref;
 
-      let appleIcon = parentDoc.querySelector('link[rel="apple-touch-icon"]');
-      if (!appleIcon) {{
-        appleIcon = parentDoc.createElement("link");
-        appleIcon.rel = "apple-touch-icon";
-        parentDoc.head.appendChild(appleIcon);
-      }}
-      appleIcon.href = iconHref;
+          let appleIcon = parentDoc.querySelector('link[rel="apple-touch-icon"]');
+          if (!appleIcon) {{
+            appleIcon = parentDoc.createElement("link");
+            appleIcon.rel = "apple-touch-icon";
+            parentDoc.head.appendChild(appleIcon);
+          }}
+          appleIcon.href = iconHref;
 
-      let theme = parentDoc.querySelector('meta[name="theme-color"]');
-      if (!theme) {{
-        theme = parentDoc.createElement("meta");
-        theme.name = "theme-color";
-        parentDoc.head.appendChild(theme);
-      }}
-      theme.content = "#1d3557";
+          let theme = parentDoc.querySelector('meta[name="theme-color"]');
+          if (!theme) {{
+            theme = parentDoc.createElement("meta");
+            theme.name = "theme-color";
+            parentDoc.head.appendChild(theme);
+          }}
+          theme.content = "#1d3557";
 
-    }} catch (e) {{}}
-    </script>
-    """,
-    height=0,
-    width=0,
-)
+        }} catch (e) {{}}
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
 try:
     if st.query_params.get("pwa_debug") == "1":
         pwa.show_pwa_diagnostics()
@@ -1417,6 +1419,69 @@ def esporta_pdf(df_torneo, df_classifica, nome_torneo):
 # -------------------------
 # APP UI: stile e layout — CSS centralizzato in common/styles.py
 # -------------------------
+def inject_top_gap_css():
+    st.html("""
+        <style>
+        .block-container,
+        div.block-container,
+        main .block-container,
+        section[data-testid="stMain"] .block-container,
+        div[data-testid="stAppViewBlockContainer"],
+        div[data-testid="stMainBlockContainer"],
+        .appview-container .main .block-container,
+        section.main > div.block-container,
+        div[data-testid="stAppViewContainer"] .main .block-container {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+        div[data-testid="stVerticalBlock"] > div:first-child {
+            margin-top: 0 !important;
+        }
+        div[data-testid="stElementContainer"]:empty,
+        div[data-testid="stElementContainer"]:has(div[data-testid="stMarkdownContainer"] > style:only-child),
+        div.element-container:has(div[data-testid="stMarkdownContainer"] > style:only-child),
+        div[data-testid="stElementContainer"]:has(div[data-testid="stHtml"] > style:only-child),
+        div.element-container:has(div[data-testid="stHtml"] > style:only-child),
+        div[data-testid="stElementContainer"][width="0px"][height="0px"],
+        div[data-testid="stElementContainer"].st-key-subbuteo_tigullio_cookie_manager,
+        div.st-key-subbuteo_tigullio_cookie_manager,
+        div[data-testid="stElementContainer"]:has(iframe[height="0"]),
+        div[data-testid="stElementContainer"]:has(iframe[style*="height: 0px"]),
+        div.element-container:has(iframe[height="0"]),
+        div.element-container:has(iframe[style*="height: 0px"]) {
+            display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+        }
+        iframe[height="0"],
+        iframe[style*="height: 0px"],
+        div.st-key-subbuteo_tigullio_cookie_manager iframe {
+            display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+        }
+        </style>
+    """)
+
+
+def render_app_title():
+    if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
+        st.markdown(f"""
+        <div class='subbuteo-top-banner' style='text-align:center; padding:20px; border-radius:10px; background: linear-gradient(90deg, #457b9d, #1d3557); box-shadow: 0 4px 14px #00000022;'>
+            <h1 style='color:white; margin:0; font-weight:700;'>🇮🇹⚽ {st.session_state['nome_torneo']} 🏆🇮🇹</h1>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div class='subbuteo-top-banner' style='text-align:center; padding:20px; border-radius:10px; background: linear-gradient(90deg, #457b9d, #1d3557); box-shadow: 0 4px 14px #00000022;'>
+            <h1 style='color:white; margin:0; font-weight:700;'>🇮🇹⚽ Torneo Tigullio - Gestione Gironi 🏆🇮🇹</h1>
+        </div>
+        """, unsafe_allow_html=True)
+
+
 def inject_css():
     inject_all_styles()  # Delega al modulo condiviso
     # Override locale ultra-aggressivo per rimuovere lo spazio vuoto in alto (solo Tigullio)
@@ -1428,11 +1493,18 @@ def inject_css():
         .stMainBlockContainer {
             padding-top: 0 !important;
         }
+        .block-container,
+        div.block-container,
+        main .block-container,
+        section[data-testid="stMain"] .block-container,
+        div[data-testid="stAppViewBlockContainer"],
+        div[data-testid="stMainBlockContainer"],
         .appview-container .main .block-container,
         section.main > div.block-container,
         div[data-testid="stAppViewContainer"] .main .block-container,
         div[data-testid="stMainBlockContainer"] {
-            padding-top: 0.35rem !important;
+            padding-top: 0 !important;
+            margin-top: 0 !important;
         }
         div[data-testid="stVerticalBlock"] > div:first-child {
             margin-top: 0 !important;
@@ -1441,6 +1513,58 @@ def inject_css():
         div[data-testid="stMarkdownContainer"] h2,
         div[data-testid="stMarkdownContainer"] h3 {
             margin-top: 0 !important;
+        }
+        div[data-testid="stElementContainer"]:has(div[data-testid="stMarkdownContainer"] > style:only-child),
+        div.element-container:has(div[data-testid="stMarkdownContainer"] > style:only-child),
+        div[data-testid="stElementContainer"]:has(div[data-testid="stHtml"] > style:only-child),
+        div.element-container:has(div[data-testid="stHtml"] > style:only-child) {
+            display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+        }
+        div[data-testid="stVerticalBlock"]:has(.subbuteo-top-banner) > div[data-testid="stElementContainer"]:has(~ div[data-testid="stElementContainer"] .subbuteo-top-banner),
+        div[data-testid="stVerticalBlock"]:has(.subbuteo-top-banner) > div.element-container:has(~ div.element-container .subbuteo-top-banner) {
+            display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+        }
+        div[data-testid="stElementContainer"]:empty,
+        div[data-testid="stElementContainer"][width="0px"][height="0px"],
+        div[data-testid="stElementContainer"].st-key-subbuteo_tigullio_cookie_manager,
+        div.st-key-subbuteo_tigullio_cookie_manager {
+            display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+        }
+        div.st-key-subbuteo_tigullio_cookie_manager iframe {
+            display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+        }
+        iframe[height="0"],
+        iframe[style*="height: 0px"] {
+            display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+        }
+        div[data-testid="stElementContainer"]:has(iframe[height="0"]),
+        div[data-testid="stElementContainer"]:has(iframe[style*="height: 0px"]),
+        div.element-container:has(iframe[height="0"]),
+        div.element-container:has(iframe[style*="height: 0px"]) {
+            display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
         .stLinkButton {
             width: 100% !important;
@@ -1481,9 +1605,6 @@ def inject_css():
 # APP
 # -------------------------
 def main():
-    # Iniezione immediata del CSS per evitare il gap in alto
-    inject_css()
-
     # Mostra la schermata di autenticazione
     #authenticated = auth.show_auth_screen()
     #if not authenticated:
@@ -1492,8 +1613,7 @@ def main():
     # Mostra la schermata di autenticazione se non si è già autenticati
     auth.require_auth(club="Tigullio")
 
-    # Attiva il sistema di keep-alive per mantenere la sessione durante le partite
-    enable_session_keepalive()
+    # Il keep-alive viene iniettato dopo il titolo per non creare container invisibili prima del banner.
 
     # Rilevamento automatico del dispositivo (PC vs Smartphone)
     device_param = None
@@ -1510,24 +1630,27 @@ def main():
         except Exception:
             pass
 
-    if device_param in ('pc', 'smartphone'):
-        if not st.session_state.get('dispositivo_rilevato', False):
-            st.session_state['tipo_vista_selezionata'] = 'pc'
-            st.session_state['tipo_vista_sidebar_widget'] = 'Compact'
-            st.session_state['tipo_vista_main_widget'] = 'Compact'
-            st.session_state['dispositivo_rilevato'] = True
-    elif not st.session_state.get('dispositivo_rilevato', False):
-        components.html("""
-            <script>
-            try {
-                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (window.parent && window.parent.innerWidth < 800);
-                const targetView = isMobile ? 'smartphone' : 'pc';
-                const params = new URLSearchParams(window.parent.location.search);
-                params.set('device', targetView);
-                window.parent.location.search = params.toString();
-            } catch(e) {}
-            </script>
-        """, height=0, width=0)
+    if device_param not in ('pc', 'smartphone'):
+        try:
+            headers = getattr(st.context, "headers", {}) or {}
+            user_agent = str(headers.get("User-Agent", "") or "").lower()
+            mobile_tokens = ("android", "iphone", "ipad", "ipod", "blackberry", "iemobile", "opera mini")
+            if any(token in user_agent for token in mobile_tokens):
+                device_param = "smartphone"
+        except Exception:
+            pass
+
+    if not st.session_state.get('dispositivo_rilevato', False):
+        vista_iniziale = 'compact' if device_param == 'smartphone' else 'pc'
+        st.session_state['tipo_vista_selezionata'] = vista_iniziale
+        st.session_state['tipo_vista_sidebar_widget'] = 'Compact'
+        st.session_state['tipo_vista_main_widget'] = 'Compact'
+        st.session_state['dispositivo_rilevato'] = True
+
+    render_app_title()
+    inject_css()
+    inject_parent_head_assets(manifest_href, torneo_manifest == "CampionatoTigullio_26_27")
+    enable_session_keepalive()
 
 
     # Debug: mostra utente autenticato e ruolo
@@ -1629,20 +1752,6 @@ def main():
                 else:
                     st.warning(f"⚠️ Torneo '{torneo_param}' non trovato nel DB.")
 
-
-    # Titolo con stile personalizzato
-    if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
-        st.markdown(f"""
-        <div style='text-align:center; padding:20px; border-radius:10px; background: linear-gradient(90deg, #457b9d, #1d3557); box-shadow: 0 4px 14px #00000022;'>
-            <h1 style='color:white; margin:0; font-weight:700;'>🇮🇹⚽ {st.session_state['nome_torneo']} 🏆🇮🇹</h1>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown(f"""
-        <div style='text-align:center; padding:20px; border-radius:10px; background: linear-gradient(90deg, #457b9d, #1d3557); box-shadow: 0 4px 14px #00000022;'>
-            <h1 style='color:white; margin:0; font-weight:700;'>🇮🇹⚽ Torneo Tigullio – Gestione Gironi 🏆🇮🇹</h1>
-        </div>
-        """, unsafe_allow_html=True)
 
     # --- PULSANTE "CELEBRA VINCITORE" AL TOP ---
     df_torneo_check = st.session_state.get('df_torneo', pd.DataFrame())
@@ -1907,9 +2016,6 @@ def main():
             else:
                 st.info("Nessun girone attivo.")
         
-
-
-        st.markdown("---")
         with st.expander("Ricerca e filtri", expanded=False):
 
             current_nav_main = st.session_state.get('usa_bottoni_sidebar', True)
@@ -2268,7 +2374,6 @@ def main():
                 st.sidebar.info("ℹ️ Nessuna partita valida. Compila e valida i risultati per generare la classifica.")
 
         # Calendario (nessun filtro)
-        st.markdown("---")
         if filtro_principale == 'Nessuno':
             col_head1, col_head2 = st.columns([3, 1], vertical_alignment="bottom")
             with col_head1:
@@ -2476,7 +2581,6 @@ def main():
             # ── STEP 1: Dettagli Nuovo Torneo + Selezione Giocatori ──
             # Nasconde questa sezione dopo la conferma dei giocatori
             if not st.session_state.get('giocatori_confermati', False):
-                st.markdown("---")
                 st.header("🆕 Dettagli Nuovo Torneo")
                 nome_default = f"TorneoSubbuteo_{datetime.now().strftime('%d%m%Y')}"
                 nome_torneo = st.text_input("📝 Nome del torneo", value=st.session_state.get("nome_torneo", nome_default), key="nome_torneo_input")

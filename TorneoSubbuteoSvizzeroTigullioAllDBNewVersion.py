@@ -180,7 +180,7 @@ st.markdown("""
     section.main > div.block-container,
     div[data-testid="stAppViewContainer"] .main .block-container,
     div[data-testid="stMainBlockContainer"] {
-        padding-top: 0.35rem !important;
+        padding-top: 0 !important;
     }
     div[data-testid="stVerticalBlock"] > div:first-child {
         margin-top: 0 !important;
@@ -1899,6 +1899,36 @@ if st.session_state.torneo_iniziato:
 # Interfaccia Utente Torneo
 # -------------------------
 if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
+    df_turno_corrente = st.session_state.df_torneo[
+        st.session_state.df_torneo['Turno'] == st.session_state.turno_attivo
+    ].copy()
+
+    if not st.session_state.get("mostra_incontri_disputati", False) and not df_turno_corrente.empty:
+        tipo_vista_corrente = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
+
+        with st.expander("Visualizzazione incontri", expanded=False):
+            col_v1, col_v2 = st.columns([0.5, 0.5])
+            with col_v1:
+                st.radio(
+                    "Vista Calendario:",
+                    ("Compact", "Premium", "Standard"),
+                    index=("Compact", "Premium", "Standard").index(tipo_vista_corrente),
+                    key="tipo_vista_main_widget",
+                    horizontal=True,
+                    on_change=sync_tipo_vista,
+                    args=("tipo_vista_main_widget",)
+                )
+            with col_v2:
+                st.radio(
+                    "Formato Incontri:",
+                    options=["Squadre", "Giocatori", "Completa"],
+                    index=["Squadre", "Giocatori", "Completa"].index(st.session_state.modalita_visualizzazione),
+                    key="radio_main",
+                    horizontal=True,
+                    on_change=sync_modalita_visualizzazione,
+                    args=("radio_main",)
+                )
+
     if st.session_state.get("mostra_incontri_disputati", False):
         st.markdown("## 🏟️ Tutti gli incontri disputati")
         df_giocati = st.session_state.df_torneo[st.session_state.df_torneo['Validata'] == True]
@@ -1995,37 +2025,9 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
                 st.rerun()
     
     
-    df_turno_corrente = st.session_state.df_torneo[st.session_state.df_torneo['Turno'] == st.session_state.turno_attivo].copy()
-    
     if df_turno_corrente.empty:
         st.warning("⚠️ Non ci sono partite in questo turno. Torna indietro per aggiungere giocatori o carica un altro torneo.")
     else:
-        st.markdown("---")
-        tipo_vista_corrente = st.session_state.get('tipo_vista_selezionata', 'compact').capitalize()
-        
-        with st.expander("Visualizzazione incontri", expanded=False):
-            col_v1, col_v2 = st.columns([0.5, 0.5])
-            with col_v1:
-                st.radio(
-                    "Vista Calendario:",
-                    ("Compact", "Premium", "Standard"),
-                    index=("Compact", "Premium", "Standard").index(tipo_vista_corrente),
-                    key="tipo_vista_main_widget",
-                    horizontal=True,
-                    on_change=sync_tipo_vista,
-                    args=("tipo_vista_main_widget",)
-                )
-            with col_v2:
-                st.radio(
-                    "Formato Incontri:",
-                    options=["Squadre", "Giocatori", "Completa"],
-                    index=["Squadre", "Giocatori", "Completa"].index(st.session_state.modalita_visualizzazione),
-                    key="radio_main",
-                    horizontal=True,
-                    on_change=sync_modalita_visualizzazione,
-                    args=("radio_main",)
-                )
-
         # Passa il nuovo parametro alla funzione
         visualizza_incontri_attivi(df_turno_corrente, st.session_state.turno_attivo, st.session_state.modalita_visualizzazione)
 

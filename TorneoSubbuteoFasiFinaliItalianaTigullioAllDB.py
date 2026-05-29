@@ -132,7 +132,7 @@ st.markdown("""
     section.main > div.block-container,
     div[data-testid="stAppViewContainer"] .main .block-container,
     div[data-testid="stMainBlockContainer"] {
-        padding-top: 0.35rem !important;
+        padding-top: 0 !important;
     }
     div[data-testid="stVerticalBlock"] > div:first-child {
         margin-top: 0 !important;
@@ -1854,15 +1854,11 @@ def main():
         # Se è stata fatta una selezione, mostra il form appropriato
         opzione_selezione = st.session_state['opzione_selezione']
         
-        st.markdown("---")
-        
         # Pulsante per tornare indietro alla selezione iniziale
         if st.button("⬅️ Torna alla selezione iniziale", key="back_to_selection"):
             st.session_state['opzione_selezione'] = None
             st.rerun()
             
-        st.markdown("---")
-        
         # Mostra il form appropriato in base alla selezione
         if opzione_selezione == "Creare una nuova fase finale":
                 tornei_trovati = carica_tornei_da_db(tournaments_collection, prefix=["completato_"])
@@ -2340,8 +2336,6 @@ def main():
                         st.rerun()
                                
             if st.session_state.get('giornate_mode'):
-                st.divider()
-                
                 if st.session_state['giornate_mode'] == 'gironi':
                     if 'df_finale_gironi' not in st.session_state:
                         st.error("Errore nel caricamento dei dati dei gironi. Riprova.")
@@ -2369,9 +2363,6 @@ def main():
                         st.session_state['giornate_mode_active'] = True
                         st.rerun()
                     
-                    st.markdown("<h3 style='text-align: center;'>Tabellone Eliminazione Diretta</h3>", unsafe_allow_html=True)
-                    st.divider()
-
                     if 'rounds_ko' not in st.session_state:
                         st.error("Dati del tabellone KO non trovati. Riprova.")
                         st.button("Torna indietro", on_click=reset_to_setup)
@@ -2379,7 +2370,7 @@ def main():
                     
                     # 🚀 RENDER VISUAL BRACKET
                     visualizzazione_preferita = st.session_state.get("modalita_visualizzazione_ko", "squadre")
-                    with st.expander("Visualizzazioni Incontri", expanded=False):
+                    with st.expander("Visualizzazione incontri", expanded=False):
                         st.radio(
                             "Formato tabellone:",
                             options=["squadre", "completa", "giocatori"],
@@ -2416,7 +2407,6 @@ def main():
                     visualizzazione_preferita = st.session_state.get("modalita_visualizzazione_ko", "squadre")
                     with st.expander("Tabellone", expanded=False):
                         render_visual_bracket(st.session_state['rounds_ko'], visualizzazione_preferita)
-                    st.divider()
                     
                     #inizio
                     if st.session_state.get('show_all_ko_matches', False):
@@ -2524,7 +2514,6 @@ def main():
                     else:
                         # --- SOLO round attivo ---
                         if st.session_state['rounds_ko']:
-                            st.markdown("---")
                             current_round_df = st.session_state['rounds_ko'][-1]
                             render_round(current_round_df, len(st.session_state['rounds_ko']) - 1, st.session_state.get("modalita_visualizzazione_ko", "squadre"))
                             
