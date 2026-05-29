@@ -23,6 +23,7 @@ import base64
 import time
 import urllib.parse
 import os
+import streamlit.components.v1 as components
 
 # Import auth utilities
 from shared import pwa
@@ -40,12 +41,75 @@ from common.ui_components import (
     setup_player_selection_mode, enable_session_keepalive
 )
 
+def render_sidebar_collapse_workaround():
+    components.html("""
+    <div id="subbuteo-sidebar-tools">
+      <button id="subbuteo-collapse-sidebar" type="button">Chiudi sidebar</button>
+    </div>
+    <style>
+      html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+      #subbuteo-sidebar-tools { display: none; justify-content: flex-end; width: 100%; }
+      #subbuteo-collapse-sidebar { width: auto; border: 0; border-radius: 7px; padding: .42rem .72rem; background: #1d3557; color: white; font-size: .78rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(29, 53, 87, .24); }
+      #subbuteo-collapse-sidebar:hover { background: #457b9d; }
+    </style>
+    <script>
+    (function() {
+      const box = document.getElementById("subbuteo-sidebar-tools");
+      const btn = document.getElementById("subbuteo-collapse-sidebar");
+      function doc() { try { return window.parent.document; } catch (e) { return null; } }
+      function open(sidebar) {
+        if (!sidebar) return false;
+        const aria = sidebar.getAttribute("aria-expanded");
+        if (aria === "true") return true;
+        if (aria === "false") return false;
+        return sidebar.getBoundingClientRect().width > 80;
+      }
+      function update() {
+        const d = doc();
+        const sidebar = d && d.querySelector('section[data-testid="stSidebar"]');
+        box.style.display = open(sidebar) ? "flex" : "none";
+      }
+      btn.addEventListener("click", function() {
+        const d = doc();
+        if (!d) return;
+        const selectors = [
+          'button[data-testid="stSidebarCollapseButton"]',
+          '[data-testid="stSidebarCollapseButton"] button',
+          'button[aria-label="Close sidebar"]',
+          'button[aria-label="Collapse sidebar"]',
+          'button[title="Close sidebar"]',
+          'button[title="Collapse sidebar"]'
+        ];
+        let nativeButton = null;
+        for (const selector of selectors) {
+          nativeButton = d.querySelector(selector);
+          if (nativeButton) break;
+        }
+        if (!nativeButton) {
+          nativeButton = Array.from(d.querySelectorAll("button")).find(function(b) {
+            const t = (b.getAttribute("aria-label") || b.getAttribute("title") || "").toLowerCase();
+            return t.includes("sidebar") && (t.includes("close") || t.includes("collapse"));
+          });
+        }
+        if (nativeButton) nativeButton.click();
+        setTimeout(update, 150);
+        setTimeout(update, 650);
+      });
+      update();
+      setInterval(update, 700);
+    })();
+    </script>
+    """, height=44, width=150)
+
 pwa.inject_pwa_assets()
 
 auth.require_auth(club="PierCrew")
 
 # Attiva il sistema di keep-alive per mantenere la sessione durante le partite
 enable_session_keepalive()
+_, sidebar_button_col = st.columns([1, 0.18])
+with sidebar_button_col:
+    render_sidebar_collapse_workaround()
 
 HUB_URL = "https://farm-tornei-subbuteo-piercrew-all-db.streamlit.app/"
 HOME_URL = "https://torneo-subbuteo-piercrew-new-version-svizzero-alldb.streamlit.app/"
@@ -311,9 +375,11 @@ def salva_torneo_su_db(action_type="salvataggio", details=None):
     if 'GolOspite' in df_torneo_to_save.columns:
         df_torneo_to_save['GolOspite'] = df_torneo_to_save['GolOspite'].fillna(0).astype(int)
 
+    data_modifica = datetime.now()
     torneo_data = {
         "nome_torneo": st.session_state.nome_torneo,
-        "data_salvataggio": datetime.now(),
+        "data_salvataggio": data_modifica,
+        "data_modifica": data_modifica,
         "df_torneo": df_torneo_to_save.to_dict('records'),
         "df_squadre": st.session_state.df_squadre.to_dict('records'),
         "turno_attivo": st.session_state.turno_attivo,
@@ -379,14 +445,27 @@ def salva_torneo_su_db(action_type="salvataggio", details=None):
 
 
 
-@st.cache_data(ttl=300)  # Cache per 5 minuti
 def carica_nomi_tornei_da_db():
     """Carica i nomi dei tornei disponibili dal DB."""
     if tournaments_collection is None:
         return []
     try:
-        # Usiamo distinct per ottenere direttamente la lista dei nomi senza duplicati
-        return sorted(tournaments_collection.distinct("nome_torneo"))
+        tornei = tournaments_collection.find(
+            {},
+            {"nome_torneo": 1, "data_modifica": 1, "data_salvataggio": 1}
+        ).sort([
+            ("data_modifica", -1),
+            ("data_salvataggio", -1),
+            ("_id", -1)
+        ])
+        nomi_ordinati = []
+        gia_visti = set()
+        for torneo in tornei:
+            nome = torneo.get("nome_torneo")
+            if nome and nome not in gia_visti:
+                nomi_ordinati.append(nome)
+                gia_visti.add(nome)
+        return nomi_ordinati
     except Exception as e:
         st.error(f"❌ Errore caricamento tornei: {e}")
         return []
@@ -399,7 +478,14 @@ def carica_torneo_da_db(nome_torneo):
         
     try:
         # Cerca il torneo per nome
-        torneo = tournaments_collection.find_one({"nome_torneo": nome_torneo})
+        torneo = tournaments_collection.find_one(
+            {"nome_torneo": nome_torneo},
+            sort=[
+                ("data_modifica", -1),
+                ("data_salvataggio", -1),
+                ("_id", -1)
+            ]
+        )
         if not torneo:
             st.error(f"❌ Nessun torneo trovato con il nome '{nome_torneo}'")
             return False
@@ -1482,8 +1568,7 @@ if not st.session_state.torneo_iniziato and st.session_state.setup_mode is None:
                 torneo_scelto = st.selectbox(
                     "Seleziona torneo svizzero salvato",
                     options=tornei_disponibili,
-                    index=None,
-                    placeholder="Scegli un torneo svizzero...",
+                    index=0,
                     key="select_torneo_svizzero_iniziale"
                 )
             else:
@@ -1566,8 +1651,7 @@ if st.session_state.setup_mode == "carica_db":
         torneo_scelto = st.selectbox(
             "Seleziona torneo svizzero salvato",
             options=tornei_disponibili,
-            index=None,
-            placeholder="Scegli un torneo..."
+            index=0
         )
         
         if torneo_scelto:

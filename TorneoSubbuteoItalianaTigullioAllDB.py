@@ -66,6 +66,67 @@ from common.ui_components import (
 )
 
 
+def render_sidebar_collapse_workaround():
+    components.html("""
+    <div id="subbuteo-sidebar-tools">
+      <button id="subbuteo-collapse-sidebar" type="button">Chiudi sidebar</button>
+    </div>
+    <style>
+      html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+      #subbuteo-sidebar-tools { display: none; justify-content: flex-end; width: 100%; }
+      #subbuteo-collapse-sidebar { width: auto; border: 0; border-radius: 7px; padding: .42rem .72rem; background: #1d3557; color: white; font-size: .78rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(29, 53, 87, .24); }
+      #subbuteo-collapse-sidebar:hover { background: #457b9d; }
+    </style>
+    <script>
+    (function() {
+      const box = document.getElementById("subbuteo-sidebar-tools");
+      const btn = document.getElementById("subbuteo-collapse-sidebar");
+      function doc() { try { return window.parent.document; } catch (e) { return null; } }
+      function open(sidebar) {
+        if (!sidebar) return false;
+        const aria = sidebar.getAttribute("aria-expanded");
+        if (aria === "true") return true;
+        if (aria === "false") return false;
+        return sidebar.getBoundingClientRect().width > 80;
+      }
+      function update() {
+        const d = doc();
+        const sidebar = d && d.querySelector('section[data-testid="stSidebar"]');
+        box.style.display = open(sidebar) ? "flex" : "none";
+      }
+      btn.addEventListener("click", function() {
+        const d = doc();
+        if (!d) return;
+        const selectors = [
+          'button[data-testid="stSidebarCollapseButton"]',
+          '[data-testid="stSidebarCollapseButton"] button',
+          'button[aria-label="Close sidebar"]',
+          'button[aria-label="Collapse sidebar"]',
+          'button[title="Close sidebar"]',
+          'button[title="Collapse sidebar"]'
+        ];
+        let nativeButton = null;
+        for (const selector of selectors) {
+          nativeButton = d.querySelector(selector);
+          if (nativeButton) break;
+        }
+        if (!nativeButton) {
+          nativeButton = Array.from(d.querySelectorAll("button")).find(function(b) {
+            const t = (b.getAttribute("aria-label") || b.getAttribute("title") || "").toLowerCase();
+            return t.includes("sidebar") && (t.includes("close") || t.includes("collapse"));
+          });
+        }
+        if (nativeButton) nativeButton.click();
+        setTimeout(update, 150);
+        setTimeout(update, 650);
+      });
+      update();
+      setInterval(update, 700);
+    })();
+    </script>
+    """, height=44, width=150)
+
+
 def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, key_prefix: str = ""):
     """Navigazione locale Italiana: mostra < GIO n > compatto su una riga."""
     st.markdown("""
@@ -380,7 +441,24 @@ def carica_tornei_da_db(tournaments_collection):
     if tournaments_collection is None:
         return []
     try:
-        return list(tournaments_collection.find({}, {"nome_torneo": 1}))
+        tornei = list(
+            tournaments_collection.find(
+                {},
+                {"nome_torneo": 1, "data_modifica": 1, "data_salvataggio": 1}
+            ).sort([
+                ("data_modifica", -1),
+                ("data_salvataggio", -1),
+                ("_id", -1)
+            ])
+        )
+        return [
+            torneo for torneo in tornei
+            if torneo.get("nome_torneo")
+            and (
+                not torneo["nome_torneo"].startswith("fasefinale")
+                or torneo["nome_torneo"].startswith("fasefinaleAGironi")
+            )
+        ]
     except Exception as e:
         st.error(f"❌ Errore caricamento tornei: {e}")
         return []
@@ -419,7 +497,12 @@ def salva_torneo_su_db(tournaments_collection, df_torneo, nome_torneo, tournamen
         return None
     try:
         df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
-        data = {"nome_torneo": nome_torneo, "calendario": df_torneo_pulito.to_dict('records')}
+        now = datetime.now()
+        data = {
+            "nome_torneo": nome_torneo,
+            "calendario": df_torneo_pulito.to_dict('records'),
+            "data_modifica": now
+        }
         
         # Se abbiamo un ID torneo, aggiorniamo il torneo esistente
         if tournament_id:
@@ -434,13 +517,14 @@ def salva_torneo_su_db(tournaments_collection, df_torneo, nome_torneo, tournamen
                     username=user,
                     action='creatorneo',
                     torneo=nome_torneo,
-                    details={'torneo_id': str(result.inserted_id)}
+                    details={'torneo_id': str(tournament_id)}
                 )
             except Exception as e:
                 print(f"[LOGGING] errore in salva_torneo_su_db (update): {e}")
             return tournament_id
         else:
             # Altrimenti creiamo un nuovo torneo
+            data["data_creazione"] = now
             result = tournaments_collection.insert_one(data)
             # logging: creazione torneo
             try:
@@ -465,7 +549,10 @@ def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
         df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
         tournaments_collection.update_one(
             {"_id": ObjectId(tournament_id)},
-            {"$set": {"calendario": df_torneo_pulito.to_dict('records')}}
+            {"$set": {
+                "calendario": df_torneo_pulito.to_dict('records'),
+                "data_modifica": datetime.now()
+            }}
         )
         # logging: aggiornamento torneo
         try:
@@ -594,6 +681,24 @@ def parse_team_player(val):
         squadra, giocatore = val.split("-", 1)
         return squadra.strip(), giocatore.strip()
     return val, ""
+
+def format_vincitori_italiana(df_classifica):
+    """Formatta il banner vincitori senza citare il girone quando il torneo ha un solo girone."""
+    if df_classifica is None or df_classifica.empty or 'Girone' not in df_classifica.columns:
+        return ""
+
+    gironi = list(df_classifica['Girone'].dropna().unique())
+    vincitori = []
+    for girone in gironi:
+        primo = df_classifica[df_classifica['Girone'] == girone].iloc[0]['Squadra']
+        squadra, giocatore = parse_team_player(primo)
+        if len(gironi) == 1:
+            if giocatore:
+                return f"vincitore Player {giocatore} - vincitore Squadra {squadra}"
+            return f"vincitore Squadra {squadra}"
+        vincitori.append(f"🏅 {girone}: {primo}")
+
+    return ", ".join(vincitori)
 
 def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, key_prefix: str = ""):
     """Navigazione giornata stabile su mobile: nessun bottone tagliato."""
@@ -1794,11 +1899,7 @@ def main():
         
         classifica_celebra = aggiorna_classifica(df_torneo_check)
         if not classifica_celebra.empty:
-            vincitori_celebra = []
-            for girone in classifica_celebra['Girone'].unique():
-                primo = classifica_celebra[classifica_celebra['Girone'] == girone].iloc[0]['Squadra']
-                vincitori_celebra.append(f"🏅 {girone}: {primo}")
-            vincitori_str_celebra = ", ".join(vincitori_celebra)
+            vincitori_str_celebra = format_vincitori_italiana(classifica_celebra)
             
             # Spazio per staccare dal titolo
             st.markdown("<br><br>", unsafe_allow_html=True)
@@ -1912,6 +2013,9 @@ def main():
             st.session_state['usa_multiselect_giocatori_main_widget'] = val
 
     # ✅ 1. 🕹 Gestione Rapida + 👤 Mod Selezione Partecipanti
+    _, sidebar_button_col = st.columns([1, 0.18])
+    with sidebar_button_col:
+        render_sidebar_collapse_workaround()
     setup_common_sidebar(show_user_info=False, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL))  # user info già mostrata sopra
     setup_audio_sidebar()
     setup_player_selection_mode(on_change=sync_multiselect, args=("sidebar_usa_multiselect_giocatori",))
@@ -2545,17 +2649,16 @@ def main():
                         )
                         tornei_disponibili = carica_tornei_da_db(tournaments_collection)
                         if tornei_disponibili:
-                            tornei_map = {t['nome_torneo']: str(t['_id']) for t in tornei_disponibili}
-                            torneo_preferito = "CampionatoTigullio_26_27"
-                            tornei_ordinati = sorted(tornei_map.keys())
-                            if torneo_preferito in tornei_ordinati:
-                                tornei_ordinati.remove(torneo_preferito)
-                                tornei_ordinati.insert(0, torneo_preferito)
+                            tornei_map = {}
+                            for torneo in tornei_disponibili:
+                                nome_torneo = torneo.get('nome_torneo')
+                                if nome_torneo and nome_torneo not in tornei_map:
+                                    tornei_map[nome_torneo] = str(torneo['_id'])
+                            tornei_ordinati = list(tornei_map.keys())
                             nome_sel = st.selectbox(
                                 "Seleziona torneo salvato",
                                 tornei_ordinati,
-                                index=None,
-                                placeholder="Scegli un torneo..."
+                                index=0
                             )
                             if st.button("Apri torneo 📂", key="btn_carica", width="stretch"):
                                 if not nome_sel:
@@ -3057,13 +3160,8 @@ def main():
                     
     # Banner vincitori
     if st.session_state.get('torneo_completato', False) and st.session_state.get('classifica_finale') is not None:
-        vincitori = []
         df_classifica = st.session_state['classifica_finale']
-        for girone in df_classifica['Girone'].unique():
-            primo = df_classifica[df_classifica['Girone'] == girone].iloc[0]['Squadra']
-            vincitori.append(f"🏅 {girone}: {primo}")
-            
-        vincitori_stringa = ", ".join(vincitori)
+        vincitori_stringa = format_vincitori_italiana(df_classifica)
 
         # Visualizza il banner personalizzato con i vincitori
         st.markdown(

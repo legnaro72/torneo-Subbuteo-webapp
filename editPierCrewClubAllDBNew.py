@@ -17,6 +17,7 @@ from fpdf import FPDF
 from datetime import datetime
 import os
 import io
+import streamlit.components.v1 as components
 
 # Import custom utilities
 from shared import pwa
@@ -30,6 +31,66 @@ from common.audio import (
     start_background_audio, setup_audio_sidebar
 )
 from common.ui_components import setup_common_sidebar, enable_session_keepalive
+
+def render_sidebar_collapse_workaround():
+    components.html("""
+    <div id="subbuteo-sidebar-tools">
+      <button id="subbuteo-collapse-sidebar" type="button">Chiudi sidebar</button>
+    </div>
+    <style>
+      html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+      #subbuteo-sidebar-tools { display: none; justify-content: flex-end; width: 100%; }
+      #subbuteo-collapse-sidebar { width: auto; border: 0; border-radius: 7px; padding: .42rem .72rem; background: #1d3557; color: white; font-size: .78rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(29, 53, 87, .24); }
+      #subbuteo-collapse-sidebar:hover { background: #457b9d; }
+    </style>
+    <script>
+    (function() {
+      const box = document.getElementById("subbuteo-sidebar-tools");
+      const btn = document.getElementById("subbuteo-collapse-sidebar");
+      function doc() { try { return window.parent.document; } catch (e) { return null; } }
+      function open(sidebar) {
+        if (!sidebar) return false;
+        const aria = sidebar.getAttribute("aria-expanded");
+        if (aria === "true") return true;
+        if (aria === "false") return false;
+        return sidebar.getBoundingClientRect().width > 80;
+      }
+      function update() {
+        const d = doc();
+        const sidebar = d && d.querySelector('section[data-testid="stSidebar"]');
+        box.style.display = open(sidebar) ? "flex" : "none";
+      }
+      btn.addEventListener("click", function() {
+        const d = doc();
+        if (!d) return;
+        const selectors = [
+          'button[data-testid="stSidebarCollapseButton"]',
+          '[data-testid="stSidebarCollapseButton"] button',
+          'button[aria-label="Close sidebar"]',
+          'button[aria-label="Collapse sidebar"]',
+          'button[title="Close sidebar"]',
+          'button[title="Collapse sidebar"]'
+        ];
+        let nativeButton = null;
+        for (const selector of selectors) {
+          nativeButton = d.querySelector(selector);
+          if (nativeButton) break;
+        }
+        if (!nativeButton) {
+          nativeButton = Array.from(d.querySelectorAll("button")).find(function(b) {
+            const t = (b.getAttribute("aria-label") || b.getAttribute("title") || "").toLowerCase();
+            return t.includes("sidebar") && (t.includes("close") || t.includes("collapse"));
+          });
+        }
+        if (nativeButton) nativeButton.click();
+        setTimeout(update, 150);
+        setTimeout(update, 650);
+      });
+      update();
+      setInterval(update, 700);
+    })();
+    </script>
+    """, height=44, width=150)
 
 # Dati di connessione a MongoDB forniti dall'utente
 MONGO_URI_PLAYERS = "mongodb+srv://massimilianoferrando:Legnaro21!$@cluster0.t3750lc.mongodb.net/?retryWrites=true&w=majority"
@@ -329,6 +390,9 @@ start_background_audio(BACKGROUND_AUDIO_URL)
 
 # Inietta gli stili CSS personalizzati
 inject_css()
+_, sidebar_button_col = st.columns([1, 0.18])
+with sidebar_button_col:
+    render_sidebar_collapse_workaround()
 
 # Debug: mostra utente autenticato e ruolo manualmete per metterlo in cima alla sidebar
 if st.session_state.get("authenticated"):

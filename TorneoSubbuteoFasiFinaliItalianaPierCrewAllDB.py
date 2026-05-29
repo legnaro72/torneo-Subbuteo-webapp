@@ -33,6 +33,7 @@ from fpdf import FPDF
 import warnings
 import certifi
 import math
+import streamlit.components.v1 as components
 
 # Import auth utilities
 from shared import pwa
@@ -48,6 +49,66 @@ from common.ui_components import (
     render_tournament_header, setup_common_sidebar,
     enable_session_keepalive
 )
+
+def render_sidebar_collapse_workaround():
+    components.html("""
+    <div id="subbuteo-sidebar-tools">
+      <button id="subbuteo-collapse-sidebar" type="button">Chiudi sidebar</button>
+    </div>
+    <style>
+      html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+      #subbuteo-sidebar-tools { display: none; justify-content: flex-end; width: 100%; }
+      #subbuteo-collapse-sidebar { width: auto; border: 0; border-radius: 7px; padding: .42rem .72rem; background: #1d3557; color: white; font-size: .78rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(29, 53, 87, .24); }
+      #subbuteo-collapse-sidebar:hover { background: #457b9d; }
+    </style>
+    <script>
+    (function() {
+      const box = document.getElementById("subbuteo-sidebar-tools");
+      const btn = document.getElementById("subbuteo-collapse-sidebar");
+      function doc() { try { return window.parent.document; } catch (e) { return null; } }
+      function open(sidebar) {
+        if (!sidebar) return false;
+        const aria = sidebar.getAttribute("aria-expanded");
+        if (aria === "true") return true;
+        if (aria === "false") return false;
+        return sidebar.getBoundingClientRect().width > 80;
+      }
+      function update() {
+        const d = doc();
+        const sidebar = d && d.querySelector('section[data-testid="stSidebar"]');
+        box.style.display = open(sidebar) ? "flex" : "none";
+      }
+      btn.addEventListener("click", function() {
+        const d = doc();
+        if (!d) return;
+        const selectors = [
+          'button[data-testid="stSidebarCollapseButton"]',
+          '[data-testid="stSidebarCollapseButton"] button',
+          'button[aria-label="Close sidebar"]',
+          'button[aria-label="Collapse sidebar"]',
+          'button[title="Close sidebar"]',
+          'button[title="Collapse sidebar"]'
+        ];
+        let nativeButton = null;
+        for (const selector of selectors) {
+          nativeButton = d.querySelector(selector);
+          if (nativeButton) break;
+        }
+        if (!nativeButton) {
+          nativeButton = Array.from(d.querySelectorAll("button")).find(function(b) {
+            const t = (b.getAttribute("aria-label") || b.getAttribute("title") || "").toLowerCase();
+            return t.includes("sidebar") && (t.includes("close") || t.includes("collapse"));
+          });
+        }
+        if (nativeButton) nativeButton.click();
+        setTimeout(update, 150);
+        setTimeout(update, 650);
+      });
+      update();
+      setInterval(update, 700);
+    })();
+    </script>
+    """, height=44, width=150)
 
 # Silenzia solo il warning di deprecazione relativo a st.experimental_get_query_params
 warnings.filterwarnings(
@@ -1201,7 +1262,14 @@ def carica_tornei_da_db(tournaments_collection, prefix: list[str]):
         return []
     try:
         regex_prefix = '|'.join(re.escape(p) for p in prefix)
-        tornei = tournaments_collection.find({"nome_torneo": {"$regex": f"^{regex_prefix}"}}, {"nome_torneo": 1})
+        tornei = tournaments_collection.find(
+            {"nome_torneo": {"$regex": f"^{regex_prefix}"}},
+            {"nome_torneo": 1, "data_modifica": 1, "data_salvataggio": 1}
+        ).sort([
+            ("data_modifica", -1),
+            ("data_salvataggio", -1),
+            ("_id", -1)
+        ])
         return list(tornei)
     except Exception as e:
         st.error(f"❌ Errore caricamento tornei: {e}")
@@ -1234,7 +1302,10 @@ def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
         df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
         tournaments_collection.update_one(
             {"_id": ObjectId(tournament_id)},
-            {"$set": {"calendario": df_torneo_pulito.to_dict('records')}}
+            {"$set": {
+                "calendario": df_torneo_pulito.to_dict('records'),
+                "data_modifica": datetime.now()
+            }}
         )
         return True
     except Exception as e:
@@ -1252,9 +1323,12 @@ def clona_torneo_su_db(tournaments_collection, source_id, new_name):
             return None, None
         
         old_name = source_data.get('nome_torneo', 'sconosciuto')
+        now = datetime.now()
         source_data.pop('_id')
         source_data['nome_torneo'] = new_name
         source_data['calendario'] = []
+        source_data['data_creazione'] = now
+        source_data['data_modifica'] = now
         result = tournaments_collection.insert_one(source_data)
         
         # Log dell'operazione
@@ -1293,7 +1367,7 @@ def rinomina_torneo_su_db(tournaments_collection, tournament_id, new_name):
         
         tournaments_collection.update_one(
             {"_id": ObjectId(tournament_id)},
-            {"$set": {"nome_torneo": new_name}}
+            {"$set": {"nome_torneo": new_name, "data_modifica": datetime.now()}}
         )
         
         # Log dell'operazione
@@ -1663,6 +1737,9 @@ def main():
                     time.sleep(1)
     # ✅ Configurazione Sidebar (Modulo Comune)
     # L'audio e le info utente sono ora gestiti internamente ai componenti comuni
+    _, sidebar_button_col = st.columns([1, 0.18])
+    with sidebar_button_col:
+        render_sidebar_collapse_workaround()
     auth.logout_button("Logout")
     setup_common_sidebar(show_user_info=True, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL))
     setup_audio_sidebar()
@@ -1794,15 +1871,18 @@ def main():
                     )
                     tornei_trovati = carica_tornei_da_db(
                         tournaments_collection,
-                        prefix=["fasefinaleAGironi", "fasefinaleEliminazionediretta", "finito_Eliminazionediretta"]
+                        prefix=["fasefinaleEliminazionediretta"]
                     )
                     if tornei_trovati:
-                        tornei_opzioni = {t['nome_torneo']: str(t['_id']) for t in tornei_trovati}
+                        tornei_opzioni = {}
+                        for torneo in tornei_trovati:
+                            nome_torneo = torneo.get('nome_torneo')
+                            if nome_torneo and nome_torneo not in tornei_opzioni:
+                                tornei_opzioni[nome_torneo] = str(torneo['_id'])
                         scelta_torneo = st.selectbox(
                             "Seleziona fase finale salvata",
                             options=list(tornei_opzioni.keys()),
-                            index=None,
-                            placeholder="Scegli una fase finale...",
+                            index=0,
                             key="select_fase_finale_iniziale"
                         )
                     else:
@@ -1872,7 +1952,11 @@ def main():
                     st.link_button("🏠 Vai alla gestione tornei", "https://farm-tornei-subbuteo-piercrew-all-db.streamlit.app/", width="stretch")
                     return
                 else:
-                    tornei_opzioni = {t['nome_torneo']: str(t['_id']) for t in tornei_trovati}
+                    tornei_opzioni = {}
+                    for torneo in tornei_trovati:
+                        nome_torneo = torneo.get('nome_torneo')
+                        if nome_torneo and nome_torneo not in tornei_opzioni:
+                            tornei_opzioni[nome_torneo] = str(torneo['_id'])
                     scelta_torneo = st.selectbox(
                         "Seleziona il torneo da cui iniziare le fasi finali:",
                         options=list(tornei_opzioni.keys())
@@ -1935,7 +2019,7 @@ def main():
         elif opzione_selezione == "Continuare una fase finale esistente":
             tornei_trovati = carica_tornei_da_db(
                 tournaments_collection,
-                prefix=["fasefinaleAGironi", "fasefinaleEliminazionediretta", "finito_Eliminazionediretta"]
+                prefix=["fasefinaleEliminazionediretta"]
             )
             st.subheader("Seleziona una fase finale esistente")
             if not tornei_trovati:
@@ -1948,7 +2032,11 @@ def main():
                 st.link_button("🏠 Vai alla gestione tornei", "https://farm-tornei-subbuteo-piercrew-all-db.streamlit.app/", width="stretch")
                 return
             else:
-                    tornei_opzioni = {t['nome_torneo']: str(t['_id']) for t in tornei_trovati}
+                    tornei_opzioni = {}
+                    for torneo in tornei_trovati:
+                        nome_torneo = torneo.get('nome_torneo')
+                        if nome_torneo and nome_torneo not in tornei_opzioni:
+                            tornei_opzioni[nome_torneo] = str(torneo['_id'])
                     fase_da_aprire_nome = st.session_state.pop('fase_finale_da_aprire_nome', None)
                     fase_da_aprire_id = st.session_state.pop('fase_finale_da_aprire_id', None)
                     scelta_torneo = st.selectbox(
@@ -2261,7 +2349,10 @@ def main():
                         
                         tournaments_collection.update_one(
                             {"_id": ObjectId(st.session_state["tournament_id"])},
-                            {"$set": {"calendario": df_to_save.to_dict('records')}}
+                            {"$set": {
+                                "calendario": df_to_save.to_dict('records'),
+                                "data_modifica": datetime.now()
+                            }}
                         )
 
                         nuovo_nome = f"fasefinaleAGironi_{get_base_name(st.session_state['tournament_name'])}"
@@ -2321,7 +2412,11 @@ def main():
                         try:
                             tournaments_collection.update_one(
                                 {"_id": ObjectId(st.session_state["tournament_id"])},
-                                {"$set": {"phase_metadata": {"phase_id": phase_id, "phase_mode": "KO"}, "calendario": df_final_torneo.to_dict('records')}}
+                                {"$set": {
+                                    "phase_metadata": {"phase_id": phase_id, "phase_mode": "KO"},
+                                    "calendario": df_final_torneo.to_dict('records'),
+                                    "data_modifica": datetime.now()
+                                }}
                             )
                         except Exception as e:
                             st.error(f"❌ Errore durante l'aggiornamento del torneo: {e}")
