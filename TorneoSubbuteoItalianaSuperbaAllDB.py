@@ -8,32 +8,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-st.markdown("""
-    <script>
-    (function () {
-      function collapseSidebarIfOpen() {
-        try {
-          const parentDoc = window.parent.document;
-          const sidebar = parentDoc.querySelector('section[data-testid="stSidebar"]');
-          const collapseButton =
-            parentDoc.querySelector('[data-testid="stSidebarCollapseButton"]') ||
-            parentDoc.querySelector('button[kind="header"]');
-
-          const expanded = sidebar ? sidebar.getAttribute("aria-expanded") : "false";
-          const width = sidebar ? sidebar.getBoundingClientRect().width : 0;
-          if (sidebar && collapseButton && (expanded === "true" || width > 120)) {
-            collapseButton.click();
-          }
-        } catch (e) {}
-      }
-
-      [0, 150, 400, 900].forEach(function (delay) {
-        setTimeout(collapseSidebarIfOpen, delay);
-      });
-    })();
-    </script>
-""", unsafe_allow_html=True)
-
 import pandas as pd
 import numpy as np
 import json
@@ -88,7 +62,7 @@ from common.audio import (
 from common.ui_components import (
     render_tournament_header, setup_common_sidebar, 
     setup_player_selection_mode, navigation_buttons,
-    enable_session_keepalive, force_sidebar_collapsed_on_startup
+    enable_session_keepalive
 )
 
 
@@ -3161,5 +3135,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    force_sidebar_collapsed_on_startup()
 

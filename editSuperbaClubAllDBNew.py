@@ -9,32 +9,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-st.markdown("""
-    <script>
-    (function () {
-      function collapseSidebarIfOpen() {
-        try {
-          const parentDoc = window.parent.document;
-          const sidebar = parentDoc.querySelector('section[data-testid="stSidebar"]');
-          const collapseButton =
-            parentDoc.querySelector('[data-testid="stSidebarCollapseButton"]') ||
-            parentDoc.querySelector('button[kind="header"]');
-
-          const expanded = sidebar ? sidebar.getAttribute("aria-expanded") : "false";
-          const width = sidebar ? sidebar.getBoundingClientRect().width : 0;
-          if (sidebar && collapseButton && (expanded === "true" || width > 120)) {
-            collapseButton.click();
-          }
-        } catch (e) {}
-      }
-
-      [0, 150, 400, 900].forEach(function (delay) {
-        setTimeout(collapseSidebarIfOpen, delay);
-      });
-    })();
-    </script>
-""", unsafe_allow_html=True)
-
 import pandas as pd
 from pymongo import MongoClient, UpdateOne, InsertOne, DeleteOne
 from pymongo.server_api import ServerApi
@@ -55,7 +29,7 @@ from common.audio import (
     autoplay_background_audio, toggle_audio_callback,
     start_background_audio, setup_audio_sidebar
 )
-from common.ui_components import setup_common_sidebar, enable_session_keepalive, force_sidebar_collapsed_on_startup
+from common.ui_components import setup_common_sidebar, enable_session_keepalive
 
 # Dati di connessione a MongoDB forniti dall'utente
 MONGO_URI_PLAYERS = "mongodb+srv://massimilianoferrando:Legnaro21!$@cluster0.t3750lc.mongodb.net/?retryWrites=true&w=majority"
@@ -1507,4 +1481,3 @@ elif st.session_state.confirm_delete["type"] is not None:
 # Footer leggero
 st.markdown("---")
 st.caption("⚽ Subbuteo Tournament Manager •  Made by Legnaro72")
-force_sidebar_collapsed_on_startup()
