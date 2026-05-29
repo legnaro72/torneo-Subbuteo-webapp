@@ -43,17 +43,23 @@ from common.ui_components import (
 
 def render_sidebar_collapse_workaround():
     components.html("""
-    <button id="subbuteo-collapse-sidebar" type="button">Chiudi sidebar</button>
+    <div id="subbuteo-sidebar-tools">
+      <button id="subbuteo-collapse-sidebar" type="button">Chiudi sidebar</button>
+    </div>
     <style>
       html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
-      #subbuteo-collapse-sidebar { display: none; width: 100%; border: 0; border-radius: 8px; padding: .72rem 1rem; background: #b91c1c; color: white; font-weight: 800; cursor: pointer; }
-      #subbuteo-collapse-sidebar:hover { background: #991b1b; }
+      #subbuteo-sidebar-tools { display: none; justify-content: flex-end; width: 100%; }
+      #subbuteo-collapse-sidebar { width: auto; border: 0; border-radius: 7px; padding: .42rem .72rem; background: #1d3557; color: white; font-size: .78rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(29, 53, 87, .24); }
+      #subbuteo-collapse-sidebar:hover { background: #457b9d; }
     </style>
     <script>
     (function() {
+      const box = document.getElementById("subbuteo-sidebar-tools");
       const btn = document.getElementById("subbuteo-collapse-sidebar");
       function doc() { try { return window.parent.document; } catch (e) { return null; } }
       function open(sidebar) {
+        const d = doc();
+        if (d && d.body.getAttribute("data-subbuteo-sidebar-forced") === "1") return false;
         if (!sidebar) return false;
         const aria = sidebar.getAttribute("aria-expanded");
         if (aria === "true") return true;
@@ -63,18 +69,44 @@ def render_sidebar_collapse_workaround():
       function update() {
         const d = doc();
         const sidebar = d && d.querySelector('section[data-testid="stSidebar"]');
-        btn.style.display = open(sidebar) ? "block" : "none";
+        box.style.display = open(sidebar) ? "flex" : "none";
+      }
+      function forceHide(d) {
+        if (!d || d.getElementById("subbuteo-force-sidebar-style")) return;
+        const style = d.createElement("style");
+        style.id = "subbuteo-force-sidebar-style";
+        style.textContent = 'body[data-subbuteo-sidebar-forced="1"] section[data-testid="stSidebar"]{display:none!important;visibility:hidden!important;width:0!important;min-width:0!important;} body[data-subbuteo-sidebar-forced="1"] [data-testid="stSidebar"]{display:none!important;}';
+        d.head.appendChild(style);
+        d.body.setAttribute("data-subbuteo-sidebar-forced", "1");
       }
       btn.addEventListener("click", function() {
         const d = doc();
         if (!d) return;
-        const nativeButton = Array.from(d.querySelectorAll("button")).find(function(b) {
+        const selectors = [
+          'button[data-testid="stSidebarCollapseButton"]',
+          'button[data-testid="baseButton-headerNoPadding"]',
+          'button[kind="header"]',
+          'section[data-testid="stSidebar"] button'
+        ];
+        let nativeButton = null;
+        for (const selector of selectors) {
+          nativeButton = d.querySelector(selector);
+          if (nativeButton) break;
+        }
+        if (!nativeButton) {
+          nativeButton = Array.from(d.querySelectorAll("button")).find(function(b) {
           const t = (b.getAttribute("aria-label") || b.getAttribute("title") || b.textContent || "").toLowerCase();
           return t.includes("collapse") || t.includes("close sidebar") || t.includes("chiudi") || t.includes("sidebar");
-        });
+          });
+        }
         if (nativeButton) nativeButton.click();
+        setTimeout(function() {
+          const sidebar = d.querySelector('section[data-testid="stSidebar"]');
+          if (open(sidebar)) forceHide(d);
+          update();
+        }, 260);
         setTimeout(update, 150);
-        setTimeout(update, 500);
+        setTimeout(update, 650);
       });
       update();
       setInterval(update, 700);
