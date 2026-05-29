@@ -75,6 +75,10 @@ def render_sidebar_collapse_workaround():
         const selectors = [
           'button[data-testid="stSidebarCollapseButton"]',
           '[data-testid="stSidebarCollapseButton"] button',
+          '[data-testid="stSidebarHeader"] button',
+          'section[data-testid="stSidebar"] button[data-testid="baseButton-headerNoPadding"]',
+          'section[data-testid="stSidebar"] button[data-testid="stBaseButton-headerNoPadding"]',
+          'section[data-testid="stSidebar"] button[kind="header"]',
           'button[aria-label="Close sidebar"]',
           'button[aria-label="Collapse sidebar"]',
           'button[title="Close sidebar"]',
@@ -86,9 +90,11 @@ def render_sidebar_collapse_workaround():
           if (nativeButton) break;
         }
         if (!nativeButton) {
-          nativeButton = Array.from(d.querySelectorAll("button")).find(function(b) {
+          const sidebar = d.querySelector('section[data-testid="stSidebar"]');
+          nativeButton = Array.from(sidebar ? sidebar.querySelectorAll("button") : []).find(function(b) {
             const t = (b.getAttribute("aria-label") || b.getAttribute("title") || "").toLowerCase();
-            return t.includes("sidebar") && (t.includes("close") || t.includes("collapse"));
+            return (t.includes("sidebar") || t.includes("barra")) &&
+                   (t.includes("close") || t.includes("collapse") || t.includes("chiudi") || t.includes("comprimi"));
           });
         }
         if (nativeButton) nativeButton.click();
@@ -107,9 +113,6 @@ auth.require_auth(club="Tigullio")
 
 # Attiva il sistema di keep-alive per mantenere la sessione durante le partite
 enable_session_keepalive()
-_, sidebar_button_col = st.columns([1, 0.18])
-with sidebar_button_col:
-    render_sidebar_collapse_workaround()
 
 HUB_URL = "https://farm-tornei-subbuteo-tigullio-all-db.streamlit.app/"
 HOME_URL = "https://torneo-subbuteo-tigullio-new-version-svizzero-alldb.streamlit.app/"
@@ -1477,6 +1480,9 @@ st.markdown(f"""
     <h1 style='color:white; font-weight:700; margin:0;'>🇨🇭⚽ {st.session_state.nome_torneo} 🏆🇨🇭</h1>
 </div>
 """, unsafe_allow_html=True)
+_, sidebar_button_col = st.columns([1, 0.18])
+with sidebar_button_col:
+    render_sidebar_collapse_workaround()
 
 # --- PULSANTE "CELEBRA VINCITORE" AL TOP ---
 if st.session_state.get('torneo_finito', False):
