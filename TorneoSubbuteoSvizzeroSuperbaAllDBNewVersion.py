@@ -37,6 +37,7 @@ from common.audio import (
 )
 from common.ui_components import (
     render_tournament_header, setup_common_sidebar,
+    render_sidebar_collapse_workaround,
     setup_player_selection_mode, enable_session_keepalive
 )
 
@@ -46,6 +47,7 @@ auth.require_auth(club="Superba")
 
 # Attiva il sistema di keep-alive per mantenere la sessione durante le partite
 enable_session_keepalive()
+render_sidebar_collapse_workaround()
 
 HUB_URL = "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/"
 HOME_URL = "https://torneo-subbuteo-superba-new-version-svizzero-alldb.streamlit.app/"

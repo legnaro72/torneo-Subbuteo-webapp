@@ -46,6 +46,7 @@ from common.audio import (
 )
 from common.ui_components import (
     render_tournament_header, setup_common_sidebar,
+    render_sidebar_collapse_workaround,
     enable_session_keepalive
 )
 
@@ -1676,6 +1677,7 @@ def main():
                     time.sleep(1)
     # ✅ Configurazione Sidebar (Modulo Comune)
     # L'audio e le info utente sono ora gestiti internamente ai componenti comuni
+    render_sidebar_collapse_workaround()
     auth.logout_button("Logout")
     setup_common_sidebar(show_user_info=True, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL))
     setup_audio_sidebar()

@@ -75,6 +75,104 @@ def setup_common_sidebar(show_user_info: bool = True, show_hub_link: bool = True
         )
 
 
+def render_sidebar_collapse_workaround(label: str = "Chiudi sidebar"):
+    """
+    Mostra un pulsante operativo nel contenuto principale solo quando la sidebar e' aperta.
+
+    Workaround mirato per Streamlit Cloud: in alcune navigazioni il browser ripristina
+    la sidebar aperta ignorando initial_sidebar_state="collapsed".
+    """
+    components.html(
+        f"""
+        <style>
+          html, body {{
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            overflow: hidden;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          }}
+          #subbuteo-collapse-sidebar {{
+            display: none;
+            width: 100%;
+            border: 0;
+            border-radius: 8px;
+            padding: 0.72rem 1rem;
+            background: #b91c1c;
+            color: white;
+            font-weight: 800;
+            letter-spacing: 0;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(185, 28, 28, 0.28);
+          }}
+          #subbuteo-collapse-sidebar:hover {{
+            background: #991b1b;
+          }}
+        </style>
+        <button id="subbuteo-collapse-sidebar" type="button">☰ {label}</button>
+        <script>
+        (function() {{
+          const btn = document.getElementById("subbuteo-collapse-sidebar");
+          function parentDoc() {{
+            try {{ return window.parent.document; }} catch (e) {{ return null; }}
+          }}
+          function findSidebar(doc) {{
+            return doc && doc.querySelector('section[data-testid="stSidebar"]');
+          }}
+          function sidebarIsOpen(sidebar) {{
+            if (!sidebar) return false;
+            const aria = sidebar.getAttribute("aria-expanded");
+            if (aria === "true") return true;
+            if (aria === "false") return false;
+            const rect = sidebar.getBoundingClientRect();
+            return rect.width > 80;
+          }}
+          function updateVisibility() {{
+            const doc = parentDoc();
+            const sidebar = findSidebar(doc);
+            btn.style.display = sidebarIsOpen(sidebar) ? "block" : "none";
+          }}
+          function clickNativeCollapse() {{
+            const doc = parentDoc();
+            if (!doc) return;
+            const candidates = Array.from(doc.querySelectorAll('button'));
+            const collapseButton = candidates.find(function(button) {{
+              const label = (
+                button.getAttribute("aria-label") ||
+                button.getAttribute("title") ||
+                button.textContent ||
+                ""
+              ).toLowerCase();
+              return label.includes("collapse") ||
+                     label.includes("close sidebar") ||
+                     label.includes("chiudi") ||
+                     label.includes("sidebar");
+            }});
+            if (collapseButton) {{
+              collapseButton.click();
+              setTimeout(updateVisibility, 150);
+              setTimeout(updateVisibility, 500);
+            }}
+          }}
+          btn.addEventListener("click", clickNativeCollapse);
+          updateVisibility();
+          setInterval(updateVisibility, 700);
+          const doc = parentDoc();
+          if (doc && "MutationObserver" in window) {{
+            new MutationObserver(updateVisibility).observe(doc.body, {{
+              attributes: true,
+              childList: true,
+              subtree: true
+            }});
+          }}
+        }})();
+        </script>
+        """,
+        height=54,
+        width=700,
+    )
+
+
 
 def setup_player_selection_mode(on_change=None, args=None):
     """

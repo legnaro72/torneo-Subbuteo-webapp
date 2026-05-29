@@ -29,7 +29,11 @@ from common.audio import (
     autoplay_background_audio, toggle_audio_callback,
     start_background_audio, setup_audio_sidebar
 )
-from common.ui_components import setup_common_sidebar, enable_session_keepalive
+from common.ui_components import (
+    render_sidebar_collapse_workaround,
+    setup_common_sidebar,
+    enable_session_keepalive,
+)
 
 # Dati di connessione a MongoDB forniti dall'utente
 MONGO_URI_PLAYERS = "mongodb+srv://massimilianoferrando:Legnaro21!$@cluster0.t3750lc.mongodb.net/?retryWrites=true&w=majority"
@@ -329,6 +333,7 @@ start_background_audio(BACKGROUND_AUDIO_URL)
 
 # Inietta gli stili CSS personalizzati
 inject_css()
+render_sidebar_collapse_workaround()
 
 # Debug: mostra utente autenticato e ruolo manualmete per metterlo in cima alla sidebar
 if st.session_state.get("authenticated"):
