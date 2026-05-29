@@ -57,7 +57,7 @@ def setup_common_sidebar(show_user_info: bool = True, show_hub_link: bool = True
         show_user_info: Se True, mostra le info dell'utente autenticato.
         show_hub_link: Se True, mostra il link all'Hub.
         hub_url: URL dell'Hub di destinazione.
-        home_url: URL della home della app corrente. Se valorizzato, mostra un secondo link.
+        home_url: parametro mantenuto per compatibilita, non renderizzato.
     """
     # Info utente
     if show_user_info and st.session_state.get("authenticated"):
@@ -73,12 +73,6 @@ def setup_common_sidebar(show_user_info: bool = True, show_hub_link: bool = True
             hub_url,
             use_container_width=True
         )
-        if home_url:
-            st.sidebar.link_button(
-                "Vai alla Home",
-                home_url,
-                use_container_width=True
-            )
 
 
 
