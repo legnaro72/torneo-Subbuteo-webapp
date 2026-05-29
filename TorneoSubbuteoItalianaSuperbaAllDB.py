@@ -155,11 +155,7 @@ try:
 except Exception:
     torneo_manifest = None
 
-manifest_href = "/app/static/manifest.webmanifest"
-if torneo_manifest == "CampionatoSuperba_26_27":
-    manifest_href = "/app/static/manifest-campionato-superba-26-27.webmanifest"
-
-def inject_parent_head_assets(manifest_href: str, is_campionato: bool):
+def inject_parent_head_assets(is_campionato: bool):
     """Inietta manifest/favicon dopo il banner, evitando container invisibili in testa."""
     manifest_data = {
         "name": "Super Suite Subbuteo",
@@ -1729,7 +1725,7 @@ def main():
 
     render_app_title()
     inject_css()
-    inject_parent_head_assets(manifest_href, torneo_manifest == "CampionatoSuperba_26_27")
+    inject_parent_head_assets(torneo_manifest == "CampionatoSuperba_26_27")
     enable_session_keepalive()
 
 

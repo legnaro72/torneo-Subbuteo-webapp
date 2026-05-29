@@ -9,19 +9,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-st.markdown("""
-    <script>
-    try {
-      const parentDoc = window.parent.document;
-      const sidebar = parentDoc.querySelector('section[data-testid="stSidebar"]');
-      const collapseButton = parentDoc.querySelector('button[kind="header"]');
-      if (sidebar && collapseButton && sidebar.getAttribute("aria-expanded") !== "false") {
-        setTimeout(function() { collapseButton.click(); }, 250);
-      }
-    } catch (e) {}
-    </script>
-""", unsafe_allow_html=True)
-
 # Solo DOPO si possono importare le altre dipendenze
 import pandas as pd
 from datetime import datetime

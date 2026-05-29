@@ -155,24 +155,56 @@ try:
 except Exception:
     torneo_manifest = None
 
-manifest_href = "/app/static/manifest.webmanifest"
-if torneo_manifest == "CampionatoPierCrew_26_27":
-    manifest_href = "/app/static/manifest-campionato-piercrew-26-27.webmanifest"
-
-def inject_parent_head_assets(manifest_href: str, is_campionato: bool):
+def inject_parent_head_assets(is_campionato: bool):
     """Inietta manifest/favicon dopo il banner, evitando container invisibili in testa."""
+    manifest_data = {
+        "name": "Super Suite Subbuteo",
+        "short_name": "PierCrew",
+        "description": "Suite mobile per tornei Subbuteo PierCrew",
+        "start_url": "/",
+        "scope": "/",
+        "display": "standalone",
+        "background_color": "#f8fafc",
+        "theme_color": "#1d3557",
+        "icons": [
+            {
+                "src": "/app/static/logo_piercrew.jpg",
+                "sizes": "192x192",
+                "type": "image/jpeg",
+                "purpose": "any maskable"
+            },
+            {
+                "src": "/app/static/logo_piercrew.jpg",
+                "sizes": "512x512",
+                "type": "image/jpeg",
+                "purpose": "any maskable"
+            }
+        ],
+    }
+    if is_campionato:
+        manifest_data["shortcuts"] = [
+            {
+                "name": "Campionato PierCrew 26/27",
+                "short_name": "Campionato",
+                "description": "Apri direttamente il Campionato PierCrew 26/27",
+                "url": "/?torneo=CampionatoPierCrew_26_27",
+            }
+        ]
     components.html(
         f"""
         <script>
         try {{
           const parentDoc = window.parent.document;
+          const manifestData = {json.dumps(manifest_data)};
           let manifest = parentDoc.querySelector('link[rel="manifest"]');
           if (!manifest) {{
             manifest = parentDoc.createElement("link");
             manifest.rel = "manifest";
             parentDoc.head.appendChild(manifest);
           }}
-          manifest.href = {manifest_href!r};
+          manifest.href = URL.createObjectURL(
+            new Blob([JSON.stringify(manifestData)], {{type: "application/manifest+json"}})
+          );
 
           if ({is_campionato!r}) {{
             parentDoc.title = "Campionato PierCrew";
@@ -1649,7 +1681,7 @@ def main():
 
     render_app_title()
     inject_css()
-    inject_parent_head_assets(manifest_href, torneo_manifest == "CampionatoPierCrew_26_27")
+    inject_parent_head_assets(torneo_manifest == "CampionatoPierCrew_26_27")
     enable_session_keepalive()
 
 
