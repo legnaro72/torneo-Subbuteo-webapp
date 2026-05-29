@@ -58,8 +58,6 @@ def render_sidebar_collapse_workaround():
       const btn = document.getElementById("subbuteo-collapse-sidebar");
       function doc() { try { return window.parent.document; } catch (e) { return null; } }
       function open(sidebar) {
-        const d = doc();
-        if (d && d.body.getAttribute("data-subbuteo-sidebar-forced") === "1") return false;
         if (!sidebar) return false;
         const aria = sidebar.getAttribute("aria-expanded");
         if (aria === "true") return true;
@@ -70,14 +68,6 @@ def render_sidebar_collapse_workaround():
         const d = doc();
         const sidebar = d && d.querySelector('section[data-testid="stSidebar"]');
         box.style.display = open(sidebar) ? "flex" : "none";
-      }
-      function forceHide(d) {
-        if (!d || d.getElementById("subbuteo-force-sidebar-style")) return;
-        const style = d.createElement("style");
-        style.id = "subbuteo-force-sidebar-style";
-        style.textContent = 'body[data-subbuteo-sidebar-forced="1"] section[data-testid="stSidebar"]{display:none!important;visibility:hidden!important;width:0!important;min-width:0!important;} body[data-subbuteo-sidebar-forced="1"] [data-testid="stSidebar"]{display:none!important;}';
-        d.head.appendChild(style);
-        d.body.setAttribute("data-subbuteo-sidebar-forced", "1");
       }
       btn.addEventListener("click", function() {
         const d = doc();
@@ -100,11 +90,6 @@ def render_sidebar_collapse_workaround():
           });
         }
         if (nativeButton) nativeButton.click();
-        setTimeout(function() {
-          const sidebar = d.querySelector('section[data-testid="stSidebar"]');
-          if (open(sidebar)) forceHide(d);
-          update();
-        }, 260);
         setTimeout(update, 150);
         setTimeout(update, 650);
       });
@@ -112,7 +97,7 @@ def render_sidebar_collapse_workaround():
       setInterval(update, 700);
     })();
     </script>
-    """, height=54, width=700)
+    """, height=44, width=150)
 
 pwa.inject_pwa_assets()
 
@@ -120,7 +105,9 @@ auth.require_auth(club="Superba")
 
 # Attiva il sistema di keep-alive per mantenere la sessione durante le partite
 enable_session_keepalive()
-render_sidebar_collapse_workaround()
+_, sidebar_button_col = st.columns([1, 0.18])
+with sidebar_button_col:
+    render_sidebar_collapse_workaround()
 
 HUB_URL = "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/"
 HOME_URL = "https://torneo-subbuteo-superba-new-version-svizzero-alldb.streamlit.app/"
