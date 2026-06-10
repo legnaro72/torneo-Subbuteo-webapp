@@ -385,6 +385,56 @@ def reset_app_state():
 
 # Avvio audio di sottofondo
 start_background_audio(BACKGROUND_AUDIO_URL)
+
+def render_banner_audio_button(key_suffix: str):
+    """Mostra un piccolo controllo audio centrato sotto il banner."""
+    audio_enabled = not st.session_state.get('bg_audio_disabled', False)
+    button_key = f"superba_banner_audio_button_{key_suffix}"
+    st.markdown(f"""
+    <style>
+    div.st-key-{button_key} {{
+        display: flex !important;
+        justify-content: center !important;
+        width: 100% !important;
+    }}
+    div.st-key-{button_key} button {{
+        min-width: 58px !important;
+        height: 36px !important;
+        min-height: 34px !important;
+        padding: 4px 8px !important;
+        border-radius: 999px !important;
+        border: 1px solid rgba(255,255,255,0.72) !important;
+        background: {'linear-gradient(135deg, #ffe66d, #06d6a0)' if audio_enabled else 'linear-gradient(135deg, #334155, #0f172a)'} !important;
+        color: {'#132018' if audio_enabled else '#dbeafe'} !important;
+        font-size: 1.08rem !important;
+        font-weight: 900 !important;
+        line-height: 1 !important;
+        box-shadow: {'0 0 0 4px rgba(255,230,109,0.16), 0 0 18px rgba(6,214,160,0.58), 0 5px 14px rgba(0,0,0,0.26)' if audio_enabled else '0 0 0 3px rgba(148,163,184,0.12), 0 5px 14px rgba(0,0,0,0.28)'} !important;
+        transition: transform 160ms ease, filter 160ms ease, box-shadow 160ms ease !important;
+        animation: {'audioGlow 1.9s ease-in-out infinite' if audio_enabled else 'none'};
+    }}
+    div.st-key-{button_key} button:hover {{
+        transform: translateY(-1px) scale(1.05);
+        filter: brightness(1.06);
+    }}
+    div.st-key-{button_key} button:active {{
+        transform: translateY(0) scale(0.98);
+    }}
+    @keyframes audioGlow {{
+        0%, 100% {{ box-shadow: 0 0 0 4px rgba(255,230,109,0.14), 0 0 14px rgba(6,214,160,0.42), 0 5px 14px rgba(0,0,0,0.26); }}
+        50% {{ box-shadow: 0 0 0 6px rgba(255,230,109,0.22), 0 0 24px rgba(6,214,160,0.72), 0 5px 14px rgba(0,0,0,0.26); }}
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+    audio_label = "♫" if audio_enabled else "♪"
+    audio_help = "Disabilita musica di sottofondo" if audio_enabled else "Abilita musica di sottofondo"
+    _, col_audio, _ = st.columns([1, 0.12, 1])
+    with col_audio:
+        if st.button(audio_label, key=button_key, help=audio_help):
+            st.session_state.bg_audio_disabled = audio_enabled
+            toggle_audio_callback()
+            st.rerun()
+    toggle_audio_callback()
             
 # (Audio gestito tramite start_background_audio sopra — nessuna funzione locale duplicata)
 
@@ -745,6 +795,7 @@ def genera_pdf_club(df_giocatori, df_tornei_ita, df_tornei_svizzeri, is_superba=
 st.markdown("<div class='button-title'>⚽ Gestione Club e Tornei Superba 🏆</div>", unsafe_allow_html=True)
 
 # Check user status and permissions
+render_banner_audio_button("edit_club")
 current_user = auth.get_current_user()
 is_admin = current_user and current_user.get('role') == 'A'
 is_guest = current_user and current_user.get('role') == 'G'
