@@ -384,6 +384,8 @@ def reset_app_state():
 # sono ora importate da common.audio
 
 # Avvio audio di sottofondo
+if "bg_audio_disabled" not in st.session_state:
+    st.session_state.bg_audio_disabled = True
 start_background_audio(BACKGROUND_AUDIO_URL)
 
 def render_banner_audio_button(key_suffix: str):
