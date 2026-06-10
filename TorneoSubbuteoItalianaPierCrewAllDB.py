@@ -939,7 +939,7 @@ def mostra_calendario_pc(df, girone_sel, giornata_sel, modalita_visualizzazione)
                 font-size: 1rem !important;
                 text-align: center !important;
             }
-            div[data-testid="stCheckbox"] {
+            button {
                 width: fit-content !important;
                 margin: 4px auto 8px auto !important;
             }
@@ -1042,7 +1042,7 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
             font-size: 1.1rem !important;
             min-height: 34px !important;
         }
-        .phone-match-card div[data-testid="stCheckbox"] {
+        .phone-match-card button {
             width: fit-content !important;
             margin: 8px 0 0 0 !important;
             text-align: left !important;
@@ -1605,6 +1605,7 @@ def inject_top_gap_css():
 
 
 def render_app_title():
+    audio_enabled = not st.session_state.get('bg_audio_disabled', True)
     if st.session_state.get('calendario_generato', False) and 'nome_torneo' in st.session_state:
         st.markdown(f"""
         <div class='subbuteo-top-banner' style='text-align:center; padding:20px; border-radius:10px; background: linear-gradient(90deg, #457b9d, #1d3557); box-shadow: 0 4px 14px #00000022;'>
@@ -1617,6 +1618,107 @@ def render_app_title():
             <h1 style='color:white; margin:0; font-weight:700;'>🇮🇹⚽ Torneo PierCrew - Gestione Gironi 🏆🇮🇹</h1>
         </div>
         """, unsafe_allow_html=True)
+
+    st.markdown(f"""
+        <style>
+        div[data-testid="stElementContainer"]:has(div.st-key-piercrew_banner_audio_button),
+        div.element-container:has(div.st-key-piercrew_banner_audio_button) {{
+            display: flex !important;
+            justify-content: center !important;
+            position: relative !important;
+            z-index: 30 !important;
+            height: auto !important;
+            min-height: 0 !important;
+            margin-top: 8px !important;
+            margin-bottom: 8px !important;
+            padding: 0 !important;
+            overflow: visible !important;
+        }}
+        div.st-key-piercrew_banner_audio_button {{
+            display: flex !important;
+            justify-content: center !important;
+            position: relative;
+            width: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            z-index: 20;
+        }}
+        div.st-key-piercrew_banner_audio_button button {{
+            position: relative;
+            display: block !important;
+            right: auto;
+            top: auto;
+            margin: 0 auto !important;
+            width: auto !important;
+            min-width: 58px !important;
+            height: 36px !important;
+            min-height: 34px !important;
+            padding: 4px 8px !important;
+            border-radius: 999px !important;
+            border: 1px solid rgba(255,255,255,0.72) !important;
+            background: {'linear-gradient(135deg, #ffe66d, #06d6a0)' if audio_enabled else 'linear-gradient(135deg, #334155, #0f172a)'} !important;
+            color: {'#132018' if audio_enabled else '#dbeafe'} !important;
+            font-size: 1.08rem !important;
+            font-weight: 900 !important;
+            line-height: 1 !important;
+            box-shadow: {'0 0 0 4px rgba(255,230,109,0.16), 0 0 18px rgba(6,214,160,0.58), 0 5px 14px rgba(0,0,0,0.26)' if audio_enabled else '0 0 0 3px rgba(148,163,184,0.12), 0 5px 14px rgba(0,0,0,0.28)'} !important;
+            transform: translateZ(0);
+            transition: transform 160ms ease, filter 160ms ease, box-shadow 160ms ease !important;
+            animation: {'audioGlow 1.9s ease-in-out infinite' if audio_enabled else 'none'};
+        }}
+        div.st-key-piercrew_banner_audio_button button:hover {{
+            transform: translateY(-1px) scale(1.05);
+            filter: brightness(1.06);
+        }}
+        div.st-key-piercrew_banner_audio_button button:active {{
+            transform: translateY(0) scale(0.98);
+        }}
+        div.st-key-piercrew_banner_audio_button label {{
+            display: flex !important;
+            align-items: center !important;
+            gap: 4px !important;
+            min-height: 26px !important;
+            margin: 0 !important;
+        }}
+        div.st-key-piercrew_banner_audio_button label p {{
+            color: inherit !important;
+            font-size: 1.05rem !important;
+            font-weight: 900 !important;
+            line-height: 1 !important;
+            margin: 0 !important;
+        }}
+        div.st-key-piercrew_banner_audio_button [data-baseweb="checkbox"] {{
+            transform: scale(0.78);
+            transform-origin: center;
+        }}
+        @keyframes audioGlow {{
+            0%, 100% {{ box-shadow: 0 0 0 4px rgba(255,230,109,0.14), 0 0 14px rgba(6,214,160,0.42), 0 5px 14px rgba(0,0,0,0.26); }}
+            50% {{ box-shadow: 0 0 0 6px rgba(255,230,109,0.22), 0 0 24px rgba(6,214,160,0.72), 0 5px 14px rgba(0,0,0,0.26); }}
+        }}
+        @media screen and (max-width: 520px) {{
+            div.st-key-piercrew_banner_audio_button button {{
+                right: auto;
+                top: auto;
+                min-width: 52px !important;
+                min-height: 32px !important;
+                padding: 3px 7px !important;
+            }}
+            div.st-key-piercrew_banner_audio_button label p {{
+                font-size: 0.95rem !important;
+            }}
+        }}
+        </style>
+    """, unsafe_allow_html=True)
+
+    audio_label = "♪" if audio_enabled else "♩"
+    audio_help = "Disabilita musica di sottofondo" if audio_enabled else "Abilita musica di sottofondo"
+    if st.button(audio_label, key="piercrew_banner_audio_button", help=audio_help):
+        st.session_state.bg_audio_disabled = audio_enabled
+        toggle_audio_callback()
+        st.rerun()
+    toggle_audio_callback()
 
 
 def inject_css():
@@ -2616,6 +2718,7 @@ def main():
                     mostra_avviso_landscape()
                     mostra_calendario_pc(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
                 elif vista_scelta == 'premium':
+                    mostra_avviso_landscape()
                     mostra_calendario_premium(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
                 else: # standard
                     mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)

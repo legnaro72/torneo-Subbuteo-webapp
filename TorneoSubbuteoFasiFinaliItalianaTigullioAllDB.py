@@ -219,6 +219,56 @@ col_name = "Tigullio"
 # Avvio audio di sottofondo
 start_background_audio(BACKGROUND_AUDIO_URL)
 
+def render_banner_audio_button(key_suffix: str):
+    """Mostra un piccolo controllo audio centrato sotto il banner."""
+    audio_enabled = not st.session_state.get('bg_audio_disabled', False)
+    button_key = f"tigullio_banner_audio_button_{key_suffix}"
+    st.markdown(f"""
+    <style>
+    div.st-key-{button_key} {{
+        display: flex !important;
+        justify-content: center !important;
+        width: 100% !important;
+    }}
+    div.st-key-{button_key} button {{
+        min-width: 58px !important;
+        height: 36px !important;
+        min-height: 34px !important;
+        padding: 4px 8px !important;
+        border-radius: 999px !important;
+        border: 1px solid rgba(255,255,255,0.72) !important;
+        background: {'linear-gradient(135deg, #ffe66d, #06d6a0)' if audio_enabled else 'linear-gradient(135deg, #334155, #0f172a)'} !important;
+        color: {'#132018' if audio_enabled else '#dbeafe'} !important;
+        font-size: 1.08rem !important;
+        font-weight: 900 !important;
+        line-height: 1 !important;
+        box-shadow: {'0 0 0 4px rgba(255,230,109,0.16), 0 0 18px rgba(6,214,160,0.58), 0 5px 14px rgba(0,0,0,0.26)' if audio_enabled else '0 0 0 3px rgba(148,163,184,0.12), 0 5px 14px rgba(0,0,0,0.28)'} !important;
+        transition: transform 160ms ease, filter 160ms ease, box-shadow 160ms ease !important;
+        animation: {'audioGlow 1.9s ease-in-out infinite' if audio_enabled else 'none'};
+    }}
+    div.st-key-{button_key} button:hover {{
+        transform: translateY(-1px) scale(1.05);
+        filter: brightness(1.06);
+    }}
+    div.st-key-{button_key} button:active {{
+        transform: translateY(0) scale(0.98);
+    }}
+    @keyframes audioGlow {{
+        0%, 100% {{ box-shadow: 0 0 0 4px rgba(255,230,109,0.14), 0 0 14px rgba(6,214,160,0.42), 0 5px 14px rgba(0,0,0,0.26); }}
+        50% {{ box-shadow: 0 0 0 6px rgba(255,230,109,0.22), 0 0 24px rgba(6,214,160,0.72), 0 5px 14px rgba(0,0,0,0.26); }}
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+    audio_label = "♫" if audio_enabled else "♪"
+    audio_help = "Disabilita musica di sottofondo" if audio_enabled else "Abilita musica di sottofondo"
+    _, col_audio, _ = st.columns([1, 0.12, 1])
+    with col_audio:
+        if st.button(audio_label, key=button_key, help=audio_help):
+            st.session_state.bg_audio_disabled = audio_enabled
+            toggle_audio_callback()
+            st.rerun()
+    toggle_audio_callback()
+
 def check_csv_structure(df: pd.DataFrame) -> tuple[bool, str]:
     """Controlla che le colonne necessarie siano presenti nel DataFrame."""
     missing = [c for c in REQUIRED_COLS if c not in df.columns]
@@ -742,6 +792,22 @@ def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
             text-align: center !important;
             font-weight: bold !important;
         }
+        .portrait-warning {
+            display: none;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: white;
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin: 8px 0 10px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        @media screen and (max-width: 640px) and (orientation: portrait) {
+            .portrait-warning { display: block !important; }
+        }
         @media screen and (max-width: 640px) {
             .pc-match-label,
             .pc-match-label.home,
@@ -780,6 +846,9 @@ def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
             }
         }
         </style>
+        <div class="portrait-warning">
+            📱🔄 Ruota il telefono in <b>ORIZZONTALE</b> per la vista ottimizzata!
+        </div>
         """, unsafe_allow_html=True)
 
     elif tipo_vista == 'premium':
@@ -1672,6 +1741,8 @@ def main():
             <h1 style='color:white; font-weight:700;'>🇮🇹⚽ Fase Finale Torneo Subbuteo 🏆🇮🇹</h1>
         </div>
         """, unsafe_allow_html=True)
+
+    render_banner_audio_button("fasi_finali")
 
     # --- PULSANTE "CELEBRA VINCITORE" AL TOP ---
     if st.session_state.get('vincitore_torneo'):
