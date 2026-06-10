@@ -455,7 +455,6 @@ HUB_URL = "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/"
 
 # Sidebar — usa moduli condivisi
 setup_common_sidebar(show_user_info=False, show_hub_link=True, hub_url=HUB_URL)
-setup_audio_sidebar()
 
 # ==============================================================================
 # PDF EXPORT — La Gazzetta della Superba (Composizione Club)
@@ -796,6 +795,7 @@ st.markdown("<div class='button-title'>⚽ Gestione Club e Tornei Superba 🏆</
 
 # Check user status and permissions
 render_banner_audio_button("edit_club")
+setup_audio_sidebar()
 current_user = auth.get_current_user()
 is_admin = current_user and current_user.get('role') == 'A'
 is_guest = current_user and current_user.get('role') == 'G'
