@@ -2616,6 +2616,7 @@ def main():
                     mostra_avviso_landscape()
                     mostra_calendario_pc(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
                 elif vista_scelta == 'premium':
+                    mostra_avviso_landscape()
                     mostra_calendario_premium(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
                 else: # standard
                     mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)

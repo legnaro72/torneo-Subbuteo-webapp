@@ -742,6 +742,22 @@ def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
             text-align: center !important;
             font-weight: bold !important;
         }
+        .portrait-warning {
+            display: none;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: white;
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin: 8px 0 10px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        @media screen and (max-width: 640px) and (orientation: portrait) {
+            .portrait-warning { display: block !important; }
+        }
         @media screen and (max-width: 640px) {
             .pc-match-label,
             .pc-match-label.home,
@@ -780,6 +796,9 @@ def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
             }
         }
         </style>
+        <div class="portrait-warning">
+            📱🔄 Ruota il telefono in <b>ORIZZONTALE</b> per la vista ottimizzata!
+        </div>
         """, unsafe_allow_html=True)
 
     elif tipo_vista == 'premium':
