@@ -682,6 +682,11 @@ def parse_team_player(val):
         return squadra.strip(), giocatore.strip()
     return val, ""
 
+def has_single_girone(df):
+    if df is None or df.empty or 'Girone' not in df.columns:
+        return True
+    return df['Girone'].dropna().nunique() <= 1
+
 def format_vincitori_italiana(df_classifica):
     """Formatta il banner vincitori senza citare il girone quando il torneo ha un solo girone."""
     if df_classifica is None or df_classifica.empty or 'Girone' not in df_classifica.columns:
@@ -797,7 +802,10 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
     if df_giornata.empty:
         return
 
-    st.markdown(f"### 🏆 {girone_sel} - Giornata {giornata_sel} (Vista Premium)")
+    if has_single_girone(df):
+        st.markdown(f"### 🏆 Giornata {giornata_sel} (Vista Premium)")
+    else:
+        st.markdown(f"### 🏆 {girone_sel} - Giornata {giornata_sel} (Vista Premium)")
     
     # CSS locale per la vista premium
     st.markdown("""
@@ -841,7 +849,8 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
         # Card Premium con Streamlit
         with st.container(border=True):
             # Header della card
-            st.markdown(f"<div class='match-header-premium'>GIRONE {girone_sel} • MATCH {idx+1}</div>", unsafe_allow_html=True)
+            header_match = f"MATCH {idx+1}" if has_single_girone(df) else f"{girone_sel} • MATCH {idx+1}"
+            st.markdown(f"<div class='match-header-premium'>{header_match}</div>", unsafe_allow_html=True)
             
             # Prepariamo le chiavi (SINCRONIZZATE con la vista standard)
             key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
@@ -1321,16 +1330,19 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
         return
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].copy()
 
-    # Rimuovi la colonna 'Ritirato' per la visualizzazione, ma usala per lo stile
-    df_to_show = df_girone.drop(columns=['Ritirato'])
+    # Rimuovi colonne tecniche dalla visualizzazione; il girone unico resta solo nei dati interni.
+    drop_cols = ['Ritirato']
+    if has_single_girone(df_classifica):
+        drop_cols.append('Girone')
+    df_to_show = df_girone.drop(columns=drop_cols, errors='ignore')
 
     # Stile delle righe in base alla colonna 'Ritirato'
     def highlight_withdrawn(s):
-        is_withdrawn = s['Ritirato']
+        is_withdrawn = bool(df_girone.loc[s.name, 'Ritirato']) if 'Ritirato' in df_girone.columns else False
         return ['background-color: lightgray'] * len(s) if is_withdrawn else [''] * len(s)
 
     # Usa la colonna 'Squadra' per applicare lo stile
-    styled_df = df_girone.style.apply(highlight_withdrawn, axis=1)
+    styled_df = df_to_show.style.apply(highlight_withdrawn, axis=1)
 
     st.dataframe(styled_df, width="stretch", hide_index=True)
 
@@ -2233,8 +2245,9 @@ def main():
                     st.warning("❌ Seleziona almeno un giocatore per gestire l'abbandono.")
         
         
-        # 💬 Visualizzazione Classifica per girone
-        with st.sidebar.expander("💬 Visualizzazione Classifica", expanded=False):
+        # 💬 Visualizzazione Classifica
+        classifica_expander_title = "💬 Visualizzazione Classifica" if has_single_girone(st.session_state['df_torneo']) else "💬 Visualizzazione Classifica per girone"
+        with st.sidebar.expander(classifica_expander_title, expanded=False):
             gironi_attivi = sorted(st.session_state['df_torneo']['Girone'].dropna().unique().tolist())
             if len(gironi_attivi) == 1:
                 girone_unico = gironi_attivi[0]
@@ -2267,10 +2280,13 @@ def main():
 
             df = st.session_state['df_torneo'].copy()
             df_filtrato = pd.DataFrame()
+            filtro_options = ('Nessuno', 'Stato partite', 'Giocatore') if has_single_girone(df) else ('Nessuno', 'Stato partite', 'Giocatore', 'Girone')
+            if st.session_state.get('filtro_principale_selettore_main') not in filtro_options:
+                st.session_state['filtro_principale_selettore_main'] = 'Nessuno'
 
             filtro_principale = st.radio(
                 "Filtro visualizzazione stato partite",
-                ('Nessuno', 'Stato partite', 'Giocatore', 'Girone'),
+                filtro_options,
                 horizontal=True,
                 key='filtro_principale_selettore_main'
             )
@@ -2692,7 +2708,8 @@ def main():
                 girone = st.session_state['mostra_classifica_girone']
                 
                 # Mostra la classifica
-                st.markdown(f"# 📊 Classifica {girone}")
+                titolo_classifica = "# 📊 Classifica" if has_single_girone(df) else f"# 📊 Classifica {girone}"
+                st.markdown(titolo_classifica)
                 classifica = aggiorna_classifica(df)
                 if classifica is not None and not classifica.empty:
                     mostra_classifica_stilizzata(classifica, girone)
