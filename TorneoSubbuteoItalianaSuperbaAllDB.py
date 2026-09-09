@@ -9,6 +9,7 @@ st.set_page_config(
 )
 
 import pandas as pd
+from html import escape
 import numpy as np
 import json
 import os
@@ -127,86 +128,6 @@ def render_sidebar_collapse_workaround():
     """, height=44, width=150)
 
 
-def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, key_prefix: str = ""):
-    """Navigazione locale Italiana: mostra < GIO n > compatto su una riga."""
-    st.markdown("""
-        <style>
-        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            align-items: center !important;
-            justify-content: center !important;
-            gap: 8px !important;
-            max-width: min(100%, 260px) !important;
-            margin: 0 auto !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"] {
-            flex: 0 0 auto !important;
-            width: auto !important;
-            min-width: 0 !important;
-            padding: 0 !important;
-            margin: 0 !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:first-child,
-        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:last-child {
-            width: 72px !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:nth-child(2) {
-            width: 72px !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) button {
-            height: 32px !important;
-            min-height: 32px !important;
-            padding: 0 !important;
-            border-radius: 6px !important;
-            font-size: 0.78rem !important;
-        }
-        .nav-btn-marker {
-            text-align: center;
-            font-weight: 900;
-            font-size: 0.9rem;
-            line-height: 32px;
-            height: 32px;
-            width: 100%;
-            white-space: nowrap;
-        }
-        @media screen and (max-width: 480px) {
-            div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) {
-                max-width: 100% !important;
-                gap: 10px !important;
-            }
-            div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:first-child,
-            div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:last-child {
-                width: 96px !important;
-            }
-            div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:nth-child(2) {
-                width: 88px !important;
-            }
-            div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) button {
-                font-size: 0.82rem !important;
-                min-width: 0 !important;
-            }
-        }
-        p { margin-bottom: 0px; }
-        </style>
-    """, unsafe_allow_html=True)
-
-    current = st.session_state.get(value_key, min_val)
-    display_label = f"GIORNATA {current}"
-    col_prev, col_label, col_next = st.columns([1, 0.9, 1], gap="small")
-    with col_prev:
-        if st.button("◀", key=f"{key_prefix}nav_prev_{value_key}", width="stretch"):
-            if current > min_val:
-                st.session_state[value_key] = current - 1
-                st.rerun()
-    with col_label:
-        st.markdown(f"<div class='nav-btn-marker'>{display_label}</div>", unsafe_allow_html=True)
-    with col_next:
-        if st.button("▶", key=f"{key_prefix}nav_next_{value_key}", width="stretch"):
-            if current < max_val:
-                st.session_state[value_key] = current + 1
-                st.rerun()
 
 
 # Configurazione della pagina
@@ -706,25 +627,75 @@ def format_vincitori_italiana(df_classifica):
     return ", ".join(vincitori)
 
 def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, key_prefix: str = ""):
-    """Navigazione giornata stabile su mobile: nessun bottone tagliato."""
+    """Navigazione locale; la vista Compact mantiene le tre celle anche in portrait."""
     current = st.session_state.get(value_key, min_val)
+    compact = st.session_state.get('tipo_vista_selezionata', 'pc') in ('pc', 'compact', 'smartphone')
+    if compact:
+        st.html("""
+            <style>
+            .st-key-superba_italiana_navigation [data-testid="stHorizontalBlock"] {
+                display: grid !important;
+                grid-template-columns: 48px minmax(0, 1fr) 48px;
+                align-items: center !important;
+                gap: 8px !important;
+            }
+            .st-key-superba_italiana_navigation [data-testid="stHorizontalBlock"] > div {
+                width: 100% !important;
+                min-width: 0 !important;
+                max-width: none !important;
+                margin: 0 !important;
+            }
+            .st-key-superba_italiana_navigation [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
+                height: auto !important;
+                min-height: 44px;
+                justify-content: center !important;
+            }
+            .st-key-superba_italiana_navigation button {
+                width: 48px !important;
+                min-width: 0 !important;
+                min-height: 44px !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border-radius: 8px !important;
+            }
+            .st-key-superba_italiana_navigation button:not(:disabled) {
+                background: linear-gradient(to right, var(--color-primary-mid), var(--color-primary-light));
+                color: white;
+            }
+            .st-key-superba_italiana_navigation .superba-day-label {
+                text-align: center;
+                font-size: 16px;
+                font-weight: 900;
+                letter-spacing: 0;
+                line-height: 1.2;
+                overflow-wrap: anywhere;
+            }
+            .st-key-superba_italiana_navigation [data-testid="stMarkdownContainer"] {
+                margin-bottom: 0 !important;
+            }
+            </style>
+        """)
 
-    col_prev, col_label, col_next = st.columns([1, 1, 1], gap="small")
-    with col_prev:
-        if st.button("◀", key=f"{key_prefix}nav_prev_{value_key}", width="stretch"):
-            if current > min_val:
-                st.session_state[value_key] = current - 1
-                st.rerun()
-    with col_label:
-        st.markdown(
-            f"<div style='text-align:center;font-weight:900;padding-top:0.45rem;white-space:nowrap;'>GIORNATA {current}</div>",
-            unsafe_allow_html=True
-        )
-    with col_next:
-        if st.button("▶", key=f"{key_prefix}nav_next_{value_key}", width="stretch"):
-            if current < max_val:
-                st.session_state[value_key] = current + 1
-                st.rerun()
+    with st.container(key="superba_italiana_navigation"):
+        col_prev, col_label, col_next = st.columns([1, 1, 1], gap="small")
+        with col_prev:
+            if st.button("◀", key=f"{key_prefix}nav_prev_{value_key}", width="stretch",
+                         disabled=compact and current <= min_val, help="Giornata precedente"):
+                if current > min_val:
+                    st.session_state[value_key] = current - 1
+                    st.rerun()
+        with col_label:
+            st.markdown(
+                f"<div class='superba-day-label' style='text-align:center;font-weight:900;'>"
+                f"GIORNATA {current}</div>",
+                unsafe_allow_html=True
+            )
+        with col_next:
+            if st.button("▶", key=f"{key_prefix}nav_next_{value_key}", width="stretch",
+                         disabled=compact and current >= max_val, help="Giornata successiva"):
+                if current < max_val:
+                    st.session_state[value_key] = current + 1
+                    st.rerun()
 
 def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizzazione):
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
@@ -997,108 +968,154 @@ def mostra_calendario_pc(df, girone_sel, giornata_sel, modalita_visualizzazione)
         st.markdown("<div class='pc-match-separator'></div>", unsafe_allow_html=True)
 
 def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzazione):
-    """Visualizzazione compatta pensata per smartphone in portrait."""
+    """Una riga per incontro, con widget nativi e stili limitati all'Italiana Superba."""
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         return
 
-    numero_gironi = df['Girone'].nunique() if 'Girone' in df.columns else 1
-    if numero_gironi > 1:
-        st.markdown(f"### {girone_sel} - Giornata {giornata_sel} (Smartphone)")
-
-    st.markdown("""
+    # Un vero container Streamlit include i widget; due markdown <div> non li racchiudono.
+    st.html("""
         <style>
-        .phone-match-card {
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-            padding: 16px 0;
-            margin-bottom: 8px;
+        .st-key-superba_italiana_compact [data-testid="stHorizontalBlock"] {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) 64px 64px minmax(0, 1fr) 44px;
+            gap: 8px !important;
+            align-items: center !important;
+            border-bottom: 1px solid rgba(128, 128, 128, 0.18);
+            padding: 8px 0;
         }
-        div[data-testid="stNumberInput"] button {
-            display: none !important;
-        }
-        div[data-testid="stNumberInput"] input::-webkit-outer-spin-button,
-        div[data-testid="stNumberInput"] input::-webkit-inner-spin-button {
-            -webkit-appearance: none !important;
+        .st-key-superba_italiana_compact [data-testid="stHorizontalBlock"] > div {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: none !important;
             margin: 0 !important;
         }
-        div[data-testid="stNumberInput"] input[type="number"] {
-            -moz-appearance: textfield !important;
+        .st-key-superba_italiana_compact .superba-team-name {
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 0;
+            line-height: 1.25;
+            white-space: normal;
+            overflow-wrap: anywhere;
         }
-        .stNumberInput,
-        div[data-testid="stNumberInput"] {
-            width: 160px !important;
-            margin: 0 auto 12px auto !important;
-            text-align: center !important;
+        .st-key-superba_italiana_compact [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
+            justify-content: center !important;
         }
-        div[data-testid="stNumberInput"] label {
-            display: block !important;
-            text-align: center !important;
+        .st-key-superba_italiana_compact [data-testid="stElementContainer"],
+        .st-key-superba_italiana_compact [data-testid="stCheckbox"] {
             width: 100% !important;
-            font-weight: 800 !important;
-            font-size: 0.95rem !important;
-            margin-bottom: 4px !important;
         }
-        div[data-testid="stNumberInput"] div[data-baseweb="input"] {
-            width: 80px !important;
-            margin: 0 auto !important;
+        .st-key-superba_italiana_compact .superba-team-name.away {
+            text-align: right;
+        }
+        .st-key-superba_italiana_compact [data-testid="stMarkdownContainer"] {
+            margin-bottom: 0 !important;
+        }
+        .st-key-superba_italiana_compact [data-testid="stNumberInput"],
+        .st-key-superba_italiana_compact [data-baseweb="input"],
+        .st-key-superba_italiana_compact [data-baseweb="base-input"] {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border-radius: 8px !important;
+        }
+        .st-key-superba_italiana_compact [data-testid="stNumberInput"] input {
+            width: 100% !important;
+            min-width: 0 !important;
+            height: 44px !important;
+            padding: 0 2px !important;
+            font-size: 16px !important;
+            font-weight: 800 !important;
+            text-align: center !important;
+            -moz-appearance: textfield;
+        }
+        .st-key-superba_italiana_compact [data-testid="stNumberInputContainer"] {
+            height: 44px !important;
+        }
+        .st-key-superba_italiana_compact [data-testid="stNumberInput"] button,
+        .st-key-superba_italiana_compact input::-webkit-inner-spin-button,
+        .st-key-superba_italiana_compact input::-webkit-outer-spin-button {
+            display: none !important;
+        }
+        .st-key-superba_italiana_compact [data-testid="stCheckbox"] label {
+            display: flex !important;
+            width: 100% !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-height: 44px !important;
+            margin: 0 !important;
             padding: 0 !important;
         }
-        div[data-testid="stNumberInput"] input {
-            width: 80px !important;
-            padding: 2px 1px !important;
-            text-align: center !important;
-            font-weight: bold !important;
-            font-size: 1.1rem !important;
-            min-height: 34px !important;
-        }
-        .phone-match-card button {
-            width: fit-content !important;
-            margin: 8px 0 0 0 !important;
-            text-align: left !important;
-        }
-        @media screen and (max-width: 480px) {
-            .appview-container .main .block-container {
-                padding-left: 0.65rem !important;
-                padding-right: 0.65rem !important;
+        @media screen and (max-width: 640px) {
+            .st-key-superba_italiana_compact [data-testid="stHorizontalBlock"] {
+                grid-template-columns: minmax(0, 1fr) 48px 48px minmax(0, 1fr) 40px;
+                gap: 4px !important;
+            }
+            .st-key-superba_italiana_compact .superba-team-name {
+                font-size: 14px;
             }
         }
         </style>
-    """, unsafe_allow_html=True)
+    """)
 
-    for idx, row in df_giornata.iterrows():
-        casa, gio_c = parse_team_player(row['Casa'])
-        osp, gio_o = parse_team_player(row['Ospite'])
+    with st.container(key="superba_italiana_compact"):
+        for idx, row in df_giornata.iterrows():
+            casa, gio_c = parse_team_player(row['Casa'])
+            osp, gio_o = parse_team_player(row['Ospite'])
+            if modalita_visualizzazione == 'giocatori':
+                label_c, label_o = gio_c or casa, gio_o or osp
+            elif modalita_visualizzazione == 'squadre':
+                label_c, label_o = casa, osp
+            else:
+                label_c = f"{casa} ({gio_c})" if gio_c else casa
+                label_o = f"{osp} ({gio_o})" if gio_o else osp
 
-        if modalita_visualizzazione == 'giocatori':
-            label_c, label_o = gio_c, gio_o
-        elif modalita_visualizzazione == 'squadre':
-            label_c, label_o = casa, osp
-        else:
-            label_c, label_o = f"{casa} ({gio_c})", f"{osp} ({gio_o})"
+            key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+            key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+            key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+            read_only = st.session_state.get('read_only', True)
+            validated = bool(st.session_state.get(
+                f"comp_{key_valida}", st.session_state.get(key_valida, bool(row['Valida']))
+            ))
 
-        key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
-        key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
-        key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
-
-        st.markdown("<div class='phone-match-card'>", unsafe_allow_html=True)
-        st.number_input(label_c, 0, 20, key=f"comp_{key_golcasa}",
-                        value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
-                        disabled=row['Valida'])
-        st.session_state[key_golcasa] = st.session_state[f"comp_{key_golcasa}"]
-        
-        st.markdown("<div style='text-align:center; font-weight:bold; font-size:1.2rem; margin: 4px 0;'>-</div>", unsafe_allow_html=True)
-        
-        st.number_input(label_o, 0, 20, key=f"comp_{key_golospite}",
-                        value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
-                        disabled=row['Valida'])
-        st.session_state[key_golospite] = st.session_state[f"comp_{key_golospite}"]
-        
-        st.checkbox("✓ Validata", key=f"comp_{key_valida}", value=bool(row['Valida']),
-                    disabled=st.session_state.get('read_only', False))
-        st.session_state[key_valida] = st.session_state[f"comp_{key_valida}"]
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    return
+            casa_col, gc_col, go_col, osp_col, valida_col = st.columns(
+                [2.2, 0.36, 0.36, 2.2, 0.42], gap="small"
+            )
+            with casa_col:
+                st.markdown(
+                    f"<div class='superba-team-name home'>{escape(str(label_c))}</div>",
+                    unsafe_allow_html=True
+                )
+            with gc_col:
+                score = st.number_input(
+                    f"Gol casa: {label_c}", 0, 20, key=f"comp_{key_golcasa}",
+                    value=int(st.session_state.get(
+                        key_golcasa, int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
+                    )),
+                    label_visibility="collapsed", disabled=read_only or validated
+                )
+                st.session_state[key_golcasa] = score
+            with go_col:
+                score = st.number_input(
+                    f"Gol ospite: {label_o}", 0, 20, key=f"comp_{key_golospite}",
+                    value=int(st.session_state.get(
+                        key_golospite, int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
+                    )),
+                    label_visibility="collapsed", disabled=read_only or validated
+                )
+                st.session_state[key_golospite] = score
+            with osp_col:
+                st.markdown(
+                    f"<div class='superba-team-name away'>{escape(str(label_o))}</div>",
+                    unsafe_allow_html=True
+                )
+            with valida_col:
+                st.session_state[key_valida] = st.checkbox(
+                    f"Valida risultato: {label_c} - {label_o}", key=f"comp_{key_valida}",
+                    value=validated, label_visibility="collapsed", disabled=read_only
+                )
 
 
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
@@ -2141,10 +2158,10 @@ def main():
         # --- FUNZIONI DI SINCRONIZZAZIONE ---
         def sync_tipo_vista(source_key):
             val = st.session_state[source_key]
-            # Mappa sia 'compact' sia 'smartphone' a 'pc'
+            # Le etichette Compact e Smartphone usano la stessa vista responsive.
             mappa_interna = {
-                'compact': 'pc',
-                'smartphone': 'pc',
+                'compact': 'compact',
+                'smartphone': 'compact',
                 'pc': 'pc'
             }
             st.session_state['tipo_vista_selezionata'] = mappa_interna.get(val.lower(), val.lower())
@@ -2728,12 +2745,8 @@ def main():
             if giornate_correnti:
                 vista_scelta = st.session_state.get('tipo_vista_selezionata', 'pc')
                 
-                if vista_scelta in ('smartphone', 'compact'):
-                    mostra_avviso_landscape()
+                if vista_scelta in ('smartphone', 'compact', 'pc'):
                     mostra_calendario_compact(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
-                elif vista_scelta == 'pc':
-                    mostra_avviso_landscape()
-                    mostra_calendario_pc(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
                 elif vista_scelta == 'premium':
                     mostra_avviso_landscape()
                     mostra_calendario_premium(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
