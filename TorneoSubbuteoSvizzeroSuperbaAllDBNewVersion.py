@@ -55,55 +55,70 @@ def render_sidebar_collapse_workaround():
     </style>
     <script>
     (function() {
+      let host, d;
+      try { host = window.parent; d = host.document; } catch (e) { return; }
       const box = document.getElementById("subbuteo-sidebar-tools");
       const btn = document.getElementById("subbuteo-collapse-sidebar");
-      function doc() { try { return window.parent.document; } catch (e) { return null; } }
-      function open(sidebar) {
-        if (!sidebar) return false;
+      // Persist across Streamlit reruns, but reset when the page is reopened.
+      const state = host.__superbaSidebarStartup ||
+        (host.__superbaSidebarStartup = {done: false, started: Date.now()});
+      let closedSince = null;
+      function sidebarOpen(sidebar) {
         const aria = sidebar.getAttribute("aria-expanded");
         if (aria === "true") return true;
         if (aria === "false") return false;
-        return sidebar.getBoundingClientRect().width > 80;
+        const rect = sidebar.getBoundingClientRect();
+        return rect.width > 80 && rect.right > 0;
+      }
+      function closeSidebar(sidebar) {
+        const nativeButton = sidebar.querySelector(
+          '[data-testid="stSidebarCollapseButton"] button, ' +
+          'button[data-testid="stSidebarCollapseButton"], ' +
+          '[data-testid="stSidebarHeader"] button, ' +
+          'button[aria-label="Close sidebar"], button[aria-label="Collapse sidebar"], ' +
+          'button[title="Close sidebar"], button[title="Collapse sidebar"]'
+        );
+        if (!nativeButton) return false;
+        state.done = true;
+        nativeButton.click();
+        return true;
       }
       function update() {
-        const d = doc();
-        const sidebar = d && d.querySelector('section[data-testid="stSidebar"]');
-        box.style.display = open(sidebar) ? "flex" : "none";
+        const sidebar = d.querySelector('section[data-testid="stSidebar"]');
+        const expanded = sidebar && sidebarOpen(sidebar);
+        box.style.display = expanded ? "flex" : "none";
+        if (state.done) return;
+        if (Date.now() - state.started > 15000) { state.done = true; return; }
+        if (!sidebar) return;
+        if (expanded) {
+          closedSince = null;
+          closeSidebar(sidebar);
+        } else {
+          // Allow the initial sidebar mount/animation to settle.
+          if (closedSince === null) closedSince = Date.now();
+          if (Date.now() - closedSince > 700) state.done = true;
+        }
       }
+      function respectUserChoice(event) {
+        if (!event.isTrusted || !event.target.closest) return;
+        if (event.target.closest(
+          '[data-testid="stSidebarCollapseButton"], [data-testid="stSidebarHeader"], ' +
+          '[data-testid="stSidebarCollapsedControl"], [data-testid="collapsedControl"], ' +
+          'button[aria-label="Open sidebar"], button[aria-label="Expand sidebar"]'
+        )) state.done = true;
+      }
+      d.addEventListener("click", respectUserChoice, true);
       btn.addEventListener("click", function() {
-        const d = doc();
-        if (!d) return;
-        const selectors = [
-          'button[data-testid="stSidebarCollapseButton"]',
-          '[data-testid="stSidebarCollapseButton"] button',
-          '[data-testid="stSidebarHeader"] button',
-          'section[data-testid="stSidebar"] button[data-testid="baseButton-headerNoPadding"]',
-          'section[data-testid="stSidebar"] button[data-testid="stBaseButton-headerNoPadding"]',
-          'section[data-testid="stSidebar"] button[kind="header"]',
-          'button[aria-label="Close sidebar"]',
-          'button[aria-label="Collapse sidebar"]',
-          'button[title="Close sidebar"]',
-          'button[title="Collapse sidebar"]'
-        ];
-        let nativeButton = null;
-        for (const selector of selectors) {
-          nativeButton = d.querySelector(selector);
-          if (nativeButton) break;
-        }
-        if (!nativeButton) {
-          const sidebar = d.querySelector('section[data-testid="stSidebar"]');
-          nativeButton = Array.from(sidebar ? sidebar.querySelectorAll("button") : []).find(function(b) {
-            const t = (b.getAttribute("aria-label") || b.getAttribute("title") || "").toLowerCase();
-            return (t.includes("sidebar") || t.includes("barra")) &&
-                   (t.includes("close") || t.includes("collapse") || t.includes("chiudi") || t.includes("comprimi"));
-          });
-        }
-        if (nativeButton) nativeButton.click();
-        setTimeout(update, 150);
-        setTimeout(update, 650);
+        state.done = true;
+        const sidebar = d.querySelector('section[data-testid="stSidebar"]');
+        if (sidebar && sidebarOpen(sidebar)) closeSidebar(sidebar);
       });
       update();
-      setInterval(update, 700);
+      const timer = setInterval(update, 150);
+      window.addEventListener("unload", function() {
+        clearInterval(timer);
+        d.removeEventListener("click", respectUserChoice, true);
+      });
     })();
     </script>
     """, height=44, width=150)
