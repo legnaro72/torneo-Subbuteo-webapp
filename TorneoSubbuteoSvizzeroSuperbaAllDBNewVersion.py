@@ -310,12 +310,25 @@ def render_banner_audio_button(key_suffix: str):
     button_key = f"superba_banner_audio_button_{key_suffix}"
     st.markdown(f"""
     <style>
+    div[data-testid="stElementContainer"]:has(div.st-key-{button_key}),
+    div.element-container:has(div.st-key-{button_key}) {{
+        display: flex !important;
+        justify-content: center !important;
+        height: auto !important;
+        min-height: 0 !important;
+        margin: 8px 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+    }}
     div.st-key-{button_key} {{
         display: flex !important;
         justify-content: center !important;
         width: 100% !important;
     }}
     div.st-key-{button_key} button {{
+        display: block !important;
+        margin: 0 auto !important;
+        width: auto !important;
         min-width: 58px !important;
         height: 36px !important;
         min-height: 34px !important;
@@ -342,16 +355,21 @@ def render_banner_audio_button(key_suffix: str):
         0%, 100% {{ box-shadow: 0 0 0 4px rgba(255,230,109,0.14), 0 0 14px rgba(6,214,160,0.42), 0 5px 14px rgba(0,0,0,0.26); }}
         50% {{ box-shadow: 0 0 0 6px rgba(255,230,109,0.22), 0 0 24px rgba(6,214,160,0.72), 0 5px 14px rgba(0,0,0,0.26); }}
     }}
+    @media screen and (max-width: 520px) {{
+        div.st-key-{button_key} button {{
+            min-width: 52px !important;
+            min-height: 32px !important;
+            padding: 3px 7px !important;
+        }}
+    }}
     </style>
     """, unsafe_allow_html=True)
-    audio_label = "♫" if audio_enabled else "♪"
+    audio_label = "♪" if audio_enabled else "♩"
     audio_help = "Disabilita musica di sottofondo" if audio_enabled else "Abilita musica di sottofondo"
-    _, col_audio, _ = st.columns([1, 0.12, 1])
-    with col_audio:
-        if st.button(audio_label, key=button_key, help=audio_help):
-            st.session_state.bg_audio_disabled = audio_enabled
-            toggle_audio_callback()
-            st.rerun()
+    if st.button(audio_label, key=button_key, help=audio_help):
+        st.session_state.bg_audio_disabled = audio_enabled
+        toggle_audio_callback()
+        st.rerun()
     toggle_audio_callback()
 
     
