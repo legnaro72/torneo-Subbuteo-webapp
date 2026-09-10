@@ -33,6 +33,11 @@ from shared.auth import verify_write_access
 
 # Importa moduli comuni per stili, audio e componenti UI
 from common.styles import inject_all_styles
+from common.superba_results import (
+    remember_document, save_document, reset_result_drafts, draft_value, render_sidebar_startup,
+    mark_saved, consume_change, result_number_input, result_checkbox, show_save_status, has_unsaved_results,
+)
+
 from common.audio import (
     autoplay_background_audio, autoplay_audio,
     toggle_audio_callback, start_background_audio, setup_audio_sidebar
@@ -43,85 +48,7 @@ from common.ui_components import (
 )
 
 def render_sidebar_collapse_workaround():
-    components.html("""
-    <div id="subbuteo-sidebar-tools">
-      <button id="subbuteo-collapse-sidebar" type="button">Chiudi sidebar</button>
-    </div>
-    <style>
-      html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
-      #subbuteo-sidebar-tools { display: none; justify-content: flex-end; width: 100%; }
-      #subbuteo-collapse-sidebar { width: auto; border: 0; border-radius: 7px; padding: .42rem .72rem; background: #1d3557; color: white; font-size: .78rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(29, 53, 87, .24); }
-      #subbuteo-collapse-sidebar:hover { background: #457b9d; }
-    </style>
-    <script>
-    (function() {
-      let host, d;
-      try { host = window.parent; d = host.document; } catch (e) { return; }
-      const box = document.getElementById("subbuteo-sidebar-tools");
-      const btn = document.getElementById("subbuteo-collapse-sidebar");
-      // Persist across Streamlit reruns, but reset when the page is reopened.
-      const state = host.__superbaSidebarStartup ||
-        (host.__superbaSidebarStartup = {done: false, started: Date.now()});
-      let closedSince = null;
-      function sidebarOpen(sidebar) {
-        const aria = sidebar.getAttribute("aria-expanded");
-        if (aria === "true") return true;
-        if (aria === "false") return false;
-        const rect = sidebar.getBoundingClientRect();
-        return rect.width > 80 && rect.right > 0;
-      }
-      function closeSidebar(sidebar) {
-        const nativeButton = sidebar.querySelector(
-          '[data-testid="stSidebarCollapseButton"] button, ' +
-          'button[data-testid="stSidebarCollapseButton"], ' +
-          '[data-testid="stSidebarHeader"] button, ' +
-          'button[aria-label="Close sidebar"], button[aria-label="Collapse sidebar"], ' +
-          'button[title="Close sidebar"], button[title="Collapse sidebar"]'
-        );
-        if (!nativeButton) return false;
-        state.done = true;
-        nativeButton.click();
-        return true;
-      }
-      function update() {
-        const sidebar = d.querySelector('section[data-testid="stSidebar"]');
-        const expanded = sidebar && sidebarOpen(sidebar);
-        box.style.display = expanded ? "flex" : "none";
-        if (state.done) return;
-        if (Date.now() - state.started > 15000) { state.done = true; return; }
-        if (!sidebar) return;
-        if (expanded) {
-          closedSince = null;
-          closeSidebar(sidebar);
-        } else {
-          // Allow the initial sidebar mount/animation to settle.
-          if (closedSince === null) closedSince = Date.now();
-          if (Date.now() - closedSince > 700) state.done = true;
-        }
-      }
-      function respectUserChoice(event) {
-        if (!event.isTrusted || !event.target.closest) return;
-        if (event.target.closest(
-          '[data-testid="stSidebarCollapseButton"], [data-testid="stSidebarHeader"], ' +
-          '[data-testid="stSidebarCollapsedControl"], [data-testid="collapsedControl"], ' +
-          'button[aria-label="Open sidebar"], button[aria-label="Expand sidebar"]'
-        )) state.done = true;
-      }
-      d.addEventListener("click", respectUserChoice, true);
-      btn.addEventListener("click", function() {
-        state.done = true;
-        const sidebar = d.querySelector('section[data-testid="stSidebar"]');
-        if (sidebar && sidebarOpen(sidebar)) closeSidebar(sidebar);
-      });
-      update();
-      const timer = setInterval(update, 150);
-      window.addEventListener("unload", function() {
-        clearInterval(timer);
-        d.removeEventListener("click", respectUserChoice, true);
-      });
-    })();
-    </script>
-    """, height=44, width=150)
+    render_sidebar_startup()
 
 pwa.inject_pwa_assets()
 
@@ -407,32 +334,6 @@ def salva_torneo_su_db(action_type="salvataggio", details=None):
     # Ottieni il nome utente corrente o 'sconosciuto' se non disponibile
     current_user = st.session_state.get('user', {}).get('username', 'sconosciuto')
     
-    # Verifica se abbiamo già un ID torneo valido nella sessione
-    if 'tournament_id' in st.session_state and st.session_state.tournament_id:
-        try:
-            # Verifica se il torneo esiste ancora nel database
-            existing = tournaments_collection.find_one({"_id": ObjectId(st.session_state.tournament_id)})
-            if not existing:
-                # Se il torneo non esiste più, rimuoviamo l'ID dalla sessione
-                del st.session_state.tournament_id
-                # Log dell'errore
-                log_action(
-                    username=current_user,
-                    action="errore_salvataggio",
-                    torneo=st.session_state.get('nome_torneo', 'sconosciuto'),
-                    details={"errore": "Torneo non trovato nel database"}
-                )
-        except Exception as e:
-            # In caso di errore (es. ID non valido), rimuoviamo l'ID dalla sessione
-            del st.session_state.tournament_id
-            # Log dell'errore
-            log_action(
-                username=current_user,
-                action="errore_salvataggio",
-                torneo=st.session_state.get('nome_torneo', 'sconosciuto'),
-                details={"errore": str(e)}
-            )
-
     # Crea una copia del dataframe per la serializzazione
     df_torneo_to_save = st.session_state.df_torneo.copy()
     
@@ -476,6 +377,12 @@ def salva_torneo_su_db(action_type="salvataggio", details=None):
         "max_turni": st.session_state.get('max_turni'),
     }
 
+    def audit(**kwargs):
+        try:
+            log_action(**kwargs)
+        except Exception as exc:
+            print(f"[LOGGING] {exc}")
+
     try:
         # Prepara i dettagli del log
         log_details = {
@@ -486,11 +393,9 @@ def salva_torneo_su_db(action_type="salvataggio", details=None):
         
         # Se abbiamo un ID torneo nella sessione, aggiorniamo quel documento specifico
         if 'tournament_id' in st.session_state and st.session_state.tournament_id:
-            tournaments_collection.update_one(
-                {"_id": ObjectId(st.session_state.tournament_id)},
-                {"$set": torneo_data}
-            )
-            log_action(
+            if not save_document(tournaments_collection, st.session_state.tournament_id, torneo_data):
+                return False
+            audit(
                 username=current_user,
                 action=action_type,
                 torneo=st.session_state.nome_torneo,
@@ -502,24 +407,14 @@ def salva_torneo_su_db(action_type="salvataggio", details=None):
             existing_doc = tournaments_collection.find_one({"nome_torneo": st.session_state.nome_torneo})
             
             if existing_doc:
-                # Aggiorna il documento esistente e salva l'ID nella sessione
-                tournaments_collection.update_one(
-                    {"_id": existing_doc["_id"]},
-                    {"$set": torneo_data}
-                )
-                st.session_state.tournament_id = str(existing_doc["_id"])
-                log_action(
-                    username=current_user,
-                    action=action_type,
-                    torneo=st.session_state.nome_torneo,
-                    details={"tipo_operazione": "aggiornamento_esistente", **log_details}
-                )
-                st.toast(f"✅ Torneo esistente '{st.session_state.nome_torneo}' aggiornato con successo!")
+                st.error("Esiste gia' un torneo con questo nome. Aprilo prima di modificarlo.")
+                return False
             else:
                 # Crea un nuovo documento e salva l'ID nella sessione
                 result = tournaments_collection.insert_one(torneo_data)
                 st.session_state.tournament_id = str(result.inserted_id)
-                log_action(
+                remember_document(tournaments_collection, {**torneo_data, "_id": result.inserted_id})
+                audit(
                     username=current_user,
                     action=action_type,
                     torneo=st.session_state.nome_torneo,
@@ -528,7 +423,9 @@ def salva_torneo_su_db(action_type="salvataggio", details=None):
                 st.toast(f"✅ Nuovo torneo '{st.session_state.nome_torneo}' salvato con successo!")
         return True
     except Exception as e:
+        st.session_state["_superba_save_error"] = str(e)
         st.error(f"❌ Errore durante il salvataggio del torneo: {e}")
+        return False
 
 
 
@@ -577,6 +474,8 @@ def carica_torneo_da_db(nome_torneo):
             st.error(f"❌ Nessun torneo trovato con il nome '{nome_torneo}'")
             return False
             
+        remember_document(tournaments_collection, torneo)
+        reset_result_drafts(torneo['_id'])
         # Ripristina lo stato della sessione
         st.session_state.df_torneo = pd.DataFrame(torneo['df_torneo'])
         st.session_state.df_squadre = pd.DataFrame(torneo['df_squadre'])
@@ -619,8 +518,6 @@ def carica_torneo_da_db(nome_torneo):
         
         # Inizializza i risultati temporanei
         init_results_temp_from_df(st.session_state.df_torneo)
-        # MODIFICA: Salvataggio immediato dopo generazione calendario
-        salva_torneo_su_db(action_type="creazione_torneo_generato", details={"turno_generato": 1})
         return True
         
     except Exception as e:
@@ -1086,7 +983,7 @@ def controlla_fine_torneo():
 
     return False
 #inizio genera
-def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
+def genera_accoppiamenti(classifica, precedenti, primo_turno=False, turno=None):
     """
     Genera gli accoppiamenti per il turno corrente del torneo svizzero.
     
@@ -1111,7 +1008,7 @@ def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
     2. Fallback: backtracking su ordine casuale (svizzero "permissivo")
     """
     import random
-    turno_attuale = st.session_state.get("turno_attivo", 1)
+    turno_attuale = turno if turno is not None else st.session_state.get("turno_attivo", 1)
     num_squadre = len(st.session_state.df_squadre)
 
     # ═══════════════════════════════════════════════════════
@@ -1280,12 +1177,12 @@ def init_results_temp_from_df(df):
         key_val = f"val_{T}_{casa}_{ospite}"
         st.session_state.risultati_temp.setdefault(key_gc, int(row.get('GolCasa', 0)))
         st.session_state.risultati_temp.setdefault(key_go, int(row.get('GolOspite', 0)))
-        st.session_state.risultati_temp.setdefault(key_val, bool(row.get('Validata', False)))
+        st.session_state.risultati_temp[key_val] = bool(row.get('Validata', False))
 
 def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visualizzazione):
     """Visualizza gli incontri del turno attivo e permette di inserire e validare i risultati."""
     tipo_vista = st.session_state.get('tipo_vista_selezionata', 'compact').lower()
-    has_write_access = st.session_state.get("user", {}).get("role") not in ["ospite", "lettura"]
+    has_write_access = verify_write_access()
     
     if tipo_vista in ('compact', 'premium'):
         st.html("""
@@ -1446,7 +1343,7 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
         if key_val not in st.session_state.risultati_temp:
             st.session_state.risultati_temp[key_val] = validata_iniziale
 
-        is_disabled = st.session_state.risultati_temp.get(key_val, False) or not has_write_access
+        is_disabled = bool(draft_value(valida_key, validata_iniziale)) or not has_write_access
         
         # --- UI Rendering in base al tipo di vista ---
         if tipo_vista == 'compact':
@@ -1458,8 +1355,8 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
                     unsafe_allow_html=True
                 )
             with gol_casa_col:
-                st.session_state.risultati_temp[key_gc] = st.number_input(
-                    "GC",
+                st.session_state.risultati_temp[key_gc] = result_number_input(
+                    f"Gol casa: {label_c}",
                     min_value=0,
                     max_value=20,
                     value=st.session_state.risultati_temp[key_gc],
@@ -1468,8 +1365,8 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
                     disabled=is_disabled,
                 )
             with gol_ospite_col:
-                st.session_state.risultati_temp[key_go] = st.number_input(
-                    "GO",
+                st.session_state.risultati_temp[key_go] = result_number_input(
+                    f"Gol ospite: {label_o}",
                     min_value=0,
                     max_value=20,
                     value=st.session_state.risultati_temp[key_go],
@@ -1483,7 +1380,7 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
                     unsafe_allow_html=True
                 )
             with valida_col:
-                validata_checkbox = st.checkbox(
+                validata_checkbox = result_checkbox(
                     f"Valida risultato: {label_c} - {label_o}",
                     value=st.session_state.risultati_temp.get(key_val, False),
                     key=valida_key,
@@ -1498,13 +1395,13 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
                 with c1:
                     st.markdown(f"<span class='superba-compact-match-marker'></span><div class='superba-compact-team-name home'>🏠 {escape(str(label_c))}</div>", unsafe_allow_html=True)
                 with c2:
-                    st.session_state.risultati_temp[key_gc] = st.number_input("GC", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_gc], key=key_gc, label_visibility="collapsed", disabled=is_disabled)
+                    st.session_state.risultati_temp[key_gc] = result_number_input(f"Gol casa: {label_c}", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_gc], key=key_gc, label_visibility="collapsed", disabled=is_disabled)
                 with c3:
-                    st.session_state.risultati_temp[key_go] = st.number_input("GO", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_go], key=key_go, label_visibility="collapsed", disabled=is_disabled)
+                    st.session_state.risultati_temp[key_go] = result_number_input(f"Gol ospite: {label_o}", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_go], key=key_go, label_visibility="collapsed", disabled=is_disabled)
                 with c4:
                     st.markdown(f"<div class='superba-compact-team-name away'>{escape(str(label_o))} 🛫</div>", unsafe_allow_html=True)
                 with c5:
-                    validata_checkbox = st.checkbox("Valida ✅", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key, label_visibility="collapsed", disabled=not has_write_access)
+                    validata_checkbox = result_checkbox(f"Valida risultato: {label_c} - {label_o}", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key, label_visibility="collapsed", disabled=not has_write_access)
                     
         else: # Standard
             with st.container(border=True):
@@ -1512,61 +1409,60 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
                 st.markdown(f"<p style='text-align:center; font-weight:bold;'>🏠{label_c} 🆚 {label_o}🛫</p>", unsafe_allow_html=True)
                 c_score1, c_score2 = st.columns(2)
                 with c_score1:
-                    st.session_state.risultati_temp[key_gc] = st.number_input("GC", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_gc], key=key_gc, disabled=is_disabled, label_visibility="collapsed")
+                    st.session_state.risultati_temp[key_gc] = result_number_input(f"Gol casa: {label_c}", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_gc], key=key_gc, disabled=is_disabled, label_visibility="collapsed")
                 with c_score2:
-                    st.session_state.risultati_temp[key_go] = st.number_input("GO", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_go], key=key_go, disabled=is_disabled, label_visibility="collapsed")
+                    st.session_state.risultati_temp[key_go] = result_number_input(f"Gol ospite: {label_o}", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_go], key=key_go, disabled=is_disabled, label_visibility="collapsed")
                 st.markdown("---")
-                validata_checkbox = st.checkbox("✅ Valida Risultato", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key)
+                validata_checkbox = result_checkbox("✅ Valida Risultato", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key, disabled=not has_write_access)
 
-        # DB UPDATE LOGIC
-        if validata_checkbox != st.session_state.risultati_temp.get(key_val, False):
-            if validata_checkbox and not verify_write_access():
-                st.error("⛔ Accesso in sola lettura. Non è possibile validare la partita.")
-                st.session_state.risultati_temp[key_val] = False
-                st.session_state[f"{valida_key}_force_update"] = not st.session_state.get(f"{valida_key}_force_update", False)
-                return
-                
-            st.session_state.risultati_temp[key_val] = validata_checkbox
-            partita_idx = df_turno_corrente[df_turno_corrente['Casa'] == casa].index
-            
-            if validata_checkbox:
-                df_turno_corrente.loc[partita_idx, 'GolCasa'] = st.session_state.risultati_temp.get(key_gc, 0)
-                df_turno_corrente.loc[partita_idx, 'GolOspite'] = st.session_state.risultati_temp.get(key_go, 0)
-                df_turno_corrente.loc[partita_idx, 'Validata'] = True
-                st.session_state.df_torneo.loc[partita_idx, ['GolCasa', 'GolOspite', 'Validata']] = df_turno_corrente.loc[partita_idx, ['GolCasa', 'GolOspite', 'Validata']]
-                
-                if salva_torneo_su_db(
-                    action_type="validazione_risultato",
-                    details={
-                        "partita": f"{casa} vs {ospite}",
-                        "risultato": f"{df_turno_corrente.loc[partita_idx, 'GolCasa'].values[0]}-{df_turno_corrente.loc[partita_idx, 'GolOspite'].values[0]}",
-                        "turno": st.session_state.turno_attivo
-                    }
-                ):
-                    pass # Success
-                else:
-                    st.error("❌ Errore durante il salvataggio del risultato")
+        # Only an explicit validation action writes to the database.
+        if consume_change(valida_key):
+            if not verify_write_access():
+                st.error("Accesso in sola lettura.")
+                continue
+            previous_df = st.session_state.df_torneo.copy()
+            previous_valid = st.session_state.risultati_temp.get(key_val, False)
+            candidate = previous_df.copy()
+            candidate.loc[i, ['GolCasa', 'GolOspite', 'Validata']] = [
+                draft_value(key_gc, gol_casa_iniziale),
+                draft_value(key_go, gol_ospite_iniziale), validata_checkbox
+            ]
+            st.session_state.df_torneo = candidate
+            if salva_torneo_su_db(
+                action_type="validazione_risultato" if validata_checkbox else "rimozione_validazione",
+                details={"partita": f"{casa} vs {ospite}", "turno": turno_attivo}
+            ):
+                st.session_state.risultati_temp[key_val] = validata_checkbox
+                for field, result_key in [('GolCasa', key_gc), ('GolOspite', key_go), ('Validata', valida_key)]:
+                    mark_saved(result_key, candidate.at[i, field])
+                st.toast("Risultato salvato")
+                st.rerun()
             else:
-                df_turno_corrente.loc[partita_idx, 'Validata'] = False
-                st.session_state.df_torneo.loc[partita_idx, 'Validata'] = False
-                
-                if salva_torneo_su_db(
-                    action_type="rimozione_validazione",
-                    details={
-                        "partita": f"{casa} vs {ospite}",
-                        "turno": st.session_state.turno_attivo
-                    }
-                ):
-                    st.info(f"⚠️ Validazione rimossa per {casa} vs {ospite}")
-                else:
-                    st.error("❌ Errore durante il salvataggio delle modifiche")
-            
+                st.session_state.df_torneo = previous_df
+                st.session_state.risultati_temp[key_val] = previous_valid
+        elif tipo_vista == 'standard' and not validata_checkbox:
+            st.caption("Partita non validata")
+
+    show_save_status()
+    if st.button("Salva modifiche", key="superba_sw_save_drafts", disabled=not verify_write_access()):
+        previous_df = st.session_state.df_torneo.copy()
+        candidate = previous_df.copy()
+        saved_keys = []
+        for index, match in df_turno_corrente.iterrows():
+            suffix = f"{turno_attivo}_{match['Casa']}_{match['Ospite']}"
+            for field, result_key in [('GolCasa', f"gc_{suffix}"), ('GolOspite', f"go_{suffix}"), ('Validata', f"valida_{suffix}")]:
+                value = draft_value(result_key, match[field])
+                candidate.at[index, field] = value
+                saved_keys.append((result_key, value))
+        st.session_state.df_torneo = candidate
+        if salva_torneo_su_db(action_type="salvataggio_risultati"):
+            for result_key, value in saved_keys:
+                mark_saved(result_key, value)
+            init_results_temp_from_df(candidate)
+            st.toast("Risultati salvati")
             st.rerun()
-        
-        if st.session_state.risultati_temp.get(key_val, False):
-            pass
-        elif tipo_vista == 'standard':
-            st.warning("⚠️ Partita non ancora validata.")
+        else:
+            st.session_state.df_torneo = previous_df
 
 # -------------------------
 # Header grafico
@@ -2260,217 +2156,66 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
     
     mostra_classifica_fragment()
     
-    # Manteniamo il layout a due colonne per il prossimo turno
-    col_next = st.columns([1])[0]  # Creiamo una colonna singola per il pulsante del prossimo turno
-    
-    with col_next:
-        st.subheader("Prossimo Turno ➡️")
-        if tutte_validate:
-            precedenti = set(zip(st.session_state.df_torneo['Casa'], st.session_state.df_torneo['Ospite'])) | set(zip(st.session_state.df_torneo['Ospite'], st.session_state.df_torneo['Casa']))
-            df_turno_prossimo = genera_accoppiamenti(classifica_attuale, precedenti)
+    def conclude_tournament(reason):
+        if not verify_write_access():
+            return False
+        previous_finished = st.session_state.get('torneo_finito', False)
+        st.session_state.torneo_finito = True
+        if not salva_torneo_su_db(action_type="fine_torneo_automatico", details={"motivo": reason}):
+            st.session_state.torneo_finito = previous_finished
+            return False
+        try:
+            from palmares_utils import register_win
+            if not classifica_attuale.empty:
+                winner = classifica_attuale.iloc[0]['Squadra']
+                players = st.session_state.df_squadre
+                matched = players[players['Squadra'] == winner]
+                player = matched.iloc[0]['Giocatore'] if not matched.empty else winner
+                client_pl = MongoClient(st.secrets["MONGO_URI"], tlsCAFile=certifi.where())
+                register_win(db_players_col=client_pl["giocatori_subbuteo"]["superba_players"],
+                             winner_name=player, tournament_name=st.session_state.nome_torneo,
+                             tournament_type="svizzero")
+        except Exception as exc:
+            st.warning(f"Torneo salvato; aggiornamento palmares non riuscito: {exc}")
+        return True
 
-            if df_turno_prossimo is not None and not df_turno_prossimo.empty:
-                # Convert NumPy boolean to Python boolean for the disabled state
-                is_disabled = bool(
-                    (st.session_state.turno_attivo >= st.session_state.df_torneo['Turno'].max().item() 
-                     if not st.session_state.df_torneo.empty else True) or 
-                    not verify_write_access()
-                )
-                
-                # Anche verifica se torneo è finito
-                is_disabled_next = False
-
-                if st.session_state.get("torneo_finito", False):
-                    is_disabled_next = True
-                if not tutte_validate:
-                    is_disabled_next = True
-                
-                #if st.button("🔄 Genera Prossimo Turno",
-                if st.button("▶️ Genera prossimo turno", 
-                    width="stretch", 
-                    type="primary",
-                    disabled=is_disabled_next,
-                    help="Genera il prossimo turno" + ("" if verify_write_access() else " (accesso in sola lettura)")):
-                    
-                    if verify_write_access():
-                        # Controlla se abbiamo raggiunto il numero massimo di turni
-                        if st.session_state.modalita_turni == "fisso" and st.session_state.max_turni is not None:
-                            if st.session_state.turno_attivo >= st.session_state.max_turni:
-                                st.info(f"✅ Torneo terminato: raggiunto il limite di {st.session_state.max_turni} round.")
-                                st.session_state.torneo_finito = True
-                                
-                                # --- PALMARES SUPERBA SVIZZERO ---
-                                try:
-                                    from palmares_utils import register_win
-                                    from pymongo import MongoClient
-                                    import certifi
-                                    import os
-                                    
-                                    # Usa la collection corretta
-                                    client_tmp = MongoClient(st.secrets["MONGO_URI"], tlsCAFile=certifi.where())
-                                    db_pl = client_tmp["giocatori_subbuteo"]
-                                    players_col_pl = db_pl["superba_players"]
-                                    
-                                    classifica_finale_sw = aggiorna_classifica(st.session_state.df_torneo)
-                                    if not classifica_finale_sw.empty:
-                                        vincitore_str = classifica_finale_sw.iloc[0]['Squadra']
-                                        
-                                        # Ricerca del giocatore associato a questa squadra (nel dataframe o parse stringa)
-                                        # Nel torneo svizzero squadra è anche spesso il nome del giocatore ma con format Giocatore o Squadra
-                                        # parse_team_player non è globalmente disponibile qui come nel torneo italiana, 
-                                        # ma cerchiamo di estrarre dal df_squadre
-                                        giocatore_vincitore = vincitore_str
-                                        if 'df_squadre' in st.session_state and not st.session_state.df_squadre.empty:
-                                            # Trova il giocatore associato alla squadra vincente
-                                            match_df = st.session_state.df_squadre[st.session_state.df_squadre['Squadra'] == vincitore_str]
-                                            if not match_df.empty:
-                                                giocatore_vincitore = match_df.iloc[0]['Giocatore']
-                                        elif "-" in vincitore_str:
-                                            parts = vincitore_str.split("-", 1)
-                                            giocatore_vincitore = parts[1].strip() if len(parts)>1 else vincitore_str
-
-                                        register_win(
-                                            db_players_col=players_col_pl,
-                                            winner_name=giocatore_vincitore,
-                                            tournament_name=st.session_state.nome_torneo,
-                                            tournament_type="svizzero"
-                                        )
-                                except Exception as e:
-                                    print(f"[PALMARES SVIZZERO] Errore salvataggio palmares: {e}")
-                                # --- FINE PALMARES ---
-                                
-                                salva_torneo_su_db(
-                                    action_type="fine_torneo_automatico",
-                                    details={"motivo": "raggiunto_limite_turni", "turni_giocati": st.session_state.max_turni}
-                                )
-                                st.rerun()
-                        
-                        # Incrementa il contatore del turno
-                        nuovo_turno = st.session_state.turno_attivo + 1
-                        
-                        # Salva i risultati del turno corrente
-                        if not salva_torneo_su_db(
-                            action_type="salvataggio_turno_corrente",
-                            details={"turno": st.session_state.turno_attivo}
-                        ):
-                            st.error("❌ Errore durante il salvataggio del turno corrente")
-                            st.stop()
-                        
-                        # Aggiorna il numero del turno e genera il prossimo
-                        st.session_state.turno_attivo = nuovo_turno
-                        df_turno_prossimo["Turno"] = st.session_state.turno_attivo
-                        st.session_state.df_torneo = pd.concat([st.session_state.df_torneo, df_turno_prossimo], ignore_index=True)
-                        st.session_state.risultati_temp = {}
-                        init_results_temp_from_df(df_turno_prossimo)
-                        
-                        # Salva il nuovo turno
-                        if salva_torneo_su_db(
-                            action_type="generazione_nuovo_turno",
-                            details={"nuovo_turno": st.session_state.turno_attivo + 1}
-                        ):
-                            st.toast("✅ Nuovo turno generato e salvato con successo!")
-                            st.rerun()
-                        else:
-                            st.error("❌ Errore durante il salvataggio del nuovo turno")
-
-                #FINE
-
+    if not st.session_state.get('torneo_finito', False):
+        st.subheader("Prossimo turno")
+        pending = has_unsaved_results()
+        can_advance = verify_write_access() and tutte_validate and not pending
+        round_token = (st.session_state.get('tournament_id'), st.session_state.turno_attivo)
+        limit_reached = (st.session_state.modalita_turni == "fisso"
+                         and st.session_state.max_turni is not None
+                         and st.session_state.turno_attivo >= st.session_state.max_turni)
+        exhausted = st.session_state.get('_superba_no_pairs') == round_token
+        if limit_reached or exhausted:
+            if st.button("Concludi torneo", key="superba_sw_finish", disabled=not can_advance):
+                if conclude_tournament("limite_turni" if limit_reached else "accoppiamenti_esauriti"):
+                    st.rerun()
+        elif st.button("Genera prossimo turno", key="superba_sw_next", disabled=not can_advance):
+            next_number = st.session_state.turno_attivo + 1
+            precedenti = set(zip(st.session_state.df_torneo['Casa'], st.session_state.df_torneo['Ospite']))
+            next_df = genera_accoppiamenti(classifica_attuale, precedenti, turno=next_number)
+            if next_df is None or next_df.empty:
+                st.session_state['_superba_no_pairs'] = round_token
+                st.rerun()
+            previous_df = st.session_state.df_torneo.copy()
+            previous_turn = st.session_state.turno_attivo
+            st.session_state.df_torneo = pd.concat([previous_df, next_df], ignore_index=True)
+            st.session_state.turno_attivo = next_number
+            if salva_torneo_su_db(action_type="generazione_nuovo_turno", details={"nuovo_turno": next_number}):
+                st.session_state.risultati_temp = {}
+                init_results_temp_from_df(next_df)
+                st.toast("Nuovo turno salvato")
+                st.rerun()
             else:
-                # Controlla se abbiamo effettivamente esaurito tutti i possibili accoppiamenti
-                st.info("ℹ️ Non ci sono più combinazioni possibili. Tutti gli incontri possibili sono stati disputati.")
-                
-                # Determina il vincitore dalla classifica attuale
-                classifica_attuale = aggiorna_classifica(st.session_state.df_torneo)
-                if not classifica_attuale.empty:
-                    vincitore = classifica_attuale.iloc[0]['Squadra']
-                    punti_vincitore = classifica_attuale.iloc[0]['Punti']
-                    
-                    st.success(f"🏆 Il torneo ha un vincitore chiaro: **{vincitore}** con {punti_vincitore} punti!")
-                    
-                    if st.button("🏁 Chiudi Torneo e Incorona il Vincitore", type="primary", use_container_width=True):
-                        # Salva lo stato del torneo come terminato
-                        st.session_state.torneo_finito = True
-                        
-                        # --- PALMARES SUPERBA SVIZZERO (Fine accoppiamenti) ---
-                        try:
-                            from palmares_utils import register_win
-                            from pymongo import MongoClient
-                            import certifi
-                            client_tmp = MongoClient(st.secrets["MONGO_URI"], tlsCAFile=certifi.where())
-                            db_pl = client_tmp["giocatori_subbuteo"]
-                            players_col_pl = db_pl["superba_players"]
-                            
-                            # Vincitore già determinato sopra (vincitore = classifica_attuale.iloc[0]['Squadra'])
-                            giocatore_vincitore = vincitore
-                            if 'df_squadre' in st.session_state and not st.session_state.df_squadre.empty:
-                                match_df = st.session_state.df_squadre[st.session_state.df_squadre['Squadra'] == vincitore]
-                                if not match_df.empty:
-                                    giocatore_vincitore = match_df.iloc[0]['Giocatore']
-                            elif "-" in vincitore:
-                                parts = vincitore.split("-", 1)
-                                giocatore_vincitore = parts[1].strip() if len(parts)>1 else vincitore
+                st.session_state.df_torneo = previous_df
+                st.session_state.turno_attivo = previous_turn
+        if pending:
+            st.caption("Salva le modifiche prima di avanzare.")
+        elif not tutte_validate:
+            st.caption("Partite del turno ancora da validare.")
 
-                            register_win(
-                                db_players_col=players_col_pl,
-                                winner_name=giocatore_vincitore,
-                                tournament_name=st.session_state.nome_torneo,
-                                tournament_type="svizzero"
-                            )
-                        except Exception as e:
-                            print(f"[PALMARES SVIZZERO] Errore salvataggio palmares: {e}")
-                        # --- FINE PALMARES ---
-
-                        salva_torneo_su_db(
-                            action_type="fine_torneo_automatico",
-                            details={"motivo": "impossibile_generare_nuovi_accoppiamenti"}
-                        )
-                        st.rerun()
-                else:
-                    # Meno di 2 squadre rimaste, il torneo è finito
-                    st.success("🏆 Torneo terminato con successo!")
-                    if st.button("🏁 Chiudi Torneo", type="primary", use_container_width=True):
-                        st.session_state.torneo_finito = True
-                        
-                        # --- PALMARES SUPERBA SVIZZERO (Meno di 2 squadre) ---
-                        try:
-                            from palmares_utils import register_win
-                            from pymongo import MongoClient
-                            import certifi
-                            client_tmp = MongoClient(st.secrets["MONGO_URI"], tlsCAFile=certifi.where())
-                            db_pl = client_tmp["giocatori_subbuteo"]
-                            players_col_pl = db_pl["superba_players"]
-                            
-                            classifica_finale_sw = aggiorna_classifica(st.session_state.df_torneo)
-                            if not classifica_finale_sw.empty:
-                                vincitore_str = classifica_finale_sw.iloc[0]['Squadra']
-                                giocatore_vincitore = vincitore_str
-                                if 'df_squadre' in st.session_state and not st.session_state.df_squadre.empty:
-                                    match_df = st.session_state.df_squadre[st.session_state.df_squadre['Squadra'] == vincitore_str]
-                                    if not match_df.empty:
-                                        giocatore_vincitore = match_df.iloc[0]['Giocatore']
-                                elif "-" in vincitore_str:
-                                    parts = vincitore_str.split("-", 1)
-                                    giocatore_vincitore = parts[1].strip() if len(parts)>1 else vincitore_str
-
-                                register_win(
-                                    db_players_col=players_col_pl,
-                                    winner_name=giocatore_vincitore,
-                                    tournament_name=st.session_state.nome_torneo,
-                                    tournament_type="svizzero"
-                                )
-                        except Exception as e:
-                            print(f"[PALMARES SVIZZERO] Errore salvataggio palmares: {e}")
-                        # --- FINE PALMARES ---
-
-                        salva_torneo_su_db(
-                            action_type="fine_torneo_automatico",
-                            details={"motivo": "meno_di_due_squadre_rimaste"}
-                        )
-                        st.rerun()
-        else:
-            st.warning("⚠️ Per generare il prossimo turno, devi validare tutti i risultati.")
-
-    
 # -------------------------
 # Banner vincitore
 # -------------------------

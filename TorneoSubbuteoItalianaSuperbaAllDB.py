@@ -56,6 +56,11 @@ from shared.auth import verify_write_access
 
 # Importa moduli comuni per stili, audio e componenti UI
 from common.styles import inject_all_styles
+from common.superba_results import (
+    remember_document, save_document, reset_result_drafts, draft_value, render_sidebar_startup,
+    mark_saved, result_number_input, result_checkbox, show_save_status,
+)
+
 from common.audio import (
     autoplay_background_audio, autoplay_audio, 
     toggle_audio_callback, start_background_audio, setup_audio_sidebar
@@ -68,85 +73,7 @@ from common.ui_components import (
 
 
 def render_sidebar_collapse_workaround():
-    components.html("""
-    <div id="subbuteo-sidebar-tools">
-      <button id="subbuteo-collapse-sidebar" type="button">Chiudi sidebar</button>
-    </div>
-    <style>
-      html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
-      #subbuteo-sidebar-tools { display: none; justify-content: flex-end; width: 100%; }
-      #subbuteo-collapse-sidebar { width: auto; border: 0; border-radius: 7px; padding: .42rem .72rem; background: #1d3557; color: white; font-size: .78rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(29, 53, 87, .24); }
-      #subbuteo-collapse-sidebar:hover { background: #457b9d; }
-    </style>
-    <script>
-    (function() {
-      let host, d;
-      try { host = window.parent; d = host.document; } catch (e) { return; }
-      const box = document.getElementById("subbuteo-sidebar-tools");
-      const btn = document.getElementById("subbuteo-collapse-sidebar");
-      // Persist across Streamlit reruns, but reset when the page is reopened.
-      const state = host.__superbaSidebarStartup ||
-        (host.__superbaSidebarStartup = {done: false, started: Date.now()});
-      let closedSince = null;
-      function sidebarOpen(sidebar) {
-        const aria = sidebar.getAttribute("aria-expanded");
-        if (aria === "true") return true;
-        if (aria === "false") return false;
-        const rect = sidebar.getBoundingClientRect();
-        return rect.width > 80 && rect.right > 0;
-      }
-      function closeSidebar(sidebar) {
-        const nativeButton = sidebar.querySelector(
-          '[data-testid="stSidebarCollapseButton"] button, ' +
-          'button[data-testid="stSidebarCollapseButton"], ' +
-          '[data-testid="stSidebarHeader"] button, ' +
-          'button[aria-label="Close sidebar"], button[aria-label="Collapse sidebar"], ' +
-          'button[title="Close sidebar"], button[title="Collapse sidebar"]'
-        );
-        if (!nativeButton) return false;
-        state.done = true;
-        nativeButton.click();
-        return true;
-      }
-      function update() {
-        const sidebar = d.querySelector('section[data-testid="stSidebar"]');
-        const expanded = sidebar && sidebarOpen(sidebar);
-        box.style.display = expanded ? "flex" : "none";
-        if (state.done) return;
-        if (Date.now() - state.started > 15000) { state.done = true; return; }
-        if (!sidebar) return;
-        if (expanded) {
-          closedSince = null;
-          closeSidebar(sidebar);
-        } else {
-          // Allow the initial sidebar mount/animation to settle.
-          if (closedSince === null) closedSince = Date.now();
-          if (Date.now() - closedSince > 700) state.done = true;
-        }
-      }
-      function respectUserChoice(event) {
-        if (!event.isTrusted || !event.target.closest) return;
-        if (event.target.closest(
-          '[data-testid="stSidebarCollapseButton"], [data-testid="stSidebarHeader"], ' +
-          '[data-testid="stSidebarCollapsedControl"], [data-testid="collapsedControl"], ' +
-          'button[aria-label="Open sidebar"], button[aria-label="Expand sidebar"]'
-        )) state.done = true;
-      }
-      d.addEventListener("click", respectUserChoice, true);
-      btn.addEventListener("click", function() {
-        state.done = true;
-        const sidebar = d.querySelector('section[data-testid="stSidebar"]');
-        if (sidebar && sidebarOpen(sidebar)) closeSidebar(sidebar);
-      });
-      update();
-      const timer = setInterval(update, 150);
-      window.addEventListener("unload", function() {
-        clearInterval(timer);
-        d.removeEventListener("click", respectUserChoice, true);
-      });
-    })();
-    </script>
-    """, height=44, width=150)
+    render_sidebar_startup()
 
 
 
@@ -411,6 +338,8 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
     try:
         torneo_data = tournaments_collection.find_one({"_id": ObjectId(tournament_id)})
         if torneo_data and 'calendario' in torneo_data:
+            remember_document(tournaments_collection, torneo_data)
+            reset_result_drafts(torneo_data['_id'])
             df_torneo = pd.DataFrame(torneo_data['calendario'])
             df_torneo['Valida'] = df_torneo['Valida'].astype(bool)
             # Pulisci e converti esplicitamente
@@ -438,7 +367,7 @@ def salva_torneo_su_db(tournaments_collection, df_torneo, nome_torneo, tournamen
     if tournaments_collection is None:
         return None
     try:
-        df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
+        df_torneo_pulito = df_torneo.astype(object).where(pd.notna(df_torneo), None)
         now = datetime.now()
         data = {
             "nome_torneo": nome_torneo,
@@ -448,10 +377,8 @@ def salva_torneo_su_db(tournaments_collection, df_torneo, nome_torneo, tournamen
         
         # Se abbiamo un ID torneo, aggiorniamo il torneo esistente
         if tournament_id:
-            tournaments_collection.update_one(
-                {"_id": ObjectId(tournament_id)},
-                {"$set": data}
-            )
+            if not save_document(tournaments_collection, tournament_id, data):
+                return None
             # logging: aggiornamento torneo
             try:
                 user = st.session_state.get('user', 'unknown') if 'st' in globals() else 'system'
@@ -467,7 +394,10 @@ def salva_torneo_su_db(tournaments_collection, df_torneo, nome_torneo, tournamen
         else:
             # Altrimenti creiamo un nuovo torneo
             data["data_creazione"] = now
+            if not verify_write_access():
+                return None
             result = tournaments_collection.insert_one(data)
+            remember_document(tournaments_collection, {**data, "_id": result.inserted_id})
             # logging: creazione torneo
             try:
                 user = st.session_state.get('user', 'unknown') if 'st' in globals() else 'system'
@@ -488,14 +418,12 @@ def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
     if tournaments_collection is None:
         return False
     try:
-        df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
-        tournaments_collection.update_one(
-            {"_id": ObjectId(tournament_id)},
-            {"$set": {
-                "calendario": df_torneo_pulito.to_dict('records'),
-                "data_modifica": datetime.now()
-            }}
-        )
+        df_torneo_pulito = df_torneo.astype(object).where(pd.notna(df_torneo), None)
+        if not save_document(tournaments_collection, tournament_id, {
+            "calendario": df_torneo_pulito.to_dict('records'),
+            "data_modifica": datetime.now()
+        }):
+            return False
         # logging: aggiornamento torneo
         try:
             user = st.session_state.get('user', 'unknown') if 'st' in globals() else 'system'
@@ -731,6 +659,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizza
         st.warning("⚠️ Dati delle squadre non trovati. Assicurati che il torneo sia stato inizializzato correttamente.")
     
     for idx, row in df_giornata.iterrows():
+        match_validated = bool(draft_value(f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}", bool(row['Valida'])))
         squadra_casa, giocatore_casa = parse_team_player(row['Casa'])
         squadra_ospite, giocatore_ospite = parse_team_player(row['Ospite'])
         
@@ -750,31 +679,31 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizza
             with c_score1:
                 # Chiave unica che usa i valori originali del DataFrame, garantendo la coerenza
                 key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
-                st.number_input(
+                result_number_input(
                     "Gol Casa",
                     min_value=0, max_value=20,
                     key=key_golcasa,
                     value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
-                    disabled=row['Valida'],
+                    disabled=not verify_write_access() or match_validated,
                     label_visibility="collapsed"
                 )
           
             with c_score2:
                 # Chiave unica che usa i valori originali del DataFrame, garantendo la coerenza
                 key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
-                st.number_input(
+                result_number_input(
                     "Gol Ospite",
                     min_value=0, max_value=20,
                     key=key_golospite,
                     value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
-                    disabled=row['Valida'],
+                    disabled=not verify_write_access() or match_validated,
                     label_visibility="collapsed"
                 )
             
             st.divider()
             # Chiave unica che usa i valori originali del DataFrame, garantendo la coerenza
             key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
-            st.checkbox(
+            result_checkbox(
                 "✅ Valida",
                 key=key_valida,
                 value=bool(row['Valida']) if pd.notna(row['Valida']) else False,
@@ -917,6 +846,7 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
     """, unsafe_allow_html=True)
 
     for idx, row in df_giornata.iterrows():
+        match_validated = bool(draft_value(f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}", bool(row['Valida'])))
         # Parsing dei nomi
         casa, gio_c = parse_team_player(row['Casa'])
         osp, gio_o = parse_team_player(row['Ospite'])
@@ -948,22 +878,22 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
             
             with c2:
                 # Usiamo le stesse chiavi per sincronizzare istantaneamente le due viste
-                st.number_input("GC", 0, 20, key=f"prem_{key_golcasa}", value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0, label_visibility="collapsed", disabled=row['Valida'])
+                result_number_input(f"Gol casa: {label_c}", 0, 20, key=f"prem_{key_golcasa}", value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0, label_visibility="collapsed", disabled=not verify_write_access() or match_validated)
                 st.session_state[key_golcasa] = st.session_state[f"prem_{key_golcasa}"]
             
             with c3:
-                st.number_input("GO", 0, 20, key=f"prem_{key_golospite}", value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0, label_visibility="collapsed", disabled=row['Valida'])
+                result_number_input(f"Gol ospite: {label_o}", 0, 20, key=f"prem_{key_golospite}", value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0, label_visibility="collapsed", disabled=not verify_write_access() or match_validated)
                 st.session_state[key_golospite] = st.session_state[f"prem_{key_golospite}"]
 
             with c4:
                 st.markdown(f"<div style='text-align:left;' class='superba-team-name away'>{escape(str(label_o))} 🛫</div>", unsafe_allow_html=True)
             
             with c5:
-                st.checkbox("Valida Risultato ✅", key=f"prem_{key_valida}", value=bool(row['Valida']), label_visibility="collapsed", disabled=st.session_state.get('read_only', False))
+                result_checkbox(f"Valida risultato: {label_c} - {label_o}", key=f"prem_{key_valida}", value=bool(row['Valida']), label_visibility="collapsed", disabled=st.session_state.get('read_only', False))
                 st.session_state[key_valida] = st.session_state[f"prem_{key_valida}"]
             
             if st.session_state.get(key_valida):
-                st.success(f"✅ Risultato confermato: {st.session_state[key_golcasa]} - {st.session_state[key_golospite]}")
+                st.caption(f"Risultato validato: {st.session_state[key_golcasa]} - {st.session_state[key_golospite]}")
 
 def mostra_calendario_pc(df, girone_sel, giornata_sel, modalita_visualizzazione):
     """Visualizzazione risultati dedicata a desktop/tablet larghi."""
@@ -1041,6 +971,7 @@ def mostra_calendario_pc(df, girone_sel, giornata_sel, modalita_visualizzazione)
     """, unsafe_allow_html=True)
 
     for idx, row in df_giornata.iterrows():
+        match_validated = bool(draft_value(f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}", bool(row['Valida'])))
         casa, gio_c = parse_team_player(row['Casa'])
         osp, gio_o = parse_team_player(row['Ospite'])
 
@@ -1059,19 +990,19 @@ def mostra_calendario_pc(df, girone_sel, giornata_sel, modalita_visualizzazione)
         with casa_col:
             st.markdown(f"<div class='pc-match-label home'>{label_c}</div>", unsafe_allow_html=True)
         with gol_casa_col:
-            st.number_input("GC", 0, 20, key=f"pc_{key_golcasa}",
+            result_number_input("GC", 0, 20, key=f"pc_{key_golcasa}",
                             value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
-                            label_visibility="collapsed", disabled=row['Valida'])
+                            label_visibility="collapsed", disabled=not verify_write_access() or match_validated)
             st.session_state[key_golcasa] = st.session_state[f"pc_{key_golcasa}"]
         with gol_ospite_col:
-            st.number_input("GO", 0, 20, key=f"pc_{key_golospite}",
+            result_number_input("GO", 0, 20, key=f"pc_{key_golospite}",
                             value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
-                            label_visibility="collapsed", disabled=row['Valida'])
+                            label_visibility="collapsed", disabled=not verify_write_access() or match_validated)
             st.session_state[key_golospite] = st.session_state[f"pc_{key_golospite}"]
         with osp_col:
             st.markdown(f"<div class='pc-match-label away'>{label_o}</div>", unsafe_allow_html=True)
         with valida_col:
-            st.checkbox("✓", key=f"pc_{key_valida}", value=bool(row['Valida']),
+            result_checkbox("✓", key=f"pc_{key_valida}", value=bool(row['Valida']),
                         label_visibility="collapsed",
                         disabled=st.session_state.get('read_only', False))
             st.session_state[key_valida] = st.session_state[f"pc_{key_valida}"]
@@ -1087,6 +1018,7 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
 
     with st.container(key="superba_italiana_compact"):
         for idx, row in df_giornata.iterrows():
+            match_validated = bool(draft_value(f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}", bool(row['Valida'])))
             casa, gio_c = parse_team_player(row['Casa'])
             osp, gio_o = parse_team_player(row['Ospite'])
             if modalita_visualizzazione == 'giocatori':
@@ -1101,9 +1033,7 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
             key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
             key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
             read_only = st.session_state.get('read_only', True)
-            validated = bool(st.session_state.get(
-                f"comp_{key_valida}", st.session_state.get(key_valida, bool(row['Valida']))
-            ))
+            validated = bool(draft_value(key_valida, bool(row['Valida'])))
 
             casa_col, gc_col, go_col, osp_col, valida_col = st.columns(
                 [2.2, 0.36, 0.36, 2.2, 0.42], gap="small"
@@ -1114,7 +1044,7 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
                     unsafe_allow_html=True
                 )
             with gc_col:
-                score = st.number_input(
+                score = result_number_input(
                     f"Gol casa: {label_c}", 0, 20, key=f"comp_{key_golcasa}",
                     value=int(st.session_state.get(
                         key_golcasa, int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
@@ -1123,7 +1053,7 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
                 )
                 st.session_state[key_golcasa] = score
             with go_col:
-                score = st.number_input(
+                score = result_number_input(
                     f"Gol ospite: {label_o}", 0, 20, key=f"comp_{key_golospite}",
                     value=int(st.session_state.get(
                         key_golospite, int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
@@ -1137,10 +1067,17 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
                     unsafe_allow_html=True
                 )
             with valida_col:
-                st.session_state[key_valida] = st.checkbox(
+                st.session_state[key_valida] = result_checkbox(
                     f"Valida risultato: {label_c} - {label_o}", key=f"comp_{key_valida}",
                     value=validated, label_visibility="collapsed", disabled=read_only
                 )
+
+
+def sync_saved_result_rows(rows):
+    for _, row in rows.iterrows():
+        suffix = f"{row['Girone']}_{row['Giornata']}_{row['Casa']}_{row['Ospite']}"
+        for prefix, column in [('golcasa', 'GolCasa'), ('golospite', 'GolOspite'), ('valida', 'Valida')]:
+            mark_saved(f"{prefix}_{suffix}", row[column])
 
 
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
@@ -1160,9 +1097,9 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
             key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
             
             # Converti esplicitamente i valori in tipi nativi di Python
-            gol_casa = int(st.session_state.get(key_golcasa, 0) or 0)
-            gol_ospite = int(st.session_state.get(key_golospite, 0) or 0)
-            valida = bool(st.session_state.get(key_valida, False))
+            gol_casa = int(draft_value(key_golcasa, row['GolCasa']) or 0)
+            gol_ospite = int(draft_value(key_golospite, row['GolOspite']) or 0)
+            valida = bool(draft_value(key_valida, row['Valida']))
 
             # Aggiorna il DataFrame
             df.loc[idx, 'GolCasa'] = gol_casa
@@ -1174,8 +1111,6 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
         df['GolOspite'] = pd.to_numeric(df['GolOspite'], errors='coerce').fillna(0).astype(int)
         df['Valida'] = df['Valida'].astype(bool)
 
-        # Aggiorna il session state
-        st.session_state['df_torneo'] = df
 
         # Verifica l'ID del torneo
         if 'tournament_id' not in st.session_state:
@@ -1192,6 +1127,12 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
             st.error("❌ Errore durante il salvataggio del torneo.")
             return False
             
+        st.session_state['df_torneo'] = df
+        for _, saved_row in df_giornata.iterrows():
+            suffix = f"{girone_sel}_{giornata_sel}_{saved_row['Casa']}_{saved_row['Ospite']}"
+            for prefix, column in [('golcasa', 'GolCasa'), ('golospite', 'GolOspite'), ('valida', 'Valida')]:
+                mark_saved(f"{prefix}_{suffix}", df.loc[saved_row.name, column])
+
         # ------------------------------------------------------------------
         # CORREZIONE DEL LOGGING: Usiamo il DataFrame AGGIORNATO (df) filtrato
         # ------------------------------------------------------------------
@@ -1280,10 +1221,13 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
         traceback.print_exc()
         st.error("❌ Si è verificato un errore durante il salvataggio dei risultati.")
         return False
-        
+
 def gestisci_abbandoni(df_torneo, giocatori_da_ritirare, tournaments_collection):
+    if not verify_write_access():
+        return df_torneo
+    previous_withdrawals = list(st.session_state.get('giocatori_ritirati', []))
     df = df_torneo.copy()
-    
+
     # Aggiungi a session state la lista dei giocatori che hanno abbandonato
     if 'giocatori_ritirati' not in st.session_state:
         st.session_state['giocatori_ritirati'] = []
@@ -1336,13 +1280,15 @@ def gestisci_abbandoni(df_torneo, giocatori_da_ritirare, tournaments_collection)
             df.loc[idx, 'Valida'] = True
             matches_to_update += 1
 
-    st.session_state['df_torneo'] = df
-    
+
     # Salva su DB
     if 'tournament_id' in st.session_state:
         try:
             ok = aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
             if ok:
+                st.session_state['df_torneo'] = df
+                changed = df.index[(df[['GolCasa', 'GolOspite', 'Valida']] != df_torneo[['GolCasa', 'GolOspite', 'Valida']]).any(axis=1)]
+                sync_saved_result_rows(df.loc[changed])
                 try:
                     user = st.session_state.get('user', 'unknown') if 'st' in globals() else 'system'
                     log_action(
@@ -1361,6 +1307,9 @@ def gestisci_abbandoni(df_torneo, giocatori_da_ritirare, tournaments_collection)
             st.error(f"❌ Errore durante il salvataggio del torneo: {e}")
     else:
         st.error("❌ ID del torneo non trovato. Impossibile salvare.")
+    if st.session_state.get('df_torneo') is not df:
+        st.session_state['giocatori_ritirati'] = previous_withdrawals
+        return df_torneo
     return df
 
 # --- CLASSIFICA ---
@@ -2413,11 +2362,12 @@ def main():
                     df_edit = st.data_editor(
                         df_show[display_cols],
                         width="stretch",
-                        num_rows="dynamic",
+                        num_rows="fixed",
                         column_config=column_config
                     )
 
-                    if st.button("💾 Salva modifiche tabella"):
+                    if st.button("💾 Salva modifiche tabella", disabled=not verify_write_access()):
+                        previous_table_df = st.session_state['df_torneo'].copy()
                         # aggiorna df_torneo usando idx_map (posizione -> indice originale)
                         for i in range(len(df_edit)):
                             row = df_edit.iloc[i]
@@ -2425,7 +2375,10 @@ def main():
                             for col in editable_cols:
                                 st.session_state['df_torneo'].at[orig_idx, col] = row[col]
                         if st.session_state.get('tournament_id'):
-                            aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
+                            if not aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo']):
+                                st.session_state['df_torneo'] = previous_table_df
+                                st.stop()
+                        sync_saved_result_rows(st.session_state['df_torneo'].loc[[idx_map[i] for i in range(len(df_edit))]])
                         st.success("Modifiche salvate!")
                 else:
                     st.info(f"🎉 Nessuna partita {stato.lower()} trovata.")
@@ -2524,18 +2477,22 @@ def main():
                         df_edit = st.data_editor(
                             df_show[display_cols],
                             width="stretch",
-                            num_rows="dynamic",
+                            num_rows="fixed",
                             column_config=column_config
                         )
 
-                        if st.button("💾 Salva modifiche tabella (Giocatore)"):
+                        if st.button("💾 Salva modifiche tabella (Giocatore)", disabled=not verify_write_access()):
+                            previous_table_df = st.session_state['df_torneo'].copy()
                             for i in range(len(df_edit)):
                                 row = df_edit.iloc[i]
                                 orig_idx = idx_map[i]
                                 for col in editable_cols:
                                     st.session_state['df_torneo'].at[orig_idx, col] = row[col]
                             if st.session_state.get('tournament_id'):
-                                aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
+                                if not aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo']):
+                                    st.session_state['df_torneo'] = previous_table_df
+                                    st.stop()
+                            sync_saved_result_rows(st.session_state['df_torneo'].loc[[idx_map[i] for i in range(len(df_edit))]])
                             st.success("Modifiche salvate!")
                     else:
                         st.info("🎉 Nessuna partita trovata per questo giocatore.")
@@ -2633,18 +2590,22 @@ def main():
                         df_edit = st.data_editor(
                             df_show[display_cols],
                             width="stretch",
-                            num_rows="dynamic",
+                            num_rows="fixed",
                             column_config=column_config
                         )
 
-                        if st.button("💾 Salva modifiche tabella (Girone)"):
+                        if st.button("💾 Salva modifiche tabella (Girone)", disabled=not verify_write_access()):
+                            previous_table_df = st.session_state['df_torneo'].copy()
                             for i in range(len(df_edit)):
                                 row = df_edit.iloc[i]
                                 orig_idx = idx_map[i]
                                 for col in editable_cols:
                                     st.session_state['df_torneo'].at[orig_idx, col] = row[col]
                             if st.session_state.get('tournament_id'):
-                                aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
+                                if not aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo']):
+                                    st.session_state['df_torneo'] = previous_table_df
+                                    st.stop()
+                            sync_saved_result_rows(st.session_state['df_torneo'].loc[[idx_map[i] for i in range(len(df_edit))]])
                             st.success("Modifiche salvate!")
                     else:
                         st.info("🎉 Nessuna partita trovata per questo girone.")
@@ -2779,6 +2740,7 @@ def main():
             else:
                 st.info("Seleziona un girone per visualizzare il calendario.")
 
+            show_save_status()
             if st.button(
                 "💾 Salva Risultati Giornata",
                 disabled=st.session_state.get('read_only', True),

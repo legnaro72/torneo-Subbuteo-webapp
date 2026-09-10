@@ -39,9 +39,15 @@ import streamlit.components.v1 as components
 # Import auth utilities
 from shared import pwa
 from shared.auth import login as auth
+from shared.auth import verify_write_access
 
 # Importa moduli comuni per stili, audio e componenti UI
 from common.styles import inject_all_styles
+from common.superba_results import (
+    remember_document, save_document, reset_result_drafts, draft_value, render_sidebar_startup,
+    mark_saved, result_number_input, result_checkbox, show_save_status,
+)
+
 from common.audio import (
     autoplay_background_audio, autoplay_audio,
     toggle_audio_callback, start_background_audio, setup_audio_sidebar
@@ -52,85 +58,7 @@ from common.ui_components import (
 )
 
 def render_sidebar_collapse_workaround():
-    components.html("""
-    <div id="subbuteo-sidebar-tools">
-      <button id="subbuteo-collapse-sidebar" type="button">Chiudi sidebar</button>
-    </div>
-    <style>
-      html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
-      #subbuteo-sidebar-tools { display: none; justify-content: flex-end; width: 100%; }
-      #subbuteo-collapse-sidebar { width: auto; border: 0; border-radius: 7px; padding: .42rem .72rem; background: #1d3557; color: white; font-size: .78rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(29, 53, 87, .24); }
-      #subbuteo-collapse-sidebar:hover { background: #457b9d; }
-    </style>
-    <script>
-    (function() {
-      let host, d;
-      try { host = window.parent; d = host.document; } catch (e) { return; }
-      const box = document.getElementById("subbuteo-sidebar-tools");
-      const btn = document.getElementById("subbuteo-collapse-sidebar");
-      // Persist across Streamlit reruns, but reset when the page is reopened.
-      const state = host.__superbaSidebarStartup ||
-        (host.__superbaSidebarStartup = {done: false, started: Date.now()});
-      let closedSince = null;
-      function sidebarOpen(sidebar) {
-        const aria = sidebar.getAttribute("aria-expanded");
-        if (aria === "true") return true;
-        if (aria === "false") return false;
-        const rect = sidebar.getBoundingClientRect();
-        return rect.width > 80 && rect.right > 0;
-      }
-      function closeSidebar(sidebar) {
-        const nativeButton = sidebar.querySelector(
-          '[data-testid="stSidebarCollapseButton"] button, ' +
-          'button[data-testid="stSidebarCollapseButton"], ' +
-          '[data-testid="stSidebarHeader"] button, ' +
-          'button[aria-label="Close sidebar"], button[aria-label="Collapse sidebar"], ' +
-          'button[title="Close sidebar"], button[title="Collapse sidebar"]'
-        );
-        if (!nativeButton) return false;
-        state.done = true;
-        nativeButton.click();
-        return true;
-      }
-      function update() {
-        const sidebar = d.querySelector('section[data-testid="stSidebar"]');
-        const expanded = sidebar && sidebarOpen(sidebar);
-        box.style.display = expanded ? "flex" : "none";
-        if (state.done) return;
-        if (Date.now() - state.started > 15000) { state.done = true; return; }
-        if (!sidebar) return;
-        if (expanded) {
-          closedSince = null;
-          closeSidebar(sidebar);
-        } else {
-          // Allow the initial sidebar mount/animation to settle.
-          if (closedSince === null) closedSince = Date.now();
-          if (Date.now() - closedSince > 700) state.done = true;
-        }
-      }
-      function respectUserChoice(event) {
-        if (!event.isTrusted || !event.target.closest) return;
-        if (event.target.closest(
-          '[data-testid="stSidebarCollapseButton"], [data-testid="stSidebarHeader"], ' +
-          '[data-testid="stSidebarCollapsedControl"], [data-testid="collapsedControl"], ' +
-          'button[aria-label="Open sidebar"], button[aria-label="Expand sidebar"]'
-        )) state.done = true;
-      }
-      d.addEventListener("click", respectUserChoice, true);
-      btn.addEventListener("click", function() {
-        state.done = true;
-        const sidebar = d.querySelector('section[data-testid="stSidebar"]');
-        if (sidebar && sidebarOpen(sidebar)) closeSidebar(sidebar);
-      });
-      update();
-      const timer = setInterval(update, 150);
-      window.addEventListener("unload", function() {
-        clearInterval(timer);
-        d.removeEventListener("click", respectUserChoice, true);
-      });
-    })();
-    </script>
-    """, height=44, width=150)
+    render_sidebar_startup()
 
 # Silenzia solo il warning di deprecazione relativo a st.experimental_get_query_params
 warnings.filterwarnings(
@@ -783,7 +711,7 @@ def generate_pdf_ko(rounds_ko: list[pd.DataFrame]) -> bytes:
 
 def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
     # Check if user has write access
-    has_write_access = st.session_state.get("user", {}).get("role") not in ["ospite", "lettura"]
+    has_write_access = verify_write_access()
     tipo_vista = st.session_state.get('tipo_vista_selezionata', 'compact').lower()
     
     st.markdown(f"### {df_round['Round'].iloc[0]}")
@@ -943,7 +871,7 @@ def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
             label_a = squadra_a
             label_b = squadra_b
             
-        is_disabled = st.session_state[key_valida] or not has_write_access
+        is_disabled = bool(draft_value(key_valida, bool(match['Valida']))) or not has_write_access
 
         if tipo_vista == 'compact':
             casa_col, gol_casa_col, gol_ospite_col, osp_col, valida_col = st.columns([2.2, 0.36, 0.36, 2.2, 0.42], gap="small")
@@ -954,16 +882,16 @@ def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
                     unsafe_allow_html=True
                 )
             with gol_casa_col:
-                st.number_input("Gol Casa", min_value=0, max_value=20, key=key_gol_a, disabled=is_disabled, label_visibility="collapsed")
+                result_number_input(f"Gol casa: {label_a}", min_value=0, max_value=20, key=key_gol_a, disabled=is_disabled, label_visibility="collapsed")
             with gol_ospite_col:
-                st.number_input("Gol Ospite", min_value=0, max_value=20, key=key_gol_b, disabled=is_disabled, label_visibility="collapsed")
+                result_number_input(f"Gol ospite: {label_b}", min_value=0, max_value=20, key=key_gol_b, disabled=is_disabled, label_visibility="collapsed")
             with osp_col:
                 st.markdown(
                     f"<div class='superba-compact-team-name away'>{escape(str(label_b))}</div>",
                     unsafe_allow_html=True
                 )
             with valida_col:
-                st.checkbox(
+                result_checkbox(
                     f"Valida risultato: {label_a} - {label_b}",
                     key=key_valida,
                     disabled=not has_write_access,
@@ -977,14 +905,14 @@ def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
                 with c1:
                     st.markdown(f"<span class='superba-compact-match-marker'></span><div class='superba-compact-team-name home'>🏠 {escape(str(label_a))}</div>", unsafe_allow_html=True)
                 with c2:
-                    st.number_input("Gol Casa", min_value=0, max_value=20, key=key_gol_a, disabled=is_disabled, label_visibility="collapsed")
+                    result_number_input(f"Gol casa: {label_a}", min_value=0, max_value=20, key=key_gol_a, disabled=is_disabled, label_visibility="collapsed")
                 with c3:
-                    st.number_input("Gol Ospite", min_value=0, max_value=20, key=key_gol_b, disabled=is_disabled, label_visibility="collapsed")
+                    result_number_input(f"Gol ospite: {label_b}", min_value=0, max_value=20, key=key_gol_b, disabled=is_disabled, label_visibility="collapsed")
                 with c4:
                     st.markdown(f"<div class='superba-compact-team-name away'>{escape(str(label_b))} 🛫</div>", unsafe_allow_html=True)
                 
                 with c5:
-                    st.checkbox("Valida ✅", key=key_valida, disabled=not has_write_access, label_visibility="collapsed")
+                    result_checkbox(f"Valida risultato: {label_a} - {label_b}", key=key_valida, disabled=not has_write_access, label_visibility="collapsed")
         
         else: # Standard
             with st.container(border=True):
@@ -994,13 +922,13 @@ def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
                 
                 c_score1, c_score2 = st.columns(2)
                 with c_score1:
-                    st.number_input("GC", min_value=0, max_value=20, key=key_gol_a, disabled=is_disabled, label_visibility="collapsed")
+                    result_number_input(f"Gol casa: {label_a}", min_value=0, max_value=20, key=key_gol_a, disabled=is_disabled, label_visibility="collapsed")
                 with c_score2:
-                    st.number_input("GO", min_value=0, max_value=20, key=key_gol_b, disabled=is_disabled, label_visibility="collapsed")
+                    result_number_input(f"Gol ospite: {label_b}", min_value=0, max_value=20, key=key_gol_b, disabled=is_disabled, label_visibility="collapsed")
                 
                 st.markdown("---")
                 if has_write_access:
-                    st.checkbox("✅ Valida Risultato", key=key_valida, disabled=not has_write_access)
+                    result_checkbox("✅ Valida Risultato", key=key_valida, disabled=not has_write_access)
 
         if not has_write_access:
             if st.session_state.get(key_valida, False):
@@ -1008,18 +936,6 @@ def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
             else:
                 if tipo_vista == 'standard': st.info("⏳ Partita in corso...")
 
-            # Update the round data with current state
-            df_round.loc[idx, 'GolA'] = st.session_state[key_gol_a]
-            df_round.loc[idx, 'GolB'] = st.session_state[key_gol_b]
-            df_round.loc[idx, 'Valida'] = st.session_state.get(key_valida, False)
-
-            # Show validation status
-            if st.session_state.get(key_valida, False):
-                st.success("✅ Partita validata!")
-            else:
-                st.warning("⚠️ Partita non ancora validata.")
-
-    # Only update the round data if user has write access
     if has_write_access:
         st.session_state['rounds_ko'][round_idx] = df_round.copy()
 
@@ -1380,6 +1296,8 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
     try:
         torneo_data = tournaments_collection.find_one({"_id": ObjectId(tournament_id)})
         if torneo_data and 'calendario' in torneo_data:
+            remember_document(tournaments_collection, torneo_data)
+            reset_result_drafts(torneo_data['_id'])
             # Assicurati che l'ID del torneo sia incluso nei dati restituiti
             torneo_data['_id'] = str(torneo_data['_id'])  # Converti ObjectId in stringa
             df_torneo = pd.DataFrame(torneo_data['calendario'])
@@ -1397,14 +1315,12 @@ def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
     if tournaments_collection is None:
         return False
     try:
-        df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
-        tournaments_collection.update_one(
-            {"_id": ObjectId(tournament_id)},
-            {"$set": {
-                "calendario": df_torneo_pulito.to_dict('records'),
-                "data_modifica": datetime.now()
-            }}
-        )
+        df_torneo_pulito = df_torneo.astype(object).where(pd.notna(df_torneo), None)
+        if not save_document(tournaments_collection, tournament_id, {
+            "calendario": df_torneo_pulito.to_dict('records'),
+            "data_modifica": datetime.now()
+        }):
+            return False
         return True
     except Exception as e:
         st.error(f"❌ Errore aggiornamento torneo: {e}")
@@ -1412,6 +1328,9 @@ def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
 
 def clona_torneo_su_db(tournaments_collection, source_id, new_name):
     """Clona un torneo esistente su MongoDB, gli assegna un nuovo nome e ne ripulisce il calendario."""
+    if not verify_write_access():
+        st.error("Accesso in sola lettura.")
+        return None, None
     if tournaments_collection is None:
         return None, None
     try:
@@ -1428,6 +1347,7 @@ def clona_torneo_su_db(tournaments_collection, source_id, new_name):
         source_data['data_creazione'] = now
         source_data['data_modifica'] = now
         result = tournaments_collection.insert_one(source_data)
+        remember_document(tournaments_collection, {**source_data, "_id": result.inserted_id})
         
         # Log dell'operazione
         username = st.session_state.get('user', {}).get('username', 'sconosciuto')
@@ -1452,6 +1372,9 @@ def clona_torneo_su_db(tournaments_collection, source_id, new_name):
 
 def rinomina_torneo_su_db(tournaments_collection, tournament_id, new_name):
     """Rinomina un torneo esistente su MongoDB."""
+    if not verify_write_access():
+        st.error("Accesso in sola lettura.")
+        return False
     if tournaments_collection is None:
         return False
     try:
@@ -1463,10 +1386,8 @@ def rinomina_torneo_su_db(tournaments_collection, tournament_id, new_name):
             
         old_name = torneo.get('nome_torneo', 'sconosciuto')
         
-        tournaments_collection.update_one(
-            {"_id": ObjectId(tournament_id)},
-            {"$set": {"nome_torneo": new_name, "data_modifica": datetime.now()}}
-        )
+        if not save_document(tournaments_collection, tournament_id, {"nome_torneo": new_name, "data_modifica": datetime.now()}):
+            return False
         
         # Log dell'operazione
         username = st.session_state.get('user', {}).get('username', 'sconosciuto')
@@ -1486,221 +1407,114 @@ def rinomina_torneo_su_db(tournaments_collection, tournament_id, new_name):
         st.error(f"❌ Errore nella ridenominazione del torneo: {e}")
         return False
 
-def salva_risultati_ko():
-    """Aggiorna il DataFrame e lo stato della sessione con i risultati del round corrente KO."""
-    tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
-    if tournaments_collection is None:
-        st.error("❌ Errore di connessione al DB.")
-        return
-    
-    current_round_df = st.session_state['rounds_ko'][-1].copy()
-    current_round_idx = len(st.session_state['rounds_ko']) - 1
+def salva_risultati_ko(genera_prossimo=False):
+    """Save a partial round, or atomically save and advance a completed round."""
+    if not verify_write_access():
+        st.error("Accesso in sola lettura: salvataggio non consentito.")
+        return False
+    collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
+    if collection is None:
+        st.error("Servizio di salvataggio non disponibile.")
+        return False
+    rounds = st.session_state.get('rounds_ko', [])
+    if not rounds:
+        return False
+    round_idx = len(rounds) - 1
+    current = rounds[-1].copy()
     winners = []
-    all_valid = True
-    
-    for idx, row in current_round_df.iterrows():
-        gol_a_key = f"ko_gola_{current_round_idx}_{idx}"
-        gol_b_key = f"ko_golb_{current_round_idx}_{idx}"
-        valida_key = f"ko_valida_{current_round_idx}_{idx}"
-        
-        is_validated = st.session_state.get(valida_key, False)
-        
-        if is_validated:
-            gol_a = st.session_state.get(gol_a_key, 0)
-            gol_b = st.session_state.get(gol_b_key, 0)
-            
-            if int(gol_a) == int(gol_b):
-                st.warning("❌ I pareggi non sono consentiti in un tabellone a eliminazione diretta!")
-                return 
-    
-            current_round_df.at[idx, 'GolA'] = int(gol_a)
-            current_round_df.at[idx, 'GolB'] = int(gol_b)
-            current_round_df.at[idx, 'Valida'] = True
-            
-            if int(gol_a) > int(gol_b):
-                current_round_df.at[idx, 'Vincitore'] = row['SquadraA']
-                winners.append(row['SquadraA'])
-            elif int(gol_b) > int(gol_a):
-                current_round_df.at[idx, 'Vincitore'] = row['SquadraB']
-                winners.append(row['SquadraB'])
-        else:
-            all_valid = False
-    
-    if not all_valid:
-        st.error("❌ Per generare il prossimo round, tutte le partite devono essere validate.")
-        return
-    
-    st.session_state['rounds_ko'][-1] = current_round_df.copy()
+    result_keys = []
+    for idx, match in current.iterrows():
+        ga = int(draft_value(f"ko_gola_{round_idx}_{idx}", match['GolA'] if pd.notna(match['GolA']) else 0))
+        gb = int(draft_value(f"ko_golb_{round_idx}_{idx}", match['GolB'] if pd.notna(match['GolB']) else 0))
+        valid = bool(draft_value(f"ko_valida_{round_idx}_{idx}", bool(match['Valida'])))
+        if valid and ga == gb:
+            st.warning("Una partita KO validata deve avere un vincitore.")
+            return False
+        current.at[idx, 'GolA'] = ga
+        current.at[idx, 'GolB'] = gb
+        current.at[idx, 'Valida'] = valid
+        current.at[idx, 'Vincitore'] = (match['SquadraA'] if ga > gb else match['SquadraB']) if valid else None
+        if valid:
+            winners.append(current.at[idx, 'Vincitore'])
+        result_keys.extend([(f"ko_gola_{round_idx}_{idx}", ga), (f"ko_golb_{round_idx}_{idx}", gb),
+                            (f"ko_valida_{round_idx}_{idx}", valid)])
+    if genera_prossimo and not current['Valida'].all():
+        st.warning("Salva pure i risultati parziali; per avanzare devono essere validate tutte le partite.")
+        return False
 
-    df_ko_da_salvare = current_round_df.copy()
-    df_ko_da_salvare.rename(columns={'SquadraA': 'Casa', 'SquadraB': 'Ospite', 'GolA': 'GolCasa', 'GolB': 'GolOspite', 'GiocatoreA': 'GiocatoreCasa', 'GiocatoreB': 'GiocatoreOspite'}, inplace=True)
-    df_ko_da_salvare['Girone'] = 'Eliminazione Diretta'
-    df_ko_da_salvare['Giornata'] = len(st.session_state['rounds_ko'])
+    def calendar_round(frame, giornata):
+        result = frame.rename(columns={
+            'SquadraA': 'Casa', 'SquadraB': 'Ospite', 'GolA': 'GolCasa', 'GolB': 'GolOspite',
+            'GiocatoreA': 'GiocatoreCasa', 'GiocatoreB': 'GiocatoreOspite'
+        }).copy()
+        result['Girone'] = 'Eliminazione Diretta'
+        result['Giornata'] = giornata
+        return result
 
-    df_final_torneo = st.session_state.get('df_torneo_preliminare', pd.DataFrame()).copy()
-
-    # Aggiorna solo le righe KO già presenti (Girone, Giornata, Casa, Ospite)
-    for idx, row in df_ko_da_salvare.iterrows():
-        mask = (
-            (df_final_torneo['Girone'] == row['Girone']) &
-            (df_final_torneo['Giornata'] == row['Giornata']) &
-            (df_final_torneo['Casa'] == row['Casa']) &
-            (df_final_torneo['Ospite'] == row['Ospite'])
-        )
-        if mask.any():
-            # Aggiorna la riga esistente
-            for col in ['GolCasa', 'GolOspite', 'Valida', 'GiocatoreCasa', 'GiocatoreOspite', 'Vincitore']:
-                df_final_torneo.loc[mask, col] = row[col]
-        else:
-            # Se non esiste, aggiungi la riga (caso raro)
-            df_final_torneo = pd.concat([df_final_torneo, pd.DataFrame([row])], ignore_index=True)
-    
-    if aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df_final_torneo):
-        username = st.session_state.get('user', {}).get('username', 'sconosciuto')
-        round_name = st.session_state.get('round_corrente', 'Round sconosciuto')
-        
-        # Prepara i dettagli delle partite per il log
-        partite_dettaglio = []
-        for _, partita in current_round_df.iterrows():
-            partite_dettaglio.append({
-                'squadra_casa': partita['SquadraA'],
-                'squadra_ospite': partita['SquadraB'],
-                'gol_casa': partita['GolA'],
-                'gol_ospite': partita['GolB'],
-                'vincitore': partita['Vincitore']
-            })
-            
-        # Log del salvataggio dei risultati con dettagli partite
-        log.log_action(
-            username=username,
-            action="salva_risultati_ko",
-            torneo=st.session_state.get('tournament_id', 'sconosciuto'),
-            details={
-                "tipo_operazione": "salva_risultati",
-                "round": round_name,
-                "partite_salvate": len(current_round_df),
-                "partite": partite_dettaglio
-            }
-        )
-        
-        st.toast("✅ Risultati salvati su DB!")
-        st.session_state['df_torneo_preliminare'] = df_final_torneo
-    else:
-        st.error("❌ Errore nel salvataggio su DB.")
-    
-    if len(winners) > 1:
-        if len(winners) == 32:
-            next_round_name = "Sedicesimi di finale"
-        elif len(winners) == 16:
-            next_round_name = "Ottavi di finale"
-        elif len(winners) == 8:
-            next_round_name = "Quarti di finale"
-        elif len(winners) == 4:
-            next_round_name = "Semifinali"
-        elif len(winners) == 2:
-            next_round_name = "Finale"
-    
-        next_matches = []
-        
-        # Uso la player map salvata in session_state per i prossimi round
+    calendar = st.session_state['df_torneo_preliminare'].copy()
+    mask = (calendar['Girone'] == 'Eliminazione Diretta') & (calendar['Giornata'] == round_idx + 1)
+    calendar = pd.concat([calendar.loc[~mask], calendar_round(current, round_idx + 1)], ignore_index=True)
+    next_round = None
+    next_name = None
+    finishing = genera_prossimo and len(winners) == 1
+    if genera_prossimo and len(winners) > 1:
+        if len(winners) % 2:
+            st.error("Numero di qualificati non valido per il prossimo round.")
+            return False
+        names = {32: "Sedicesimi di finale", 16: "Ottavi di finale", 8: "Quarti di finale",
+                 4: "Semifinali", 2: "Finale"}
+        next_name = names.get(len(winners), f"Round da {len(winners)} squadre")
         player_map = st.session_state.get('player_map', {})
+        next_round = pd.DataFrame([{
+            'Round': next_name, 'Match': i // 2 + 1,
+            'SquadraA': winners[i], 'GiocatoreA': player_map.get(winners[i], ''),
+            'SquadraB': winners[i + 1], 'GiocatoreB': player_map.get(winners[i + 1], ''),
+            'GolA': None, 'GolB': None, 'Valida': False, 'Vincitore': None
+        } for i in range(0, len(winners), 2)])
+        for column in ('PhaseID', 'PhaseMode'):
+            if column in current.columns:
+                next_round[column] = current[column].iloc[0]
+        calendar = pd.concat([calendar, calendar_round(next_round, round_idx + 2)], ignore_index=True)
 
-        for i in range(0, len(winners), 2):
-            winner_a = winners[i]
-            winner_b = winners[i+1]
-            next_matches.append({
-                'Round': next_round_name,
-                'Match': (i // 2) + 1,
-                'SquadraA': winner_a,
-                'GiocatoreA': player_map.get(winner_a, ''),
-                'SquadraB': winner_b,
-                'GiocatoreB': player_map.get(winner_b, ''),
-                'GolA': None, 'GolB': None, 'Valida': False, 'Vincitore': None
-            })
-        st.session_state['rounds_ko'].append(pd.DataFrame(next_matches))
-        st.session_state['round_corrente'] = next_round_name
-        
-        # Log della generazione del nuovo round
-        username = st.session_state.get('user', {}).get('username', 'sconosciuto')
-        log.log_action(
-            username=username,
-            action="genera_round_ko",
-            torneo=st.session_state.get('tournament_id', 'sconosciuto'),
-            details={
-                "tipo_operazione": "genera_round",
-                "round_precedente": st.session_state.get('round_corrente', 'Round sconosciuto'),
-                "nuovo_round": next_round_name,
-                "squadre_qualificate": winners
-            }
-        )
-        
-        st.success(f"Prossimo turno: {next_round_name} generato!")
-    
-    elif len(winners) == 1 and st.session_state.get('round_corrente') == "Finale":
-        st.balloons()
-        #st.success(f"🏆 Il torneo è finito! Il vincitore è: {winners[0]}")
-        # Salva il vincitore nella session_state
+    previous_name = st.session_state['tournament_name']
+    changes = {"calendario": calendar.astype(object).where(pd.notna(calendar), None).to_dict('records')}
+    if finishing and not previous_name.startswith('finito_'):
+        changes["nome_torneo"] = f"finito_{previous_name}"
+    if not save_document(collection, st.session_state['tournament_id'], changes):
+        return False
+
+    st.session_state['df_torneo_preliminare'] = calendar
+    st.session_state['rounds_ko'][-1] = current
+    for result_key, value in result_keys:
+        mark_saved(result_key, value)
+    if next_round is not None:
+        st.session_state['rounds_ko'].append(next_round)
+        st.session_state['round_corrente'] = next_name
+    if finishing:
         st.session_state['vincitore_torneo'] = winners[0]
-        
-        # we are the champions
-        # Codice corretto per scaricare l'audio dall'URL
-        audio_url = "https://raw.githubusercontent.com/legnaro72/torneo-Subbuteo-webapp/main/docs/wearethechamp.mp3"
-        #audio_url = "./wearethechamp.mp3"
-        try:
-            response = requests.get(audio_url, timeout=10) # Imposta un timeout
-            response.raise_for_status() # Lancia un'eccezione per risposte HTTP errate
-            autoplay_audio(response.content)
-        except requests.exceptions.RequestException as e:
-            st.error(f"Errore durante lo scaricamento dell'audio: {e}")
-
-        # Crea un contenitore vuoto per i messaggi
-        placeholder = st.empty()
-
-        # Lancia i palloncini in un ciclo per 3 secondi
-        with placeholder.container():
-            st.balloons()
-            time.sleep(1) # Aspetta 1 secondo
-        
-        with placeholder.container():
-            st.balloons()
-            time.sleep(1) # Aspetta 1 secondo
-        
-        with placeholder.container():
-            st.balloons()
-            time.sleep(1) # Aspetta 1 secondo
-        
-        
-        if not st.session_state['tournament_name'].startswith('finito_'):
-            nuovo_nome = f"finito_{st.session_state['tournament_name']}"
-            
-            # --- AGGIORNAMENTO PALMARES SUPERBA ---
+        st.session_state['tournament_name'] = changes.get("nome_torneo", previous_name)
+        if not previous_name.startswith('finito_'):
             try:
                 from palmares_utils import register_win
-                from pymongo import MongoClient
-                import certifi
-                # Connessione al DB giocatori (Superba_players)
                 client_pl = MongoClient(st.secrets["MONGO_URI"], tlsCAFile=certifi.where())
-                db_pl = client_pl["giocatori_subbuteo"]
-                players_col_pl = db_pl["superba_players"]
-                
-                vincitore = winners[0] # Il vincitore è già estratto qui
-                
-                register_win(
-                    db_players_col=players_col_pl,
-                    winner_name=vincitore,
-                    tournament_name=st.session_state['tournament_name'],
-                    tournament_type="fasi_finali",
-                    mode_fasi_finali="eliminazione_diretta"
-                )
-            except Exception as e:
-                print(f"[PALMARES] Errore: {e}")
-            # --- FINE PALMARES ---
-
-            rinomina_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], nuovo_nome)
-            st.session_state['tournament_name'] = nuovo_nome
-            
-    time.sleep(1)
-    #st.rerun()
+                register_win(db_players_col=client_pl["giocatori_subbuteo"]["superba_players"],
+                             winner_name=winners[0], tournament_name=previous_name,
+                             tournament_type="fasi_finali", mode_fasi_finali="eliminazione_diretta")
+            except Exception as exc:
+                st.warning(f"Torneo salvato; aggiornamento palmares non riuscito: {exc}")
+        st.balloons()
+    try:
+        log.log_action(
+            username=st.session_state.get('user', {}).get('username', 'sconosciuto'),
+            action="genera_round_ko" if genera_prossimo else "salva_risultati_ko",
+            torneo=st.session_state['tournament_id'],
+            details={"round": str(current['Round'].iloc[0]), "nuovo_round": next_name,
+                     "partite_salvate": len(current)}
+        )
+    except Exception as exc:
+        print(f"[LOGGING] {exc}")
+    st.toast("Risultati salvati" if not genera_prossimo else "Risultati e avanzamento salvati")
+    return True
 
 # ==============================================================================
 # 🚀 LOGICA APPLICAZIONE PRINCIPALE
@@ -2008,7 +1822,7 @@ def main():
                         unsafe_allow_html=True,
                     )
                     # Check if user has write access for creating new phase
-                    has_write_access = st.session_state.get("user", {}).get("role") not in ["ospite", "lettura"]
+                    has_write_access = verify_write_access()
                     
                     if st.button("Nuova fase finale ✨", key="btn_nuovo", width="stretch"):
                         if has_write_access:
@@ -2065,7 +1879,7 @@ def main():
                         st.session_state['tournament_name'] = scelta_torneo
                         st.session_state['tournament_id'] = tornei_opzioni[scelta_torneo]
                         # Check if user has write access for creating new phase
-                        has_write_access = st.session_state.get("user", {}).get("role") not in ["ospite", "lettura"]
+                        has_write_access = verify_write_access()
                         
                         if st.button(
                             "Continua con questo torneo (Nuova Fase Finale)",
@@ -2447,13 +2261,11 @@ def main():
                         
                         tournaments_collection = init_mongo_connection(st.secrets["MONGO_URI_TOURNEMENTS"], db_name, col_name)
                         
-                        tournaments_collection.update_one(
-                            {"_id": ObjectId(st.session_state["tournament_id"])},
-                            {"$set": {
-                                "calendario": df_to_save.to_dict('records'),
-                                "data_modifica": datetime.now()
-                            }}
-                        )
+                        if not save_document(tournaments_collection, st.session_state["tournament_id"], {
+                            "calendario": df_to_save.astype(object).where(pd.notna(df_to_save), None).to_dict("records"),
+                            "data_modifica": datetime.now()
+                        }):
+                            st.stop()
 
                         nuovo_nome = f"fasefinaleAGironi_{get_base_name(st.session_state['tournament_name'])}"
                         if rinomina_torneo_su_db(tournaments_collection, st.session_state["tournament_id"], nuovo_nome):
@@ -2510,14 +2322,12 @@ def main():
                             st.stop()
                     
                         try:
-                            tournaments_collection.update_one(
-                                {"_id": ObjectId(st.session_state["tournament_id"])},
-                                {"$set": {
-                                    "phase_metadata": {"phase_id": phase_id, "phase_mode": "KO"},
-                                    "calendario": df_final_torneo.to_dict('records'),
-                                    "data_modifica": datetime.now()
-                                }}
-                            )
+                            if not save_document(tournaments_collection, st.session_state["tournament_id"], {
+                                "phase_metadata": {"phase_id": phase_id, "phase_mode": "KO"},
+                                "calendario": df_final_torneo.astype(object).where(pd.notna(df_final_torneo), None).to_dict("records"),
+                                "data_modifica": datetime.now()
+                            }):
+                                st.stop()
                         except Exception as e:
                             st.error(f"❌ Errore durante l'aggiornamento del torneo: {e}")
                             st.stop()
@@ -2712,34 +2522,17 @@ def main():
                             current_round_df = st.session_state['rounds_ko'][-1]
                             render_round(current_round_df, len(st.session_state['rounds_ko']) - 1, st.session_state.get("modalita_visualizzazione_ko", "squadre"))
                             
-                            # Check if user has write access
-                            has_write_access = st.session_state.get("user", {}).get("role") not in ["ospite", "lettura"]
-                            
-                            if st.button(
-                                "💾 Salva risultati e genera prossimo round", 
-                                on_click=salva_risultati_ko if has_write_access else None,
-                                disabled=not has_write_access,
-                                help="Salva i risultati e genera il prossimo round" + ("" if has_write_access else " (accesso in sola lettura)")
-                            ):
-                                if has_write_access:
-                                    # Log dell'azione di salvataggio torneo
-                                    username = st.session_state.get('user', {}).get('username', 'sconosciuto')
-                                    tournament_id = st.session_state.get('tournament_id', 'sconosciuto')
-                                    round_name = st.session_state.get('round_corrente', 'Round sconosciuto')
-                                    
-                                    log.log_action(
-                                        username=username,
-                                        action="salva_torneo",
-                                        torneo=tournament_id,
-                                        details={
-                                            "tipo_operazione": "salvataggio_torneo",
-                                            "round_corrente": round_name,
-                                            "stato": "salvataggio_in_corso"
-                                        }
-                                    )
-                                else:
-                                    st.error("⛔ Accesso in sola lettura. Non è possibile salvare i risultati o generare il prossimo round.")
-                        
+                            show_save_status()
+                            has_write_access = verify_write_access()
+                            if st.button("Salva risultati", key="superba_ko_save", disabled=not has_write_access):
+                                if salva_risultati_ko():
+                                    st.rerun()
+                            next_label = "Concludi torneo" if len(current_round_df) == 1 else "Genera prossimo round"
+                            if st.button(next_label, key="superba_ko_advance",
+                                         disabled=not has_write_access or bool(st.session_state.get('vincitore_torneo'))):
+                                if salva_risultati_ko(genera_prossimo=True):
+                                    st.rerun()
+
                     if st.session_state['giornate_mode'] == 'ko':
                         st.markdown("<style>#root > div:nth-child(1) > div > div > div > div:nth-child(1) > div > div:nth-child(2) > div:nth-child(1) > div:nth-child(1), #root > div:nth-child(1) > div > div > div > div:nth-child(1) > div > div:nth-child(3) > div:nth-child(1) > div:nth-child(1){display:none;}</style>", unsafe_allow_html=True)
                         st.markdown("<style>#root > div:nth-child(1) > div > div > div > div:nth-child(1) > div > div:nth-child(4) {display:none;}</style>", unsafe_allow_html=True)
