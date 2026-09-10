@@ -627,54 +627,53 @@ def format_vincitori_italiana(df_classifica):
     return ", ".join(vincitori)
 
 def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, key_prefix: str = ""):
-    """Navigazione locale; la vista Compact mantiene le tre celle anche in portrait."""
+    """Navigazione locale su una riga in tutte le viste."""
     current = st.session_state.get(value_key, min_val)
     compact = st.session_state.get('tipo_vista_selezionata', 'pc') in ('pc', 'compact', 'smartphone')
-    if compact:
-        st.html("""
-            <style>
-            .st-key-superba_italiana_navigation [data-testid="stHorizontalBlock"] {
-                display: grid !important;
-                grid-template-columns: 48px minmax(0, 1fr) 48px;
-                align-items: center !important;
-                gap: 8px !important;
-            }
-            .st-key-superba_italiana_navigation [data-testid="stHorizontalBlock"] > div {
-                width: 100% !important;
-                min-width: 0 !important;
-                max-width: none !important;
-                margin: 0 !important;
-            }
-            .st-key-superba_italiana_navigation [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
-                height: auto !important;
-                min-height: 44px;
-                justify-content: center !important;
-            }
-            .st-key-superba_italiana_navigation button {
-                width: 48px !important;
-                min-width: 0 !important;
-                min-height: 44px !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                border-radius: 8px !important;
-            }
-            .st-key-superba_italiana_navigation button:not(:disabled) {
-                background: linear-gradient(to right, var(--color-primary-mid), var(--color-primary-light));
-                color: white;
-            }
-            .st-key-superba_italiana_navigation .superba-day-label {
-                text-align: center;
-                font-size: 16px;
-                font-weight: 900;
-                letter-spacing: 0;
-                line-height: 1.2;
-                overflow-wrap: anywhere;
-            }
-            .st-key-superba_italiana_navigation [data-testid="stMarkdownContainer"] {
-                margin-bottom: 0 !important;
-            }
-            </style>
-        """)
+    st.html("""
+        <style>
+        .st-key-superba_italiana_navigation [data-testid="stHorizontalBlock"] {
+            display: grid !important;
+            grid-template-columns: 48px minmax(0, 1fr) 48px;
+            align-items: center !important;
+            gap: 8px !important;
+        }
+        .st-key-superba_italiana_navigation [data-testid="stHorizontalBlock"] > div {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            margin: 0 !important;
+        }
+        .st-key-superba_italiana_navigation [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
+            height: auto !important;
+            min-height: 44px;
+            justify-content: center !important;
+        }
+        .st-key-superba_italiana_navigation button {
+            width: 48px !important;
+            min-width: 0 !important;
+            min-height: 44px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border-radius: 8px !important;
+        }
+        .st-key-superba_italiana_navigation button:not(:disabled) {
+            background: linear-gradient(to right, var(--color-primary-mid), var(--color-primary-light));
+            color: white;
+        }
+        .st-key-superba_italiana_navigation .superba-day-label {
+            text-align: center;
+            font-size: 16px;
+            font-weight: 900;
+            letter-spacing: 0;
+            line-height: 1.2;
+            overflow-wrap: anywhere;
+        }
+        .st-key-superba_italiana_navigation [data-testid="stMarkdownContainer"] {
+            margin-bottom: 0 !important;
+        }
+        </style>
+    """)
 
     with st.container(key="superba_italiana_navigation"):
         col_prev, col_label, col_next = st.columns([1, 1, 1], gap="small")
@@ -767,6 +766,96 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizza
             else:
                 st.warning("⚠️ Partita non ancora validata.")
 
+def applica_stile_riga_calendario(selector=".st-key-superba_italiana_compact"):
+    # Un vero container Streamlit include i widget; due markdown <div> non li racchiudono.
+    st.html("""
+        <style>
+        .st-key-superba_italiana_compact [data-testid="stHorizontalBlock"] {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) 64px 64px minmax(0, 1fr) 44px;
+            gap: 8px !important;
+            align-items: center !important;
+            border-bottom: 1px solid rgba(128, 128, 128, 0.18);
+            padding: 8px 0;
+        }
+        .st-key-superba_italiana_compact [data-testid="stHorizontalBlock"] > div {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            margin: 0 !important;
+        }
+        .st-key-superba_italiana_compact .superba-team-name {
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 0;
+            line-height: 1.25;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+        .st-key-superba_italiana_compact [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
+            justify-content: center !important;
+        }
+        .st-key-superba_italiana_compact [data-testid="stElementContainer"],
+        .st-key-superba_italiana_compact [data-testid="stCheckbox"] {
+            width: 100% !important;
+        }
+        .st-key-superba_italiana_compact .superba-team-name.away {
+            text-align: right;
+        }
+        .st-key-superba_italiana_compact [data-testid="stMarkdownContainer"] {
+            margin-bottom: 0 !important;
+        }
+        .st-key-superba_italiana_compact [data-testid="stNumberInput"],
+        .st-key-superba_italiana_compact [data-baseweb="input"],
+        .st-key-superba_italiana_compact [data-baseweb="base-input"] {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border-radius: 8px !important;
+        }
+        .st-key-superba_italiana_compact [data-testid="stNumberInput"] input {
+            width: 100% !important;
+            min-width: 0 !important;
+            height: 44px !important;
+            padding: 0 2px !important;
+            font-size: 16px !important;
+            font-weight: 800 !important;
+            text-align: center !important;
+            -moz-appearance: textfield;
+        }
+        .st-key-superba_italiana_compact [data-testid="stNumberInputContainer"] {
+            height: 44px !important;
+        }
+        .st-key-superba_italiana_compact [data-testid="stNumberInput"] button,
+        .st-key-superba_italiana_compact input::-webkit-inner-spin-button,
+        .st-key-superba_italiana_compact input::-webkit-outer-spin-button {
+            display: none !important;
+        }
+        .st-key-superba_italiana_compact [data-testid="stCheckbox"] label {
+            display: flex !important;
+            width: 100% !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-height: 44px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        @media screen and (max-width: 640px) {
+            .st-key-superba_italiana_compact [data-testid="stHorizontalBlock"] {
+                grid-template-columns: minmax(0, 1fr) 48px 48px minmax(0, 1fr) 40px;
+                gap: 4px !important;
+            }
+            .st-key-superba_italiana_compact .superba-team-name {
+                font-size: 14px;
+            }
+        }
+        </style>
+    """.replace(".st-key-superba_italiana_compact", selector))
+
+
+
 def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzazione):
     """Visualizzazione ultra-moderna (stile bracket card) per inserimento risultati."""
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
@@ -778,6 +867,8 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
     else:
         st.markdown(f"### 🏆 {girone_sel} - Giornata {giornata_sel} (Vista Premium)")
     
+    applica_stile_riga_calendario('[class*="st-key-superba_italiana_premium_"]')
+
     # CSS locale per la vista premium
     st.markdown("""
     <style>
@@ -818,7 +909,7 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
             label_c, label_o = f"{casa} ({gio_c})", f"{osp} ({gio_o})"
 
         # Card Premium con Streamlit
-        with st.container(border=True):
+        with st.container(border=True, key=f"superba_italiana_premium_{idx}"):
             # Header della card
             header_match = f"MATCH {idx+1}" if has_single_girone(df) else f"{girone_sel} • MATCH {idx+1}"
             st.markdown(f"<div class='match-header-premium'>{header_match}</div>", unsafe_allow_html=True)
@@ -828,11 +919,11 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
             key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
             key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
             
-            # Layout su 4 colonne: Casa | Score1 | Score2 | Ospite
-            c1, c2, c3, c4 = st.columns([3, 1, 1, 3])
+            # Stessa riga della vista Compact, nella card Premium.
+            c1, c2, c3, c4, c5 = st.columns([2.2, 0.36, 0.36, 2.2, 0.42], gap="small")
             
             with c1:
-                st.markdown(f"<div style='text-align:right;' class='team-name-premium'>🏠 {label_c}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align:right;' class='superba-team-name home'>🏠 {escape(str(label_c))}</div>", unsafe_allow_html=True)
             
             with c2:
                 # Usiamo le stesse chiavi per sincronizzare istantaneamente le due viste
@@ -844,12 +935,10 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
                 st.session_state[key_golospite] = st.session_state[f"prem_{key_golospite}"]
 
             with c4:
-                st.markdown(f"<div style='text-align:left;' class='team-name-premium'>{label_o} 🛫</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align:left;' class='superba-team-name away'>{escape(str(label_o))} 🛫</div>", unsafe_allow_html=True)
             
-            # Riga Validazione
-            v1, v2 = st.columns([6, 1.5])
-            with v2:
-                st.checkbox("Valida Risultato ✅", key=f"prem_{key_valida}", value=bool(row['Valida']), disabled=st.session_state.get('read_only', False))
+            with c5:
+                st.checkbox("Valida Risultato ✅", key=f"prem_{key_valida}", value=bool(row['Valida']), label_visibility="collapsed", disabled=st.session_state.get('read_only', False))
                 st.session_state[key_valida] = st.session_state[f"prem_{key_valida}"]
             
             if st.session_state.get(key_valida):
@@ -973,92 +1062,7 @@ def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzaz
     if df_giornata.empty:
         return
 
-    # Un vero container Streamlit include i widget; due markdown <div> non li racchiudono.
-    st.html("""
-        <style>
-        .st-key-superba_italiana_compact [data-testid="stHorizontalBlock"] {
-            display: grid !important;
-            grid-template-columns: minmax(0, 1fr) 64px 64px minmax(0, 1fr) 44px;
-            gap: 8px !important;
-            align-items: center !important;
-            border-bottom: 1px solid rgba(128, 128, 128, 0.18);
-            padding: 8px 0;
-        }
-        .st-key-superba_italiana_compact [data-testid="stHorizontalBlock"] > div {
-            width: 100% !important;
-            min-width: 0 !important;
-            max-width: none !important;
-            margin: 0 !important;
-        }
-        .st-key-superba_italiana_compact .superba-team-name {
-            font-size: 16px;
-            font-weight: 800;
-            letter-spacing: 0;
-            line-height: 1.25;
-            white-space: normal;
-            overflow-wrap: anywhere;
-        }
-        .st-key-superba_italiana_compact [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
-            justify-content: center !important;
-        }
-        .st-key-superba_italiana_compact [data-testid="stElementContainer"],
-        .st-key-superba_italiana_compact [data-testid="stCheckbox"] {
-            width: 100% !important;
-        }
-        .st-key-superba_italiana_compact .superba-team-name.away {
-            text-align: right;
-        }
-        .st-key-superba_italiana_compact [data-testid="stMarkdownContainer"] {
-            margin-bottom: 0 !important;
-        }
-        .st-key-superba_italiana_compact [data-testid="stNumberInput"],
-        .st-key-superba_italiana_compact [data-baseweb="input"],
-        .st-key-superba_italiana_compact [data-baseweb="base-input"] {
-            width: 100% !important;
-            min-width: 0 !important;
-            max-width: none !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            border-radius: 8px !important;
-        }
-        .st-key-superba_italiana_compact [data-testid="stNumberInput"] input {
-            width: 100% !important;
-            min-width: 0 !important;
-            height: 44px !important;
-            padding: 0 2px !important;
-            font-size: 16px !important;
-            font-weight: 800 !important;
-            text-align: center !important;
-            -moz-appearance: textfield;
-        }
-        .st-key-superba_italiana_compact [data-testid="stNumberInputContainer"] {
-            height: 44px !important;
-        }
-        .st-key-superba_italiana_compact [data-testid="stNumberInput"] button,
-        .st-key-superba_italiana_compact input::-webkit-inner-spin-button,
-        .st-key-superba_italiana_compact input::-webkit-outer-spin-button {
-            display: none !important;
-        }
-        .st-key-superba_italiana_compact [data-testid="stCheckbox"] label {
-            display: flex !important;
-            width: 100% !important;
-            align-items: center !important;
-            justify-content: center !important;
-            min-height: 44px !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        @media screen and (max-width: 640px) {
-            .st-key-superba_italiana_compact [data-testid="stHorizontalBlock"] {
-                grid-template-columns: minmax(0, 1fr) 48px 48px minmax(0, 1fr) 40px;
-                gap: 4px !important;
-            }
-            .st-key-superba_italiana_compact .superba-team-name {
-                font-size: 14px;
-            }
-        }
-        </style>
-    """)
+    applica_stile_riga_calendario()
 
     with st.container(key="superba_italiana_compact"):
         for idx, row in df_giornata.iterrows():
@@ -2748,7 +2752,6 @@ def main():
                 if vista_scelta in ('smartphone', 'compact', 'pc'):
                     mostra_calendario_compact(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
                 elif vista_scelta == 'premium':
-                    mostra_avviso_landscape()
                     mostra_calendario_premium(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
                 else: # standard
                     mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
