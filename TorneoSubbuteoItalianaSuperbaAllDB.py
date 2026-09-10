@@ -2121,7 +2121,7 @@ def main():
     _, sidebar_button_col = st.columns([1, 0.18])
     with sidebar_button_col:
         render_sidebar_collapse_workaround()
-    setup_common_sidebar(show_user_info=False, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL))  # user info già mostrata sopra
+    setup_common_sidebar(show_user_info=False, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL), hub_same_tab=True)  # user info già mostrata sopra
     setup_audio_sidebar()
     setup_player_selection_mode(on_change=sync_multiselect, args=("sidebar_usa_multiselect_giocatori",))
     

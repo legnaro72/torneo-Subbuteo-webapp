@@ -7,6 +7,8 @@ Fornisce:
   - Navigazione giornate/turni
   - Keep-alive script
 """
+from html import escape
+
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -49,7 +51,7 @@ def render_section_header(title: str):
 # Default Hub URL (will be used if no custom hub_url is provided)
 DEFAULT_HUB_URL = "https://farm-tornei-subbuteo-superba-all-db.streamlit.app/"
 
-def setup_common_sidebar(show_user_info: bool = True, show_hub_link: bool = True, hub_url: str = DEFAULT_HUB_URL, home_url: str | None = None):
+def setup_common_sidebar(show_user_info: bool = True, show_hub_link: bool = True, hub_url: str = DEFAULT_HUB_URL, home_url: str | None = None, hub_same_tab: bool = False):
     """
     Configura la sidebar con elementi comuni a tutte le app.
     
@@ -58,6 +60,7 @@ def setup_common_sidebar(show_user_info: bool = True, show_hub_link: bool = True
         show_hub_link: Se True, mostra il link all'Hub.
         hub_url: URL dell'Hub di destinazione.
         home_url: parametro mantenuto per compatibilita, non renderizzato.
+        hub_same_tab: Navigazione diretta senza aprire nuove schede, per Superba.
     """
     # Info utente
     if show_user_info and st.session_state.get("authenticated"):
@@ -68,11 +71,23 @@ def setup_common_sidebar(show_user_info: bool = True, show_hub_link: bool = True
     if show_hub_link:
         st.sidebar.markdown("---")
         st.sidebar.subheader("🕹️ Gestione Rapida")
-        st.sidebar.link_button(
-            "➡️ Vai a Hub Tornei",
-            hub_url,
-            use_container_width=True
-        )
+        if hub_same_tab:
+            # A real link keeps mobile navigation in the user's click gesture.
+            # _top also leaves the app frame when hosted on Streamlit Cloud.
+            st.sidebar.markdown(
+                '<div class="stLinkButton superba-hub-link">'
+                f'<a href="{escape(hub_url, quote=True)}" target="_top" '
+                'style="display:flex;align-items:center;justify-content:center;'
+                'width:100%;box-sizing:border-box;min-height:44px;text-decoration:none;">'
+                '&#10145;&#65039; Vai a Hub Tornei</a></div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.sidebar.link_button(
+                "➡️ Vai a Hub Tornei",
+                hub_url,
+                use_container_width=True
+            )
 
 
 def render_sidebar_collapse_workaround(label: str = "Chiudi sidebar"):

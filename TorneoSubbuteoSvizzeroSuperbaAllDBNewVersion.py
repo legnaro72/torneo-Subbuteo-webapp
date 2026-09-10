@@ -1892,7 +1892,7 @@ if st.session_state.setup_mode == "nuovo":
 # -------------------------
 # User info
 auth.logout_button("Logout")
-setup_common_sidebar(show_user_info=True, show_hub_link=True, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL))
+setup_common_sidebar(show_user_info=True, show_hub_link=True, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL), hub_same_tab=True)
 
 # Audio di sottofondo
 setup_audio_sidebar()

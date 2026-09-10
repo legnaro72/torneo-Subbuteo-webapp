@@ -1655,7 +1655,7 @@ def main():
     with sidebar_button_col:
         render_sidebar_collapse_workaround()
     auth.logout_button("Logout")
-    setup_common_sidebar(show_user_info=True, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL))
+    setup_common_sidebar(show_user_info=True, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL), hub_same_tab=True)
     setup_audio_sidebar()
     
     if not st.session_state['ui_show_pre']:
@@ -2548,6 +2548,5 @@ def main():
     
 if __name__ == "__main__":
     main()
-
 
 
