@@ -2126,25 +2126,11 @@ def main():
     st.sidebar.markdown("---")
     st.sidebar.subheader("🕹️ Gestione Rapida")
     st.sidebar.markdown(
-        f'''
-        <a href="{escape(HUB_URL, quote=True)}" target="_blank" rel="noopener noreferrer"
-           style="
-               display:flex;
-               align-items:center;
-               justify-content:center;
-               width:100%;
-               min-height:44px;
-               box-sizing:border-box;
-               padding:8px 12px;
-               border:1px solid rgba(49,51,63,0.2);
-               border-radius:8px;
-               text-decoration:none;
-               white-space:nowrap;
-               cursor:pointer;
-           ">
-           ➡️&nbsp; Vai a Hub Tornei
-        </a>
-        ''',
+        '<div class="stLinkButton superba-hub-link">'
+        f'<a href="{escape(HUB_URL, quote=True)}" target="_blank" rel="noopener noreferrer" '
+        'style="display:flex;align-items:center;justify-content:center;'
+        'width:100%;box-sizing:border-box;min-height:44px;text-decoration:none;">'
+        '&#10145;&#65039; Vai a Hub Tornei</a></div>',
         unsafe_allow_html=True,
     )
     setup_audio_sidebar()
