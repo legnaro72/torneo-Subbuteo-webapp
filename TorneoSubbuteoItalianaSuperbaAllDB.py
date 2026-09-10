@@ -2121,7 +2121,18 @@ def main():
     _, sidebar_button_col = st.columns([1, 0.18])
     with sidebar_button_col:
         render_sidebar_collapse_workaround()
-    setup_common_sidebar(show_user_info=False, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL), hub_same_tab=True)  # user info già mostrata sopra
+    setup_common_sidebar(show_user_info=False, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL), show_hub_link=False)  # user info già mostrata sopra
+    # Keep Hub navigation independent of cached shared-module versions.
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🕹️ Gestione Rapida")
+    st.sidebar.markdown(
+        '<div class="stLinkButton superba-hub-link">'
+        f'<a href="{escape(HUB_URL, quote=True)}" target="_top" '
+        'style="display:flex;align-items:center;justify-content:center;'
+        'width:100%;box-sizing:border-box;min-height:44px;text-decoration:none;">'
+        '&#10145;&#65039; Vai a Hub Tornei</a></div>',
+        unsafe_allow_html=True,
+    )
     setup_audio_sidebar()
     setup_player_selection_mode(on_change=sync_multiselect, args=("sidebar_usa_multiselect_giocatori",))
     

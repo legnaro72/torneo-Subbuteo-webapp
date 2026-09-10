@@ -1892,7 +1892,18 @@ if st.session_state.setup_mode == "nuovo":
 # -------------------------
 # User info
 auth.logout_button("Logout")
-setup_common_sidebar(show_user_info=True, show_hub_link=True, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL), hub_same_tab=True)
+setup_common_sidebar(show_user_info=True, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL), show_hub_link=False)
+# Keep Hub navigation independent of cached shared-module versions.
+st.sidebar.markdown("---")
+st.sidebar.subheader("🕹️ Gestione Rapida")
+st.sidebar.markdown(
+    '<div class="stLinkButton superba-hub-link">'
+    f'<a href="{escape(HUB_URL, quote=True)}" target="_top" '
+    'style="display:flex;align-items:center;justify-content:center;'
+    'width:100%;box-sizing:border-box;min-height:44px;text-decoration:none;">'
+    '&#10145;&#65039; Vai a Hub Tornei</a></div>',
+    unsafe_allow_html=True,
+)
 
 # Audio di sottofondo
 setup_audio_sidebar()
