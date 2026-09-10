@@ -1898,7 +1898,7 @@ st.sidebar.markdown("---")
 st.sidebar.subheader("🕹️ Gestione Rapida")
 st.sidebar.markdown(
     '<div class="stLinkButton superba-hub-link">'
-    f'<a href="{escape(HUB_URL, quote=True)}" target="_top" '
+    f'<a href="{escape(HUB_URL, quote=True)}" '
     'style="display:flex;align-items:center;justify-content:center;'
     'width:100%;box-sizing:border-box;min-height:44px;text-decoration:none;">'
     '&#10145;&#65039; Vai a Hub Tornei</a></div>',
