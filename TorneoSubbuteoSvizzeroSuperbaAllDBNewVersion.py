@@ -11,6 +11,7 @@ st.set_page_config(
 
 # Solo DOPO si possono importare le altre dipendenze
 import pandas as pd
+from html import escape
 from datetime import datetime
 import io
 from fpdf import FPDF
@@ -1251,95 +1252,110 @@ def init_results_temp_from_df(df):
 def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visualizzazione):
     """Visualizza gli incontri del turno attivo e permette di inserire e validare i risultati."""
     tipo_vista = st.session_state.get('tipo_vista_selezionata', 'compact').lower()
+    has_write_access = st.session_state.get("user", {}).get("role") not in ["ospite", "lettura"]
     
     if tipo_vista == 'compact':
-        st.markdown("""
+        st.html("""
         <style>
-        .pc-match-label {
+        div[data-testid="stHorizontalBlock"]:has(.superba-compact-match-marker) {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) 64px 64px minmax(0, 1fr) 44px;
+            gap: 8px !important;
+            align-items: center !important;
+            border-bottom: 1px solid rgba(128, 128, 128, 0.18);
+            padding: 8px 0;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.superba-compact-match-marker) > div {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            margin: 0 !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.superba-compact-match-marker)
+        [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
+            justify-content: center !important;
+        }
+        .superba-compact-match-marker {
+            display: none;
+        }
+        .superba-compact-team-name {
+            font-size: 16px;
             font-weight: 800;
-            font-size: 0.9rem;
-            line-height: 36px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            letter-spacing: 0;
+            line-height: 1.25;
+            white-space: normal;
+            overflow-wrap: anywhere;
         }
-        .pc-match-label.home {
+        .superba-compact-team-name.away {
             text-align: right;
-            padding-right: 10px;
         }
-        .pc-match-label.away {
-            text-align: left;
-            padding-left: 10px;
+        div[data-testid="stHorizontalBlock"]:has(.superba-compact-match-marker)
+        [data-testid="stMarkdownContainer"] {
+            margin-bottom: 0 !important;
         }
-        .pc-match-separator {
-            border-bottom: 1px solid rgba(255,255,255,0.06);
-            margin: 8px 0 12px;
+        div[data-testid="stHorizontalBlock"]:has(.superba-compact-match-marker)
+        [data-testid="stElementContainer"],
+        div[data-testid="stHorizontalBlock"]:has(.superba-compact-match-marker)
+        [data-testid="stCheckbox"] {
+            width: 100% !important;
         }
-        div[data-testid="stNumberInput"] button {
+        div[data-testid="stHorizontalBlock"]:has(.superba-compact-match-marker)
+        [data-testid="stNumberInput"],
+        div[data-testid="stHorizontalBlock"]:has(.superba-compact-match-marker)
+        [data-baseweb="input"],
+        div[data-testid="stHorizontalBlock"]:has(.superba-compact-match-marker)
+        [data-baseweb="base-input"] {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border-radius: 8px !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.superba-compact-match-marker)
+        [data-testid="stNumberInput"] input {
+            width: 100% !important;
+            min-width: 0 !important;
+            height: 44px !important;
+            padding: 0 2px !important;
+            font-size: 16px !important;
+            font-weight: 800 !important;
+            text-align: center !important;
+            -moz-appearance: textfield;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.superba-compact-match-marker)
+        [data-testid="stNumberInputContainer"] {
+            height: 44px !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.superba-compact-match-marker)
+        [data-testid="stNumberInput"] button,
+        div[data-testid="stHorizontalBlock"]:has(.superba-compact-match-marker)
+        input::-webkit-inner-spin-button,
+        div[data-testid="stHorizontalBlock"]:has(.superba-compact-match-marker)
+        input::-webkit-outer-spin-button {
             display: none !important;
         }
-        div[data-testid="stNumberInput"] input {
-            text-align: center !important;
-            font-weight: bold !important;
-        }
-        .portrait-warning {
-            display: none;
-            background: linear-gradient(135deg, #ff6b35, #f7931e);
-            color: white;
-            text-align: center;
-            padding: 12px;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 0.9rem;
-            margin: 8px 0 10px;
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-        @media screen and (max-width: 640px) and (orientation: portrait) {
-            .portrait-warning { display: block !important; }
+        div[data-testid="stHorizontalBlock"]:has(.superba-compact-match-marker)
+        [data-testid="stCheckbox"] label {
+            display: flex !important;
+            width: 100% !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-height: 44px !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
         @media screen and (max-width: 640px) {
-            .pc-match-label,
-            .pc-match-label.home,
-            .pc-match-label.away {
-                text-align: center !important;
-                padding-left: 0 !important;
-                padding-right: 0 !important;
-                font-size: 0.92rem !important;
-                line-height: 1.2 !important;
-                margin: 6px auto 5px !important;
-                max-width: 220px !important;
+            div[data-testid="stHorizontalBlock"]:has(.superba-compact-match-marker) {
+                grid-template-columns: minmax(0, 1fr) 48px 48px minmax(0, 1fr) 40px;
+                gap: 4px !important;
             }
-            div[data-testid="stNumberInput"] {
-                width: 64px !important;
-                max-width: 64px !important;
-                margin: 0 auto 8px auto !important;
-            }
-            div[data-testid="stNumberInput"] > div,
-            div[data-testid="stNumberInput"] div[data-baseweb="input"] {
-                width: 64px !important;
-                max-width: 64px !important;
-                padding: 0 !important;
-            }
-            div[data-testid="stNumberInput"] input {
-                width: 64px !important;
-                min-height: 34px !important;
-                font-size: 1rem !important;
-                text-align: center !important;
-            }
-            div[data-testid="stCheckbox"] {
-                width: fit-content !important;
-                margin: 4px auto 8px auto !important;
-            }
-            .pc-match-separator {
-                margin: 14px 0 18px !important;
+            .superba-compact-team-name {
+                font-size: 14px;
             }
         }
         </style>
-        <div class="portrait-warning">
-            📱🔄 Ruota il telefono in <b>ORIZZONTALE</b> per la vista ottimizzata!
-        </div>
-        """, unsafe_allow_html=True)
+        """)
 
     elif tipo_vista == 'premium':
         st.markdown("""
@@ -1430,13 +1446,17 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
         if key_val not in st.session_state.risultati_temp:
             st.session_state.risultati_temp[key_val] = validata_iniziale
 
-        is_disabled = st.session_state.risultati_temp.get(key_val, False)
+        is_disabled = st.session_state.risultati_temp.get(key_val, False) or not has_write_access
         
         # --- UI Rendering in base al tipo di vista ---
         if tipo_vista == 'compact':
             casa_col, gol_casa_col, gol_ospite_col, osp_col, valida_col = st.columns([2.2, 0.36, 0.36, 2.2, 0.42], gap="small")
             with casa_col:
-                st.markdown(f"<div class='pc-match-label home'>{label_c}</div>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<span class='superba-compact-match-marker'></span>"
+                    f"<div class='superba-compact-team-name home'>{escape(str(label_c))}</div>",
+                    unsafe_allow_html=True
+                )
             with gol_casa_col:
                 st.session_state.risultati_temp[key_gc] = st.number_input(
                     "GC",
@@ -1458,10 +1478,18 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
                     disabled=is_disabled,
                 )
             with osp_col:
-                st.markdown(f"<div class='pc-match-label away'>{label_o}</div>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<div class='superba-compact-team-name away'>{escape(str(label_o))}</div>",
+                    unsafe_allow_html=True
+                )
             with valida_col:
-                validata_checkbox = st.checkbox("Validata", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key, label_visibility="collapsed")
-            st.markdown("<div class='pc-match-separator'></div>", unsafe_allow_html=True)
+                validata_checkbox = st.checkbox(
+                    f"Valida risultato: {label_c} - {label_o}",
+                    value=st.session_state.risultati_temp.get(key_val, False),
+                    key=valida_key,
+                    label_visibility="collapsed",
+                    disabled=not has_write_access
+                )
                 
         elif tipo_vista == 'premium':
             with st.container(border=True):
