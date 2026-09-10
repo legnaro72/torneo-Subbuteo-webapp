@@ -763,7 +763,7 @@ def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
             return squadra.strip(), giocatore.strip()
         return val, ""
 
-    if tipo_vista == 'compact':
+    if tipo_vista in ('compact', 'premium'):
         st.html("""
         <style>
         div[data-testid="stHorizontalBlock"]:has(.superba-compact-match-marker) {
@@ -866,40 +866,7 @@ def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
         </style>
         """)
 
-    elif tipo_vista == 'premium':
-        st.markdown("""
-        <style>
-        div[data-testid="stNumberInput"] button { display: none !important; }
-        div[data-testid="stNumberInput"] input::-webkit-outer-spin-button,
-        div[data-testid="stNumberInput"] input::-webkit-inner-spin-button {
-            -webkit-appearance: none !important; margin: 0 !important;
-        }
-        div[data-testid="stNumberInput"] input[type="number"] { -moz-appearance: textfield !important; }
-        div[data-testid="stNumberInput"] { max-width: 48px !important; }
-        div[data-testid="stNumberInput"] div[data-baseweb="input"] { padding: 0 !important; }
-        div[data-testid="stNumberInput"] input {
-            padding: 3px 1px !important; text-align: center !important;
-            font-weight: bold !important; font-size: 0.95rem !important;
-        }
-        div[data-testid="stCheckbox"] { margin-top: 0 !important; }
-
-        .portrait-warning {
-            display: none; background: linear-gradient(135deg, #ff6b35, #f7931e);
-            color: white; text-align: center; padding: 12px; border-radius: 8px;
-            font-weight: 700; font-size: 0.9rem; margin-bottom: 10px; animation: pulse 2s infinite;
-        }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-        @media screen and (max-width: 640px) and (orientation: portrait) {
-            .portrait-warning { display: block !important; }
-        }
-        </style>
-        <div class="portrait-warning">
-            📱🔄 Ruota il telefono in <b>ORIZZONTALE</b> per la vista ottimizzata!
-        </div>
-        <script>
-        try { if (screen.orientation && screen.orientation.lock) { screen.orientation.lock('landscape').catch(()=>{}); } } catch(e) {}
-        </script>
-        """, unsafe_allow_html=True)
+    if tipo_vista == 'premium':
         st.markdown("""
         <style>
         .match-header-premium {
@@ -967,20 +934,18 @@ def render_round(df_round, round_idx, modalita_visualizzazione="squadre"):
         elif tipo_vista == 'premium':
             with st.container(border=True):
                 st.markdown(f"<div class='match-header-premium'>ROUND {round_idx} • MATCH {idx+1}</div>", unsafe_allow_html=True)
-                c1, c2, c3, c4 = st.columns([3, 1, 1, 3])
+                c1, c2, c3, c4, c5 = st.columns([2.2, 0.36, 0.36, 2.2, 0.42], gap="small")
                 with c1:
-                    st.markdown(f"<div style='text-align:right;' class='team-name-premium'>🏠 {label_a}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<span class='superba-compact-match-marker'></span><div class='superba-compact-team-name home'>🏠 {escape(str(label_a))}</div>", unsafe_allow_html=True)
                 with c2:
                     st.number_input("Gol Casa", min_value=0, max_value=20, key=key_gol_a, disabled=is_disabled, label_visibility="collapsed")
                 with c3:
                     st.number_input("Gol Ospite", min_value=0, max_value=20, key=key_gol_b, disabled=is_disabled, label_visibility="collapsed")
                 with c4:
-                    st.markdown(f"<div style='text-align:left;' class='team-name-premium'>{label_b} 🛫</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='superba-compact-team-name away'>{escape(str(label_b))} 🛫</div>", unsafe_allow_html=True)
                 
-                v1, v2 = st.columns([6, 1.5])
-                with v2:
-                    if has_write_access:
-                        st.checkbox("Valida ✅", key=key_valida, disabled=not has_write_access)
+                with c5:
+                    st.checkbox("Valida ✅", key=key_valida, disabled=not has_write_access, label_visibility="collapsed")
         
         else: # Standard
             with st.container(border=True):

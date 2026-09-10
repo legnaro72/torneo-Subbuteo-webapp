@@ -1254,7 +1254,7 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
     tipo_vista = st.session_state.get('tipo_vista_selezionata', 'compact').lower()
     has_write_access = st.session_state.get("user", {}).get("role") not in ["ospite", "lettura"]
     
-    if tipo_vista == 'compact':
+    if tipo_vista in ('compact', 'premium'):
         st.html("""
         <style>
         div[data-testid="stHorizontalBlock"]:has(.superba-compact-match-marker) {
@@ -1357,40 +1357,7 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
         </style>
         """)
 
-    elif tipo_vista == 'premium':
-        st.markdown("""
-        <style>
-        div[data-testid="stNumberInput"] button { display: none !important; }
-        div[data-testid="stNumberInput"] input::-webkit-outer-spin-button,
-        div[data-testid="stNumberInput"] input::-webkit-inner-spin-button {
-            -webkit-appearance: none !important; margin: 0 !important;
-        }
-        div[data-testid="stNumberInput"] input[type="number"] { -moz-appearance: textfield !important; }
-        div[data-testid="stNumberInput"] { max-width: 48px !important; }
-        div[data-testid="stNumberInput"] div[data-baseweb="input"] { padding: 0 !important; }
-        div[data-testid="stNumberInput"] input {
-            padding: 3px 1px !important; text-align: center !important;
-            font-weight: bold !important; font-size: 0.95rem !important;
-        }
-        div[data-testid="stCheckbox"] { margin-top: 0 !important; }
-
-        .portrait-warning {
-            display: none; background: linear-gradient(135deg, #ff6b35, #f7931e);
-            color: white; text-align: center; padding: 12px; border-radius: 8px;
-            font-weight: 700; font-size: 0.9rem; margin-bottom: 10px; animation: pulse 2s infinite;
-        }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-        @media screen and (max-width: 640px) and (orientation: portrait) {
-            .portrait-warning { display: block !important; }
-        }
-        </style>
-        <div class="portrait-warning">
-            📱🔄 Ruota il telefono in <b>ORIZZONTALE</b> per la vista ottimizzata!
-        </div>
-        <script>
-        try { if (screen.orientation && screen.orientation.lock) { screen.orientation.lock('landscape').catch(()=>{}); } } catch(e) {}
-        </script>
-        """, unsafe_allow_html=True)
+    if tipo_vista == 'premium':
         st.markdown("""
         <style>
         .match-header-premium {
@@ -1494,18 +1461,17 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
         elif tipo_vista == 'premium':
             with st.container(border=True):
                 st.markdown(f"<div class='match-header-premium'>TURNO {turno_attivo} • MATCH {i+1}</div>", unsafe_allow_html=True)
-                c1, c2, c3, c4 = st.columns([3, 1, 1, 3])
+                c1, c2, c3, c4, c5 = st.columns([2.2, 0.36, 0.36, 2.2, 0.42], gap="small")
                 with c1:
-                    st.markdown(f"<div style='text-align:right;' class='team-name-premium'>🏠 {label_c}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<span class='superba-compact-match-marker'></span><div class='superba-compact-team-name home'>🏠 {escape(str(label_c))}</div>", unsafe_allow_html=True)
                 with c2:
                     st.session_state.risultati_temp[key_gc] = st.number_input("GC", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_gc], key=key_gc, label_visibility="collapsed", disabled=is_disabled)
                 with c3:
                     st.session_state.risultati_temp[key_go] = st.number_input("GO", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_go], key=key_go, label_visibility="collapsed", disabled=is_disabled)
                 with c4:
-                    st.markdown(f"<div style='text-align:left;' class='team-name-premium'>{label_o} 🛫</div>", unsafe_allow_html=True)
-                v1, v2 = st.columns([6, 1.5])
-                with v2:
-                    validata_checkbox = st.checkbox("Valida ✅", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key)
+                    st.markdown(f"<div class='superba-compact-team-name away'>{escape(str(label_o))} 🛫</div>", unsafe_allow_html=True)
+                with c5:
+                    validata_checkbox = st.checkbox("Valida ✅", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key, label_visibility="collapsed", disabled=not has_write_access)
                     
         else: # Standard
             with st.container(border=True):
@@ -2185,9 +2151,41 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
             st.session_state["mostra_incontri_disputati"] = False
             st.session_state.rerun_needed = True
     else:
+        if st.session_state.get('tipo_vista_selezionata', 'compact').lower() in ('premium', 'standard'):
+            st.html("""
+            <style>
+            [data-testid="stHorizontalBlock"]:has(.superba-turn-navigation) {
+                display: grid !important;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr);
+                align-items: center !important;
+                gap: 8px !important;
+            }
+            [data-testid="stHorizontalBlock"]:has(.superba-turn-navigation) > div {
+                width: 100% !important;
+                min-width: 0 !important;
+                max-width: none !important;
+                margin: 0 !important;
+            }
+            [data-testid="stHorizontalBlock"]:has(.superba-turn-navigation) button {
+                width: 100% !important;
+                min-width: 0 !important;
+                min-height: 44px !important;
+                margin: 0 !important;
+                padding: 4px !important;
+                border-radius: 8px !important;
+                overflow-wrap: anywhere;
+            }
+            [data-testid="stHorizontalBlock"]:has(.superba-turn-navigation) h3 {
+                font-size: 16px !important;
+                padding: 0 !important;
+                overflow-wrap: anywhere;
+            }
+            .superba-turn-navigation { display: none; }
+            </style>
+            """)
         col_t1, col_t2, col_t3 = st.columns([0.5, 0.25, 0.25], vertical_alignment="bottom")
         with col_t1:
-            st.markdown(f"### Turno {st.session_state.turno_attivo}")
+            st.markdown(f"<span class='superba-turn-navigation'></span><h3>Turno {st.session_state.turno_attivo}</h3>", unsafe_allow_html=True)
         with col_t2:
             if st.button("📋 Incontri", key="btn_mostra_tutti_incontri", width="stretch"):
                 st.session_state["mostra_incontri_disputati"] = True
