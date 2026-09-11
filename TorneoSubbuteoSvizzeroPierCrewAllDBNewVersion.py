@@ -11,6 +11,7 @@ st.set_page_config(
 
 # Solo DOPO si possono importare le altre dipendenze
 import pandas as pd
+from html import escape
 from datetime import datetime
 import io
 from fpdf import FPDF
@@ -32,6 +33,11 @@ from shared.auth import verify_write_access
 
 # Importa moduli comuni per stili, audio e componenti UI
 from common.styles import inject_all_styles
+from common.piercrew_results import (
+    remember_document, save_document, reset_result_drafts, draft_value, render_sidebar_startup,
+    mark_saved, consume_change, result_number_input, result_checkbox, show_save_status, has_unsaved_results,
+)
+
 from common.audio import (
     autoplay_background_audio, autoplay_audio,
     toggle_audio_callback, start_background_audio, setup_audio_sidebar
@@ -42,70 +48,7 @@ from common.ui_components import (
 )
 
 def render_sidebar_collapse_workaround():
-    components.html("""
-    <div id="subbuteo-sidebar-tools">
-      <button id="subbuteo-collapse-sidebar" type="button">Chiudi sidebar</button>
-    </div>
-    <style>
-      html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
-      #subbuteo-sidebar-tools { display: none; justify-content: flex-end; width: 100%; }
-      #subbuteo-collapse-sidebar { width: auto; border: 0; border-radius: 7px; padding: .42rem .72rem; background: #1d3557; color: white; font-size: .78rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(29, 53, 87, .24); }
-      #subbuteo-collapse-sidebar:hover { background: #457b9d; }
-    </style>
-    <script>
-    (function() {
-      const box = document.getElementById("subbuteo-sidebar-tools");
-      const btn = document.getElementById("subbuteo-collapse-sidebar");
-      function doc() { try { return window.parent.document; } catch (e) { return null; } }
-      function open(sidebar) {
-        if (!sidebar) return false;
-        const aria = sidebar.getAttribute("aria-expanded");
-        if (aria === "true") return true;
-        if (aria === "false") return false;
-        return sidebar.getBoundingClientRect().width > 80;
-      }
-      function update() {
-        const d = doc();
-        const sidebar = d && d.querySelector('section[data-testid="stSidebar"]');
-        box.style.display = open(sidebar) ? "flex" : "none";
-      }
-      btn.addEventListener("click", function() {
-        const d = doc();
-        if (!d) return;
-        const selectors = [
-          'button[data-testid="stSidebarCollapseButton"]',
-          '[data-testid="stSidebarCollapseButton"] button',
-          '[data-testid="stSidebarHeader"] button',
-          'section[data-testid="stSidebar"] button[data-testid="baseButton-headerNoPadding"]',
-          'section[data-testid="stSidebar"] button[data-testid="stBaseButton-headerNoPadding"]',
-          'section[data-testid="stSidebar"] button[kind="header"]',
-          'button[aria-label="Close sidebar"]',
-          'button[aria-label="Collapse sidebar"]',
-          'button[title="Close sidebar"]',
-          'button[title="Collapse sidebar"]'
-        ];
-        let nativeButton = null;
-        for (const selector of selectors) {
-          nativeButton = d.querySelector(selector);
-          if (nativeButton) break;
-        }
-        if (!nativeButton) {
-          const sidebar = d.querySelector('section[data-testid="stSidebar"]');
-          nativeButton = Array.from(sidebar ? sidebar.querySelectorAll("button") : []).find(function(b) {
-            const t = (b.getAttribute("aria-label") || b.getAttribute("title") || "").toLowerCase();
-            return (t.includes("sidebar") || t.includes("barra")) &&
-                   (t.includes("close") || t.includes("collapse") || t.includes("chiudi") || t.includes("comprimi"));
-          });
-        }
-        if (nativeButton) nativeButton.click();
-        setTimeout(update, 150);
-        setTimeout(update, 650);
-      });
-      update();
-      setInterval(update, 700);
-    })();
-    </script>
-    """, height=44, width=150)
+    render_sidebar_startup()
 
 pwa.inject_pwa_assets()
 
@@ -309,12 +252,25 @@ def render_banner_audio_button(key_suffix: str):
     button_key = f"piercrew_banner_audio_button_{key_suffix}"
     st.markdown(f"""
     <style>
+    div[data-testid="stElementContainer"]:has(div.st-key-{button_key}),
+    div.element-container:has(div.st-key-{button_key}) {{
+        display: flex !important;
+        justify-content: center !important;
+        height: auto !important;
+        min-height: 0 !important;
+        margin: 8px 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+    }}
     div.st-key-{button_key} {{
         display: flex !important;
         justify-content: center !important;
         width: 100% !important;
     }}
     div.st-key-{button_key} button {{
+        display: block !important;
+        margin: 0 auto !important;
+        width: auto !important;
         min-width: 58px !important;
         height: 36px !important;
         min-height: 34px !important;
@@ -341,16 +297,21 @@ def render_banner_audio_button(key_suffix: str):
         0%, 100% {{ box-shadow: 0 0 0 4px rgba(255,230,109,0.14), 0 0 14px rgba(6,214,160,0.42), 0 5px 14px rgba(0,0,0,0.26); }}
         50% {{ box-shadow: 0 0 0 6px rgba(255,230,109,0.22), 0 0 24px rgba(6,214,160,0.72), 0 5px 14px rgba(0,0,0,0.26); }}
     }}
+    @media screen and (max-width: 520px) {{
+        div.st-key-{button_key} button {{
+            min-width: 52px !important;
+            min-height: 32px !important;
+            padding: 3px 7px !important;
+        }}
+    }}
     </style>
     """, unsafe_allow_html=True)
-    audio_label = "♫" if audio_enabled else "♪"
+    audio_label = "♪" if audio_enabled else "♩"
     audio_help = "Disabilita musica di sottofondo" if audio_enabled else "Abilita musica di sottofondo"
-    _, col_audio, _ = st.columns([1, 0.12, 1])
-    with col_audio:
-        if st.button(audio_label, key=button_key, help=audio_help):
-            st.session_state.bg_audio_disabled = audio_enabled
-            toggle_audio_callback()
-            st.rerun()
+    if st.button(audio_label, key=button_key, help=audio_help):
+        st.session_state.bg_audio_disabled = audio_enabled
+        toggle_audio_callback()
+        st.rerun()
     toggle_audio_callback()
 
     
@@ -373,32 +334,6 @@ def salva_torneo_su_db(action_type="salvataggio", details=None):
     # Ottieni il nome utente corrente o 'sconosciuto' se non disponibile
     current_user = st.session_state.get('user', {}).get('username', 'sconosciuto')
     
-    # Verifica se abbiamo già un ID torneo valido nella sessione
-    if 'tournament_id' in st.session_state and st.session_state.tournament_id:
-        try:
-            # Verifica se il torneo esiste ancora nel database
-            existing = tournaments_collection.find_one({"_id": ObjectId(st.session_state.tournament_id)})
-            if not existing:
-                # Se il torneo non esiste più, rimuoviamo l'ID dalla sessione
-                del st.session_state.tournament_id
-                # Log dell'errore
-                log_action(
-                    username=current_user,
-                    action="errore_salvataggio",
-                    torneo=st.session_state.get('nome_torneo', 'sconosciuto'),
-                    details={"errore": "Torneo non trovato nel database"}
-                )
-        except Exception as e:
-            # In caso di errore (es. ID non valido), rimuoviamo l'ID dalla sessione
-            del st.session_state.tournament_id
-            # Log dell'errore
-            log_action(
-                username=current_user,
-                action="errore_salvataggio",
-                torneo=st.session_state.get('nome_torneo', 'sconosciuto'),
-                details={"errore": str(e)}
-            )
-
     # Crea una copia del dataframe per la serializzazione
     df_torneo_to_save = st.session_state.df_torneo.copy()
     
@@ -442,6 +377,12 @@ def salva_torneo_su_db(action_type="salvataggio", details=None):
         "max_turni": st.session_state.get('max_turni'),
     }
 
+    def audit(**kwargs):
+        try:
+            log_action(**kwargs)
+        except Exception as exc:
+            print(f"[LOGGING] {exc}")
+
     try:
         # Prepara i dettagli del log
         log_details = {
@@ -452,11 +393,9 @@ def salva_torneo_su_db(action_type="salvataggio", details=None):
         
         # Se abbiamo un ID torneo nella sessione, aggiorniamo quel documento specifico
         if 'tournament_id' in st.session_state and st.session_state.tournament_id:
-            tournaments_collection.update_one(
-                {"_id": ObjectId(st.session_state.tournament_id)},
-                {"$set": torneo_data}
-            )
-            log_action(
+            if not save_document(tournaments_collection, st.session_state.tournament_id, torneo_data):
+                return False
+            audit(
                 username=current_user,
                 action=action_type,
                 torneo=st.session_state.nome_torneo,
@@ -468,24 +407,14 @@ def salva_torneo_su_db(action_type="salvataggio", details=None):
             existing_doc = tournaments_collection.find_one({"nome_torneo": st.session_state.nome_torneo})
             
             if existing_doc:
-                # Aggiorna il documento esistente e salva l'ID nella sessione
-                tournaments_collection.update_one(
-                    {"_id": existing_doc["_id"]},
-                    {"$set": torneo_data}
-                )
-                st.session_state.tournament_id = str(existing_doc["_id"])
-                log_action(
-                    username=current_user,
-                    action=action_type,
-                    torneo=st.session_state.nome_torneo,
-                    details={"tipo_operazione": "aggiornamento_esistente", **log_details}
-                )
-                st.toast(f"✅ Torneo esistente '{st.session_state.nome_torneo}' aggiornato con successo!")
+                st.error("Esiste gia' un torneo con questo nome. Aprilo prima di modificarlo.")
+                return False
             else:
                 # Crea un nuovo documento e salva l'ID nella sessione
                 result = tournaments_collection.insert_one(torneo_data)
                 st.session_state.tournament_id = str(result.inserted_id)
-                log_action(
+                remember_document(tournaments_collection, {**torneo_data, "_id": result.inserted_id})
+                audit(
                     username=current_user,
                     action=action_type,
                     torneo=st.session_state.nome_torneo,
@@ -494,7 +423,9 @@ def salva_torneo_su_db(action_type="salvataggio", details=None):
                 st.toast(f"✅ Nuovo torneo '{st.session_state.nome_torneo}' salvato con successo!")
         return True
     except Exception as e:
+        st.session_state["_piercrew_save_error"] = str(e)
         st.error(f"❌ Errore durante il salvataggio del torneo: {e}")
+        return False
 
 
 
@@ -543,6 +474,8 @@ def carica_torneo_da_db(nome_torneo):
             st.error(f"❌ Nessun torneo trovato con il nome '{nome_torneo}'")
             return False
             
+        remember_document(tournaments_collection, torneo)
+        reset_result_drafts(torneo['_id'])
         # Ripristina lo stato della sessione
         st.session_state.df_torneo = pd.DataFrame(torneo['df_torneo'])
         st.session_state.df_squadre = pd.DataFrame(torneo['df_squadre'])
@@ -585,8 +518,6 @@ def carica_torneo_da_db(nome_torneo):
         
         # Inizializza i risultati temporanei
         init_results_temp_from_df(st.session_state.df_torneo)
-        # MODIFICA: Salvataggio immediato dopo generazione calendario
-        salva_torneo_su_db(action_type="creazione_torneo_generato", details={"turno_generato": 1})
         return True
         
     except Exception as e:
@@ -1052,7 +983,7 @@ def controlla_fine_torneo():
 
     return False
 #inizio genera
-def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
+def genera_accoppiamenti(classifica, precedenti, primo_turno=False, turno=None):
     """
     Genera gli accoppiamenti per il turno corrente del torneo svizzero.
     
@@ -1077,7 +1008,7 @@ def genera_accoppiamenti(classifica, precedenti, primo_turno=False):
     2. Fallback: backtracking su ordine casuale (svizzero "permissivo")
     """
     import random
-    turno_attuale = st.session_state.get("turno_attivo", 1)
+    turno_attuale = turno if turno is not None else st.session_state.get("turno_attivo", 1)
     num_squadre = len(st.session_state.df_squadre)
 
     # ═══════════════════════════════════════════════════════
@@ -1246,135 +1177,117 @@ def init_results_temp_from_df(df):
         key_val = f"val_{T}_{casa}_{ospite}"
         st.session_state.risultati_temp.setdefault(key_gc, int(row.get('GolCasa', 0)))
         st.session_state.risultati_temp.setdefault(key_go, int(row.get('GolOspite', 0)))
-        st.session_state.risultati_temp.setdefault(key_val, bool(row.get('Validata', False)))
+        st.session_state.risultati_temp[key_val] = bool(row.get('Validata', False))
 
 def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visualizzazione):
     """Visualizza gli incontri del turno attivo e permette di inserire e validare i risultati."""
     tipo_vista = st.session_state.get('tipo_vista_selezionata', 'compact').lower()
+    has_write_access = verify_write_access()
     
-    if tipo_vista == 'compact':
-        st.markdown("""
+    if tipo_vista in ('compact', 'premium'):
+        st.html("""
         <style>
-        .pc-match-label {
+        div[data-testid="stHorizontalBlock"]:has(.piercrew-compact-match-marker) {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) 64px 64px minmax(0, 1fr) 44px;
+            gap: 8px !important;
+            align-items: center !important;
+            border-bottom: 1px solid rgba(128, 128, 128, 0.18);
+            padding: 8px 0;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.piercrew-compact-match-marker) > div {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            margin: 0 !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.piercrew-compact-match-marker)
+        [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
+            justify-content: center !important;
+        }
+        .piercrew-compact-match-marker {
+            display: none;
+        }
+        .piercrew-compact-team-name {
+            font-size: 16px;
             font-weight: 800;
-            font-size: 0.9rem;
-            line-height: 36px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            letter-spacing: 0;
+            line-height: 1.25;
+            white-space: normal;
+            overflow-wrap: anywhere;
         }
-        .pc-match-label.home {
+        .piercrew-compact-team-name.away {
             text-align: right;
-            padding-right: 10px;
         }
-        .pc-match-label.away {
-            text-align: left;
-            padding-left: 10px;
+        div[data-testid="stHorizontalBlock"]:has(.piercrew-compact-match-marker)
+        [data-testid="stMarkdownContainer"] {
+            margin-bottom: 0 !important;
         }
-        .pc-match-separator {
-            border-bottom: 1px solid rgba(255,255,255,0.06);
-            margin: 8px 0 12px;
+        div[data-testid="stHorizontalBlock"]:has(.piercrew-compact-match-marker)
+        [data-testid="stElementContainer"],
+        div[data-testid="stHorizontalBlock"]:has(.piercrew-compact-match-marker)
+        [data-testid="stCheckbox"] {
+            width: 100% !important;
         }
-        div[data-testid="stNumberInput"] button {
+        div[data-testid="stHorizontalBlock"]:has(.piercrew-compact-match-marker)
+        [data-testid="stNumberInput"],
+        div[data-testid="stHorizontalBlock"]:has(.piercrew-compact-match-marker)
+        [data-baseweb="input"],
+        div[data-testid="stHorizontalBlock"]:has(.piercrew-compact-match-marker)
+        [data-baseweb="base-input"] {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border-radius: 8px !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.piercrew-compact-match-marker)
+        [data-testid="stNumberInput"] input {
+            width: 100% !important;
+            min-width: 0 !important;
+            height: 44px !important;
+            padding: 0 2px !important;
+            font-size: 16px !important;
+            font-weight: 800 !important;
+            text-align: center !important;
+            -moz-appearance: textfield;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.piercrew-compact-match-marker)
+        [data-testid="stNumberInputContainer"] {
+            height: 44px !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.piercrew-compact-match-marker)
+        [data-testid="stNumberInput"] button,
+        div[data-testid="stHorizontalBlock"]:has(.piercrew-compact-match-marker)
+        input::-webkit-inner-spin-button,
+        div[data-testid="stHorizontalBlock"]:has(.piercrew-compact-match-marker)
+        input::-webkit-outer-spin-button {
             display: none !important;
         }
-        div[data-testid="stNumberInput"] input {
-            text-align: center !important;
-            font-weight: bold !important;
-        }
-        .portrait-warning {
-            display: none;
-            background: linear-gradient(135deg, #ff6b35, #f7931e);
-            color: white;
-            text-align: center;
-            padding: 12px;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 0.9rem;
-            margin: 8px 0 10px;
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-        @media screen and (max-width: 640px) and (orientation: portrait) {
-            .portrait-warning { display: block !important; }
+        div[data-testid="stHorizontalBlock"]:has(.piercrew-compact-match-marker)
+        [data-testid="stCheckbox"] label {
+            display: flex !important;
+            width: 100% !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-height: 44px !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
         @media screen and (max-width: 640px) {
-            .pc-match-label,
-            .pc-match-label.home,
-            .pc-match-label.away {
-                text-align: center !important;
-                padding-left: 0 !important;
-                padding-right: 0 !important;
-                font-size: 0.92rem !important;
-                line-height: 1.2 !important;
-                margin: 6px auto 5px !important;
-                max-width: 220px !important;
+            div[data-testid="stHorizontalBlock"]:has(.piercrew-compact-match-marker) {
+                grid-template-columns: minmax(0, 1fr) 48px 48px minmax(0, 1fr) 40px;
+                gap: 4px !important;
             }
-            div[data-testid="stNumberInput"] {
-                width: 64px !important;
-                max-width: 64px !important;
-                margin: 0 auto 8px auto !important;
-            }
-            div[data-testid="stNumberInput"] > div,
-            div[data-testid="stNumberInput"] div[data-baseweb="input"] {
-                width: 64px !important;
-                max-width: 64px !important;
-                padding: 0 !important;
-            }
-            div[data-testid="stNumberInput"] input {
-                width: 64px !important;
-                min-height: 34px !important;
-                font-size: 1rem !important;
-                text-align: center !important;
-            }
-            div[data-testid="stCheckbox"] {
-                width: fit-content !important;
-                margin: 4px auto 8px auto !important;
-            }
-            .pc-match-separator {
-                margin: 14px 0 18px !important;
+            .piercrew-compact-team-name {
+                font-size: 14px;
             }
         }
         </style>
-        <div class="portrait-warning">
-            📱🔄 Ruota il telefono in <b>ORIZZONTALE</b> per la vista ottimizzata!
-        </div>
-        """, unsafe_allow_html=True)
+        """)
 
-    elif tipo_vista == 'premium':
-        st.markdown("""
-        <style>
-        div[data-testid="stNumberInput"] button { display: none !important; }
-        div[data-testid="stNumberInput"] input::-webkit-outer-spin-button,
-        div[data-testid="stNumberInput"] input::-webkit-inner-spin-button {
-            -webkit-appearance: none !important; margin: 0 !important;
-        }
-        div[data-testid="stNumberInput"] input[type="number"] { -moz-appearance: textfield !important; }
-        div[data-testid="stNumberInput"] { max-width: 48px !important; }
-        div[data-testid="stNumberInput"] div[data-baseweb="input"] { padding: 0 !important; }
-        div[data-testid="stNumberInput"] input {
-            padding: 3px 1px !important; text-align: center !important;
-            font-weight: bold !important; font-size: 0.95rem !important;
-        }
-        div[data-testid="stCheckbox"] { margin-top: 0 !important; }
-
-        .portrait-warning {
-            display: none; background: linear-gradient(135deg, #ff6b35, #f7931e);
-            color: white; text-align: center; padding: 12px; border-radius: 8px;
-            font-weight: 700; font-size: 0.9rem; margin-bottom: 10px; animation: pulse 2s infinite;
-        }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-        @media screen and (max-width: 640px) and (orientation: portrait) {
-            .portrait-warning { display: block !important; }
-        }
-        </style>
-        <div class="portrait-warning">
-            📱🔄 Ruota il telefono in <b>ORIZZONTALE</b> per la vista ottimizzata!
-        </div>
-        <script>
-        try { if (screen.orientation && screen.orientation.lock) { screen.orientation.lock('landscape').catch(()=>{}); } } catch(e) {}
-        </script>
-        """, unsafe_allow_html=True)
+    if tipo_vista == 'premium':
         st.markdown("""
         <style>
         .match-header-premium {
@@ -1430,16 +1343,20 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
         if key_val not in st.session_state.risultati_temp:
             st.session_state.risultati_temp[key_val] = validata_iniziale
 
-        is_disabled = st.session_state.risultati_temp.get(key_val, False)
+        is_disabled = bool(draft_value(valida_key, validata_iniziale)) or not has_write_access
         
         # --- UI Rendering in base al tipo di vista ---
         if tipo_vista == 'compact':
             casa_col, gol_casa_col, gol_ospite_col, osp_col, valida_col = st.columns([2.2, 0.36, 0.36, 2.2, 0.42], gap="small")
             with casa_col:
-                st.markdown(f"<div class='pc-match-label home'>{label_c}</div>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<span class='piercrew-compact-match-marker'></span>"
+                    f"<div class='piercrew-compact-team-name home'>{escape(str(label_c))}</div>",
+                    unsafe_allow_html=True
+                )
             with gol_casa_col:
-                st.session_state.risultati_temp[key_gc] = st.number_input(
-                    "GC",
+                st.session_state.risultati_temp[key_gc] = result_number_input(
+                    f"Gol casa: {label_c}",
                     min_value=0,
                     max_value=20,
                     value=st.session_state.risultati_temp[key_gc],
@@ -1448,8 +1365,8 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
                     disabled=is_disabled,
                 )
             with gol_ospite_col:
-                st.session_state.risultati_temp[key_go] = st.number_input(
-                    "GO",
+                st.session_state.risultati_temp[key_go] = result_number_input(
+                    f"Gol ospite: {label_o}",
                     min_value=0,
                     max_value=20,
                     value=st.session_state.risultati_temp[key_go],
@@ -1458,26 +1375,33 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
                     disabled=is_disabled,
                 )
             with osp_col:
-                st.markdown(f"<div class='pc-match-label away'>{label_o}</div>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<div class='piercrew-compact-team-name away'>{escape(str(label_o))}</div>",
+                    unsafe_allow_html=True
+                )
             with valida_col:
-                validata_checkbox = st.checkbox("Validata", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key, label_visibility="collapsed")
-            st.markdown("<div class='pc-match-separator'></div>", unsafe_allow_html=True)
+                validata_checkbox = result_checkbox(
+                    f"Valida risultato: {label_c} - {label_o}",
+                    value=st.session_state.risultati_temp.get(key_val, False),
+                    key=valida_key,
+                    label_visibility="collapsed",
+                    disabled=not has_write_access
+                )
                 
         elif tipo_vista == 'premium':
             with st.container(border=True):
                 st.markdown(f"<div class='match-header-premium'>TURNO {turno_attivo} • MATCH {i+1}</div>", unsafe_allow_html=True)
-                c1, c2, c3, c4 = st.columns([3, 1, 1, 3])
+                c1, c2, c3, c4, c5 = st.columns([2.2, 0.36, 0.36, 2.2, 0.42], gap="small")
                 with c1:
-                    st.markdown(f"<div style='text-align:right;' class='team-name-premium'>🏠 {label_c}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<span class='piercrew-compact-match-marker'></span><div class='piercrew-compact-team-name home'>🏠 {escape(str(label_c))}</div>", unsafe_allow_html=True)
                 with c2:
-                    st.session_state.risultati_temp[key_gc] = st.number_input("GC", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_gc], key=key_gc, label_visibility="collapsed", disabled=is_disabled)
+                    st.session_state.risultati_temp[key_gc] = result_number_input(f"Gol casa: {label_c}", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_gc], key=key_gc, label_visibility="collapsed", disabled=is_disabled)
                 with c3:
-                    st.session_state.risultati_temp[key_go] = st.number_input("GO", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_go], key=key_go, label_visibility="collapsed", disabled=is_disabled)
+                    st.session_state.risultati_temp[key_go] = result_number_input(f"Gol ospite: {label_o}", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_go], key=key_go, label_visibility="collapsed", disabled=is_disabled)
                 with c4:
-                    st.markdown(f"<div style='text-align:left;' class='team-name-premium'>{label_o} 🛫</div>", unsafe_allow_html=True)
-                v1, v2 = st.columns([6, 1.5])
-                with v2:
-                    validata_checkbox = st.checkbox("Valida ✅", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key)
+                    st.markdown(f"<div class='piercrew-compact-team-name away'>{escape(str(label_o))} 🛫</div>", unsafe_allow_html=True)
+                with c5:
+                    validata_checkbox = result_checkbox(f"Valida risultato: {label_c} - {label_o}", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key, label_visibility="collapsed", disabled=not has_write_access)
                     
         else: # Standard
             with st.container(border=True):
@@ -1485,61 +1409,60 @@ def visualizza_incontri_attivi(df_turno_corrente, turno_attivo, modalita_visuali
                 st.markdown(f"<p style='text-align:center; font-weight:bold;'>🏠{label_c} 🆚 {label_o}🛫</p>", unsafe_allow_html=True)
                 c_score1, c_score2 = st.columns(2)
                 with c_score1:
-                    st.session_state.risultati_temp[key_gc] = st.number_input("GC", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_gc], key=key_gc, disabled=is_disabled, label_visibility="collapsed")
+                    st.session_state.risultati_temp[key_gc] = result_number_input(f"Gol casa: {label_c}", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_gc], key=key_gc, disabled=is_disabled, label_visibility="collapsed")
                 with c_score2:
-                    st.session_state.risultati_temp[key_go] = st.number_input("GO", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_go], key=key_go, disabled=is_disabled, label_visibility="collapsed")
+                    st.session_state.risultati_temp[key_go] = result_number_input(f"Gol ospite: {label_o}", min_value=0, max_value=20, value=st.session_state.risultati_temp[key_go], key=key_go, disabled=is_disabled, label_visibility="collapsed")
                 st.markdown("---")
-                validata_checkbox = st.checkbox("✅ Valida Risultato", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key)
+                validata_checkbox = result_checkbox("✅ Valida Risultato", value=st.session_state.risultati_temp.get(key_val, False), key=valida_key, disabled=not has_write_access)
 
-        # DB UPDATE LOGIC
-        if validata_checkbox != st.session_state.risultati_temp.get(key_val, False):
-            if validata_checkbox and not verify_write_access():
-                st.error("⛔ Accesso in sola lettura. Non è possibile validare la partita.")
-                st.session_state.risultati_temp[key_val] = False
-                st.session_state[f"{valida_key}_force_update"] = not st.session_state.get(f"{valida_key}_force_update", False)
-                return
-                
-            st.session_state.risultati_temp[key_val] = validata_checkbox
-            partita_idx = df_turno_corrente[df_turno_corrente['Casa'] == casa].index
-            
-            if validata_checkbox:
-                df_turno_corrente.loc[partita_idx, 'GolCasa'] = st.session_state.risultati_temp.get(key_gc, 0)
-                df_turno_corrente.loc[partita_idx, 'GolOspite'] = st.session_state.risultati_temp.get(key_go, 0)
-                df_turno_corrente.loc[partita_idx, 'Validata'] = True
-                st.session_state.df_torneo.loc[partita_idx, ['GolCasa', 'GolOspite', 'Validata']] = df_turno_corrente.loc[partita_idx, ['GolCasa', 'GolOspite', 'Validata']]
-                
-                if salva_torneo_su_db(
-                    action_type="validazione_risultato",
-                    details={
-                        "partita": f"{casa} vs {ospite}",
-                        "risultato": f"{df_turno_corrente.loc[partita_idx, 'GolCasa'].values[0]}-{df_turno_corrente.loc[partita_idx, 'GolOspite'].values[0]}",
-                        "turno": st.session_state.turno_attivo
-                    }
-                ):
-                    pass # Success
-                else:
-                    st.error("❌ Errore durante il salvataggio del risultato")
+        # Only an explicit validation action writes to the database.
+        if consume_change(valida_key):
+            if not verify_write_access():
+                st.error("Accesso in sola lettura.")
+                continue
+            previous_df = st.session_state.df_torneo.copy()
+            previous_valid = st.session_state.risultati_temp.get(key_val, False)
+            candidate = previous_df.copy()
+            candidate.loc[i, ['GolCasa', 'GolOspite', 'Validata']] = [
+                draft_value(key_gc, gol_casa_iniziale),
+                draft_value(key_go, gol_ospite_iniziale), validata_checkbox
+            ]
+            st.session_state.df_torneo = candidate
+            if salva_torneo_su_db(
+                action_type="validazione_risultato" if validata_checkbox else "rimozione_validazione",
+                details={"partita": f"{casa} vs {ospite}", "turno": turno_attivo}
+            ):
+                st.session_state.risultati_temp[key_val] = validata_checkbox
+                for field, result_key in [('GolCasa', key_gc), ('GolOspite', key_go), ('Validata', valida_key)]:
+                    mark_saved(result_key, candidate.at[i, field])
+                st.toast("Risultato salvato")
+                st.rerun()
             else:
-                df_turno_corrente.loc[partita_idx, 'Validata'] = False
-                st.session_state.df_torneo.loc[partita_idx, 'Validata'] = False
-                
-                if salva_torneo_su_db(
-                    action_type="rimozione_validazione",
-                    details={
-                        "partita": f"{casa} vs {ospite}",
-                        "turno": st.session_state.turno_attivo
-                    }
-                ):
-                    st.info(f"⚠️ Validazione rimossa per {casa} vs {ospite}")
-                else:
-                    st.error("❌ Errore durante il salvataggio delle modifiche")
-            
+                st.session_state.df_torneo = previous_df
+                st.session_state.risultati_temp[key_val] = previous_valid
+        elif tipo_vista == 'standard' and not validata_checkbox:
+            st.caption("Partita non validata")
+
+    show_save_status()
+    if st.button("Salva modifiche", key="piercrew_sw_save_drafts", disabled=not verify_write_access()):
+        previous_df = st.session_state.df_torneo.copy()
+        candidate = previous_df.copy()
+        saved_keys = []
+        for index, match in df_turno_corrente.iterrows():
+            suffix = f"{turno_attivo}_{match['Casa']}_{match['Ospite']}"
+            for field, result_key in [('GolCasa', f"gc_{suffix}"), ('GolOspite', f"go_{suffix}"), ('Validata', f"valida_{suffix}")]:
+                value = draft_value(result_key, match[field])
+                candidate.at[index, field] = value
+                saved_keys.append((result_key, value))
+        st.session_state.df_torneo = candidate
+        if salva_torneo_su_db(action_type="salvataggio_risultati"):
+            for result_key, value in saved_keys:
+                mark_saved(result_key, value)
+            init_results_temp_from_df(candidate)
+            st.toast("Risultati salvati")
             st.rerun()
-        
-        if st.session_state.risultati_temp.get(key_val, False):
-            pass
-        elif tipo_vista == 'standard':
-            st.warning("⚠️ Partita non ancora validata.")
+        else:
+            st.session_state.df_torneo = previous_df
 
 # -------------------------
 # Header grafico
@@ -1969,7 +1892,18 @@ if st.session_state.setup_mode == "nuovo":
 # -------------------------
 # User info
 auth.logout_button("Logout")
-setup_common_sidebar(show_user_info=True, show_hub_link=True, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL))
+setup_common_sidebar(show_user_info=True, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL), show_hub_link=False)
+# Keep Hub navigation independent of cached shared-module versions.
+st.sidebar.markdown("---")
+st.sidebar.subheader("🕹️ Gestione Rapida")
+st.sidebar.markdown(
+    '<div class="stLinkButton piercrew-hub-link">'
+    f'<a href="{escape(HUB_URL, quote=True)}" '
+    'style="display:flex;align-items:center;justify-content:center;'
+    'width:100%;box-sizing:border-box;min-height:44px;text-decoration:none;">'
+    '&#10145;&#65039; Vai a Hub Tornei</a></div>',
+    unsafe_allow_html=True,
+)
 
 # Audio di sottofondo
 setup_audio_sidebar()
@@ -2157,9 +2091,41 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
             st.session_state["mostra_incontri_disputati"] = False
             st.session_state.rerun_needed = True
     else:
+        if st.session_state.get('tipo_vista_selezionata', 'compact').lower() in ('premium', 'standard'):
+            st.html("""
+            <style>
+            [data-testid="stHorizontalBlock"]:has(.piercrew-turn-navigation) {
+                display: grid !important;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr);
+                align-items: center !important;
+                gap: 8px !important;
+            }
+            [data-testid="stHorizontalBlock"]:has(.piercrew-turn-navigation) > div {
+                width: 100% !important;
+                min-width: 0 !important;
+                max-width: none !important;
+                margin: 0 !important;
+            }
+            [data-testid="stHorizontalBlock"]:has(.piercrew-turn-navigation) button {
+                width: 100% !important;
+                min-width: 0 !important;
+                min-height: 44px !important;
+                margin: 0 !important;
+                padding: 4px !important;
+                border-radius: 8px !important;
+                overflow-wrap: anywhere;
+            }
+            [data-testid="stHorizontalBlock"]:has(.piercrew-turn-navigation) h3 {
+                font-size: 16px !important;
+                padding: 0 !important;
+                overflow-wrap: anywhere;
+            }
+            .piercrew-turn-navigation { display: none; }
+            </style>
+            """)
         col_t1, col_t2, col_t3 = st.columns([0.5, 0.25, 0.25], vertical_alignment="bottom")
         with col_t1:
-            st.markdown(f"### Turno {st.session_state.turno_attivo}")
+            st.markdown(f"<span class='piercrew-turn-navigation'></span><h3>Turno {st.session_state.turno_attivo}</h3>", unsafe_allow_html=True)
         with col_t2:
             if st.button("📋 Incontri", key="btn_mostra_tutti_incontri", width="stretch"):
                 st.session_state["mostra_incontri_disputati"] = True
@@ -2201,217 +2167,66 @@ if st.session_state.torneo_iniziato and not st.session_state.torneo_finito:
     
     mostra_classifica_fragment()
     
-    # Manteniamo il layout a due colonne per il prossimo turno
-    col_next = st.columns([1])[0]  # Creiamo una colonna singola per il pulsante del prossimo turno
-    
-    with col_next:
-        st.subheader("Prossimo Turno ➡️")
-        if tutte_validate:
-            precedenti = set(zip(st.session_state.df_torneo['Casa'], st.session_state.df_torneo['Ospite'])) | set(zip(st.session_state.df_torneo['Ospite'], st.session_state.df_torneo['Casa']))
-            df_turno_prossimo = genera_accoppiamenti(classifica_attuale, precedenti)
+    def conclude_tournament(reason):
+        if not verify_write_access():
+            return False
+        previous_finished = st.session_state.get('torneo_finito', False)
+        st.session_state.torneo_finito = True
+        if not salva_torneo_su_db(action_type="fine_torneo_automatico", details={"motivo": reason}):
+            st.session_state.torneo_finito = previous_finished
+            return False
+        try:
+            from palmares_utils import register_win
+            if not classifica_attuale.empty:
+                winner = classifica_attuale.iloc[0]['Squadra']
+                players = st.session_state.df_squadre
+                matched = players[players['Squadra'] == winner]
+                player = matched.iloc[0]['Giocatore'] if not matched.empty else winner
+                client_pl = MongoClient(st.secrets["MONGO_URI"], tlsCAFile=certifi.where())
+                register_win(db_players_col=client_pl["giocatori_subbuteo"]["piercrew_players"],
+                             winner_name=player, tournament_name=st.session_state.nome_torneo,
+                             tournament_type="svizzero")
+        except Exception as exc:
+            st.warning(f"Torneo salvato; aggiornamento palmares non riuscito: {exc}")
+        return True
 
-            if df_turno_prossimo is not None and not df_turno_prossimo.empty:
-                # Convert NumPy boolean to Python boolean for the disabled state
-                is_disabled = bool(
-                    (st.session_state.turno_attivo >= st.session_state.df_torneo['Turno'].max().item() 
-                     if not st.session_state.df_torneo.empty else True) or 
-                    not verify_write_access()
-                )
-                
-                # Anche verifica se torneo è finito
-                is_disabled_next = False
-
-                if st.session_state.get("torneo_finito", False):
-                    is_disabled_next = True
-                if not tutte_validate:
-                    is_disabled_next = True
-                
-                #if st.button("🔄 Genera Prossimo Turno",
-                if st.button("▶️ Genera prossimo turno", 
-                    width="stretch", 
-                    type="primary",
-                    disabled=is_disabled_next,
-                    help="Genera il prossimo turno" + ("" if verify_write_access() else " (accesso in sola lettura)")):
-                    
-                    if verify_write_access():
-                        # Controlla se abbiamo raggiunto il numero massimo di turni
-                        if st.session_state.modalita_turni == "fisso" and st.session_state.max_turni is not None:
-                            if st.session_state.turno_attivo >= st.session_state.max_turni:
-                                st.info(f"✅ Torneo terminato: raggiunto il limite di {st.session_state.max_turni} round.")
-                                st.session_state.torneo_finito = True
-                                
-                                # --- PALMARES SUPERBA SVIZZERO ---
-                                try:
-                                    from palmares_utils import register_win
-                                    from pymongo import MongoClient
-                                    import certifi
-                                    import os
-                                    
-                                    # Usa la collection corretta
-                                    client_tmp = MongoClient(st.secrets["MONGO_URI"], tlsCAFile=certifi.where())
-                                    db_pl = client_tmp["giocatori_subbuteo"]
-                                    players_col_pl = db_pl["piercrew_players"]
-                                    
-                                    classifica_finale_sw = aggiorna_classifica(st.session_state.df_torneo)
-                                    if not classifica_finale_sw.empty:
-                                        vincitore_str = classifica_finale_sw.iloc[0]['Squadra']
-                                        
-                                        # Ricerca del giocatore associato a questa squadra (nel dataframe o parse stringa)
-                                        # Nel torneo svizzero squadra è anche spesso il nome del giocatore ma con format Giocatore o Squadra
-                                        # parse_team_player non è globalmente disponibile qui come nel torneo italiana, 
-                                        # ma cerchiamo di estrarre dal df_squadre
-                                        giocatore_vincitore = vincitore_str
-                                        if 'df_squadre' in st.session_state and not st.session_state.df_squadre.empty:
-                                            # Trova il giocatore associato alla squadra vincente
-                                            match_df = st.session_state.df_squadre[st.session_state.df_squadre['Squadra'] == vincitore_str]
-                                            if not match_df.empty:
-                                                giocatore_vincitore = match_df.iloc[0]['Giocatore']
-                                        elif "-" in vincitore_str:
-                                            parts = vincitore_str.split("-", 1)
-                                            giocatore_vincitore = parts[1].strip() if len(parts)>1 else vincitore_str
-
-                                        register_win(
-                                            db_players_col=players_col_pl,
-                                            winner_name=giocatore_vincitore,
-                                            tournament_name=st.session_state.nome_torneo,
-                                            tournament_type="svizzero"
-                                        )
-                                except Exception as e:
-                                    print(f"[PALMARES SVIZZERO] Errore salvataggio palmares: {e}")
-                                # --- FINE PALMARES ---
-                                
-                                salva_torneo_su_db(
-                                    action_type="fine_torneo_automatico",
-                                    details={"motivo": "raggiunto_limite_turni", "turni_giocati": st.session_state.max_turni}
-                                )
-                                st.rerun()
-                        
-                        # Incrementa il contatore del turno
-                        nuovo_turno = st.session_state.turno_attivo + 1
-                        
-                        # Salva i risultati del turno corrente
-                        if not salva_torneo_su_db(
-                            action_type="salvataggio_turno_corrente",
-                            details={"turno": st.session_state.turno_attivo}
-                        ):
-                            st.error("❌ Errore durante il salvataggio del turno corrente")
-                            st.stop()
-                        
-                        # Aggiorna il numero del turno e genera il prossimo
-                        st.session_state.turno_attivo = nuovo_turno
-                        df_turno_prossimo["Turno"] = st.session_state.turno_attivo
-                        st.session_state.df_torneo = pd.concat([st.session_state.df_torneo, df_turno_prossimo], ignore_index=True)
-                        st.session_state.risultati_temp = {}
-                        init_results_temp_from_df(df_turno_prossimo)
-                        
-                        # Salva il nuovo turno
-                        if salva_torneo_su_db(
-                            action_type="generazione_nuovo_turno",
-                            details={"nuovo_turno": st.session_state.turno_attivo + 1}
-                        ):
-                            st.toast("✅ Nuovo turno generato e salvato con successo!")
-                            st.rerun()
-                        else:
-                            st.error("❌ Errore durante il salvataggio del nuovo turno")
-
-                #FINE
-
+    if not st.session_state.get('torneo_finito', False):
+        st.subheader("Prossimo turno")
+        pending = has_unsaved_results()
+        can_advance = verify_write_access() and tutte_validate and not pending
+        round_token = (st.session_state.get('tournament_id'), st.session_state.turno_attivo)
+        limit_reached = (st.session_state.modalita_turni == "fisso"
+                         and st.session_state.max_turni is not None
+                         and st.session_state.turno_attivo >= st.session_state.max_turni)
+        exhausted = st.session_state.get('_piercrew_no_pairs') == round_token
+        if limit_reached or exhausted:
+            if st.button("Concludi torneo", key="piercrew_sw_finish", disabled=not can_advance):
+                if conclude_tournament("limite_turni" if limit_reached else "accoppiamenti_esauriti"):
+                    st.rerun()
+        elif st.button("Genera prossimo turno", key="piercrew_sw_next", disabled=not can_advance):
+            next_number = st.session_state.turno_attivo + 1
+            precedenti = set(zip(st.session_state.df_torneo['Casa'], st.session_state.df_torneo['Ospite']))
+            next_df = genera_accoppiamenti(classifica_attuale, precedenti, turno=next_number)
+            if next_df is None or next_df.empty:
+                st.session_state['_piercrew_no_pairs'] = round_token
+                st.rerun()
+            previous_df = st.session_state.df_torneo.copy()
+            previous_turn = st.session_state.turno_attivo
+            st.session_state.df_torneo = pd.concat([previous_df, next_df], ignore_index=True)
+            st.session_state.turno_attivo = next_number
+            if salva_torneo_su_db(action_type="generazione_nuovo_turno", details={"nuovo_turno": next_number}):
+                st.session_state.risultati_temp = {}
+                init_results_temp_from_df(next_df)
+                st.toast("Nuovo turno salvato")
+                st.rerun()
             else:
-                # Controlla se abbiamo effettivamente esaurito tutti i possibili accoppiamenti
-                st.info("ℹ️ Non ci sono più combinazioni possibili. Tutti gli incontri possibili sono stati disputati.")
-                
-                # Determina il vincitore dalla classifica attuale
-                classifica_attuale = aggiorna_classifica(st.session_state.df_torneo)
-                if not classifica_attuale.empty:
-                    vincitore = classifica_attuale.iloc[0]['Squadra']
-                    punti_vincitore = classifica_attuale.iloc[0]['Punti']
-                    
-                    st.success(f"🏆 Il torneo ha un vincitore chiaro: **{vincitore}** con {punti_vincitore} punti!")
-                    
-                    if st.button("🏁 Chiudi Torneo e Incorona il Vincitore", type="primary", use_container_width=True):
-                        # Salva lo stato del torneo come terminato
-                        st.session_state.torneo_finito = True
-                        
-                        # --- PALMARES SUPERBA SVIZZERO (Fine accoppiamenti) ---
-                        try:
-                            from palmares_utils import register_win
-                            from pymongo import MongoClient
-                            import certifi
-                            client_tmp = MongoClient(st.secrets["MONGO_URI"], tlsCAFile=certifi.where())
-                            db_pl = client_tmp["giocatori_subbuteo"]
-                            players_col_pl = db_pl["piercrew_players"]
-                            
-                            # Vincitore già determinato sopra (vincitore = classifica_attuale.iloc[0]['Squadra'])
-                            giocatore_vincitore = vincitore
-                            if 'df_squadre' in st.session_state and not st.session_state.df_squadre.empty:
-                                match_df = st.session_state.df_squadre[st.session_state.df_squadre['Squadra'] == vincitore]
-                                if not match_df.empty:
-                                    giocatore_vincitore = match_df.iloc[0]['Giocatore']
-                            elif "-" in vincitore:
-                                parts = vincitore.split("-", 1)
-                                giocatore_vincitore = parts[1].strip() if len(parts)>1 else vincitore
+                st.session_state.df_torneo = previous_df
+                st.session_state.turno_attivo = previous_turn
+        if pending:
+            st.caption("Salva le modifiche prima di avanzare.")
+        elif not tutte_validate:
+            st.caption("Partite del turno ancora da validare.")
 
-                            register_win(
-                                db_players_col=players_col_pl,
-                                winner_name=giocatore_vincitore,
-                                tournament_name=st.session_state.nome_torneo,
-                                tournament_type="svizzero"
-                            )
-                        except Exception as e:
-                            print(f"[PALMARES SVIZZERO] Errore salvataggio palmares: {e}")
-                        # --- FINE PALMARES ---
-
-                        salva_torneo_su_db(
-                            action_type="fine_torneo_automatico",
-                            details={"motivo": "impossibile_generare_nuovi_accoppiamenti"}
-                        )
-                        st.rerun()
-                else:
-                    # Meno di 2 squadre rimaste, il torneo è finito
-                    st.success("🏆 Torneo terminato con successo!")
-                    if st.button("🏁 Chiudi Torneo", type="primary", use_container_width=True):
-                        st.session_state.torneo_finito = True
-                        
-                        # --- PALMARES SUPERBA SVIZZERO (Meno di 2 squadre) ---
-                        try:
-                            from palmares_utils import register_win
-                            from pymongo import MongoClient
-                            import certifi
-                            client_tmp = MongoClient(st.secrets["MONGO_URI"], tlsCAFile=certifi.where())
-                            db_pl = client_tmp["giocatori_subbuteo"]
-                            players_col_pl = db_pl["piercrew_players"]
-                            
-                            classifica_finale_sw = aggiorna_classifica(st.session_state.df_torneo)
-                            if not classifica_finale_sw.empty:
-                                vincitore_str = classifica_finale_sw.iloc[0]['Squadra']
-                                giocatore_vincitore = vincitore_str
-                                if 'df_squadre' in st.session_state and not st.session_state.df_squadre.empty:
-                                    match_df = st.session_state.df_squadre[st.session_state.df_squadre['Squadra'] == vincitore_str]
-                                    if not match_df.empty:
-                                        giocatore_vincitore = match_df.iloc[0]['Giocatore']
-                                elif "-" in vincitore_str:
-                                    parts = vincitore_str.split("-", 1)
-                                    giocatore_vincitore = parts[1].strip() if len(parts)>1 else vincitore_str
-
-                                register_win(
-                                    db_players_col=players_col_pl,
-                                    winner_name=giocatore_vincitore,
-                                    tournament_name=st.session_state.nome_torneo,
-                                    tournament_type="svizzero"
-                                )
-                        except Exception as e:
-                            print(f"[PALMARES SVIZZERO] Errore salvataggio palmares: {e}")
-                        # --- FINE PALMARES ---
-
-                        salva_torneo_su_db(
-                            action_type="fine_torneo_automatico",
-                            details={"motivo": "meno_di_due_squadre_rimaste"}
-                        )
-                        st.rerun()
-        else:
-            st.warning("⚠️ Per generare il prossimo turno, devi validare tutti i risultati.")
-
-    
 # -------------------------
 # Banner vincitore
 # -------------------------

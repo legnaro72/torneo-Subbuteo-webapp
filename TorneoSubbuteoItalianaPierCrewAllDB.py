@@ -9,6 +9,7 @@ st.set_page_config(
 )
 
 import pandas as pd
+from html import escape
 import numpy as np
 import json
 import os
@@ -55,6 +56,11 @@ from shared.auth import verify_write_access
 
 # Importa moduli comuni per stili, audio e componenti UI
 from common.styles import inject_all_styles
+from common.piercrew_results import (
+    remember_document, save_document, reset_result_drafts, draft_value, render_sidebar_startup,
+    mark_saved, result_number_input, result_checkbox, show_save_status,
+)
+
 from common.audio import (
     autoplay_background_audio, autoplay_audio, 
     toggle_audio_callback, start_background_audio, setup_audio_sidebar
@@ -67,146 +73,9 @@ from common.ui_components import (
 
 
 def render_sidebar_collapse_workaround():
-    components.html("""
-    <div id="subbuteo-sidebar-tools">
-      <button id="subbuteo-collapse-sidebar" type="button">Chiudi sidebar</button>
-    </div>
-    <style>
-      html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
-      #subbuteo-sidebar-tools { display: none; justify-content: flex-end; width: 100%; }
-      #subbuteo-collapse-sidebar { width: auto; border: 0; border-radius: 7px; padding: .42rem .72rem; background: #1d3557; color: white; font-size: .78rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(29, 53, 87, .24); }
-      #subbuteo-collapse-sidebar:hover { background: #457b9d; }
-    </style>
-    <script>
-    (function() {
-      const box = document.getElementById("subbuteo-sidebar-tools");
-      const btn = document.getElementById("subbuteo-collapse-sidebar");
-      function doc() { try { return window.parent.document; } catch (e) { return null; } }
-      function open(sidebar) {
-        if (!sidebar) return false;
-        const aria = sidebar.getAttribute("aria-expanded");
-        if (aria === "true") return true;
-        if (aria === "false") return false;
-        return sidebar.getBoundingClientRect().width > 80;
-      }
-      function update() {
-        const d = doc();
-        const sidebar = d && d.querySelector('section[data-testid="stSidebar"]');
-        box.style.display = open(sidebar) ? "flex" : "none";
-      }
-      btn.addEventListener("click", function() {
-        const d = doc();
-        if (!d) return;
-        const selectors = [
-          'button[data-testid="stSidebarCollapseButton"]',
-          '[data-testid="stSidebarCollapseButton"] button',
-          'button[aria-label="Close sidebar"]',
-          'button[aria-label="Collapse sidebar"]',
-          'button[title="Close sidebar"]',
-          'button[title="Collapse sidebar"]'
-        ];
-        let nativeButton = null;
-        for (const selector of selectors) {
-          nativeButton = d.querySelector(selector);
-          if (nativeButton) break;
-        }
-        if (!nativeButton) {
-          nativeButton = Array.from(d.querySelectorAll("button")).find(function(b) {
-            const t = (b.getAttribute("aria-label") || b.getAttribute("title") || "").toLowerCase();
-            return t.includes("sidebar") && (t.includes("close") || t.includes("collapse"));
-          });
-        }
-        if (nativeButton) nativeButton.click();
-        setTimeout(update, 150);
-        setTimeout(update, 650);
-      });
-      update();
-      setInterval(update, 700);
-    })();
-    </script>
-    """, height=44, width=150)
+    render_sidebar_startup()
 
 
-def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, key_prefix: str = ""):
-    """Navigazione locale Italiana: mostra < GIO n > compatto su una riga."""
-    st.markdown("""
-        <style>
-        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            align-items: center !important;
-            justify-content: center !important;
-            gap: 8px !important;
-            max-width: min(100%, 260px) !important;
-            margin: 0 auto !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"] {
-            flex: 0 0 auto !important;
-            width: auto !important;
-            min-width: 0 !important;
-            padding: 0 !important;
-            margin: 0 !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:first-child,
-        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:last-child {
-            width: 72px !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:nth-child(2) {
-            width: 72px !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) button {
-            height: 32px !important;
-            min-height: 32px !important;
-            padding: 0 !important;
-            border-radius: 6px !important;
-            font-size: 0.78rem !important;
-        }
-        .nav-btn-marker {
-            text-align: center;
-            font-weight: 900;
-            font-size: 0.9rem;
-            line-height: 32px;
-            height: 32px;
-            width: 100%;
-            white-space: nowrap;
-        }
-        @media screen and (max-width: 480px) {
-            div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) {
-                max-width: 100% !important;
-                gap: 10px !important;
-            }
-            div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:first-child,
-            div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:last-child {
-                width: 96px !important;
-            }
-            div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) > div[data-testid="column"]:nth-child(2) {
-                width: 88px !important;
-            }
-            div[data-testid="stHorizontalBlock"]:has(.nav-btn-marker) button {
-                font-size: 0.82rem !important;
-                min-width: 0 !important;
-            }
-        }
-        p { margin-bottom: 0px; }
-        </style>
-    """, unsafe_allow_html=True)
-
-    current = st.session_state.get(value_key, min_val)
-    display_label = f"GIORNATA {current}"
-    col_prev, col_label, col_next = st.columns([1, 0.9, 1], gap="small")
-    with col_prev:
-        if st.button("◀", key=f"{key_prefix}nav_prev_{value_key}", width="stretch"):
-            if current > min_val:
-                st.session_state[value_key] = current - 1
-                st.rerun()
-    with col_label:
-        st.markdown(f"<div class='nav-btn-marker'>{display_label}</div>", unsafe_allow_html=True)
-    with col_next:
-        if st.button("▶", key=f"{key_prefix}nav_next_{value_key}", width="stretch"):
-            if current < max_val:
-                st.session_state[value_key] = current + 1
-                st.rerun()
 
 
 # Configurazione della pagina
@@ -469,6 +338,8 @@ def carica_torneo_da_db(tournaments_collection, tournament_id):
     try:
         torneo_data = tournaments_collection.find_one({"_id": ObjectId(tournament_id)})
         if torneo_data and 'calendario' in torneo_data:
+            remember_document(tournaments_collection, torneo_data)
+            reset_result_drafts(torneo_data['_id'])
             df_torneo = pd.DataFrame(torneo_data['calendario'])
             df_torneo['Valida'] = df_torneo['Valida'].astype(bool)
             # Pulisci e converti esplicitamente
@@ -496,7 +367,7 @@ def salva_torneo_su_db(tournaments_collection, df_torneo, nome_torneo, tournamen
     if tournaments_collection is None:
         return None
     try:
-        df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
+        df_torneo_pulito = df_torneo.astype(object).where(pd.notna(df_torneo), None)
         now = datetime.now()
         data = {
             "nome_torneo": nome_torneo,
@@ -506,10 +377,8 @@ def salva_torneo_su_db(tournaments_collection, df_torneo, nome_torneo, tournamen
         
         # Se abbiamo un ID torneo, aggiorniamo il torneo esistente
         if tournament_id:
-            tournaments_collection.update_one(
-                {"_id": ObjectId(tournament_id)},
-                {"$set": data}
-            )
+            if not save_document(tournaments_collection, tournament_id, data):
+                return None
             # logging: aggiornamento torneo
             try:
                 user = st.session_state.get('user', 'unknown') if 'st' in globals() else 'system'
@@ -525,7 +394,10 @@ def salva_torneo_su_db(tournaments_collection, df_torneo, nome_torneo, tournamen
         else:
             # Altrimenti creiamo un nuovo torneo
             data["data_creazione"] = now
+            if not verify_write_access():
+                return None
             result = tournaments_collection.insert_one(data)
+            remember_document(tournaments_collection, {**data, "_id": result.inserted_id})
             # logging: creazione torneo
             try:
                 user = st.session_state.get('user', 'unknown') if 'st' in globals() else 'system'
@@ -546,14 +418,12 @@ def aggiorna_torneo_su_db(tournaments_collection, tournament_id, df_torneo):
     if tournaments_collection is None:
         return False
     try:
-        df_torneo_pulito = df_torneo.where(pd.notna(df_torneo), None)
-        tournaments_collection.update_one(
-            {"_id": ObjectId(tournament_id)},
-            {"$set": {
-                "calendario": df_torneo_pulito.to_dict('records'),
-                "data_modifica": datetime.now()
-            }}
-        )
+        df_torneo_pulito = df_torneo.astype(object).where(pd.notna(df_torneo), None)
+        if not save_document(tournaments_collection, tournament_id, {
+            "calendario": df_torneo_pulito.to_dict('records'),
+            "data_modifica": datetime.now()
+        }):
+            return False
         # logging: aggiornamento torneo
         try:
             user = st.session_state.get('user', 'unknown') if 'st' in globals() else 'system'
@@ -682,6 +552,11 @@ def parse_team_player(val):
         return squadra.strip(), giocatore.strip()
     return val, ""
 
+def has_single_girone(df):
+    if df is None or df.empty or 'Girone' not in df.columns:
+        return True
+    return df['Girone'].dropna().nunique() <= 1
+
 def format_vincitori_italiana(df_classifica):
     """Formatta il banner vincitori senza citare il girone quando il torneo ha un solo girone."""
     if df_classifica is None or df_classifica.empty or 'Girone' not in df_classifica.columns:
@@ -701,25 +576,74 @@ def format_vincitori_italiana(df_classifica):
     return ", ".join(vincitori)
 
 def navigation_buttons(label: str, value_key: str, min_val: int, max_val: int, key_prefix: str = ""):
-    """Navigazione giornata stabile su mobile: nessun bottone tagliato."""
+    """Navigazione locale su una riga in tutte le viste."""
     current = st.session_state.get(value_key, min_val)
+    compact = st.session_state.get('tipo_vista_selezionata', 'pc') in ('pc', 'compact', 'smartphone')
+    st.html("""
+        <style>
+        .st-key-piercrew_italiana_navigation [data-testid="stHorizontalBlock"] {
+            display: grid !important;
+            grid-template-columns: 48px minmax(0, 1fr) 48px;
+            align-items: center !important;
+            gap: 8px !important;
+        }
+        .st-key-piercrew_italiana_navigation [data-testid="stHorizontalBlock"] > div {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            margin: 0 !important;
+        }
+        .st-key-piercrew_italiana_navigation [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
+            height: auto !important;
+            min-height: 44px;
+            justify-content: center !important;
+        }
+        .st-key-piercrew_italiana_navigation button {
+            width: 48px !important;
+            min-width: 0 !important;
+            min-height: 44px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border-radius: 8px !important;
+        }
+        .st-key-piercrew_italiana_navigation button:not(:disabled) {
+            background: linear-gradient(to right, var(--color-primary-mid), var(--color-primary-light));
+            color: white;
+        }
+        .st-key-piercrew_italiana_navigation .piercrew-day-label {
+            text-align: center;
+            font-size: 16px;
+            font-weight: 900;
+            letter-spacing: 0;
+            line-height: 1.2;
+            overflow-wrap: anywhere;
+        }
+        .st-key-piercrew_italiana_navigation [data-testid="stMarkdownContainer"] {
+            margin-bottom: 0 !important;
+        }
+        </style>
+    """)
 
-    col_prev, col_label, col_next = st.columns([1, 1, 1], gap="small")
-    with col_prev:
-        if st.button("◀", key=f"{key_prefix}nav_prev_{value_key}", width="stretch"):
-            if current > min_val:
-                st.session_state[value_key] = current - 1
-                st.rerun()
-    with col_label:
-        st.markdown(
-            f"<div style='text-align:center;font-weight:900;padding-top:0.45rem;white-space:nowrap;'>GIORNATA {current}</div>",
-            unsafe_allow_html=True
-        )
-    with col_next:
-        if st.button("▶", key=f"{key_prefix}nav_next_{value_key}", width="stretch"):
-            if current < max_val:
-                st.session_state[value_key] = current + 1
-                st.rerun()
+    with st.container(key="piercrew_italiana_navigation"):
+        col_prev, col_label, col_next = st.columns([1, 1, 1], gap="small")
+        with col_prev:
+            if st.button("◀", key=f"{key_prefix}nav_prev_{value_key}", width="stretch",
+                         disabled=compact and current <= min_val, help="Giornata precedente"):
+                if current > min_val:
+                    st.session_state[value_key] = current - 1
+                    st.rerun()
+        with col_label:
+            st.markdown(
+                f"<div class='piercrew-day-label' style='text-align:center;font-weight:900;'>"
+                f"GIORNATA {current}</div>",
+                unsafe_allow_html=True
+            )
+        with col_next:
+            if st.button("▶", key=f"{key_prefix}nav_next_{value_key}", width="stretch",
+                         disabled=compact and current >= max_val, help="Giornata successiva"):
+                if current < max_val:
+                    st.session_state[value_key] = current + 1
+                    st.rerun()
 
 def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizzazione):
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
@@ -735,6 +659,7 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizza
         st.warning("⚠️ Dati delle squadre non trovati. Assicurati che il torneo sia stato inizializzato correttamente.")
     
     for idx, row in df_giornata.iterrows():
+        match_validated = bool(draft_value(f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}", bool(row['Valida'])))
         squadra_casa, giocatore_casa = parse_team_player(row['Casa'])
         squadra_ospite, giocatore_ospite = parse_team_player(row['Ospite'])
         
@@ -754,31 +679,31 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizza
             with c_score1:
                 # Chiave unica che usa i valori originali del DataFrame, garantendo la coerenza
                 key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
-                st.number_input(
+                result_number_input(
                     "Gol Casa",
                     min_value=0, max_value=20,
                     key=key_golcasa,
                     value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
-                    disabled=row['Valida'],
+                    disabled=not verify_write_access() or match_validated,
                     label_visibility="collapsed"
                 )
           
             with c_score2:
                 # Chiave unica che usa i valori originali del DataFrame, garantendo la coerenza
                 key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
-                st.number_input(
+                result_number_input(
                     "Gol Ospite",
                     min_value=0, max_value=20,
                     key=key_golospite,
                     value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
-                    disabled=row['Valida'],
+                    disabled=not verify_write_access() or match_validated,
                     label_visibility="collapsed"
                 )
             
             st.divider()
             # Chiave unica che usa i valori originali del DataFrame, garantendo la coerenza
             key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
-            st.checkbox(
+            result_checkbox(
                 "✅ Valida",
                 key=key_valida,
                 value=bool(row['Valida']) if pd.notna(row['Valida']) else False,
@@ -791,14 +716,109 @@ def mostra_calendario_giornata(df, girone_sel, giornata_sel, modalita_visualizza
             else:
                 st.warning("⚠️ Partita non ancora validata.")
 
+def applica_stile_riga_calendario(selector=".st-key-piercrew_italiana_compact"):
+    # Un vero container Streamlit include i widget; due markdown <div> non li racchiudono.
+    st.html("""
+        <style>
+        .st-key-piercrew_italiana_compact [data-testid="stHorizontalBlock"] {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) 64px 64px minmax(0, 1fr) 44px;
+            gap: 8px !important;
+            align-items: center !important;
+            border-bottom: 1px solid rgba(128, 128, 128, 0.18);
+            padding: 8px 0;
+        }
+        .st-key-piercrew_italiana_compact [data-testid="stHorizontalBlock"] > div {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            margin: 0 !important;
+        }
+        .st-key-piercrew_italiana_compact .piercrew-team-name {
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 0;
+            line-height: 1.25;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+        .st-key-piercrew_italiana_compact [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
+            justify-content: center !important;
+        }
+        .st-key-piercrew_italiana_compact [data-testid="stElementContainer"],
+        .st-key-piercrew_italiana_compact [data-testid="stCheckbox"] {
+            width: 100% !important;
+        }
+        .st-key-piercrew_italiana_compact .piercrew-team-name.away {
+            text-align: right;
+        }
+        .st-key-piercrew_italiana_compact [data-testid="stMarkdownContainer"] {
+            margin-bottom: 0 !important;
+        }
+        .st-key-piercrew_italiana_compact [data-testid="stNumberInput"],
+        .st-key-piercrew_italiana_compact [data-baseweb="input"],
+        .st-key-piercrew_italiana_compact [data-baseweb="base-input"] {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border-radius: 8px !important;
+        }
+        .st-key-piercrew_italiana_compact [data-testid="stNumberInput"] input {
+            width: 100% !important;
+            min-width: 0 !important;
+            height: 44px !important;
+            padding: 0 2px !important;
+            font-size: 16px !important;
+            font-weight: 800 !important;
+            text-align: center !important;
+            -moz-appearance: textfield;
+        }
+        .st-key-piercrew_italiana_compact [data-testid="stNumberInputContainer"] {
+            height: 44px !important;
+        }
+        .st-key-piercrew_italiana_compact [data-testid="stNumberInput"] button,
+        .st-key-piercrew_italiana_compact input::-webkit-inner-spin-button,
+        .st-key-piercrew_italiana_compact input::-webkit-outer-spin-button {
+            display: none !important;
+        }
+        .st-key-piercrew_italiana_compact [data-testid="stCheckbox"] label {
+            display: flex !important;
+            width: 100% !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-height: 44px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        @media screen and (max-width: 640px) {
+            .st-key-piercrew_italiana_compact [data-testid="stHorizontalBlock"] {
+                grid-template-columns: minmax(0, 1fr) 48px 48px minmax(0, 1fr) 40px;
+                gap: 4px !important;
+            }
+            .st-key-piercrew_italiana_compact .piercrew-team-name {
+                font-size: 14px;
+            }
+        }
+        </style>
+    """.replace(".st-key-piercrew_italiana_compact", selector))
+
+
+
 def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzazione):
     """Visualizzazione ultra-moderna (stile bracket card) per inserimento risultati."""
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         return
 
-    st.markdown(f"### 🏆 {girone_sel} - Giornata {giornata_sel} (Vista Premium)")
+    if has_single_girone(df):
+        st.markdown(f"### 🏆 Giornata {giornata_sel} (Vista Premium)")
+    else:
+        st.markdown(f"### 🏆 {girone_sel} - Giornata {giornata_sel} (Vista Premium)")
     
+    applica_stile_riga_calendario('[class*="st-key-piercrew_italiana_premium_"]')
+
     # CSS locale per la vista premium
     st.markdown("""
     <style>
@@ -826,6 +846,7 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
     """, unsafe_allow_html=True)
 
     for idx, row in df_giornata.iterrows():
+        match_validated = bool(draft_value(f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}", bool(row['Valida'])))
         # Parsing dei nomi
         casa, gio_c = parse_team_player(row['Casa'])
         osp, gio_o = parse_team_player(row['Ospite'])
@@ -839,41 +860,40 @@ def mostra_calendario_premium(df, girone_sel, giornata_sel, modalita_visualizzaz
             label_c, label_o = f"{casa} ({gio_c})", f"{osp} ({gio_o})"
 
         # Card Premium con Streamlit
-        with st.container(border=True):
+        with st.container(border=True, key=f"piercrew_italiana_premium_{idx}"):
             # Header della card
-            st.markdown(f"<div class='match-header-premium'>GIRONE {girone_sel} • MATCH {idx+1}</div>", unsafe_allow_html=True)
+            header_match = f"MATCH {idx+1}" if has_single_girone(df) else f"{girone_sel} • MATCH {idx+1}"
+            st.markdown(f"<div class='match-header-premium'>{header_match}</div>", unsafe_allow_html=True)
             
             # Prepariamo le chiavi (SINCRONIZZATE con la vista standard)
             key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
             key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
             key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
             
-            # Layout su 4 colonne: Casa | Score1 | Score2 | Ospite
-            c1, c2, c3, c4 = st.columns([3, 1, 1, 3])
+            # Stessa riga della vista Compact, nella card Premium.
+            c1, c2, c3, c4, c5 = st.columns([2.2, 0.36, 0.36, 2.2, 0.42], gap="small")
             
             with c1:
-                st.markdown(f"<div style='text-align:right;' class='team-name-premium'>🏠 {label_c}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align:right;' class='piercrew-team-name home'>🏠 {escape(str(label_c))}</div>", unsafe_allow_html=True)
             
             with c2:
                 # Usiamo le stesse chiavi per sincronizzare istantaneamente le due viste
-                st.number_input("GC", 0, 20, key=f"prem_{key_golcasa}", value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0, label_visibility="collapsed", disabled=row['Valida'])
+                result_number_input(f"Gol casa: {label_c}", 0, 20, key=f"prem_{key_golcasa}", value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0, label_visibility="collapsed", disabled=not verify_write_access() or match_validated)
                 st.session_state[key_golcasa] = st.session_state[f"prem_{key_golcasa}"]
             
             with c3:
-                st.number_input("GO", 0, 20, key=f"prem_{key_golospite}", value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0, label_visibility="collapsed", disabled=row['Valida'])
+                result_number_input(f"Gol ospite: {label_o}", 0, 20, key=f"prem_{key_golospite}", value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0, label_visibility="collapsed", disabled=not verify_write_access() or match_validated)
                 st.session_state[key_golospite] = st.session_state[f"prem_{key_golospite}"]
 
             with c4:
-                st.markdown(f"<div style='text-align:left;' class='team-name-premium'>{label_o} 🛫</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align:left;' class='piercrew-team-name away'>{escape(str(label_o))} 🛫</div>", unsafe_allow_html=True)
             
-            # Riga Validazione
-            v1, v2 = st.columns([6, 1.5])
-            with v2:
-                st.checkbox("Valida Risultato ✅", key=f"prem_{key_valida}", value=bool(row['Valida']), disabled=st.session_state.get('read_only', False))
+            with c5:
+                result_checkbox(f"Valida risultato: {label_c} - {label_o}", key=f"prem_{key_valida}", value=bool(row['Valida']), label_visibility="collapsed", disabled=st.session_state.get('read_only', False))
                 st.session_state[key_valida] = st.session_state[f"prem_{key_valida}"]
             
             if st.session_state.get(key_valida):
-                st.success(f"✅ Risultato confermato: {st.session_state[key_golcasa]} - {st.session_state[key_golospite]}")
+                st.caption(f"Risultato validato: {st.session_state[key_golcasa]} - {st.session_state[key_golospite]}")
 
 def mostra_calendario_pc(df, girone_sel, giornata_sel, modalita_visualizzazione):
     """Visualizzazione risultati dedicata a desktop/tablet larghi."""
@@ -951,6 +971,7 @@ def mostra_calendario_pc(df, girone_sel, giornata_sel, modalita_visualizzazione)
     """, unsafe_allow_html=True)
 
     for idx, row in df_giornata.iterrows():
+        match_validated = bool(draft_value(f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}", bool(row['Valida'])))
         casa, gio_c = parse_team_player(row['Casa'])
         osp, gio_o = parse_team_player(row['Ospite'])
 
@@ -969,127 +990,94 @@ def mostra_calendario_pc(df, girone_sel, giornata_sel, modalita_visualizzazione)
         with casa_col:
             st.markdown(f"<div class='pc-match-label home'>{label_c}</div>", unsafe_allow_html=True)
         with gol_casa_col:
-            st.number_input("GC", 0, 20, key=f"pc_{key_golcasa}",
+            result_number_input("GC", 0, 20, key=f"pc_{key_golcasa}",
                             value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
-                            label_visibility="collapsed", disabled=row['Valida'])
+                            label_visibility="collapsed", disabled=not verify_write_access() or match_validated)
             st.session_state[key_golcasa] = st.session_state[f"pc_{key_golcasa}"]
         with gol_ospite_col:
-            st.number_input("GO", 0, 20, key=f"pc_{key_golospite}",
+            result_number_input("GO", 0, 20, key=f"pc_{key_golospite}",
                             value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
-                            label_visibility="collapsed", disabled=row['Valida'])
+                            label_visibility="collapsed", disabled=not verify_write_access() or match_validated)
             st.session_state[key_golospite] = st.session_state[f"pc_{key_golospite}"]
         with osp_col:
             st.markdown(f"<div class='pc-match-label away'>{label_o}</div>", unsafe_allow_html=True)
         with valida_col:
-            st.checkbox("✓", key=f"pc_{key_valida}", value=bool(row['Valida']),
+            result_checkbox("✓", key=f"pc_{key_valida}", value=bool(row['Valida']),
                         label_visibility="collapsed",
                         disabled=st.session_state.get('read_only', False))
             st.session_state[key_valida] = st.session_state[f"pc_{key_valida}"]
         st.markdown("<div class='pc-match-separator'></div>", unsafe_allow_html=True)
 
 def mostra_calendario_compact(df, girone_sel, giornata_sel, modalita_visualizzazione):
-    """Visualizzazione compatta pensata per smartphone in portrait."""
+    """Una riga per incontro, con widget nativi e stili limitati all'Italiana PierCrew."""
     df_giornata = df[(df['Girone'] == girone_sel) & (df['Giornata'] == giornata_sel)].copy()
     if df_giornata.empty:
         return
 
-    numero_gironi = df['Girone'].nunique() if 'Girone' in df.columns else 1
-    if numero_gironi > 1:
-        st.markdown(f"### {girone_sel} - Giornata {giornata_sel} (Smartphone)")
+    applica_stile_riga_calendario()
 
-    st.markdown("""
-        <style>
-        .phone-match-card {
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-            padding: 16px 0;
-            margin-bottom: 8px;
-        }
-        div[data-testid="stNumberInput"] button {
-            display: none !important;
-        }
-        div[data-testid="stNumberInput"] input::-webkit-outer-spin-button,
-        div[data-testid="stNumberInput"] input::-webkit-inner-spin-button {
-            -webkit-appearance: none !important;
-            margin: 0 !important;
-        }
-        div[data-testid="stNumberInput"] input[type="number"] {
-            -moz-appearance: textfield !important;
-        }
-        .stNumberInput,
-        div[data-testid="stNumberInput"] {
-            width: 160px !important;
-            margin: 0 auto 12px auto !important;
-            text-align: center !important;
-        }
-        div[data-testid="stNumberInput"] label {
-            display: block !important;
-            text-align: center !important;
-            width: 100% !important;
-            font-weight: 800 !important;
-            font-size: 0.95rem !important;
-            margin-bottom: 4px !important;
-        }
-        div[data-testid="stNumberInput"] div[data-baseweb="input"] {
-            width: 80px !important;
-            margin: 0 auto !important;
-            padding: 0 !important;
-        }
-        div[data-testid="stNumberInput"] input {
-            width: 80px !important;
-            padding: 2px 1px !important;
-            text-align: center !important;
-            font-weight: bold !important;
-            font-size: 1.1rem !important;
-            min-height: 34px !important;
-        }
-        .phone-match-card button {
-            width: fit-content !important;
-            margin: 8px 0 0 0 !important;
-            text-align: left !important;
-        }
-        @media screen and (max-width: 480px) {
-            .appview-container .main .block-container {
-                padding-left: 0.65rem !important;
-                padding-right: 0.65rem !important;
-            }
-        }
-        </style>
-    """, unsafe_allow_html=True)
+    with st.container(key="piercrew_italiana_compact"):
+        for idx, row in df_giornata.iterrows():
+            match_validated = bool(draft_value(f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}", bool(row['Valida'])))
+            casa, gio_c = parse_team_player(row['Casa'])
+            osp, gio_o = parse_team_player(row['Ospite'])
+            if modalita_visualizzazione == 'giocatori':
+                label_c, label_o = gio_c or casa, gio_o or osp
+            elif modalita_visualizzazione == 'squadre':
+                label_c, label_o = casa, osp
+            else:
+                label_c = f"{casa} ({gio_c})" if gio_c else casa
+                label_o = f"{osp} ({gio_o})" if gio_o else osp
 
-    for idx, row in df_giornata.iterrows():
-        casa, gio_c = parse_team_player(row['Casa'])
-        osp, gio_o = parse_team_player(row['Ospite'])
+            key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+            key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+            key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
+            read_only = st.session_state.get('read_only', True)
+            validated = bool(draft_value(key_valida, bool(row['Valida'])))
 
-        if modalita_visualizzazione == 'giocatori':
-            label_c, label_o = gio_c, gio_o
-        elif modalita_visualizzazione == 'squadre':
-            label_c, label_o = casa, osp
-        else:
-            label_c, label_o = f"{casa} ({gio_c})", f"{osp} ({gio_o})"
+            casa_col, gc_col, go_col, osp_col, valida_col = st.columns(
+                [2.2, 0.36, 0.36, 2.2, 0.42], gap="small"
+            )
+            with casa_col:
+                st.markdown(
+                    f"<div class='piercrew-team-name home'>{escape(str(label_c))}</div>",
+                    unsafe_allow_html=True
+                )
+            with gc_col:
+                score = result_number_input(
+                    f"Gol casa: {label_c}", 0, 20, key=f"comp_{key_golcasa}",
+                    value=int(st.session_state.get(
+                        key_golcasa, int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0
+                    )),
+                    label_visibility="collapsed", disabled=read_only or validated
+                )
+                st.session_state[key_golcasa] = score
+            with go_col:
+                score = result_number_input(
+                    f"Gol ospite: {label_o}", 0, 20, key=f"comp_{key_golospite}",
+                    value=int(st.session_state.get(
+                        key_golospite, int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0
+                    )),
+                    label_visibility="collapsed", disabled=read_only or validated
+                )
+                st.session_state[key_golospite] = score
+            with osp_col:
+                st.markdown(
+                    f"<div class='piercrew-team-name away'>{escape(str(label_o))}</div>",
+                    unsafe_allow_html=True
+                )
+            with valida_col:
+                st.session_state[key_valida] = result_checkbox(
+                    f"Valida risultato: {label_c} - {label_o}", key=f"comp_{key_valida}",
+                    value=validated, label_visibility="collapsed", disabled=read_only
+                )
 
-        key_golcasa = f"golcasa_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
-        key_golospite = f"golospite_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
-        key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
 
-        st.markdown("<div class='phone-match-card'>", unsafe_allow_html=True)
-        st.number_input(label_c, 0, 20, key=f"comp_{key_golcasa}",
-                        value=int(row['GolCasa']) if pd.notna(row['GolCasa']) else 0,
-                        disabled=row['Valida'])
-        st.session_state[key_golcasa] = st.session_state[f"comp_{key_golcasa}"]
-        
-        st.markdown("<div style='text-align:center; font-weight:bold; font-size:1.2rem; margin: 4px 0;'>-</div>", unsafe_allow_html=True)
-        
-        st.number_input(label_o, 0, 20, key=f"comp_{key_golospite}",
-                        value=int(row['GolOspite']) if pd.notna(row['GolOspite']) else 0,
-                        disabled=row['Valida'])
-        st.session_state[key_golospite] = st.session_state[f"comp_{key_golospite}"]
-        
-        st.checkbox("✓ Validata", key=f"comp_{key_valida}", value=bool(row['Valida']),
-                    disabled=st.session_state.get('read_only', False))
-        st.session_state[key_valida] = st.session_state[f"comp_{key_valida}"]
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    return
+def sync_saved_result_rows(rows):
+    for _, row in rows.iterrows():
+        suffix = f"{row['Girone']}_{row['Giornata']}_{row['Casa']}_{row['Ospite']}"
+        for prefix, column in [('golcasa', 'GolCasa'), ('golospite', 'GolOspite'), ('valida', 'Valida')]:
+            mark_saved(f"{prefix}_{suffix}", row[column])
 
 
 def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
@@ -1109,9 +1097,9 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
             key_valida = f"valida_{girone_sel}_{giornata_sel}_{row['Casa']}_{row['Ospite']}"
             
             # Converti esplicitamente i valori in tipi nativi di Python
-            gol_casa = int(st.session_state.get(key_golcasa, 0) or 0)
-            gol_ospite = int(st.session_state.get(key_golospite, 0) or 0)
-            valida = bool(st.session_state.get(key_valida, False))
+            gol_casa = int(draft_value(key_golcasa, row['GolCasa']) or 0)
+            gol_ospite = int(draft_value(key_golospite, row['GolOspite']) or 0)
+            valida = bool(draft_value(key_valida, row['Valida']))
 
             # Aggiorna il DataFrame
             df.loc[idx, 'GolCasa'] = gol_casa
@@ -1123,8 +1111,6 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
         df['GolOspite'] = pd.to_numeric(df['GolOspite'], errors='coerce').fillna(0).astype(int)
         df['Valida'] = df['Valida'].astype(bool)
 
-        # Aggiorna il session state
-        st.session_state['df_torneo'] = df
 
         # Verifica l'ID del torneo
         if 'tournament_id' not in st.session_state:
@@ -1141,6 +1127,12 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
             st.error("❌ Errore durante il salvataggio del torneo.")
             return False
             
+        st.session_state['df_torneo'] = df
+        for _, saved_row in df_giornata.iterrows():
+            suffix = f"{girone_sel}_{giornata_sel}_{saved_row['Casa']}_{saved_row['Ospite']}"
+            for prefix, column in [('golcasa', 'GolCasa'), ('golospite', 'GolOspite'), ('valida', 'Valida')]:
+                mark_saved(f"{prefix}_{suffix}", df.loc[saved_row.name, column])
+
         # ------------------------------------------------------------------
         # CORREZIONE DEL LOGGING: Usiamo il DataFrame AGGIORNATO (df) filtrato
         # ------------------------------------------------------------------
@@ -1229,10 +1221,13 @@ def salva_risultati_giornata(tournaments_collection, girone_sel, giornata_sel):
         traceback.print_exc()
         st.error("❌ Si è verificato un errore durante il salvataggio dei risultati.")
         return False
-        
+
 def gestisci_abbandoni(df_torneo, giocatori_da_ritirare, tournaments_collection):
+    if not verify_write_access():
+        return df_torneo
+    previous_withdrawals = list(st.session_state.get('giocatori_ritirati', []))
     df = df_torneo.copy()
-    
+
     # Aggiungi a session state la lista dei giocatori che hanno abbandonato
     if 'giocatori_ritirati' not in st.session_state:
         st.session_state['giocatori_ritirati'] = []
@@ -1285,13 +1280,15 @@ def gestisci_abbandoni(df_torneo, giocatori_da_ritirare, tournaments_collection)
             df.loc[idx, 'Valida'] = True
             matches_to_update += 1
 
-    st.session_state['df_torneo'] = df
-    
+
     # Salva su DB
     if 'tournament_id' in st.session_state:
         try:
             ok = aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], df)
             if ok:
+                st.session_state['df_torneo'] = df
+                changed = df.index[(df[['GolCasa', 'GolOspite', 'Valida']] != df_torneo[['GolCasa', 'GolOspite', 'Valida']]).any(axis=1)]
+                sync_saved_result_rows(df.loc[changed])
                 try:
                     user = st.session_state.get('user', 'unknown') if 'st' in globals() else 'system'
                     log_action(
@@ -1310,6 +1307,9 @@ def gestisci_abbandoni(df_torneo, giocatori_da_ritirare, tournaments_collection)
             st.error(f"❌ Errore durante il salvataggio del torneo: {e}")
     else:
         st.error("❌ ID del torneo non trovato. Impossibile salvare.")
+    if st.session_state.get('df_torneo') is not df:
+        st.session_state['giocatori_ritirati'] = previous_withdrawals
+        return df_torneo
     return df
 
 # --- CLASSIFICA ---
@@ -1321,16 +1321,19 @@ def mostra_classifica_stilizzata(df_classifica, girone_sel):
         return
     df_girone = df_classifica[df_classifica['Girone'] == girone_sel].copy()
 
-    # Rimuovi la colonna 'Ritirato' per la visualizzazione, ma usala per lo stile
-    df_to_show = df_girone.drop(columns=['Ritirato'])
+    # Rimuovi colonne tecniche dalla visualizzazione; il girone unico resta solo nei dati interni.
+    drop_cols = ['Ritirato']
+    if has_single_girone(df_classifica):
+        drop_cols.append('Girone')
+    df_to_show = df_girone.drop(columns=drop_cols, errors='ignore')
 
     # Stile delle righe in base alla colonna 'Ritirato'
     def highlight_withdrawn(s):
-        is_withdrawn = s['Ritirato']
+        is_withdrawn = bool(df_girone.loc[s.name, 'Ritirato']) if 'Ritirato' in df_girone.columns else False
         return ['background-color: lightgray'] * len(s) if is_withdrawn else [''] * len(s)
 
     # Usa la colonna 'Squadra' per applicare lo stile
-    styled_df = df_girone.style.apply(highlight_withdrawn, axis=1)
+    styled_df = df_to_show.style.apply(highlight_withdrawn, axis=1)
 
     st.dataframe(styled_df, width="stretch", hide_index=True)
 
@@ -2118,7 +2121,18 @@ def main():
     _, sidebar_button_col = st.columns([1, 0.18])
     with sidebar_button_col:
         render_sidebar_collapse_workaround()
-    setup_common_sidebar(show_user_info=False, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL))  # user info già mostrata sopra
+    setup_common_sidebar(show_user_info=False, hub_url=HUB_URL, home_url=auth.make_authenticated_url(HOME_URL), show_hub_link=False)  # user info già mostrata sopra
+    # Keep Hub navigation independent of cached shared-module versions.
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🕹️ Gestione Rapida")
+    st.sidebar.markdown(
+        '<div class="stLinkButton piercrew-hub-link">'
+        f'<a href="{escape(HUB_URL, quote=True)}" target="_blank" rel="noopener noreferrer" '
+        'style="display:flex;align-items:center;justify-content:center;'
+        'width:100%;box-sizing:border-box;min-height:44px;text-decoration:none;">'
+        '&#10145;&#65039; Vai a Hub Tornei</a></div>',
+        unsafe_allow_html=True,
+    )
     setup_audio_sidebar()
     setup_player_selection_mode(on_change=sync_multiselect, args=("sidebar_usa_multiselect_giocatori",))
     
@@ -2129,10 +2143,10 @@ def main():
         # --- FUNZIONI DI SINCRONIZZAZIONE ---
         def sync_tipo_vista(source_key):
             val = st.session_state[source_key]
-            # Mappa sia 'compact' sia 'smartphone' a 'pc'
+            # Le etichette Compact e Smartphone usano la stessa vista responsive.
             mappa_interna = {
-                'compact': 'pc',
-                'smartphone': 'pc',
+                'compact': 'compact',
+                'smartphone': 'compact',
                 'pc': 'pc'
             }
             st.session_state['tipo_vista_selezionata'] = mappa_interna.get(val.lower(), val.lower())
@@ -2233,8 +2247,9 @@ def main():
                     st.warning("❌ Seleziona almeno un giocatore per gestire l'abbandono.")
         
         
-        # 💬 Visualizzazione Classifica per girone
-        with st.sidebar.expander("💬 Visualizzazione Classifica", expanded=False):
+        # 💬 Visualizzazione Classifica
+        classifica_expander_title = "💬 Visualizzazione Classifica" if has_single_girone(st.session_state['df_torneo']) else "💬 Visualizzazione Classifica per girone"
+        with st.sidebar.expander(classifica_expander_title, expanded=False):
             gironi_attivi = sorted(st.session_state['df_torneo']['Girone'].dropna().unique().tolist())
             if len(gironi_attivi) == 1:
                 girone_unico = gironi_attivi[0]
@@ -2267,10 +2282,13 @@ def main():
 
             df = st.session_state['df_torneo'].copy()
             df_filtrato = pd.DataFrame()
+            filtro_options = ('Nessuno', 'Stato partite', 'Giocatore') if has_single_girone(df) else ('Nessuno', 'Stato partite', 'Giocatore', 'Girone')
+            if st.session_state.get('filtro_principale_selettore_main') not in filtro_options:
+                st.session_state['filtro_principale_selettore_main'] = 'Nessuno'
 
             filtro_principale = st.radio(
                 "Filtro visualizzazione stato partite",
-                ('Nessuno', 'Stato partite', 'Giocatore', 'Girone'),
+                filtro_options,
                 horizontal=True,
                 key='filtro_principale_selettore_main'
             )
@@ -2355,11 +2373,12 @@ def main():
                     df_edit = st.data_editor(
                         df_show[display_cols],
                         width="stretch",
-                        num_rows="dynamic",
+                        num_rows="fixed",
                         column_config=column_config
                     )
 
-                    if st.button("💾 Salva modifiche tabella"):
+                    if st.button("💾 Salva modifiche tabella", disabled=not verify_write_access()):
+                        previous_table_df = st.session_state['df_torneo'].copy()
                         # aggiorna df_torneo usando idx_map (posizione -> indice originale)
                         for i in range(len(df_edit)):
                             row = df_edit.iloc[i]
@@ -2367,7 +2386,10 @@ def main():
                             for col in editable_cols:
                                 st.session_state['df_torneo'].at[orig_idx, col] = row[col]
                         if st.session_state.get('tournament_id'):
-                            aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
+                            if not aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo']):
+                                st.session_state['df_torneo'] = previous_table_df
+                                st.stop()
+                        sync_saved_result_rows(st.session_state['df_torneo'].loc[[idx_map[i] for i in range(len(df_edit))]])
                         st.success("Modifiche salvate!")
                 else:
                     st.info(f"🎉 Nessuna partita {stato.lower()} trovata.")
@@ -2466,18 +2488,22 @@ def main():
                         df_edit = st.data_editor(
                             df_show[display_cols],
                             width="stretch",
-                            num_rows="dynamic",
+                            num_rows="fixed",
                             column_config=column_config
                         )
 
-                        if st.button("💾 Salva modifiche tabella (Giocatore)"):
+                        if st.button("💾 Salva modifiche tabella (Giocatore)", disabled=not verify_write_access()):
+                            previous_table_df = st.session_state['df_torneo'].copy()
                             for i in range(len(df_edit)):
                                 row = df_edit.iloc[i]
                                 orig_idx = idx_map[i]
                                 for col in editable_cols:
                                     st.session_state['df_torneo'].at[orig_idx, col] = row[col]
                             if st.session_state.get('tournament_id'):
-                                aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
+                                if not aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo']):
+                                    st.session_state['df_torneo'] = previous_table_df
+                                    st.stop()
+                            sync_saved_result_rows(st.session_state['df_torneo'].loc[[idx_map[i] for i in range(len(df_edit))]])
                             st.success("Modifiche salvate!")
                     else:
                         st.info("🎉 Nessuna partita trovata per questo giocatore.")
@@ -2575,18 +2601,22 @@ def main():
                         df_edit = st.data_editor(
                             df_show[display_cols],
                             width="stretch",
-                            num_rows="dynamic",
+                            num_rows="fixed",
                             column_config=column_config
                         )
 
-                        if st.button("💾 Salva modifiche tabella (Girone)"):
+                        if st.button("💾 Salva modifiche tabella (Girone)", disabled=not verify_write_access()):
+                            previous_table_df = st.session_state['df_torneo'].copy()
                             for i in range(len(df_edit)):
                                 row = df_edit.iloc[i]
                                 orig_idx = idx_map[i]
                                 for col in editable_cols:
                                     st.session_state['df_torneo'].at[orig_idx, col] = row[col]
                             if st.session_state.get('tournament_id'):
-                                aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo'])
+                                if not aggiorna_torneo_su_db(tournaments_collection, st.session_state['tournament_id'], st.session_state['df_torneo']):
+                                    st.session_state['df_torneo'] = previous_table_df
+                                    st.stop()
+                            sync_saved_result_rows(st.session_state['df_torneo'].loc[[idx_map[i] for i in range(len(df_edit))]])
                             st.success("Modifiche salvate!")
                     else:
                         st.info("🎉 Nessuna partita trovata per questo girone.")
@@ -2692,7 +2722,8 @@ def main():
                 girone = st.session_state['mostra_classifica_girone']
                 
                 # Mostra la classifica
-                st.markdown(f"# 📊 Classifica {girone}")
+                titolo_classifica = "# 📊 Classifica" if has_single_girone(df) else f"# 📊 Classifica {girone}"
+                st.markdown(titolo_classifica)
                 classifica = aggiorna_classifica(df)
                 if classifica is not None and not classifica.empty:
                     mostra_classifica_stilizzata(classifica, girone)
@@ -2711,20 +2742,16 @@ def main():
             if giornate_correnti:
                 vista_scelta = st.session_state.get('tipo_vista_selezionata', 'pc')
                 
-                if vista_scelta in ('smartphone', 'compact'):
-                    mostra_avviso_landscape()
+                if vista_scelta in ('smartphone', 'compact', 'pc'):
                     mostra_calendario_compact(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
-                elif vista_scelta == 'pc':
-                    mostra_avviso_landscape()
-                    mostra_calendario_pc(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
                 elif vista_scelta == 'premium':
-                    mostra_avviso_landscape()
                     mostra_calendario_premium(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
                 else: # standard
                     mostra_calendario_giornata(df, st.session_state['girone_sel'], st.session_state['giornata_sel'], modalita_scelta)
             else:
                 st.info("Seleziona un girone per visualizzare il calendario.")
 
+            show_save_status()
             if st.button(
                 "💾 Salva Risultati Giornata",
                 disabled=st.session_state.get('read_only', True),
