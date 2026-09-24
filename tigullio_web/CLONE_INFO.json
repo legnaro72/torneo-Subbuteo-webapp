@@ -1,6 +1,6 @@
 {
   "club": "Tigullio",
   "source": "superba_web",
-  "deployment": "not-configured",
+  "deployment": "https://tigullioweb.vercel.app/",
   "mongo_writes_by_script": false
 }

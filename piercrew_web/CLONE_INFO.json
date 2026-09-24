@@ -1,6 +1,6 @@
 {
   "club": "PierCrew",
   "source": "superba_web",
-  "deployment": "not-configured",
+  "deployment": "https://piercrewweb.vercel.app/",
   "mongo_writes_by_script": false
 }
