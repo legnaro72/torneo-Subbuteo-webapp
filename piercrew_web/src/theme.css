@@ -1,0 +1,34 @@
+/* PierCrew: navy and ivory. ClonaMigrazione.py replaces this file per club. */
+:root{--club-dark:#164d32;--club-primary:#187442;--club-primary-hover:#0c5930;--club-accent:#ffda45;--club-paper:#fffdf1;--club-soft:#f2f8e9;--club-ink:#173c2a;--club-muted:#577061;--club-border:#d6e4d5;--green:var(--club-dark);--gold:var(--club-accent);--muted:var(--club-muted);--border:var(--club-border);color:var(--club-ink);background:var(--club-paper)}
+body,.login-panel{background:var(--club-paper);color:var(--club-ink)}
+.sidebar{background:var(--club-dark);color:#f8f5ec}.sidebar .brand,.login-story .brand{color:#fffdf1}.brand small,.sidebar-note,.profile small{color:#d4dfed}.sidebar nav button{color:#dce7f2}.sidebar nav button.selected,.sidebar nav button:hover{background:#246a43}.sidebar .profile{border-color:#478363}.avatar{background:#34804f;color:var(--club-accent)}
+.topbar,.results-card,.tournament-list,.stat,.savebar,.modal,.search,.group-editor,.secondary,.other-worlds button{background:var(--club-paper)}
+.hero{background:linear-gradient(120deg,#103f2b,#288147);color:#fffdf1}.hero p,.hero-kicker{color:#edf8db}.hero button{background:var(--club-accent);color:var(--club-dark)}.hero-number{color:#e6edc9}.player{background:#e6d9b6}.player:after{background:#f6ead0}.player.p3{background:#bdd3e7}.player.p3:after{background:#91b6d7}
+.primary{background:var(--club-primary);color:#fff}.primary:not(:disabled):hover{background:var(--club-primary-hover)}.text-button,.tabs button.active,.points,.topbar strong,.stat strong,.section-heading h2,.page-heading h1{color:var(--club-primary)}.tabs button.active{border-color:var(--club-primary)}
+.tournament-row:not(:disabled):hover,.secondary:hover{background:#edf3f9}.tournament-icon,.stat-icon,.team-mark,.day-picker button,.manage,.badge{background:#eaf0f7;color:var(--club-primary)}.team-mark.alt{background:#fff0dc;color:#915d18}.badge.done{background:#e4f0f8;color:#288147;border-color:#d0e4f3}.track i,.environment i,.live-dot,.status-dot{background:#e4be28}
+.eyebrow,.tournament-title small,.select-label,.results-note,.empty,.back,footer,.topbar,.validate{color:var(--club-muted)}.login-story{background:radial-gradient(ellipse at bottom right,#2a7c48,#103d2a 76%)}.login-story p{color:#d9e6f1}.login-story .eyebrow,.login-story>small{color:var(--club-accent)}.login-symbol{background:#eaf0f7;color:var(--club-primary);border-color:#d9e5f0}
+input,textarea,select,.score input{background:#fffefa;color:var(--club-ink);border-color:var(--club-border)}.score input:disabled{background:#eaf0f7;color:#426386}.checkbox input,.validate input{accent-color:var(--club-primary)}.modal-backdrop{background:#0b2b1baa}.team-mark{color:var(--club-primary)}
+@media(max-width:760px){.sidebar{background:var(--club-dark)}.topbar{background:var(--club-paper)}}
+/* Match center and competition screens use the same club palette. */
+.sidebar{background:linear-gradient(158deg,var(--club-primary),var(--club-dark) 80%)}
+.sidebar nav button.selected{background:var(--club-accent);border-color:var(--club-accent);color:var(--club-dark);box-shadow:0 6px 20px #061b3466}
+.sidebar nav button.selected svg{color:var(--club-dark)}
+.topbar{background:var(--club-paper);border-color:var(--club-border)}
+.primary{background:linear-gradient(115deg,var(--club-primary),var(--club-dark));box-shadow:0 5px 14px #164d3225}
+.primary:not(:disabled):hover{background:var(--club-primary-hover)}
+.hero{background:linear-gradient(125deg,var(--club-primary),var(--club-dark) 70%);box-shadow:0 20px 45px #164d3239}
+.hero button{background:var(--club-accent);color:var(--club-dark)}
+.stat,.tournament-list,.results-card,.filter-panel,.club-section{border-color:var(--club-border);box-shadow:0 8px 25px #164d320d}
+.stat{background:var(--club-paper)}.stat strong{color:var(--club-primary)}
+.filter-panel,.segmented,.competition-create .group-preview,.competition-bracket>div{background:var(--club-soft)}
+.filter-head h3,.filter-toggle,.competition-bracket h4{color:var(--club-primary)}
+.arena-hero{border-color:var(--club-primary);background:radial-gradient(circle at 70% 20%,var(--club-primary) 0,transparent 34%),linear-gradient(125deg,var(--club-dark),var(--club-primary-hover));box-shadow:0 20px 44px #164d3242}
+.arena-hero .eyebrow,.arena-facts strong{color:var(--club-accent)}.arena-hero p,.arena-facts>span{color:#edf8db}
+.arena-live-dot{background:var(--club-accent);box-shadow:0 0 0 5px #ffda4530,0 0 17px var(--club-accent)}
+.arena-hero>.badge{background:var(--club-accent);border-color:var(--club-accent);color:var(--club-dark)}
+.arena-progress{background:var(--club-accent);box-shadow:0 0 18px var(--club-accent)}
+.arena-field{background:repeating-linear-gradient(0deg,#ffffff0b 0,#ffffff0b 42px,#ffffff04 42px,#ffffff04 84px),var(--club-primary)}
+.round-selector{background:linear-gradient(110deg,var(--club-primary),var(--club-dark));box-shadow:0 13px 26px #164d3240}
+.tournament-results .match-row{border-color:var(--club-border);box-shadow:0 10px 24px #164d3213}
+.tournament-results .match-row:hover{border-color:var(--club-primary);box-shadow:0 14px 30px #164d3224}
+@media(max-width:760px){.topbar{background:var(--club-paper)}}

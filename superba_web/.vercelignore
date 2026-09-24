@@ -1,0 +1,12 @@
+.venv/
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+.vercel/
+tests/
+test-results/
+__pycache__/
+*.pyc
+tmp/

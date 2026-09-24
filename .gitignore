@@ -1,0 +1,14 @@
+# Local credentials and deployment state must never be committed.
+.streamlit/secrets.toml
+pathWebApp e secure .txt
+**/.env
+**/.env.*
+!**/.env.example
+**/.vercel/
+**/.venv/
+**/node_modules/
+**/dist/
+**/tmp/
+**/__pycache__/
+**/*.pyc
+**/*.tsbuildinfo

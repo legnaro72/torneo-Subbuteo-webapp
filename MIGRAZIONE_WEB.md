@@ -1,0 +1,16 @@
+# Portali web dei club
+
+Il portale Superba è isolato in `superba_web/`. I cloni generati da `ClonaMigrazione.py` sono in `piercrew_web/` e `tigullio_web/`. Ogni cartella contiene frontend React, API FastAPI, logo, tema, configurazione Vercel e istruzioni. Lo script non si collega a MongoDB e non pubblica automaticamente.
+
+Per rigenerare un clone partendo dalla versione Superba aggiornata, spostare o eliminare prima la cartella del clone esistente dopo aver conservato eventuali modifiche specifiche, quindi eseguire:
+
+```powershell
+superba_web\.venv\Scripts\python.exe ClonaMigrazione.py piercrew
+superba_web\.venv\Scripts\python.exe ClonaMigrazione.py tigullio
+```
+
+Lo script si ferma se la destinazione esiste, per non cancellare il lavoro di un club. Non copia `.env`, `.env.local`, `.vercel`, dipendenze o build. La fonte dei nomi delle collezioni è coerente con il vecchio `clona_club.py`: `piercrew_players`/`PierCrew`/`PierCrewSvizzero` e `tigullio_players`/`Tigullio`/`TigullioSvizzero`.
+
+Per ogni nuovo progetto Vercel impostare come root la propria cartella e configurare `MONGO_URI`, `MONGO_URI_AUTH`, `MONGO_URI_TOURNEMENTS`, `<CLUB>_APP_ORIGIN` e `<CLUB>_WRITE_ENABLED` come indicato nel suo `.env.example`. Attivare le scritture solo dopo aver verificato connessione, ruoli e collezioni corrette. I link alle vecchie app sono variabili `LEGACY_*_URL` opzionali: i cloni non ereditano gli URL Superba. Ogni portale richiede un progetto Vercel e un dominio distinti.
+
+I file legacy `.streamlit/secrets.toml` e `pathWebApp e secure .txt` non devono essere pubblicati. Sono stati rimossi dall'indice Git corrente, ma possono restare nella cronologia dei commit precedenti: gli URI eventualmente presenti in quella cronologia vanno sostituiti nei servizi interessati.

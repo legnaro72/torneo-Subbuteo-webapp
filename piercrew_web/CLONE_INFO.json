@@ -1,0 +1,6 @@
+{
+  "club": "PierCrew",
+  "source": "superba_web",
+  "deployment": "not-configured",
+  "mongo_writes_by_script": false
+}
