@@ -2,7 +2,7 @@
 
 Il portale Superba è isolato in `superba_web/`. I cloni generati da `ClonaMigrazione.py` sono in `piercrew_web/` e `tigullio_web/`. Ogni cartella contiene frontend React, API FastAPI, logo, tema, configurazione Vercel e istruzioni. Lo script non si collega a MongoDB e non pubblica automaticamente.
 
-Deploy attuali: Superba `https://superbaweb.vercel.app/`, PierCrew `https://piercrewweb.vercel.app/`, Tigullio `https://tigullioweb.vercel.app/`. I tre progetti Vercel hanno root separate. PierCrew e Tigullio usano credenziali MongoDB condivise con Superba per i cluster, ma collezioni distinte definite in ciascun `backend/store.py`. Le rispettive variabili `<CLUB>_WRITE_ENABLED=true` autorizzano salvataggi solo attraverso i controlli di ruolo dell'app. I quattro link `LEGACY_*_URL` dei cloni restano da configurare con gli URL verificati delle vecchie app.
+Deploy attuali: Superba `https://superbaweb.vercel.app/`, PierCrew `https://piercrewweb.vercel.app/`, Tigullio `https://tigullioweb.vercel.app/`. I tre progetti Vercel hanno root separate. PierCrew e Tigullio usano credenziali MongoDB condivise con Superba per i cluster, ma collezioni distinte definite in ciascun `backend/store.py`. Le rispettive variabili `<CLUB>_WRITE_ENABLED=true` autorizzano salvataggi solo attraverso i controlli di ruolo dell'app. I quattro link `LEGACY_*_URL` per clone puntano agli URL verificati del rispettivo vecchio hub Streamlit.
 
 Per rigenerare un clone partendo dalla versione Superba aggiornata, spostare o eliminare prima la cartella del clone esistente dopo aver conservato eventuali modifiche specifiche, quindi eseguire:
 

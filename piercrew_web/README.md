@@ -60,7 +60,7 @@ La ricerca Premium unisce i risultati di Wikidata/Wikimedia Commons e dell'archi
 
 Per la pulizia automatica delle sessioni e dei tentativi scaduti sono consigliati indici TTL su `auth_subbuteo.portal_sessions.expires_at` e `auth_subbuteo.portal_login_attempts.expires_at`, entrambi con `expireAfterSeconds: 0`. Non sono stati creati durante questa migrazione: le query verificano comunque la scadenza. L’agente non ha eseguito scritture sul database reale; sessioni e modifiche saranno generate soltanto dalle azioni degli utenti nell’app.
 
-Questo clone usa un progetto Vercel separato. Gli URI MongoDB condivisi con Superba sono configurati come segreti Vercel, mentre i nomi delle collezioni sono specifici del club. Lo script di clonazione non copia dati MongoDB. I link alle vecchie app richiedono ancora gli URL `LEGACY_*_URL` verificati.
+Questo clone usa un progetto Vercel separato. Gli URI MongoDB condivisi con Superba sono configurati come segreti Vercel, mentre i nomi delle collezioni sono specifici del club. Lo script di clonazione non copia dati MongoDB. I link `LEGACY_*_URL` puntano agli URL delle vecchie app verificati dal vecchio hub PierCrew.
 
 ## Verifiche
 
