@@ -88,6 +88,15 @@ class PortalTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.json(), ['Nuovo Writer'])
 
+    def test_login_suggestions_include_only_club_names_without_creating_sessions(self):
+        self.store.players.insert_one({'Giocatore': 'Writer Extra', 'Ruolo': 'W'})
+        self.store.players.insert_one({'Giocatore': 'Writer Revoked', 'Ruolo': 'X'})
+        with patch.object(self.store.sessions, 'insert_one', side_effect=AssertionError('session write')):
+            response = self.client.get('/api/auth/user-suggestions?q=wri')
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json(), ['Writer', 'Writer Extra'])
+        self.assertEqual(self.client.get('/api/auth/user-suggestions?q=w').status_code, 422)
+
     def test_health_reads_both_collections_without_auth_or_writes(self):
         with patch.object(self.store.players, 'find_one', wraps=self.store.players.find_one) as players_read, \
              patch.object(self.store.tournaments, 'find_one', wraps=self.store.tournaments.find_one) as tournaments_read:

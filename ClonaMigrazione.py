@@ -1,7 +1,11 @@
 """Clone the isolated Superba web portal for another club, without touching MongoDB.
 
-Run from the repository root: python ClonaMigrazione.py piercrew|tigullio|all
-The clone is source code only; configure its own Vercel project and environment.
+Run from the repository root:
+  python ClonaMigrazione.py piercrew|tigullio|all
+  python ClonaMigrazione.py sync piercrew|tigullio|all
+
+`sync` updates shared code from Superba without deleting clone files. It preserves
+the club logo, theme, database mapping, environment examples and documentation.
 """
 from __future__ import annotations
 
@@ -15,6 +19,10 @@ ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "superba_web"
 EXCLUDE = {".venv", ".vercel", "node_modules", "dist", "tmp", "__pycache__", "test-results", ".env", ".env.local", "tsconfig.tsbuildinfo"}
 TEXT_SUFFIXES = {".py", ".ts", ".tsx", ".css", ".html", ".json", ".md", ".txt", ".example"}
+SYNC_PRESERVE = {
+    Path("backend/store.py"), Path("src/theme.css"), Path(".env.example"),
+    Path("README.md"), Path("CLONE_INFO.json"), Path("public/logo-superba.jpg"),
+}
 
 CLUBS = {
     "piercrew": {
@@ -48,12 +56,34 @@ def _ignored(_directory: str, names: list[str]) -> set[str]:
     return {name for name in names if name in EXCLUDE or name.endswith(".pyc")}
 
 
+def _club_text(content: str, relative: Path, club: dict) -> str:
+    if relative.name == "theme.css":
+        for old, new in club["colors"].items():
+            content = content.replace(old, new)
+    content = content.replace("SUPERBA", club["name"].upper())
+    content = content.replace("Superba", club["name"])
+    content = content.replace("superba", club["key"])
+    content = content.replace("SUBBUTEO CLUB", f"{club['label']} · SUBBUTEO")
+    if relative == Path("backend/main.py"):
+        start = content.index("DESTINATIONS = {")
+        end = content.index("\n}\n", start) + 2
+        content = content[:start] + (
+            "DESTINATIONS = {\n"
+            "    'finali': os.getenv('LEGACY_FINALI_URL', ''),\n"
+            "    'svizzero': os.getenv('LEGACY_SVIZZERO_URL', ''),\n"
+            "    'club': os.getenv('LEGACY_CLUB_URL', ''),\n"
+            "    'italiana-classica': os.getenv('LEGACY_ITALIANA_URL', ''),\n"
+            "}"
+        ) + content[end:]
+    return content
+
+
 def clone(club_key: str) -> Path:
     if club_key not in CLUBS:
         raise ValueError(f"Club sconosciuto: {club_key}")
     if not SOURCE.is_dir():
         raise FileNotFoundError(f"Cartella sorgente mancante: {SOURCE}")
-    club = CLUBS[club_key]
+    club = {**CLUBS[club_key], "key": club_key}
     target = ROOT / f"{club_key}_web"
     if target.exists():
         raise FileExistsError(f"{target} esiste già; nessun file è stato sovrascritto.")
@@ -67,26 +97,8 @@ def clone(club_key: str) -> Path:
             if not file.is_file() or file.suffix not in TEXT_SUFFIXES:
                 continue
             content = file.read_text(encoding="utf-8")
-            if file.name == "football_logos_index.json":
-                continue
-            if file.name == "theme.css":
-                for old, new in club["colors"].items():
-                    content = content.replace(old, new)
-            content = content.replace("SUPERBA", club["name"].upper())
-            content = content.replace("Superba", club["name"])
-            content = content.replace("superba", club_key)
-            content = content.replace("SUBBUTEO CLUB", f"{club['label']} · SUBBUTEO")
-            if file.as_posix().endswith("/backend/main.py"):
-                start = content.index("DESTINATIONS = {")
-                end = content.index("\n}\n", start) + 2
-                content = content[:start] + (
-                    "DESTINATIONS = {\n"
-                    "    'finali': os.getenv('LEGACY_FINALI_URL', ''),\n"
-                    "    'svizzero': os.getenv('LEGACY_SVIZZERO_URL', ''),\n"
-                    "    'club': os.getenv('LEGACY_CLUB_URL', ''),\n"
-                    "    'italiana-classica': os.getenv('LEGACY_ITALIANA_URL', ''),\n"
-                    "}"
-                ) + content[end:]
+            relative = file.relative_to(target)
+            content = _club_text(content, relative, club)
             if file.name == "README.md":
                 content = (f"> Clone {club['name']} generato da ClonaMigrazione.py. Configurare un progetto Vercel e i segreti specifici del club prima della pubblicazione.\n\n" + content)
                 start = content.find("Il portale è pubblicato su")
@@ -110,11 +122,50 @@ def clone(club_key: str) -> Path:
     return target
 
 
+def sync(club_key: str) -> int:
+    if club_key not in CLUBS:
+        raise ValueError(f"Club sconosciuto: {club_key}")
+    if not SOURCE.is_dir():
+        raise FileNotFoundError(f"Cartella sorgente mancante: {SOURCE}")
+    target = ROOT / f"{club_key}_web"
+    if not target.is_dir():
+        raise FileNotFoundError(f"Clone mancante: {target}. Esegui prima la clonazione iniziale.")
+    club = {**CLUBS[club_key], "key": club_key}
+    updated = 0
+    for source_file in SOURCE.rglob("*"):
+        if not source_file.is_file():
+            continue
+        relative = source_file.relative_to(SOURCE)
+        if any(part in EXCLUDE for part in relative.parts) or source_file.name.endswith(".pyc") or relative in SYNC_PRESERVE:
+            continue
+        destination = target / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if source_file.suffix in TEXT_SUFFIXES:
+            content = _club_text(source_file.read_text(encoding="utf-8"), relative, club)
+            if not destination.exists() or destination.read_text(encoding="utf-8") != content:
+                destination.write_text(content, encoding="utf-8")
+                updated += 1
+        elif not destination.exists() or source_file.read_bytes() != destination.read_bytes():
+            shutil.copy2(source_file, destination)
+            updated += 1
+    return updated
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("club", choices=[*CLUBS, "all"])
+    parser.add_argument("command", choices=[*CLUBS, "all", "sync"])
+    parser.add_argument("club", nargs="?", choices=[*CLUBS, "all"])
     args = parser.parse_args()
-    for club_key in (CLUBS if args.club == "all" else [args.club]):
+    if args.command == "sync":
+        if not args.club:
+            parser.error("specifica il club: sync piercrew, sync tigullio oppure sync all")
+        for club_key in (CLUBS if args.club == "all" else [args.club]):
+            print(f"{club_key}: aggiornati {sync(club_key)} file condivisi")
+        print("Sincronizzazione completata. Nessun file specifico del club è stato eliminato.")
+        return
+    if args.club:
+        parser.error("per la clonazione iniziale usa soltanto piercrew, tigullio oppure all")
+    for club_key in (CLUBS if args.command == "all" else [args.command]):
         print(f"Creato {clone(club_key)}")
     print("Clonazione locale completata. Configurare i segreti Vercel per ciascun club.")
 

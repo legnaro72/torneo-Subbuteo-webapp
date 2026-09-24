@@ -2,6 +2,7 @@ import csv
 import hashlib
 import io
 import os
+import re
 import time
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
@@ -174,6 +175,18 @@ def activation_users(data: ActivationLookup, request: Request, store: Store = De
     names = (p.get('Giocatore', '').strip() for p in store.players.find(
         {'Ruolo': {'$in': ['A', 'W']}, 'SetPwd': {'$ne': 1}}, {'Giocatore': 1}))
     return sorted((name for name in names if name), key=str.casefold)
+
+
+@app.get('/api/auth/user-suggestions')
+def user_suggestions(q: str, store: Store = Depends(store_dep)):
+    query = q.strip()
+    if len(query) < 2 or len(query) > 80:
+        raise HTTPException(422, 'Digita da 2 a 80 caratteri.')
+    players = store.players.find({
+        'Giocatore': {'$regex': re.escape(query), '$options': 'i'},
+        '$or': [{'Ruolo': {'$in': ['A', 'W', 'R']}}, {'Ruolo': {'$exists': False}}],
+    }, {'Giocatore': 1}).sort('Giocatore', 1).limit(12)
+    return [name for player in players if (name := str(player.get('Giocatore', '')).strip())]
 
 
 @app.post('/api/auth/guest')

@@ -4,14 +4,16 @@ Il portale Superba è isolato in `superba_web/`. I cloni generati da `ClonaMigra
 
 Deploy attuali: Superba `https://superbaweb.vercel.app/`, PierCrew `https://piercrewweb.vercel.app/`, Tigullio `https://tigullioweb.vercel.app/`. I tre progetti Vercel hanno root separate. PierCrew e Tigullio usano credenziali MongoDB condivise con Superba per i cluster, ma collezioni distinte definite in ciascun `backend/store.py`. Le rispettive variabili `<CLUB>_WRITE_ENABLED=true` autorizzano salvataggi solo attraverso i controlli di ruolo dell'app. I quattro link `LEGACY_*_URL` per clone puntano agli URL verificati del rispettivo vecchio hub Streamlit.
 
-Per rigenerare un clone partendo dalla versione Superba aggiornata, spostare o eliminare prima la cartella del clone esistente dopo aver conservato eventuali modifiche specifiche, quindi eseguire:
+Superba è la sorgente di sviluppo. Dopo aver verificato un miglioramento in Superba, per portarlo ai cloni senza ricrearli eseguire:
 
 ```powershell
-superba_web\.venv\Scripts\python.exe ClonaMigrazione.py piercrew
-superba_web\.venv\Scripts\python.exe ClonaMigrazione.py tigullio
+superba_web\.venv\Scripts\python.exe ClonaMigrazione.py sync piercrew
+superba_web\.venv\Scripts\python.exe ClonaMigrazione.py sync tigullio
+# oppure entrambi
+superba_web\.venv\Scripts\python.exe ClonaMigrazione.py sync all
 ```
 
-Lo script si ferma se la destinazione esiste, per non cancellare il lavoro di un club. Non copia `.env`, `.env.local`, `.vercel`, dipendenze o build. La fonte dei nomi delle collezioni è coerente con il vecchio `clona_club.py`: `piercrew_players`/`PierCrew`/`PierCrewSvizzero` e `tigullio_players`/`Tigullio`/`TigullioSvizzero`.
+`sync` aggiorna e aggiunge i file comuni, senza eliminare file nei cloni. Conserva `backend/store.py`, `src/theme.css`, logo, `.env.example`, README, dati di deploy locali e dipendenze. La clonazione iniziale (`ClonaMigrazione.py piercrew`, `tigullio` oppure `all`) continua a fermarsi se la destinazione esiste. La fonte dei nomi delle collezioni è coerente con il vecchio `clona_club.py`: `piercrew_players`/`PierCrew`/`PierCrewSvizzero` e `tigullio_players`/`Tigullio`/`TigullioSvizzero`.
 
 Per ogni nuovo progetto Vercel impostare come root la propria cartella e configurare `MONGO_URI`, `MONGO_URI_AUTH`, `MONGO_URI_TOURNEMENTS`, `<CLUB>_APP_ORIGIN` e `<CLUB>_WRITE_ENABLED` come indicato nel suo `.env.example`. Attivare le scritture solo dopo aver verificato connessione, ruoli e collezioni corrette. I link alle vecchie app sono variabili `LEGACY_*_URL` opzionali: i cloni non ereditano gli URL Superba. Ogni portale richiede un progetto Vercel e un dominio distinti.
 
